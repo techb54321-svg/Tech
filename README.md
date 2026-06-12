@@ -59,15 +59,17 @@ everything else works normally.
 - **Ride the bloodstream** — a first-person mode where the camera flows along
   the centre of the vessel with the cells. Move the mouse to look around, scroll
   to change your pace, banking through every curve.
-- **Living, breathing walls** — the vessel contracts and a peristaltic pulse wave
-  travels down it in time with the heartbeat (a real arterial pulse wave).
-- **Heartbeat-driven flow** — cells surge forward on every beat instead of moving
-  at constant speed. Adjustable BPM and a live ECG (PQRST) monitor.
-- **Sound** — optional synthesized "lub-dub" heartbeat plus an ambient
-  blood-flow whoosh that rises with the flow speed (all generated in-browser).
-- **Cinematic rendering** — bloom glow, chromatic aberration and a vignette that
-  throb with each heartbeat, glowing halos on every cell, foreground blood motes
-  that streak past for a sense of speed, and a light that travels with you.
+- **Depth of field** — nearby cells stay crisp while the distance softly blurs,
+  for a cinematic, photographic look (toggleable).
+- **Photoreal walls** — procedurally generated wet, fleshy vessel walls with real
+  surface relief (normal-mapped) and organic folds, lit warmly.
+- **Sound** — an optional ambient blood-flow whoosh that rises with the flow
+  speed (generated in-browser).
+- **Cinematic rendering** — soft bloom, subtle chromatic aberration and a
+  vignette, foreground blood motes that streak past for a sense of speed, and a
+  warm light that travels with you.
+
+> Flow is steady and calm (the heartbeat pulsing is off).
 
 ### Learning features
 

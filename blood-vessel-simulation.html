@@ -165,8 +165,8 @@
   <button class="btn primary" id="btn-ride">🎢 Ride the bloodstream</button>
   <button class="btn" id="btn-pause">⏸ Pause</button>
   <div class="ctrl-group">Flow <input type="range" id="speed" min="0" max="3" step="0.05" value="1"></div>
-  <div class="ctrl-group">♥ <input type="range" id="bpm" min="45" max="160" step="1" value="72"></div>
-  <button class="btn" id="btn-sound">🔇 Heartbeat</button>
+  <button class="btn active" id="btn-dof">🔭 Depth of field</button>
+  <button class="btn" id="btn-sound">🔇 Sound</button>
   <button class="btn" id="btn-view">🩻 Cross-section</button>
   <button class="btn" id="btn-labels">🏷 Labels</button>
   <button class="btn" id="btn-reset">↺ Reset</button>
@@ -191,11 +191,14 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="noBloom()"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="noBloom()"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/BokehShader.js" onerror="noDof()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/BokehPass.js" onerror="noDof()"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js" onerror="noVR()"></script>
 <script>
-let BLOOM_OK = true, VR_OK = true;
+let BLOOM_OK = true, VR_OK = true, DOF_OK = true;
 function noBloom(){ BLOOM_OK = false; }
 function noVR(){ VR_OK = false; }
+function noDof(){ DOF_OK = false; }
 function bloomOnly(){ /* OrbitControls failed — fatal */ loadFail('OrbitControls'); }
 function loadFail(what) {
   const l = document.getElementById('loader');
@@ -321,8 +324,11 @@ let curve, curveLen = 1;
 const fPos = [], fTan = [], fNor = [], fBin = [];   // precomputed parallel-transport frames
 const up = new THREE.Vector3(0, 1, 0);
 
-// heartbeat
+// heartbeat (disabled — flow is steady)
 let bpm = 72, beatPhase = 0, lastBeatPulse = 0;
+let heartbeatOn = false;     // when false, no pulsing: steady, calm flow
+let gPulse = 1.15;           // global flow multiplier set each frame
+let bokehPass = null, dofOn = true;
 
 // reusable temp vectors
 const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _n = new THREE.Vector3(),
@@ -468,7 +474,7 @@ function setupVR() {
 }
 // carry the rig down the vessel; the headset supplies the head look on top
 function updateVR(dt, env) {
-  const eff = flowSpeed * (0.55 + env*0.9);
+  const eff = flowSpeed * gPulse;
   rideT += (4.2*eff*dt) / curveLen; if (rideT > 1) rideT -= 1;
   frameAt(rideT);
   const bob = Math.sin(performance.now()*0.0016)*0.3 + env*0.25;
@@ -775,10 +781,29 @@ function setupBloom() {
   try {
     composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
+    // depth of field — nearby cells crisp, distance softly blurred (cinematic)
+    if (DOF_OK && THREE.BokehPass) {
+      try {
+        bokehPass = new THREE.BokehPass(scene, camera,
+          { focus: 24, aperture: 0.00018, maxblur: 0.006, width: innerWidth, height: innerHeight });
+        bokehPass.enabled = dofOn; composer.addPass(bokehPass);
+      } catch (e) { bokehPass = null; }
+    }
     bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.6, 0.85);
     composer.addPass(bloomPass);
     if (THREE.ShaderPass) { fxPass = new THREE.ShaderPass(FXShader); fxPass.renderToScreen = true; composer.addPass(fxPass); }
   } catch (e) { BLOOM_OK = false; composer = null; }
+}
+// focus on whatever you're looking at; tighter focus while riding
+function updateDof() {
+  if (!bokehPass.uniforms || !bokehPass.uniforms.focus) return;
+  let f;
+  if (inVR || rideMode) f = 9;
+  else if (focusTarget) f = camera.position.distanceTo(focusTarget.position);
+  else f = camera.position.distanceTo(controls.target);
+  const u = bokehPass.uniforms;
+  u.focus.value += (f - u.focus.value) * 0.1;     // ease toward target focus
+  u.maxblur.value = (rideMode || inVR) ? 0.009 : 0.006;
 }
 function renderFrame() {
   // EffectComposer can't drive stereo WebXR, so render straight through in VR
@@ -848,14 +873,17 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   tElapsed += dt;
 
-  // advance heartbeat
-  beatPhase += dt * (bpm/60);
-  if (beatPhase >= 1) beatPhase -= 1;
-  const env = beatEnvelope(beatPhase);
-  const pulse = 0.55 + env * 0.9;          // flow multiplier — surges each beat
-  if (env > 0.6 && performance.now() - lastBeatPulse > 250) { lastBeatPulse = performance.now(); if (audioOn) thump(); }
+  // heartbeat — only pulses if enabled; otherwise the flow stays calm and steady
+  let env = 0;
+  if (heartbeatOn) {
+    beatPhase += dt * (bpm/60);
+    if (beatPhase >= 1) beatPhase -= 1;
+    env = beatEnvelope(beatPhase);
+    if (env > 0.6 && performance.now() - lastBeatPulse > 250) { lastBeatPulse = performance.now(); if (audioOn) thump(); }
+  }
+  gPulse = heartbeatOn ? (0.55 + env*0.9) : 1.15;
 
-  // throb the wall + bloom + post-fx with the beat
+  // wall + bloom + post-fx (gentle throb only when the heartbeat is on)
   wallMesh.material.emissiveIntensity = 0.32 + env*0.32;
   if (bloomPass) bloomPass.strength = 0.42 + env*0.35;
   if (fxPass) { fxPass.uniforms.uAberr.value = 0.0022 + env*0.004 + (rideMode?0.004:0);
@@ -863,11 +891,12 @@ function animate() {
   for (const s of breathShaders) { s.uniforms.uTime.value = tElapsed; s.uniforms.uPulse.value = env; }
   if (ambGain) ambGain.gain.value = audioOn ? (0.03 + flowSpeed*0.04 + env*0.025) : 0;
   document.getElementById('vignette').style.filter = `brightness(${1 + env*0.12})`;
+  if (bokehPass && bokehPass.enabled) updateDof();
 
   updateMotes(dt);
 
   if (!paused) {
-    const eff = flowSpeed * pulse;
+    const eff = flowSpeed * gPulse;
     for (const c of cells) {
       c.tval += (c.baseSpeed * eff * dt) / curveLen;
       if (c.tval > 1) c.tval -= 1;
@@ -892,20 +921,20 @@ function animate() {
   else controls.update();
   if (focusTarget && !rideMode && !intro && !inVR) updateFocus(dt);
 
-  drawECG(dt);
+  if (heartbeatOn) drawECG(dt);
   renderFrame();
 }
 
 // ---------- ride mode --------------------------------------------------------
 function updateRide(dt, env) {
-  const eff = flowSpeed * (0.55 + env*0.9);
+  const eff = flowSpeed * gPulse;
   rideT += ((4.5*eff*dt) / curveLen);
   if (rideT > 1) rideT -= 1;
 
   frameAt(rideT);
   // camera sits just off-centre, swaying gently, riding the current
   const sway = Math.sin(performance.now()*0.0009)*1.1;
-  const bob  = Math.sin(performance.now()*0.0016)*0.5 + env*0.4;   // jolt on each beat
+  const bob  = Math.sin(performance.now()*0.0016)*0.5 + env*0.4;
   camera.position.copy(_p)
     .addScaledVector(_n, bob)
     .addScaledVector(_b, sway);
@@ -918,7 +947,6 @@ function updateRide(dt, env) {
     .addScaledVector(_n, lookOffset.y * 6 + bob);
   camera.lookAt(_look);
 
-  // FOV punches outward on each heartbeat for a visceral "whoosh"
   camera.fov = 78 + env*7 + flowSpeed*2;
   camera.updateProjectionMatrix();
 
@@ -1050,18 +1078,23 @@ function toggleRide(on){
 document.getElementById('btn-pause').onclick = e => { paused=!paused;
   e.target.textContent = paused?'▶ Play':'⏸ Pause'; e.target.classList.toggle('active',paused); };
 document.getElementById('speed').oninput = e => flowSpeed = parseFloat(e.target.value);
-document.getElementById('bpm').oninput = e => { bpm = parseInt(e.target.value);
-  document.getElementById('bpm-readout').textContent = bpm+' BPM'; };
+document.getElementById('btn-dof').onclick = e => {
+  dofOn = !dofOn; e.target.classList.toggle('active', dofOn);
+  if (bokehPass) bokehPass.enabled = dofOn;
+  else e.title = 'Depth of field unavailable (post-processing not loaded)';
+};
 document.getElementById('btn-reset').onclick = () => { if(intro) clearIntro(); if(rideMode) toggleRide(false);
   controls.enabled=true; focusTarget=null; controls.target.set(0,0,0); camera.position.set(0,10,60);
   camera.fov=58; camera.up.set(0,1,0); camera.updateProjectionMatrix(); controls.autoRotate=true; userInteracted=false; };
 document.getElementById('btn-labels').onclick = e => { showLabels=!showLabels; e.target.classList.toggle('active',showLabels); toggleLabels(showLabels); };
 document.getElementById('btn-view').onclick = e => { crossSection=!crossSection; e.target.classList.toggle('active',crossSection);
-  wallMesh.material.opacity = crossSection?0.18:0.96;
+  wallMesh.material.opacity = crossSection?0.18:1.0;
   wallMesh.material.side = crossSection?THREE.DoubleSide:THREE.BackSide;
-  scene.fog.density = crossSection?0.006:0.018; };
+  scene.fog.density = crossSection?0.006:0.02; };
 document.getElementById('btn-sound').onclick = e => { toggleAudio(); e.target.classList.toggle('active',audioOn);
-  e.target.textContent = (audioOn?'🔊':'🔇')+' Heartbeat'; };
+  e.target.textContent = (audioOn?'🔊':'🔇')+' Sound'; };
+// no heartbeat → hide the ECG monitor
+{ const ecg=document.getElementById('ecg'); if(ecg) ecg.style.display='none'; }
 
 // ---------- floating labels --------------------------------------------------
 let labelSprites=[];
@@ -1114,7 +1147,8 @@ function startFactTicker(){ const el=document.getElementById('fact-txt'); el.tex
 function onResize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
   if (composer) composer.setSize(innerWidth,innerHeight);
-  if (bloomPass) bloomPass.setSize(innerWidth,innerHeight); }
+  if (bloomPass) bloomPass.setSize(innerWidth,innerHeight);
+  if (bokehPass && bokehPass.setSize) bokehPass.setSize(innerWidth,innerHeight); }
 setInterval(updateCounts, 2500);
 
 // ---------- boot -------------------------------------------------------------

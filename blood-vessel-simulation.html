@@ -161,9 +161,19 @@
   <div class="body" id="info-body"></div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="loadFail('Three.js core')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" onerror="loadFail('OrbitControls')"></script>
 <script>
+// Show a clear message if a CDN library can't be reached (e.g. no internet).
+function loadFail(what) {
+  const l = document.getElementById('loader');
+  if (l) l.innerHTML = '<div style="max-width:420px;text-align:center;padding:24px">' +
+    '<div style="font-size:40px">🚫</div>' +
+    '<p style="color:#ff8da0;margin-top:14px;font-size:16px">Couldn\'t load the 3D engine (' + what + ').</p>' +
+    '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">This page loads Three.js from the internet, so it needs an active connection the first time you open it. ' +
+    'Check your connection (or any ad/script blocker) and reload.</small></div>';
+}
+
 // ============================================================================
 //  3D BLOOD VESSEL EXPLORER
 //  A single-file educational simulation. All geometry is procedural; cell data
@@ -466,9 +476,14 @@ function makeCellMesh(type) {
     geo.computeVertexNormals();
     g.add(new THREE.Mesh(geo, mat));
   } else if (type === 'pathogen') {
-    // rod / capsule shape
-    const body = new THREE.Mesh(new THREE.CapsuleGeometry(d.size*0.45, d.size*1.2, 6, 12), mat);
+    // rod / capsule shape (built from a cylinder + two end caps; CapsuleGeometry
+    // doesn't exist in three.js r128, so we assemble it manually)
+    const rLen = d.size*1.2, rRad = d.size*0.45;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(rRad, rRad, rLen, 12), mat);
     body.rotation.z = Math.PI/2; g.add(body);
+    const capGeo = new THREE.SphereGeometry(rRad, 12, 8);
+    const cap1 = new THREE.Mesh(capGeo, mat); cap1.position.x =  rLen/2; g.add(cap1);
+    const cap2 = new THREE.Mesh(capGeo, mat); cap2.position.x = -rLen/2; g.add(cap2);
     // flagellum hint
     const tailMat = new THREE.MeshBasicMaterial({ color: d.color, transparent:true, opacity:0.6 });
     const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.2, 6), tailMat);
@@ -774,7 +789,23 @@ function onResize() {
 // periodically refresh counts as cells recycle (counts are stable but keep UI live)
 setInterval(updateCounts, 2000);
 
-init();
+if (typeof THREE === 'undefined') {
+  loadFail('Three.js core');
+} else if (typeof THREE.OrbitControls === 'undefined') {
+  loadFail('OrbitControls');
+} else {
+  try {
+    init();
+  } catch (err) {
+    console.error(err);
+    const l = document.getElementById('loader');
+    if (l) l.innerHTML = '<div style="max-width:440px;text-align:center;padding:24px">' +
+      '<div style="font-size:40px">⚠️</div>' +
+      '<p style="color:#ff8da0;margin-top:14px;font-size:16px">Something went wrong starting the simulation.</p>' +
+      '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">' +
+      (err && err.message ? err.message : err) + '</small></div>';
+  }
+}
 </script>
 </body>
 </html>

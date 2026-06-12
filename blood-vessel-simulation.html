@@ -411,9 +411,11 @@ function init() {
 
   buildCurve();
   buildVessel();
-  spawnCells(120);
+  spawnCells(175);
   addPlasma();
+  makeMotes();
   setupBloom();
+  setupIntro();
 
   buildLegend(); buildTour(); buildECG();
 
@@ -430,6 +432,27 @@ function init() {
 
 let riderLight;
 
+// ---------- breathing wall shader (peristaltic pulse wave) -------------------
+// Injects a vertex displacement so the vessel visibly contracts and a wave of
+// constriction travels down it — the same pulse wave your arteries really make.
+const breathShaders = [];
+function addBreathing(mat, scale) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime  = { value: 0 };
+    shader.uniforms.uPulse = { value: 0 };
+    shader.uniforms.uScale = { value: scale };
+    shader.vertexShader = 'uniform float uTime;\nuniform float uPulse;\nuniform float uScale;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace(
+      '#include <begin_vertex>',
+      '#include <begin_vertex>\n' +
+      '  float wave = sin(position.x*0.22 + position.z*0.22 - uTime*2.4);\n' +
+      '  float disp = (uPulse*1.4 + wave*0.35) * uScale;\n' +
+      '  transformed += objectNormal * disp;');
+    mat.userData.shader = shader;
+    breathShaders.push(shader);
+  };
+}
+
 // ---------- vessel geometry --------------------------------------------------
 function buildVessel() {
   vesselGroup = new THREE.Group(); scene.add(vesselGroup);
@@ -441,12 +464,14 @@ function buildVessel() {
     color: 0x7a1530, emissive: 0x50080f, emissiveIntensity: 0.55,
     roughness: 0.6, metalness: 0.0, side: THREE.BackSide, transparent: true, opacity: 0.96
   });
+  addBreathing(wallMat, 1.0);
   wallMesh = new THREE.Mesh(tubeGeo, wallMat); vesselGroup.add(wallMesh);
 
   // faint inner endothelial sheen
   const innerMat = new THREE.MeshStandardMaterial({
     color: 0xc23a58, emissive: 0x80101f, emissiveIntensity: 0.25,
     roughness: 0.35, metalness: 0.1, side: THREE.FrontSide, transparent: true, opacity: 0.10 });
+  addBreathing(innerMat, 0.96);
   innerMesh = new THREE.Mesh(tubeGeo.clone(), innerMat); vesselGroup.add(innerMesh);
 
   // endothelial nuclei studded along the wall (instanced, hugging the tube)
@@ -569,14 +594,61 @@ function addPlasma() {
 }
 let plasmaData = [];
 
+// ---------- foreground motes (parallax / sense of speed) ---------------------
+// Tiny additive particles that live in front of the camera and stream past it.
+// In ride mode they rip backward, giving a visceral feeling of hurtling forward.
+let motes;
+function makeMotes() {
+  scene.add(camera);                  // so the camera's children actually render
+  const N = 220, arr = new Float32Array(N*3);
+  for (let i=0;i<N;i++){ arr[i*3]=(Math.random()-0.5)*30; arr[i*3+1]=(Math.random()-0.5)*20; arr[i*3+2]=-2-Math.random()*46; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const mat = new THREE.PointsMaterial({ map: glowTex, color:0xff6f88, size:0.55,
+    transparent:true, opacity:0.55, blending:THREE.AdditiveBlending, depthWrite:false });
+  motes = new THREE.Points(geo, mat); motes.frustumCulled=false; camera.add(motes);
+}
+function updateMotes(dt) {
+  const pos = motes.geometry.attributes.position;
+  const speed = (rideMode ? 30 : 5) * (0.4 + flowSpeed);
+  for (let i=0;i<pos.count;i++){ let z = pos.getZ(i) + speed*dt;
+    if (z > 4) { z = -48; pos.setX(i,(Math.random()-0.5)*30); pos.setY(i,(Math.random()-0.5)*20); }
+    pos.setZ(i, z); }
+  pos.needsUpdate = true;
+  motes.material.size = rideMode ? 0.8 : 0.45;
+  motes.material.opacity = rideMode ? 0.7 : 0.4;
+}
+
 // ---------- bloom ------------------------------------------------------------
+let fxPass;
+const FXShader = {
+  uniforms: { tDiffuse:{value:null}, uAberr:{value:0.0025}, uVig:{value:1.0}, uTime:{value:0} },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: [
+    'varying vec2 vUv;',
+    'uniform sampler2D tDiffuse; uniform float uAberr; uniform float uVig; uniform float uTime;',
+    'void main(){',
+    '  vec2 d = vUv - 0.5; float r = length(d);',
+    '  vec2 off = d * uAberr * (r*2.0 + 0.3);',          // chromatic split grows toward edges
+    '  float cr = texture2D(tDiffuse, vUv + off).r;',
+    '  float cg = texture2D(tDiffuse, vUv).g;',
+    '  float cb = texture2D(tDiffuse, vUv - off).b;',
+    '  vec3 col = vec3(cr, cg, cb);',
+    '  float vig = smoothstep(0.95, 0.30, r*uVig);',     // darken the edges
+    '  col *= mix(0.55, 1.0, vig);',
+    '  col += vec3(0.04,0.0,0.01) * (1.0 - vig);',        // faint red bleed at the rim
+    '  float grain = fract(sin(dot(vUv*uTime, vec2(12.99,78.23)))*43758.5)*0.025;',
+    '  gl_FragColor = vec4(col + grain - 0.012, 1.0);',
+    '}'
+  ].join('\n')
+};
 function setupBloom() {
   if (!BLOOM_OK || !THREE.EffectComposer || !THREE.UnrealBloomPass || !THREE.RenderPass) { BLOOM_OK = false; return; }
   try {
     composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.65, 0.82);
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.95, 0.7, 0.8);
     composer.addPass(bloomPass);
+    if (THREE.ShaderPass) { fxPass = new THREE.ShaderPass(FXShader); fxPass.renderToScreen = true; composer.addPass(fxPass); }
   } catch (e) { BLOOM_OK = false; composer = null; }
 }
 function renderFrame() { if (composer) composer.render(); else renderer.render(scene, camera); }
@@ -599,12 +671,50 @@ function ecgValue(phase) {
   return v;
 }
 
+// ---------- cinematic dive-in intro ------------------------------------------
+let intro=false, introT=0, introStart, introEnd, introLookStart, introLookEnd, introOverlay;
+const INTRO_DUR=7.0;
+function setupIntro(){
+  const p0=curve.getPointAt(0), t0=curve.getTangentAt(0).normalize();
+  introEnd       = p0.clone().addScaledVector(t0,-2.5);
+  introStart     = p0.clone().add(new THREE.Vector3(72,48,94));
+  introLookStart = p0.clone();
+  introLookEnd   = curve.getPointAt(0.02);
+  camera.position.copy(introStart);
+  controls.enabled=false; controls.autoRotate=false; intro=true; introT=0;
+  introOverlay=document.createElement('div');
+  introOverlay.style.cssText='position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;transition:opacity 0.8s;';
+  introOverlay.innerHTML='<div style="font-size:13px;letter-spacing:6px;color:#ff8da0;opacity:0.85">A JOURNEY INTO THE</div>'+
+    '<div style="font-size:clamp(34px,8vw,58px);font-weight:800;letter-spacing:2px;margin-top:6px;background:linear-gradient(90deg,#ff8da0,#ff5a78,#4fc3f7);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 50px rgba(255,40,80,0.45)">BLOODSTREAM</div>';
+  document.body.appendChild(introOverlay);
+  const skip=document.createElement('button'); skip.className='btn'; skip.id='skip-btn'; skip.textContent='Skip intro ▸';
+  skip.style.cssText='position:fixed;bottom:84px;right:18px;z-index:41;pointer-events:auto';
+  skip.onclick=endIntro; document.body.appendChild(skip);
+}
+function updateIntro(dt){
+  introT += dt/INTRO_DUR;
+  const e = introT<0.5 ? 2*introT*introT : 1-Math.pow(-2*introT+2,2)/2;   // easeInOut
+  const ee = Math.min(1,e);
+  camera.position.lerpVectors(introStart, introEnd, ee);
+  _look.copy(introLookStart).lerp(introLookEnd, ee); camera.lookAt(_look);
+  if (introOverlay) introOverlay.style.opacity = introT<0.55 ? 1 : Math.max(0, 1-(introT-0.55)/0.35);
+  if (introT>=1) endIntro();
+}
+function clearIntro(){
+  intro=false;
+  if(introOverlay){ introOverlay.remove(); introOverlay=null; }
+  const sb=document.getElementById('skip-btn'); if(sb) sb.remove();
+}
+function endIntro(){ if(!intro) return; clearIntro(); toggleRide(true); }
+
 // ---------- animation --------------------------------------------------------
 let rideT = 0;                 // rider parameter along the curve
+let tElapsed = 0;
 const lookOffset = { x: 0, y: 0 };
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+  tElapsed += dt;
 
   // advance heartbeat
   beatPhase += dt * (bpm/60);
@@ -613,10 +723,16 @@ function animate() {
   const pulse = 0.55 + env * 0.9;          // flow multiplier — surges each beat
   if (env > 0.6 && performance.now() - lastBeatPulse > 250) { lastBeatPulse = performance.now(); if (audioOn) thump(); }
 
-  // throb the wall + bloom with the beat
+  // throb the wall + bloom + post-fx with the beat
   wallMesh.material.emissiveIntensity = 0.45 + env*0.5;
-  if (bloomPass) bloomPass.strength = 0.7 + env*0.55;
+  if (bloomPass) bloomPass.strength = 0.8 + env*0.6;
+  if (fxPass) { fxPass.uniforms.uAberr.value = 0.0022 + env*0.004 + (rideMode?0.004:0);
+    fxPass.uniforms.uVig.value = rideMode?1.18:1.0; fxPass.uniforms.uTime.value = tElapsed; }
+  for (const s of breathShaders) { s.uniforms.uTime.value = tElapsed; s.uniforms.uPulse.value = env; }
+  if (ambGain) ambGain.gain.value = audioOn ? (0.03 + flowSpeed*0.04 + env*0.025) : 0;
   document.getElementById('vignette').style.filter = `brightness(${1 + env*0.12})`;
+
+  updateMotes(dt);
 
   if (!paused) {
     const eff = flowSpeed * pulse;
@@ -638,8 +754,10 @@ function animate() {
     pp.needsUpdate = true;
   }
 
-  if (rideMode) updateRide(dt, env); else controls.update();
-  if (focusTarget && !rideMode) updateFocus(dt);
+  if (intro) updateIntro(dt);
+  else if (rideMode) updateRide(dt, env);
+  else controls.update();
+  if (focusTarget && !rideMode && !intro) updateFocus(dt);
 
   drawECG(dt);
   renderFrame();
@@ -667,7 +785,12 @@ function updateRide(dt, env) {
     .addScaledVector(_n, lookOffset.y * 6 + bob);
   camera.lookAt(_look);
 
+  // FOV punches outward on each heartbeat for a visceral "whoosh"
+  camera.fov = 78 + env*7 + flowSpeed*2;
+  camera.updateProjectionMatrix();
+
   riderLight.position.copy(camera.position).addScaledVector(_t, 4);
+  riderLight.intensity = 2.2 + env*1.6;
 }
 
 // ---------- interaction ------------------------------------------------------
@@ -777,6 +900,7 @@ function drawECG(dt){
 // ---------- controls UI ------------------------------------------------------
 document.getElementById('btn-ride').onclick = () => toggleRide(!rideMode);
 function toggleRide(on){
+  if (intro) clearIntro();
   rideMode = on;
   const btn=document.getElementById('btn-ride');
   btn.textContent = on ? '🚪 Exit ride' : '🎢 Ride the bloodstream';
@@ -795,8 +919,9 @@ document.getElementById('btn-pause').onclick = e => { paused=!paused;
 document.getElementById('speed').oninput = e => flowSpeed = parseFloat(e.target.value);
 document.getElementById('bpm').oninput = e => { bpm = parseInt(e.target.value);
   document.getElementById('bpm-readout').textContent = bpm+' BPM'; };
-document.getElementById('btn-reset').onclick = () => { if(rideMode) toggleRide(false);
-  focusTarget=null; controls.target.set(0,0,0); camera.position.set(0,10,60); controls.autoRotate=true; userInteracted=false; };
+document.getElementById('btn-reset').onclick = () => { if(intro) clearIntro(); if(rideMode) toggleRide(false);
+  controls.enabled=true; focusTarget=null; controls.target.set(0,0,0); camera.position.set(0,10,60);
+  camera.fov=58; camera.up.set(0,1,0); camera.updateProjectionMatrix(); controls.autoRotate=true; userInteracted=false; };
 document.getElementById('btn-labels').onclick = e => { showLabels=!showLabels; e.target.classList.toggle('active',showLabels); toggleLabels(showLabels); };
 document.getElementById('btn-view').onclick = e => { crossSection=!crossSection; e.target.classList.toggle('active',crossSection);
   wallMesh.material.opacity = crossSection?0.18:0.96;
@@ -824,10 +949,20 @@ function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,
   labelSprites.forEach(s=>{ if(s.userData.follow){ s.position.copy(s.userData.follow.position); s.position.y+=2.4; }}); })();
 
 // ---------- synthesized heartbeat (WebAudio) ---------------------------------
-let audioCtx=null, audioOn=false;
+let audioCtx=null, audioOn=false, ambGain=null, ambSrc=null;
 function toggleAudio(){ audioOn=!audioOn;
-  if (audioOn && !audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioOn=false; } }
+  if (audioOn && !audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); startAmbience(); }catch(e){ audioOn=false; } }
   if (audioOn && audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+// looping filtered noise = the rushing whoosh of flowing blood; volume tracks flow speed
+function startAmbience(){ if(!audioCtx || ambSrc) return;
+  const buf=audioCtx.createBuffer(1, audioCtx.sampleRate*2, audioCtx.sampleRate);
+  const data=buf.getChannelData(0); for(let i=0;i<data.length;i++) data[i]=Math.random()*2-1;
+  ambSrc=audioCtx.createBufferSource(); ambSrc.buffer=buf; ambSrc.loop=true;
+  const bp=audioCtx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=300; bp.Q.value=0.7;
+  const lp=audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=700;
+  ambGain=audioCtx.createGain(); ambGain.gain.value=0;
+  ambSrc.connect(bp).connect(lp).connect(ambGain).connect(audioCtx.destination); ambSrc.start();
+}
 function thump(){ if(!audioCtx) return; const now=audioCtx.currentTime;
   hit(now, 55, 0.9, 0.16); hit(now+0.16, 42, 0.6, 0.22); }       // lub … dub
 function hit(t,freq,gain,dur){ const o=audioCtx.createOscillator(), g=audioCtx.createGain();

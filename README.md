@@ -40,14 +40,33 @@ The simulation models the main things travelling in your blood:
 - **Platelets (thrombocytes)** — clotting fragments
 - **Bacteria** — invading pathogens being hunted
 
-Extra learning features:
+### Immersive & cinematic features
+
+- **Dive-in intro** — the camera swoops down out of the body and plunges into
+  the vessel, then drops you straight into the ride.
+- **Ride the bloodstream** — a first-person mode where the camera flows along
+  the centre of the vessel with the cells. Move the mouse to look around, scroll
+  to change your pace, banking through every curve.
+- **Living, breathing walls** — the vessel contracts and a peristaltic pulse wave
+  travels down it in time with the heartbeat (a real arterial pulse wave).
+- **Heartbeat-driven flow** — cells surge forward on every beat instead of moving
+  at constant speed. Adjustable BPM and a live ECG (PQRST) monitor.
+- **Sound** — optional synthesized "lub-dub" heartbeat plus an ambient
+  blood-flow whoosh that rises with the flow speed (all generated in-browser).
+- **Cinematic rendering** — bloom glow, chromatic aberration and a vignette that
+  throb with each heartbeat, glowing halos on every cell, foreground blood motes
+  that streak past for a sense of speed, and a light that travels with you.
+
+### Learning features
 
 - **Guided tour** — buttons that fly you to each cell type
 - **Cell legend / filter** — click to hide or show each type and see live counts
-- **Realistic flow** — cells near the centre move faster (parabolic flow profile),
-  just like real blood
+- **Realistic flow** — cells near the centre move faster (parabolic flow profile)
 - **Rotating fun facts** about blood vessels themselves
 - **Vessel wall detail** — endothelial lining and cell nuclei
+
+> All visual effects degrade gracefully: if the optional post-processing
+> libraries can't load, the simulation still runs without them.
 
 ## Notes
 

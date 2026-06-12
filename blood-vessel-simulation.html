@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3D Blood Vessel Explorer</title>
+<style>
+  :root {
+    --bg: #0a0410;
+    --panel: rgba(20, 8, 24, 0.82);
+    --panel-border: rgba(255, 90, 120, 0.35);
+    --accent: #ff5a78;
+    --accent-2: #4fc3f7;
+    --text: #f3e9ee;
+    --muted: #b89aa6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* ---- Loading ---- */
+  #loader { position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
+  #loader .pulse { width: 64px; height: 64px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #ff8da0, #b3001b);
+    box-shadow: 0 0 40px #ff3355; animation: beat 1s ease-in-out infinite; }
+  @keyframes beat { 0%,100% { transform: scale(1);} 15% { transform: scale(1.25);} 30% { transform: scale(0.95);} }
+  #loader p { margin-top: 22px; color: var(--muted); letter-spacing: 1px; }
+  #loader small { margin-top: 8px; color: #6b5560; }
+
+  /* ---- Generic panel ---- */
+  .panel { position: absolute; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 14px; backdrop-filter: blur(10px); box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+
+  /* ---- Title / Header ---- */
+  #header { top: 16px; left: 16px; padding: 14px 18px; max-width: 340px; }
+  #header h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.3px;
+    background: linear-gradient(90deg, #ff8da0, #ff5a78, #4fc3f7); -webkit-background-clip: text;
+    background-clip: text; -webkit-text-fill-color: transparent; }
+  #header p { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
+
+  /* ---- Controls ---- */
+  #controls { bottom: 16px; left: 50%; transform: translateX(-50%);
+    padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    justify-content: center; max-width: calc(100vw - 32px); }
+  .btn { background: rgba(255,90,120,0.12); border: 1px solid var(--panel-border);
+    color: var(--text); padding: 8px 14px; border-radius: 9px; cursor: pointer;
+    font-size: 13px; transition: all 0.15s; white-space: nowrap; }
+  .btn:hover { background: rgba(255,90,120,0.28); transform: translateY(-1px); }
+  .btn.active { background: var(--accent); color: #1a0008; font-weight: 600; }
+  .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  input[type=range] { width: 110px; accent-color: var(--accent); cursor: pointer; }
+
+  /* ---- Legend / filter ---- */
+  #legend { top: 16px; right: 16px; padding: 12px 14px; width: 220px; }
+  #legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); margin-bottom: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 9px; padding: 6px 8px;
+    border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.12s; }
+  .legend-item:hover { background: rgba(255,255,255,0.06); }
+  .legend-item.off { opacity: 0.35; }
+  .swatch { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
+    box-shadow: 0 0 8px rgba(0,0,0,0.4); }
+  .legend-item .count { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+  /* ---- Info card (cell details) ---- */
+  #info { top: 0; right: -440px; width: 420px; max-width: 92vw; height: 100%;
+    border-radius: 0; border-left: 1px solid var(--panel-border); border-top: none;
+    border-right: none; border-bottom: none; padding: 0; transition: right 0.35s cubic-bezier(.4,0,.2,1);
+    overflow-y: auto; z-index: 30; }
+  #info.open { right: 0; }
+  #info .hero { padding: 26px 26px 20px; position: relative;
+    background: linear-gradient(160deg, rgba(255,90,120,0.22), rgba(20,8,24,0)); }
+  #info .close { position: absolute; top: 16px; right: 18px; background: none; border: none;
+    color: var(--muted); font-size: 26px; cursor: pointer; line-height: 1; }
+  #info .close:hover { color: var(--text); }
+  #info .tag { display: inline-block; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px;
+    padding: 3px 10px; border-radius: 20px; margin-bottom: 12px; font-weight: 600; }
+  #info h2 { font-size: 24px; margin-bottom: 4px; }
+  #info .latin { font-style: italic; color: var(--muted); font-size: 13px; }
+  #info .body { padding: 4px 26px 40px; }
+  #info section { margin-top: 22px; }
+  #info section h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.3px;
+    color: var(--accent-2); margin-bottom: 8px; }
+  #info p, #info li { font-size: 14px; line-height: 1.6; color: #e8dde3; }
+  #info ul { list-style: none; }
+  #info li { padding-left: 18px; position: relative; margin-bottom: 6px; }
+  #info li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+  .stat { background: rgba(255,255,255,0.04); border-radius: 9px; padding: 10px 12px; }
+  .stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+  .stat .v { font-size: 15px; font-weight: 600; margin-top: 3px; }
+
+  /* ---- Fun fact ticker ---- */
+  #fact { bottom: 78px; left: 50%; transform: translateX(-50%); padding: 10px 18px;
+    max-width: 560px; font-size: 13px; color: #ffd9e0; text-align: center;
+    border-color: rgba(79,195,247,0.35); display: flex; gap: 10px; align-items: center; }
+  #fact .bulb { font-size: 16px; }
+  #fact .txt { transition: opacity 0.5s; }
+
+  /* ---- hint ---- */
+  #hint { bottom: 130px; left: 50%; transform: translateX(-50%); font-size: 12px;
+    color: var(--muted); background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px;
+    pointer-events: none; transition: opacity 0.6s; }
+
+  .tour-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+
+  @media (max-width: 640px) {
+    #legend { display: none; }
+    #header { max-width: 240px; }
+    #info { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="loader">
+  <div class="pulse"></div>
+  <p>Entering the bloodstream…</p>
+  <small>loading 3D engine</small>
+</div>
+
+<div id="header" class="panel">
+  <h1>🩸 3D Blood Vessel Explorer</h1>
+  <p>Drag to orbit · right-drag to pan · scroll to zoom. Click any cell to learn what it is, what it does, and what affects it.</p>
+</div>
+
+<div id="legend" class="panel">
+  <h3>Cells in view</h3>
+  <div id="legend-items"></div>
+  <div style="margin-top:12px; border-top:1px solid rgba(255,255,255,0.08); padding-top:10px;">
+    <h3 style="margin-bottom:8px;">Guided tour</h3>
+    <div class="tour-list" id="tour-list"></div>
+  </div>
+</div>
+
+<div id="hint">👆 Click a flowing cell to inspect it</div>
+
+<div id="fact" class="panel">
+  <span class="bulb">💡</span><span class="txt" id="fact-txt"></span>
+</div>
+
+<div id="controls" class="panel">
+  <button class="btn" id="btn-pause">⏸ Pause</button>
+  <div class="ctrl-group">Flow <input type="range" id="speed" min="0" max="3" step="0.05" value="1"></div>
+  <button class="btn" id="btn-view">🩻 Cross-section</button>
+  <button class="btn" id="btn-labels">🏷 Labels</button>
+  <button class="btn" id="btn-reset">↺ Reset view</button>
+</div>
+
+<div id="info" class="panel">
+  <div class="hero">
+    <button class="close" id="info-close">×</button>
+    <span class="tag" id="info-tag"></span>
+    <h2 id="info-title"></h2>
+    <div class="latin" id="info-latin"></div>
+  </div>
+  <div class="body" id="info-body"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ============================================================================
+//  3D BLOOD VESSEL EXPLORER
+//  A single-file educational simulation. All geometry is procedural; cell data
+//  is biologically sourced and attached to each clickable mesh.
+// ============================================================================
+
+// ---------- Cell knowledge base ----------------------------------------------
+const CELL_DB = {
+  rbc: {
+    name: "Red Blood Cell",
+    latin: "Erythrocyte",
+    color: 0xc81e3a,
+    tagColor: "#c81e3a",
+    abundance: 60,           // relative spawn weight
+    size: 0.9,
+    what: "The most common cell in your blood — a flexible, biconcave disc with no nucleus, packed with the protein haemoglobin.",
+    does: [
+      "Carries oxygen from the lungs to every tissue in the body.",
+      "Returns carbon dioxide from tissues back to the lungs.",
+      "Its biconcave shape maximises surface area for fast gas exchange and lets it squeeze through capillaries narrower than itself."
+    ],
+    affects: [
+      "Iron, vitamin B12 and folate are needed to build them — deficiency causes anaemia.",
+      "The hormone erythropoietin (EPO) from the kidneys signals the bone marrow to make more.",
+      "High altitude, smoking and dehydration raise their count; bleeding lowers it.",
+      "Carbon monoxide binds haemoglobin 200× tighter than oxygen, which is why it is so dangerous."
+    ],
+    stats: { "Lifespan": "~120 days", "Count": "20–30 trillion", "Made in": "Bone marrow", "Diameter": "6–8 µm" },
+    fact: "You make roughly 2–3 million new red blood cells every single second."
+  },
+  wbc_neutrophil: {
+    name: "Neutrophil",
+    latin: "Neutrophil granulocyte",
+    color: 0xe8e2ff,
+    tagColor: "#9b8cff",
+    abundance: 7,
+    size: 1.25,
+    what: "The most common white blood cell and the body's rapid-response infantry — a large nucleated cell with a multi-lobed nucleus.",
+    does: [
+      "First responder to bacterial and fungal infection.",
+      "Engulfs and digests microbes (phagocytosis).",
+      "Releases NETs — sticky nets of DNA that trap pathogens.",
+      "Dead neutrophils are the main component of pus."
+    ],
+    affects: [
+      "Numbers surge within hours of infection or injury.",
+      "Chemotherapy and some autoimmune conditions deplete them, raising infection risk.",
+      "Steroids and stress hormones change how many circulate."
+    ],
+    stats: { "Lifespan": "~5 days", "% of WBCs": "40–70%", "Made in": "Bone marrow", "Diameter": "12–15 µm" },
+    fact: "Neutrophils chase bacteria by 'smelling' chemical trails — a process called chemotaxis."
+  },
+  wbc_lymphocyte: {
+    name: "Lymphocyte",
+    latin: "T / B cell",
+    color: 0x7fdfff,
+    tagColor: "#4fc3f7",
+    abundance: 6,
+    size: 1.05,
+    what: "The brains of the immune system — includes T cells, B cells and natural killer cells. Mostly nucleus with a thin rim of cytoplasm.",
+    does: [
+      "B cells produce antibodies that tag and neutralise specific invaders.",
+      "T cells kill infected cells and coordinate the wider immune response.",
+      "Memory cells remember past infections — the basis of immunity and vaccines."
+    ],
+    affects: [
+      "HIV specifically destroys helper T cells, crippling immunity.",
+      "Vaccines train them without causing disease.",
+      "Their diversity (millions of receptor types) lets the body recognise almost any pathogen."
+    ],
+    stats: { "Lifespan": "Days to years", "% of WBCs": "20–40%", "Made in": "Marrow & thymus", "Diameter": "7–15 µm" },
+    fact: "Some memory lymphocytes survive for decades, which is why one bout of chickenpox usually protects for life."
+  },
+  wbc_monocyte: {
+    name: "Monocyte",
+    latin: "Monocyte / Macrophage",
+    color: 0xb6f0c0,
+    tagColor: "#5fd17a",
+    abundance: 3,
+    size: 1.45,
+    what: "The largest white blood cell. In tissue it matures into a macrophage — a 'big eater' that cleans up debris.",
+    does: [
+      "Engulfs dead cells, pathogens and debris.",
+      "Presents fragments of invaders to lymphocytes to launch a targeted response.",
+      "Becomes specialised resident cells in organs (e.g. microglia in the brain)."
+    ],
+    affects: [
+      "Chronic inflammation keeps them activated, contributing to atherosclerosis.",
+      "They drive the body's clean-up after injury and infection."
+    ],
+    stats: { "Lifespan": "Hours in blood, months in tissue", "% of WBCs": "2–8%", "Made in": "Bone marrow", "Diameter": "15–20 µm" },
+    fact: "Macrophages that swallow fatty deposits in artery walls become 'foam cells' — an early step in heart disease."
+  },
+  platelet: {
+    name: "Platelet",
+    latin: "Thrombocyte",
+    color: 0xffd27f,
+    tagColor: "#ffb347",
+    abundance: 18,
+    size: 0.42,
+    what: "Not a whole cell but a tiny fragment broken off from giant marrow cells called megakaryocytes.",
+    does: [
+      "Rushes to damaged vessel walls and sticks to form a plug.",
+      "Releases chemical signals that recruit more platelets and trigger clotting.",
+      "Works with the protein fibrin to seal wounds."
+    ],
+    affects: [
+      "Too few (thrombocytopenia) causes easy bruising and bleeding.",
+      "Too many or overactive ones cause dangerous clots, strokes and heart attacks.",
+      "Aspirin makes platelets less sticky — why it's used to prevent clots."
+    ],
+    stats: { "Lifespan": "~8–10 days", "Count": "150k–400k per µL", "Made in": "Bone marrow", "Diameter": "2–3 µm" },
+    fact: "Platelets can change shape in under a second, sprouting sticky arms the moment they sense a wound."
+  },
+  pathogen: {
+    name: "Bacterium",
+    latin: "Invading pathogen",
+    color: 0x6fe86f,
+    tagColor: "#5bd15b",
+    abundance: 2,
+    size: 0.6,
+    what: "An uninvited guest — a single-celled microbe that has entered the bloodstream and is being hunted by white blood cells.",
+    does: [
+      "Tries to multiply and steal nutrients from the host.",
+      "Some release toxins that damage tissue.",
+      "Triggers the immune system, causing fever and inflammation."
+    ],
+    affects: [
+      "Antibiotics kill or stop many bacteria — but overuse breeds resistance.",
+      "White blood cells, antibodies and the complement system attack them.",
+      "Bacteria in the blood (sepsis) is a medical emergency."
+    ],
+    stats: { "Type": "Prokaryote", "Reproduction": "Every ~20 min", "Threat": "Variable", "Diameter": "1–5 µm" },
+    fact: "A single bacterium dividing every 20 minutes could, unchecked, become billions within a day."
+  }
+};
+
+const VESSEL_FACTS = [
+  "If you laid all your blood vessels end to end, they'd stretch about 100,000 km — enough to circle the Earth twice.",
+  "The inner lining of every vessel is a single layer of endothelial cells covering an area the size of a tennis court.",
+  "Blood makes a full lap of your body in about 60 seconds at rest.",
+  "Arteries have thick muscular walls to handle high pressure; veins have valves to stop blood flowing backward.",
+  "Capillaries are so narrow that red blood cells must fold up and pass through in single file.",
+  "Your heart pumps about 7,500 litres of blood every day through this network.",
+  "The endothelium isn't just a pipe lining — it releases nitric oxide to relax vessels and control blood pressure.",
+  "Veins hold about 70% of your blood volume at any moment, acting as a reservoir.",
+  "The aorta, your largest artery, is about as wide as a garden hose.",
+  "Vessels can grow new branches on demand — a process called angiogenesis that tumours hijack to feed themselves."
+];
+
+// ---------- Three.js scene setup ---------------------------------------------
+let scene, camera, renderer, controls, raycaster, mouse;
+let vesselGroup, cellGroup, wallMesh;
+const cells = [];                 // { mesh, type, data, speed, angle, radius, spin }
+let paused = false;
+let flowSpeed = 1;
+let showLabels = false;
+let crossSection = false;
+const VESSEL_LENGTH = 120;
+const VESSEL_RADIUS = 9;
+const clock = new THREE.Clock();
+const typeVisible = {};
+Object.keys(CELL_DB).forEach(k => typeVisible[k] = true);
+
+function init() {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x2a0510, 0.011);
+
+  camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 600);
+  camera.position.set(0, 6, 38);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  document.getElementById('app').appendChild(renderer.domElement);
+
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 4;
+  controls.maxDistance = 180;
+  controls.target.set(0, 0, 0);
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2();
+
+  // Lighting
+  scene.add(new THREE.AmbientLight(0x88334a, 0.9));
+  const key = new THREE.PointLight(0xff8fa3, 1.6, 300); key.position.set(20, 30, 40); scene.add(key);
+  const rim = new THREE.PointLight(0x4fc3f7, 1.1, 300); rim.position.set(-30, -10, -20); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(0, 50, 0); scene.add(fill);
+
+  buildVessel();
+  spawnCells(70);
+  buildLegend();
+  buildTour();
+  addPlasmaParticles();
+
+  window.addEventListener('resize', onResize);
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  renderer.domElement.addEventListener('pointermove', onHover);
+
+  document.getElementById('loader').style.display = 'none';
+  startFactTicker();
+  setTimeout(() => { document.getElementById('hint').style.opacity = 0; }, 7000);
+  animate();
+}
+
+// ---------- Vessel geometry --------------------------------------------------
+function buildVessel() {
+  vesselGroup = new THREE.Group();
+  scene.add(vesselGroup);
+
+  // Outer wall — semi-transparent tube, viewed from inside
+  const wallGeo = new THREE.CylinderGeometry(VESSEL_RADIUS, VESSEL_RADIUS, VESSEL_LENGTH, 48, 80, true);
+  // gentle organic waviness
+  const pos = wallGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const ripple = Math.sin(y * 0.18) * 0.5 + Math.cos((x+z) * 0.4) * 0.25;
+    const len = Math.sqrt(x*x + z*z) || 1;
+    pos.setX(i, x + (x/len)*ripple);
+    pos.setZ(i, z + (z/len)*ripple);
+  }
+  wallGeo.computeVertexNormals();
+  wallGeo.rotateZ(Math.PI/2); // align tube along X axis (flow direction)
+
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: 0x7a1530, emissive: 0x40060f, emissiveIntensity: 0.4,
+    roughness: 0.55, metalness: 0.0, side: THREE.BackSide,
+    transparent: true, opacity: 0.92
+  });
+  wallMesh = new THREE.Mesh(wallGeo, wallMat);
+  wallMesh.userData.isWall = true;
+  vesselGroup.add(wallMesh);
+
+  // Inner endothelial sheen (front side faint) so the tube reads when cross-sectioned
+  const innerMat = new THREE.MeshStandardMaterial({
+    color: 0xb03050, roughness: 0.4, metalness: 0.1, side: THREE.FrontSide,
+    transparent: true, opacity: 0.12
+  });
+  const inner = new THREE.Mesh(wallGeo.clone(), innerMat);
+  vesselGroup.add(inner);
+
+  // Endothelial cell pattern — faint rings of nuclei along the wall
+  const nucGeo = new THREE.SphereGeometry(0.35, 8, 8);
+  const nucMat = new THREE.MeshStandardMaterial({ color: 0x5a0a18, emissive: 0x801025, emissiveIntensity: 0.5, roughness: 0.6 });
+  const nuclei = new THREE.InstancedMesh(nucGeo, nucMat, 260);
+  let n = 0; const m = new THREE.Matrix4();
+  for (let ring = 0; ring < 26; ring++) {
+    const px = -VESSEL_LENGTH/2 + ring * (VESSEL_LENGTH/25);
+    for (let a = 0; a < 10; a++) {
+      const ang = (a/10) * Math.PI*2 + ring*0.3;
+      const r = VESSEL_RADIUS - 0.6;
+      m.makeTranslation(px, Math.sin(ang)*r, Math.cos(ang)*r);
+      nuclei.setMatrixAt(n++, m);
+    }
+  }
+  nuclei.count = n;
+  vesselGroup.add(nuclei);
+
+  // Faint guide rings to convey depth / flow
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff5a78, transparent: true, opacity: 0.07 });
+  for (let i = -5; i <= 5; i++) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(VESSEL_RADIUS-0.3, 0.08, 6, 40), ringMat);
+    ring.position.x = i * 11; ring.rotation.y = Math.PI/2;
+    vesselGroup.add(ring);
+  }
+}
+
+// ---------- Cell construction ------------------------------------------------
+function makeCellMesh(type) {
+  const d = CELL_DB[type];
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color: d.color, roughness: 0.35, metalness: 0.05,
+    emissive: d.color, emissiveIntensity: 0.12
+  });
+
+  if (type === 'rbc') {
+    // biconcave disc via flattened, dented sphere
+    const geo = new THREE.SphereGeometry(d.size, 32, 24);
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+      const r = Math.sqrt(x*x+z*z)/d.size;     // 0 centre → 1 rim
+      const dent = (1 - Math.pow(r,2)) * 0.55;  // pinch the middle
+      p.setY(i, (y*0.32) - Math.sign(y)*0 - (y>=0?dent:-dent)*0);
+      // create biconcave: thin centre, thicker rim
+      const thick = 0.18 + 0.42*Math.pow(r,2);
+      p.setY(i, Math.sign(y) * thick * d.size);
+    }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat); g.add(m);
+  } else if (type === 'platelet') {
+    const geo = new THREE.IcosahedronGeometry(d.size, 1);
+    const p = geo.attributes.position;
+    for (let i=0;i<p.count;i++){ p.setY(i, p.getY(i)*0.4); }
+    geo.computeVertexNormals();
+    g.add(new THREE.Mesh(geo, mat));
+  } else if (type === 'pathogen') {
+    // rod / capsule shape
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(d.size*0.45, d.size*1.2, 6, 12), mat);
+    body.rotation.z = Math.PI/2; g.add(body);
+    // flagellum hint
+    const tailMat = new THREE.MeshBasicMaterial({ color: d.color, transparent:true, opacity:0.6 });
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.2, 6), tailMat);
+    tail.position.x = -d.size*1.1; tail.rotation.z = Math.PI/2; g.add(tail);
+  } else {
+    // white blood cells — lumpy spheres with a visible nucleus
+    const geo = new THREE.IcosahedronGeometry(d.size, 2);
+    const p = geo.attributes.position; const v = new THREE.Vector3();
+    for (let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i);
+      const bump = 1 + 0.12*Math.sin(v.x*5)*Math.cos(v.y*5)*Math.sin(v.z*5);
+      v.multiplyScalar(bump); p.setXYZ(i, v.x, v.y, v.z); }
+    geo.computeVertexNormals();
+    const membrane = new THREE.MeshStandardMaterial({
+      color: d.color, roughness: 0.25, metalness: 0.0,
+      transparent: true, opacity: 0.82, emissive: d.color, emissiveIntensity: 0.15 });
+    g.add(new THREE.Mesh(geo, membrane));
+    // nucleus
+    const nucColor = (type==='wbc_lymphocyte') ? 0x2a6fb0 : 0x6a3da0;
+    const nuc = new THREE.Mesh(new THREE.SphereGeometry(d.size*0.55, 16, 16),
+      new THREE.MeshStandardMaterial({ color: nucColor, roughness:0.6, emissive: nucColor, emissiveIntensity:0.25 }));
+    if (type === 'wbc_neutrophil') {
+      // multi-lobed nucleus: a few small spheres
+      for (let i=0;i<3;i++){ const lobe = nuc.clone(); lobe.scale.setScalar(0.5);
+        lobe.position.set((i-1)*d.size*0.4, Math.sin(i)*d.size*0.2, Math.cos(i)*d.size*0.2); g.add(lobe); }
+    } else { g.add(nuc); }
+  }
+  return g;
+}
+
+function spawnCells(count) {
+  cellGroup = new THREE.Group();
+  scene.add(cellGroup);
+  const types = [];
+  Object.keys(CELL_DB).forEach(t => { for (let i=0;i<CELL_DB[t].abundance;i++) types.push(t); });
+  for (let i = 0; i < count; i++) {
+    const type = types[Math.floor(Math.random()*types.length)];
+    addCell(type, true);
+  }
+}
+
+function addCell(type, randomX) {
+  const data = CELL_DB[type];
+  const mesh = makeCellMesh(type);
+  const angle = Math.random() * Math.PI * 2;
+  // keep cells inside vessel, denser toward centre (faster flow)
+  const radius = Math.sqrt(Math.random()) * (VESSEL_RADIUS - data.size - 1);
+  const x = randomX ? (Math.random()-0.5) * VESSEL_LENGTH : -VESSEL_LENGTH/2 - Math.random()*10;
+  mesh.position.set(x, Math.sin(angle)*radius, Math.cos(angle)*radius);
+  mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+  mesh.userData = { type, data, isCell: true };
+  cellGroup.add(mesh);
+  cells.push({
+    mesh, type, data,
+    baseSpeed: 6 + (1 - radius/VESSEL_RADIUS) * 9,   // centre flows faster (parabolic profile)
+    radius, angle,
+    spin: new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5),
+    wobble: Math.random()*Math.PI*2
+  });
+  mesh.visible = typeVisible[type];
+}
+
+// ---------- Plasma particles (ambient flow) ----------------------------------
+let plasma;
+function addPlasmaParticles() {
+  const N = 600; const geo = new THREE.BufferGeometry();
+  const arr = new Float32Array(N*3);
+  for (let i=0;i<N;i++){
+    const a = Math.random()*Math.PI*2; const r = Math.sqrt(Math.random())*(VESSEL_RADIUS-0.5);
+    arr[i*3] = (Math.random()-0.5)*VESSEL_LENGTH;
+    arr[i*3+1] = Math.sin(a)*r; arr[i*3+2] = Math.cos(a)*r;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const mat = new THREE.PointsMaterial({ color: 0xffaabf, size: 0.18, transparent:true, opacity:0.5 });
+  plasma = new THREE.Points(geo, mat); scene.add(plasma);
+}
+
+// ---------- Animation loop ---------------------------------------------------
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (!paused) {
+    const eff = flowSpeed;
+    for (const c of cells) {
+      c.mesh.position.x += c.baseSpeed * eff * dt;
+      c.wobble += dt;
+      // gentle radial wobble to feel alive
+      const wob = Math.sin(c.wobble*2) * 0.15;
+      c.mesh.position.y = Math.sin(c.angle)*(c.radius+wob);
+      c.mesh.position.z = Math.cos(c.angle)*(c.radius+wob);
+      c.mesh.rotation.x += c.spin.x*dt; c.mesh.rotation.y += c.spin.y*dt; c.mesh.rotation.z += c.spin.z*dt;
+      if (c.mesh.position.x > VESSEL_LENGTH/2 + 4) {
+        c.mesh.position.x = -VESSEL_LENGTH/2 - Math.random()*6;
+        c.angle = Math.random()*Math.PI*2;
+        c.radius = Math.sqrt(Math.random())*(VESSEL_RADIUS - c.data.size - 1);
+        c.baseSpeed = 6 + (1 - c.radius/VESSEL_RADIUS)*9;
+      }
+    }
+    // drift plasma
+    const pp = plasma.geometry.attributes.position;
+    for (let i=0;i<pp.count;i++){ let x = pp.getX(i) + 11*eff*dt;
+      if (x > VESSEL_LENGTH/2) x = -VESSEL_LENGTH/2; pp.setX(i,x); }
+    pp.needsUpdate = true;
+  }
+  controls.update();
+  if (focusTarget) updateFocus(dt);
+  renderer.render(scene, camera);
+}
+
+// ---------- Interaction ------------------------------------------------------
+let hovered = null;
+function onHover(e) {
+  mouse.x = (e.clientX/window.innerWidth)*2 - 1;
+  mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(cellGroup.children, true);
+  const hit = hits.find(h => topCell(h.object))?.object;
+  const cell = hit ? topCell(hit) : null;
+  document.body.style.cursor = cell ? 'pointer' : 'default';
+  if (hovered && hovered !== cell) setEmissive(hovered, false);
+  if (cell) setEmissive(cell, true);
+  hovered = cell;
+}
+
+function topCell(obj) { let o = obj; while (o && !o.userData.isCell) o = o.parent; return o; }
+function setEmissive(group, on) {
+  group.traverse(m => { if (m.material && m.material.emissiveIntensity !== undefined) {
+    m.material.emissiveIntensity = on ? 0.6 : (m.userData.baseEmissive ?? 0.12);
+    if (m.userData.baseEmissive === undefined) m.userData.baseEmissive = 0.12; }});
+  group.scale.setScalar(on ? 1.15 : 1);
+}
+
+function onPointerDown(e) {
+  mouse.x = (e.clientX/window.innerWidth)*2 - 1;
+  mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(cellGroup.children, true);
+  const hit = hits.find(h => topCell(h.object));
+  if (hit) { const cell = topCell(hit.object); showInfo(cell.userData.type); flyTo(cell); }
+}
+
+// ---------- Info panel -------------------------------------------------------
+function showInfo(type) {
+  const d = CELL_DB[type];
+  document.getElementById('info-tag').textContent = d.latin;
+  document.getElementById('info-tag').style.background = d.tagColor;
+  document.getElementById('info-tag').style.color = '#1a0008';
+  document.getElementById('info-title').textContent = d.name;
+  document.getElementById('info-latin').textContent = '“' + d.fact + '”';
+  const stats = Object.entries(d.stats).map(([k,v]) =>
+    `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  document.getElementById('info-body').innerHTML = `
+    <section><h4>What it is</h4><p>${d.what}</p></section>
+    <section><h4>Key stats</h4><div class="stat-grid">${stats}</div></section>
+    <section><h4>What it does</h4><ul>${d.does.map(x=>`<li>${x}</li>`).join('')}</ul></section>
+    <section><h4>What affects it</h4><ul>${d.affects.map(x=>`<li>${x}</li>`).join('')}</ul></section>
+  `;
+  document.getElementById('info').classList.add('open');
+}
+document.getElementById('info-close').onclick = () => {
+  document.getElementById('info').classList.remove('open'); focusTarget = null; };
+
+// ---------- Camera focus / fly-to --------------------------------------------
+let focusTarget = null, focusFrom = null, focusProgress = 0;
+function flyTo(cell) {
+  focusTarget = cell;
+  focusFrom = { pos: camera.position.clone(), target: controls.target.clone() };
+  focusProgress = 0;
+}
+function updateFocus(dt) {
+  focusProgress = Math.min(1, focusProgress + dt*1.4);
+  const t = focusProgress*focusProgress*(3-2*focusProgress); // smoothstep
+  const cp = focusTarget.position.clone();
+  const desired = cp.clone().add(new THREE.Vector3(0, 2.2, 7));
+  controls.target.lerpVectors(focusFrom.target, cp, t);
+  camera.position.lerpVectors(focusFrom.pos, desired, t);
+  if (focusProgress >= 1) focusFrom = { pos: camera.position.clone(), target: controls.target.clone() };
+}
+
+// ---------- Legend & filtering -----------------------------------------------
+function buildLegend() {
+  const box = document.getElementById('legend-items');
+  box.innerHTML = '';
+  Object.keys(CELL_DB).forEach(type => {
+    const d = CELL_DB[type];
+    const el = document.createElement('div');
+    el.className = 'legend-item';
+    el.innerHTML = `<span class="swatch" style="background:${d.tagColor}"></span>
+      <span>${d.name}</span><span class="count" id="cnt-${type}"></span>`;
+    el.onclick = () => toggleType(type, el);
+    box.appendChild(el);
+  });
+  updateCounts();
+}
+function toggleType(type, el) {
+  typeVisible[type] = !typeVisible[type];
+  el.classList.toggle('off', !typeVisible[type]);
+  cells.forEach(c => { if (c.type === type) c.mesh.visible = typeVisible[type]; });
+}
+function updateCounts() {
+  const counts = {}; cells.forEach(c => counts[c.type] = (counts[c.type]||0)+1);
+  Object.keys(CELL_DB).forEach(t => {
+    const e = document.getElementById('cnt-'+t); if (e) e.textContent = counts[t]||0; });
+}
+
+// ---------- Guided tour ------------------------------------------------------
+function buildTour() {
+  const list = document.getElementById('tour-list');
+  Object.keys(CELL_DB).forEach(type => {
+    const d = CELL_DB[type];
+    const b = document.createElement('button');
+    b.className = 'btn'; b.style.fontSize = '12px'; b.style.padding = '6px 10px';
+    b.style.textAlign = 'left';
+    b.textContent = '→ Visit a ' + d.name;
+    b.onclick = () => {
+      // find nearest visible cell of this type, ensure visible
+      if (!typeVisible[type]) { typeVisible[type] = true; buildLegend(); cells.forEach(c=>{if(c.type===type)c.mesh.visible=true;}); }
+      const pool = cells.filter(c => c.type === type);
+      if (!pool.length) return;
+      const pick = pool.reduce((a,b)=> a.mesh.position.distanceTo(camera.position) < b.mesh.position.distanceTo(camera.position) ? a : b);
+      showInfo(type); flyTo(pick.mesh);
+    };
+    list.appendChild(b);
+  });
+}
+
+// ---------- Controls UI ------------------------------------------------------
+document.getElementById('btn-pause').onclick = (e) => {
+  paused = !paused; e.target.textContent = paused ? '▶ Play' : '⏸ Pause';
+  e.target.classList.toggle('active', paused);
+};
+document.getElementById('speed').oninput = (e) => { flowSpeed = parseFloat(e.target.value); };
+document.getElementById('btn-reset').onclick = () => {
+  focusTarget = null;
+  controls.target.set(0,0,0);
+  camera.position.set(0,6,38);
+};
+document.getElementById('btn-labels').onclick = (e) => {
+  showLabels = !showLabels; e.target.classList.toggle('active', showLabels);
+  toggleLabels(showLabels);
+};
+document.getElementById('btn-view').onclick = (e) => {
+  crossSection = !crossSection; e.target.classList.toggle('active', crossSection);
+  wallMesh.material.opacity = crossSection ? 0.22 : 0.92;
+  wallMesh.material.side = crossSection ? THREE.DoubleSide : THREE.BackSide;
+  scene.fog.density = crossSection ? 0.004 : 0.011;
+  if (crossSection) { camera.position.set(0, 26, 30); controls.target.set(0,0,0); focusTarget=null; }
+};
+
+// ---------- Floating labels (sprites) ----------------------------------------
+let labelSprites = [];
+function toggleLabels(on) {
+  labelSprites.forEach(s => scene.remove(s)); labelSprites = [];
+  if (!on) return;
+  const seen = {};
+  // label one representative of each type currently visible
+  Object.keys(CELL_DB).forEach(type => {
+    if (!typeVisible[type]) return;
+    const c = cells.find(c => c.type === type && c.mesh.visible);
+    if (!c) return;
+    const spr = makeLabel(CELL_DB[type].name, CELL_DB[type].tagColor);
+    spr.userData.follow = c.mesh; labelSprites.push(spr); scene.add(spr);
+  });
+}
+function makeLabel(text, color) {
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = 'rgba(10,4,16,0.8)'; roundRect(ctx,2,2,252,60,12); ctx.fill();
+  ctx.strokeStyle = color; ctx.lineWidth = 3; roundRect(ctx,2,2,252,60,12); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 26px Segoe UI, sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text, 128, 34);
+  const tex = new THREE.CanvasTexture(cv);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest:false, transparent:true }));
+  spr.scale.set(7,1.75,1); return spr;
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+// update labels each frame
+(function labelLoop(){ requestAnimationFrame(labelLoop);
+  labelSprites.forEach(s => { if (s.userData.follow) {
+    s.position.copy(s.userData.follow.position); s.position.y += 2.2; } });
+})();
+
+// ---------- Fun fact ticker --------------------------------------------------
+let factIdx = 0;
+function startFactTicker() {
+  const el = document.getElementById('fact-txt');
+  el.textContent = VESSEL_FACTS[0];
+  setInterval(() => {
+    el.style.opacity = 0;
+    setTimeout(() => { factIdx = (factIdx+1) % VESSEL_FACTS.length;
+      el.textContent = VESSEL_FACTS[factIdx]; el.style.opacity = 1; }, 500);
+  }, 7000);
+}
+
+// ---------- Resize -----------------------------------------------------------
+function onResize() {
+  camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// periodically refresh counts as cells recycle (counts are stable but keep UI live)
+setInterval(updateCounts, 2000);
+
+init();
+</script>
+</body>
+</html>

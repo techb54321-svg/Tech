@@ -384,7 +384,7 @@ function placeOnTube(t, radius, angle, out) {
 // ---------- init -------------------------------------------------------------
 function init() {
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x35040f, 0.018);
+  scene.fog = new THREE.FogExp2(0x4a0a14, 0.02);   // warm, atmospheric red haze for depth
 
   camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.05, 800);
   camera.position.set(0, 10, 60);
@@ -393,7 +393,8 @@ function init() {
   renderer.setSize(innerWidth, innerHeight);
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.15;
+  renderer.toneMappingExposure = 1.05;
+  if (THREE.sRGBEncoding) renderer.outputEncoding = THREE.sRGBEncoding;
   document.getElementById('app').appendChild(renderer.domElement);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -409,13 +410,14 @@ function init() {
   // origin (identity) on desktop so the normal camera maths is unaffected.
   playerRig = new THREE.Group(); scene.add(playerRig); playerRig.add(camera);
 
-  // lighting
-  scene.add(new THREE.AmbientLight(0x88334a, 1.0));
-  const key  = new THREE.PointLight(0xff8fa3, 2.0, 400); key.position.set(30, 40, 50); scene.add(key);
-  const rim  = new THREE.PointLight(0x4fc3f7, 1.3, 400); rim.position.set(-40, -20, -30); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(0, 60, 0); scene.add(fill);
-  // a light that travels with the rider so the tunnel ahead is lit
-  riderLight = new THREE.PointLight(0xffb3c6, 0, 60); scene.add(riderLight);
+  // lighting — soft, warm, fleshy
+  scene.add(new THREE.HemisphereLight(0xff8a72, 0x250006, 0.85));
+  scene.add(new THREE.AmbientLight(0x551522, 0.55));
+  const key  = new THREE.PointLight(0xffb59a, 2.3, 420, 1.4); key.position.set(30, 40, 50); scene.add(key);
+  const rim  = new THREE.PointLight(0xff6f8a, 1.5, 420, 1.4); rim.position.set(-40, -20, -30); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffd8c0, 0.35); fill.position.set(0, 60, 0); scene.add(fill);
+  // a warm light that travels with the rider so the tunnel ahead glows
+  riderLight = new THREE.PointLight(0xffcab0, 0.6, 70, 1.6); scene.add(riderLight);
 
   buildCurve();
   buildVessel();
@@ -504,30 +506,101 @@ function addBreathing(mat, scale) {
   };
 }
 
+// ---------- procedural flesh textures ----------------------------------------
+// Build a wet, organic vessel-wall surface entirely in-browser: a colour map,
+// a relief normal map (derived from a height field) and a glossiness map so the
+// crevices are matte and the ridges look slick and wet — no image files needed.
+function makeHeight(size, layers, fibers) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const x = c.getContext('2d');
+  x.fillStyle = '#7f7f7f'; x.fillRect(0,0,size,size);
+  for (const [rad,count,alpha] of layers) {
+    for (let i=0;i<count;i++){ const px=Math.random()*size, py=Math.random()*size, v=Math.random()*255|0;
+      const g=x.createRadialGradient(px,py,0,px,py,rad);
+      g.addColorStop(0,`rgba(${v},${v},${v},${alpha})`); g.addColorStop(1,`rgba(${v},${v},${v},0)`);
+      x.fillStyle=g; x.fillRect(px-rad,py-rad,rad*2,rad*2); }
+  }
+  if (fibers) {                          // faint muscle-fibre streaks
+    x.globalAlpha=0.10; x.strokeStyle='#fff'; x.lineWidth=1;
+    for (let i=0;i<size;i+=3){ x.beginPath(); const y=i+Math.random()*4; x.moveTo(0,y);
+      for (let xx=0;xx<=size;xx+=18) x.lineTo(xx, y+Math.sin(xx*0.05+i)*3); x.stroke(); }
+    x.globalAlpha=1;
+  }
+  if ('filter' in x) { const c2=document.createElement('canvas'); c2.width=c2.height=size;
+    const x2=c2.getContext('2d'); x2.filter='blur(1.5px)'; x2.drawImage(c,0,0); return c2; }
+  return c;
+}
+function heightToNormal(hCanvas, size, strength) {
+  const hd = hCanvas.getContext('2d').getImageData(0,0,size,size).data;
+  const c = document.createElement('canvas'); c.width=c.height=size; const cx=c.getContext('2d');
+  const out = cx.createImageData(size,size), o=out.data;
+  const H=(x,y)=>hd[(((y+size)%size)*size + ((x+size)%size))*4]/255;
+  for (let y=0;y<size;y++) for (let x=0;x<size;x++){
+    const dx=(H(x+1,y)-H(x-1,y))*strength, dy=(H(x,y+1)-H(x,y-1))*strength;
+    let nx=-dx, ny=-dy, nz=1; const il=1/Math.hypot(nx,ny,nz); nx*=il;ny*=il;nz*=il;
+    const i=(y*size+x)*4; o[i]=(nx*.5+.5)*255; o[i+1]=(ny*.5+.5)*255; o[i+2]=(nz*.5+.5)*255; o[i+3]=255;
+  }
+  cx.putImageData(out,0,0); return c;
+}
+function makeFleshTextures() {
+  const S=512;
+  const hHi = makeHeight(S, [[S/6,55,0.5],[S/15,150,0.35],[S/40,420,0.22]], true);
+  const hLo = makeHeight(S, [[S/3,18,0.6],[S/7,40,0.4]], false);
+  const dHi = hHi.getContext('2d').getImageData(0,0,S,S).data;
+  const dLo = hLo.getContext('2d').getImageData(0,0,S,S).data;
+  // colour map — fleshy reds, darker in crevices, slightly purple/blue in low blotches
+  const colC=document.createElement('canvas'); colC.width=colC.height=S; const cc=colC.getContext('2d');
+  const col=cc.createImageData(S,S), cd=col.data;
+  // glossiness (roughness) map — ridges (high) are slick/wet, pits are matte
+  const rgC=document.createElement('canvas'); rgC.width=rgC.height=S; const rc=rgC.getContext('2d');
+  const rg=rc.createImageData(S,S), rd=rg.data;
+  for (let i=0;i<S*S;i++){ const h=dHi[i*4]/255, l=dLo[i*4]/255;
+    cd[i*4]   = 48 + h*150 + l*38;
+    cd[i*4+1] = 6  + h*42  + l*16;
+    cd[i*4+2] = 12 + h*40  + l*34;
+    cd[i*4+3] = 255;
+    const r = Math.max(0, Math.min(1, 0.82 - h*0.55));    // tops glossier
+    const rv = r*255; rd[i*4]=rd[i*4+1]=rd[i*4+2]=rv; rd[i*4+3]=255;
+  }
+  cc.putImageData(col,0,0); rc.putImageData(rg,0,0);
+  const normC = heightToNormal(hHi, S, 2.4);
+  const aroundRepeat = 4, alongRepeat = Math.max(8, Math.round(aroundRepeat*curveLen/(2*Math.PI*R)));
+  const mk=(canvas,enc)=>{ const t=new THREE.CanvasTexture(canvas);
+    t.wrapS=t.wrapT=THREE.MirroredRepeatWrapping; t.repeat.set(alongRepeat,aroundRepeat);
+    if(enc && THREE.sRGBEncoding) t.encoding=THREE.sRGBEncoding; t.anisotropy=4; return t; };
+  return { map:mk(colC,true), normalMap:mk(normC,false), roughnessMap:mk(rgC,false) };
+}
+
 // ---------- vessel geometry --------------------------------------------------
+// cheap layered 3D value noise for organic wall folds
+function fold(x,y,z){ return Math.sin(x*0.7)*Math.sin(y*0.6+1.0)*Math.sin(z*0.5+2.0)
+  + 0.5*Math.sin(x*1.7+0.5)*Math.sin(z*1.3) + 0.35*Math.sin(y*2.1)*Math.sin(x*1.1+z*0.9); }
 function buildVessel() {
   vesselGroup = new THREE.Group(); scene.add(vesselGroup);
 
-  const tubeGeo = new THREE.TubeGeometry(curve, 600, R, 36, true);
+  const tubeGeo = new THREE.TubeGeometry(curve, 600, R, 40, true);
+  // displace the tube along its normals so the lumen isn't a perfect cylinder
+  const pos = tubeGeo.attributes.position, nor = tubeGeo.attributes.normal;
+  for (let i=0;i<pos.count;i++){ const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+    const d = fold(x,y,z)*0.85 + 0.3*Math.sin(x*0.3+z*0.3);
+    pos.setXYZ(i, x+nor.getX(i)*d, y+nor.getY(i)*d, z+nor.getZ(i)*d); }
+  tubeGeo.computeVertexNormals();
 
-  // muscular outer wall, seen from inside
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x7a1530, emissive: 0x50080f, emissiveIntensity: 0.55,
-    roughness: 0.6, metalness: 0.0, side: THREE.BackSide, transparent: true, opacity: 0.96
-  });
+  const tex = makeFleshTextures();
+  // wet, fleshy muscular wall (physically based, viewed from inside)
+  const wallMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff, map: tex.map, normalMap: tex.normalMap, roughnessMap: tex.roughnessMap,
+    normalScale: new THREE.Vector2(1.4,1.4), roughness: 1.0, metalness: 0.0,
+    clearcoat: 0.55, clearcoatRoughness: 0.5,
+    emissive: 0x2a0408, emissiveIntensity: 0.45,
+    side: THREE.BackSide, transparent: true, opacity: 1.0 });
   addBreathing(wallMat, 1.0);
   wallMesh = new THREE.Mesh(tubeGeo, wallMat); vesselGroup.add(wallMesh);
-
-  // faint inner endothelial sheen
-  const innerMat = new THREE.MeshStandardMaterial({
-    color: 0xc23a58, emissive: 0x80101f, emissiveIntensity: 0.25,
-    roughness: 0.35, metalness: 0.1, side: THREE.FrontSide, transparent: true, opacity: 0.10 });
-  addBreathing(innerMat, 0.96);
-  innerMesh = new THREE.Mesh(tubeGeo.clone(), innerMat); vesselGroup.add(innerMesh);
+  innerMesh = null;
 
   // endothelial nuclei studded along the wall (instanced, hugging the tube)
-  const nucGeo = new THREE.SphereGeometry(0.42, 8, 8);
-  const nucMat = new THREE.MeshStandardMaterial({ color: 0x6a0c1a, emissive: 0xb01530, emissiveIntensity: 0.6, roughness: 0.6 });
+  const nucGeo = new THREE.SphereGeometry(0.4, 8, 8);
+  const nucMat = new THREE.MeshStandardMaterial({ color: 0x5a0a14, emissive: 0x600a18, emissiveIntensity: 0.18, roughness: 0.7 });
   const RINGS = 150, PER = 7, nuclei = new THREE.InstancedMesh(nucGeo, nucMat, RINGS*PER);
   const m = new THREE.Matrix4(); let idx = 0;
   for (let r = 0; r < RINGS; r++) {
@@ -557,8 +630,10 @@ function makeGlowTexture() {
 // ---------- cell construction ------------------------------------------------
 function makeCellMesh(type) {
   const d = CELL_DB[type]; const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: d.color, roughness: 0.32, metalness: 0.05,
-    emissive: d.color, emissiveIntensity: 0.18 });
+  // wet, glossy, slightly translucent cell surface
+  const mat = new THREE.MeshPhysicalMaterial({ color: d.color, roughness: 0.34, metalness: 0.0,
+    clearcoat: 0.6, clearcoatRoughness: 0.22, emissive: d.color, emissiveIntensity: 0.06,
+    sheen: 0.0 });
 
   if (type === 'rbc') {
     const geo = new THREE.SphereGeometry(d.size, 32, 24);
@@ -587,8 +662,9 @@ function makeCellMesh(type) {
       v.multiplyScalar(1 + 0.12*Math.sin(v.x*5)*Math.cos(v.y*5)*Math.sin(v.z*5));
       p.setXYZ(i, v.x, v.y, v.z); }
     geo.computeVertexNormals();
-    const membrane = new THREE.MeshStandardMaterial({ color:d.color, roughness:0.25,
-      transparent:true, opacity:0.85, emissive:d.color, emissiveIntensity:0.2 });
+    const membrane = new THREE.MeshPhysicalMaterial({ color:d.color, roughness:0.28,
+      clearcoat:0.7, clearcoatRoughness:0.2,
+      transparent:true, opacity:0.9, emissive:d.color, emissiveIntensity:0.1 });
     g.add(new THREE.Mesh(geo, membrane));
     const nucCol = (type==='wbc_lymphocyte') ? 0x2a6fb0 : 0x6a3da0;
     const nuc = new THREE.Mesh(new THREE.SphereGeometry(d.size*0.55,16,16),
@@ -618,9 +694,10 @@ function addCell(type) {
   mesh.userData = { type, data:d, isCell:true };
   cellGroup.add(mesh);
 
+  // a faint soft halo only — just enough to catch the bloom, not a neon glow
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color:d.color,
-    transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.55 }));
-  glow.scale.setScalar(d.size*4.2); glowGroup.add(glow);
+    transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.16 }));
+  glow.scale.setScalar(d.size*2.6); glowGroup.add(glow);
 
   const c = { mesh, glow, type, data:d, tval, radius, angle,
     baseSpeed: 4 + (1 - radius/R)*7,        // centre flows faster (parabolic profile)
@@ -698,7 +775,7 @@ function setupBloom() {
   try {
     composer = new THREE.EffectComposer(renderer);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.95, 0.7, 0.8);
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.6, 0.85);
     composer.addPass(bloomPass);
     if (THREE.ShaderPass) { fxPass = new THREE.ShaderPass(FXShader); fxPass.renderToScreen = true; composer.addPass(fxPass); }
   } catch (e) { BLOOM_OK = false; composer = null; }
@@ -779,8 +856,8 @@ function animate() {
   if (env > 0.6 && performance.now() - lastBeatPulse > 250) { lastBeatPulse = performance.now(); if (audioOn) thump(); }
 
   // throb the wall + bloom + post-fx with the beat
-  wallMesh.material.emissiveIntensity = 0.45 + env*0.5;
-  if (bloomPass) bloomPass.strength = 0.8 + env*0.6;
+  wallMesh.material.emissiveIntensity = 0.32 + env*0.32;
+  if (bloomPass) bloomPass.strength = 0.42 + env*0.35;
   if (fxPass) { fxPass.uniforms.uAberr.value = 0.0022 + env*0.004 + (rideMode?0.004:0);
     fxPass.uniforms.uVig.value = rideMode?1.18:1.0; fxPass.uniforms.uTime.value = tElapsed; }
   for (const s of breathShaders) { s.uniforms.uTime.value = tElapsed; s.uniforms.uPulse.value = env; }

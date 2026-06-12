@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3D Blood Vessel Explorer</title>
+<title>3D Blood Vessel Explorer — Immersive</title>
 <style>
   :root {
-    --bg: #0a0410;
-    --panel: rgba(20, 8, 24, 0.82);
+    --bg: #07030c;
+    --panel: rgba(20, 8, 24, 0.78);
     --panel-border: rgba(255, 90, 120, 0.35);
     --accent: #ff5a78;
     --accent-2: #4fc3f7;
@@ -20,56 +20,64 @@
   #app { position: fixed; inset: 0; }
   canvas { display: block; }
 
+  /* cinematic vignette overlay */
+  #vignette { position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    box-shadow: inset 0 0 220px 60px rgba(40,0,10,0.75); transition: box-shadow 0.6s; }
+  #vignette.ride { box-shadow: inset 0 0 260px 90px rgba(90,0,20,0.85); }
+
   /* ---- Loading ---- */
   #loader { position: fixed; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; background: var(--bg); z-index: 100; }
-  #loader .pulse { width: 64px; height: 64px; border-radius: 50%;
+    align-items: center; justify-content: center; background: radial-gradient(circle at 50% 40%, #1a0512, #07030c); z-index: 100; }
+  #loader .pulse { width: 70px; height: 70px; border-radius: 50%;
     background: radial-gradient(circle at 35% 35%, #ff8da0, #b3001b);
-    box-shadow: 0 0 40px #ff3355; animation: beat 1s ease-in-out infinite; }
-  @keyframes beat { 0%,100% { transform: scale(1);} 15% { transform: scale(1.25);} 30% { transform: scale(0.95);} }
-  #loader p { margin-top: 22px; color: var(--muted); letter-spacing: 1px; }
+    box-shadow: 0 0 60px #ff3355; animation: beat 1s ease-in-out infinite; }
+  @keyframes beat { 0%,100% { transform: scale(1);} 14% { transform: scale(1.28);} 28% { transform: scale(0.94);} 42% { transform: scale(1.12);} }
+  #loader p { margin-top: 24px; color: var(--muted); letter-spacing: 1px; }
   #loader small { margin-top: 8px; color: #6b5560; }
 
-  /* ---- Generic panel ---- */
   .panel { position: absolute; background: var(--panel); border: 1px solid var(--panel-border);
-    border-radius: 14px; backdrop-filter: blur(10px); box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+    border-radius: 14px; backdrop-filter: blur(10px); box-shadow: 0 8px 40px rgba(0,0,0,0.5); z-index: 10; }
 
-  /* ---- Title / Header ---- */
   #header { top: 16px; left: 16px; padding: 14px 18px; max-width: 340px; }
   #header h1 { font-size: 19px; font-weight: 700; letter-spacing: 0.3px;
     background: linear-gradient(90deg, #ff8da0, #ff5a78, #4fc3f7); -webkit-background-clip: text;
     background-clip: text; -webkit-text-fill-color: transparent; }
   #header p { font-size: 12.5px; color: var(--muted); margin-top: 5px; line-height: 1.45; }
 
-  /* ---- Controls ---- */
   #controls { bottom: 16px; left: 50%; transform: translateX(-50%);
-    padding: 10px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    padding: 10px 14px; display: flex; gap: 9px; align-items: center; flex-wrap: wrap;
     justify-content: center; max-width: calc(100vw - 32px); }
   .btn { background: rgba(255,90,120,0.12); border: 1px solid var(--panel-border);
-    color: var(--text); padding: 8px 14px; border-radius: 9px; cursor: pointer;
+    color: var(--text); padding: 8px 13px; border-radius: 9px; cursor: pointer;
     font-size: 13px; transition: all 0.15s; white-space: nowrap; }
   .btn:hover { background: rgba(255,90,120,0.28); transform: translateY(-1px); }
   .btn.active { background: var(--accent); color: #1a0008; font-weight: 600; }
+  .btn.primary { background: linear-gradient(90deg,#ff5a78,#ff8da0); color:#1a0008; font-weight:600; border-color:transparent; }
   .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
-  input[type=range] { width: 110px; accent-color: var(--accent); cursor: pointer; }
+  input[type=range] { width: 96px; accent-color: var(--accent); cursor: pointer; }
 
-  /* ---- Legend / filter ---- */
-  #legend { top: 16px; right: 16px; padding: 12px 14px; width: 220px; }
-  #legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
-    color: var(--muted); margin-bottom: 10px; }
+  #legend { top: 16px; right: 16px; padding: 12px 14px; width: 224px; }
+  #legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
   .legend-item { display: flex; align-items: center; gap: 9px; padding: 6px 8px;
     border-radius: 8px; cursor: pointer; font-size: 13px; transition: background 0.12s; }
   .legend-item:hover { background: rgba(255,255,255,0.06); }
   .legend-item.off { opacity: 0.35; }
-  .swatch { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0;
-    box-shadow: 0 0 8px rgba(0,0,0,0.4); }
+  .swatch { width: 15px; height: 15px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 8px rgba(0,0,0,0.4); }
   .legend-item .count { margin-left: auto; font-size: 11px; color: var(--muted); }
+  .tour-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 
-  /* ---- Info card (cell details) ---- */
-  #info { top: 0; right: -440px; width: 420px; max-width: 92vw; height: 100%;
+  /* ECG / heartbeat monitor */
+  #ecg { left: 16px; bottom: 84px; width: 260px; padding: 8px 10px 6px; }
+  #ecg .row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  #ecg .bpm { font-size: 13px; color:#ff8da0; font-weight:600; }
+  #ecg .lbl { font-size:10px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); }
+  #ecg canvas { display:block; width:240px; height:46px; }
+
+  /* Info card */
+  #info { top: 0; right: -460px; width: 430px; max-width: 92vw; height: 100%;
     border-radius: 0; border-left: 1px solid var(--panel-border); border-top: none;
-    border-right: none; border-bottom: none; padding: 0; transition: right 0.35s cubic-bezier(.4,0,.2,1);
-    overflow-y: auto; z-index: 30; }
+    border-right: none; border-bottom: none; padding: 0;
+    transition: right 0.35s cubic-bezier(.4,0,.2,1); overflow-y: auto; z-index: 30; }
   #info.open { right: 0; }
   #info .hero { padding: 26px 26px 20px; position: relative;
     background: linear-gradient(160deg, rgba(255,90,120,0.22), rgba(20,8,24,0)); }
@@ -82,8 +90,7 @@
   #info .latin { font-style: italic; color: var(--muted); font-size: 13px; }
   #info .body { padding: 4px 26px 40px; }
   #info section { margin-top: 22px; }
-  #info section h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.3px;
-    color: var(--accent-2); margin-bottom: 8px; }
+  #info section h4 { font-size: 12px; text-transform: uppercase; letter-spacing: 1.3px; color: var(--accent-2); margin-bottom: 8px; }
   #info p, #info li { font-size: 14px; line-height: 1.6; color: #e8dde3; }
   #info ul { list-style: none; }
   #info li { padding-left: 18px; position: relative; margin-bottom: 6px; }
@@ -93,29 +100,30 @@
   .stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
   .stat .v { font-size: 15px; font-weight: 600; margin-top: 3px; }
 
-  /* ---- Fun fact ticker ---- */
-  #fact { bottom: 78px; left: 50%; transform: translateX(-50%); padding: 10px 18px;
+  #fact { bottom: 84px; left: 50%; transform: translateX(-50%); padding: 10px 18px;
     max-width: 560px; font-size: 13px; color: #ffd9e0; text-align: center;
     border-color: rgba(79,195,247,0.35); display: flex; gap: 10px; align-items: center; }
-  #fact .bulb { font-size: 16px; }
   #fact .txt { transition: opacity 0.5s; }
 
-  /* ---- hint ---- */
-  #hint { bottom: 130px; left: 50%; transform: translateX(-50%); font-size: 12px;
-    color: var(--muted); background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px;
-    pointer-events: none; transition: opacity 0.6s; }
+  #hint { bottom: 138px; left: 50%; transform: translateX(-50%); font-size: 12px; color: var(--muted);
+    background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px; pointer-events: none;
+    transition: opacity 0.6s; z-index: 11; }
 
-  .tour-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+  #ridebadge { top: 50%; left: 50%; transform: translate(-50%,-50%); text-align:center;
+    pointer-events:none; opacity:0; transition:opacity 0.5s; z-index: 9; }
+  #ridebadge .big { font-size: 22px; font-weight:700; letter-spacing:2px; color:#ffd9e0; text-shadow:0 0 20px #ff2a55; }
+  #ridebadge .sub { font-size:12px; color:var(--muted); margin-top:6px; }
 
-  @media (max-width: 640px) {
-    #legend { display: none; }
-    #header { max-width: 240px; }
+  @media (max-width: 680px) {
+    #legend, #ecg, #fact { display: none; }
+    #header { max-width: 220px; }
     #info { width: 100%; }
   }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="vignette"></div>
 
 <div id="loader">
   <div class="pulse"></div>
@@ -125,7 +133,7 @@
 
 <div id="header" class="panel">
   <h1>🩸 3D Blood Vessel Explorer</h1>
-  <p>Drag to orbit · right-drag to pan · scroll to zoom. Click any cell to learn what it is, what it does, and what affects it.</p>
+  <p>Drag to orbit · scroll to zoom · click a cell to inspect it. Or hit <b>Ride the bloodstream</b> to flow through the vessel yourself.</p>
 </div>
 
 <div id="legend" class="panel">
@@ -137,18 +145,31 @@
   </div>
 </div>
 
+<div id="ecg" class="panel">
+  <div class="row"><span class="lbl">Heartbeat</span><span class="bpm" id="bpm-readout">72 BPM</span></div>
+  <canvas id="ecg-canvas" width="240" height="46"></canvas>
+</div>
+
+<div id="ridebadge">
+  <div class="big">♥ RIDING THE BLOODSTREAM</div>
+  <div class="sub">move your mouse to look around · scroll to change pace</div>
+</div>
+
 <div id="hint">👆 Click a flowing cell to inspect it</div>
 
 <div id="fact" class="panel">
-  <span class="bulb">💡</span><span class="txt" id="fact-txt"></span>
+  <span>💡</span><span class="txt" id="fact-txt"></span>
 </div>
 
 <div id="controls" class="panel">
+  <button class="btn primary" id="btn-ride">🎢 Ride the bloodstream</button>
   <button class="btn" id="btn-pause">⏸ Pause</button>
   <div class="ctrl-group">Flow <input type="range" id="speed" min="0" max="3" step="0.05" value="1"></div>
+  <div class="ctrl-group">♥ <input type="range" id="bpm" min="45" max="160" step="1" value="72"></div>
+  <button class="btn" id="btn-sound">🔇 Heartbeat</button>
   <button class="btn" id="btn-view">🩻 Cross-section</button>
   <button class="btn" id="btn-labels">🏷 Labels</button>
-  <button class="btn" id="btn-reset">↺ Reset view</button>
+  <button class="btn" id="btn-reset">↺ Reset</button>
 </div>
 
 <div id="info" class="panel">
@@ -162,150 +183,105 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" onerror="loadFail('Three.js core')"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" onerror="loadFail('OrbitControls')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" onerror="bloomOnly()"></script>
+<!-- post-processing for cinematic bloom; optional — sim still runs if these fail -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="noBloom()"></script>
 <script>
-// Show a clear message if a CDN library can't be reached (e.g. no internet).
+let BLOOM_OK = true;
+function noBloom(){ BLOOM_OK = false; }
+function bloomOnly(){ /* OrbitControls failed — fatal */ loadFail('OrbitControls'); }
 function loadFail(what) {
   const l = document.getElementById('loader');
-  if (l) l.innerHTML = '<div style="max-width:420px;text-align:center;padding:24px">' +
+  if (l) l.innerHTML = '<div style="max-width:440px;text-align:center;padding:24px">' +
     '<div style="font-size:40px">🚫</div>' +
     '<p style="color:#ff8da0;margin-top:14px;font-size:16px">Couldn\'t load the 3D engine (' + what + ').</p>' +
-    '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">This page loads Three.js from the internet, so it needs an active connection the first time you open it. ' +
-    'Check your connection (or any ad/script blocker) and reload.</small></div>';
+    '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">This page loads its 3D engine from the internet, so it needs an active connection the first time you open it. Check your connection (or any ad/script blocker) and reload.</small></div>';
 }
-
+</script>
+<script>
 // ============================================================================
-//  3D BLOOD VESSEL EXPLORER
-//  A single-file educational simulation. All geometry is procedural; cell data
-//  is biologically sourced and attached to each clickable mesh.
+//  3D BLOOD VESSEL EXPLORER — Immersive edition
+//  Curved looping vessel · ride-along first-person mode · heartbeat-driven
+//  pulsatile flow · ECG monitor · synthesized heartbeat · cinematic bloom.
+//  All geometry is procedural; cell biology is attached to each clickable mesh.
 // ============================================================================
 
 // ---------- Cell knowledge base ----------------------------------------------
 const CELL_DB = {
   rbc: {
-    name: "Red Blood Cell",
-    latin: "Erythrocyte",
-    color: 0xc81e3a,
-    tagColor: "#c81e3a",
-    abundance: 60,           // relative spawn weight
-    size: 0.9,
-    what: "The most common cell in your blood — a flexible, biconcave disc with no nucleus, packed with the protein haemoglobin.",
+    name: "Red Blood Cell", latin: "Erythrocyte", color: 0xe01030, tagColor: "#e01030",
+    abundance: 60, size: 0.9,
+    what: "The most common cell in your blood — a flexible, biconcave disc with no nucleus, packed with the oxygen-binding protein haemoglobin.",
     does: [
       "Carries oxygen from the lungs to every tissue in the body.",
-      "Returns carbon dioxide from tissues back to the lungs.",
-      "Its biconcave shape maximises surface area for fast gas exchange and lets it squeeze through capillaries narrower than itself."
+      "Returns carbon dioxide from the tissues back to the lungs.",
+      "Its biconcave shape maximises surface area for gas exchange and lets it fold up to squeeze through capillaries narrower than itself."
     ],
     affects: [
-      "Iron, vitamin B12 and folate are needed to build them — deficiency causes anaemia.",
-      "The hormone erythropoietin (EPO) from the kidneys signals the bone marrow to make more.",
-      "High altitude, smoking and dehydration raise their count; bleeding lowers it.",
-      "Carbon monoxide binds haemoglobin 200× tighter than oxygen, which is why it is so dangerous."
+      "Iron, vitamin B12 and folate are needed to build them — a shortage causes anaemia.",
+      "The hormone erythropoietin (EPO) from the kidneys tells the bone marrow to make more.",
+      "Altitude, smoking and dehydration raise the count; bleeding lowers it.",
+      "Carbon monoxide binds haemoglobin 200× tighter than oxygen — which is what makes it so dangerous."
     ],
     stats: { "Lifespan": "~120 days", "Count": "20–30 trillion", "Made in": "Bone marrow", "Diameter": "6–8 µm" },
     fact: "You make roughly 2–3 million new red blood cells every single second."
   },
   wbc_neutrophil: {
-    name: "Neutrophil",
-    latin: "Neutrophil granulocyte",
-    color: 0xe8e2ff,
-    tagColor: "#9b8cff",
-    abundance: 7,
-    size: 1.25,
+    name: "Neutrophil", latin: "Neutrophil granulocyte", color: 0xe8e2ff, tagColor: "#9b8cff",
+    abundance: 7, size: 1.3,
     what: "The most common white blood cell and the body's rapid-response infantry — a large nucleated cell with a multi-lobed nucleus.",
-    does: [
-      "First responder to bacterial and fungal infection.",
-      "Engulfs and digests microbes (phagocytosis).",
-      "Releases NETs — sticky nets of DNA that trap pathogens.",
-      "Dead neutrophils are the main component of pus."
-    ],
-    affects: [
-      "Numbers surge within hours of infection or injury.",
-      "Chemotherapy and some autoimmune conditions deplete them, raising infection risk.",
-      "Steroids and stress hormones change how many circulate."
-    ],
+    does: ["First responder to bacterial and fungal infection.", "Engulfs and digests microbes (phagocytosis).",
+      "Casts NETs — sticky nets of its own DNA that trap pathogens.", "Dead neutrophils are the main ingredient of pus."],
+    affects: ["Numbers surge within hours of infection or injury.", "Chemotherapy and some autoimmune conditions deplete them, raising infection risk.",
+      "Stress hormones and steroids change how many circulate."],
     stats: { "Lifespan": "~5 days", "% of WBCs": "40–70%", "Made in": "Bone marrow", "Diameter": "12–15 µm" },
-    fact: "Neutrophils chase bacteria by 'smelling' chemical trails — a process called chemotaxis."
+    fact: "Neutrophils hunt bacteria by 'smelling' chemical trails — a process called chemotaxis."
   },
   wbc_lymphocyte: {
-    name: "Lymphocyte",
-    latin: "T / B cell",
-    color: 0x7fdfff,
-    tagColor: "#4fc3f7",
-    abundance: 6,
-    size: 1.05,
-    what: "The brains of the immune system — includes T cells, B cells and natural killer cells. Mostly nucleus with a thin rim of cytoplasm.",
-    does: [
-      "B cells produce antibodies that tag and neutralise specific invaders.",
-      "T cells kill infected cells and coordinate the wider immune response.",
-      "Memory cells remember past infections — the basis of immunity and vaccines."
-    ],
-    affects: [
-      "HIV specifically destroys helper T cells, crippling immunity.",
-      "Vaccines train them without causing disease.",
-      "Their diversity (millions of receptor types) lets the body recognise almost any pathogen."
-    ],
+    name: "Lymphocyte", latin: "T / B cell", color: 0x7fdfff, tagColor: "#4fc3f7",
+    abundance: 6, size: 1.05,
+    what: "The brains of the immune system — T cells, B cells and natural killer cells. Mostly nucleus with a thin rim of cytoplasm.",
+    does: ["B cells produce antibodies that tag and neutralise specific invaders.", "T cells kill infected cells and coordinate the response.",
+      "Memory cells remember past infections — the basis of immunity and vaccines."],
+    affects: ["HIV specifically destroys helper T cells, crippling immunity.", "Vaccines train them without causing disease.",
+      "Their huge receptor diversity lets the body recognise almost any pathogen."],
     stats: { "Lifespan": "Days to years", "% of WBCs": "20–40%", "Made in": "Marrow & thymus", "Diameter": "7–15 µm" },
-    fact: "Some memory lymphocytes survive for decades, which is why one bout of chickenpox usually protects for life."
+    fact: "Some memory lymphocytes survive for decades — which is why one bout of chickenpox usually protects for life."
   },
   wbc_monocyte: {
-    name: "Monocyte",
-    latin: "Monocyte / Macrophage",
-    color: 0xb6f0c0,
-    tagColor: "#5fd17a",
-    abundance: 3,
-    size: 1.45,
-    what: "The largest white blood cell. In tissue it matures into a macrophage — a 'big eater' that cleans up debris.",
-    does: [
-      "Engulfs dead cells, pathogens and debris.",
-      "Presents fragments of invaders to lymphocytes to launch a targeted response.",
-      "Becomes specialised resident cells in organs (e.g. microglia in the brain)."
-    ],
-    affects: [
-      "Chronic inflammation keeps them activated, contributing to atherosclerosis.",
-      "They drive the body's clean-up after injury and infection."
-    ],
+    name: "Monocyte", latin: "Monocyte / Macrophage", color: 0xb6f0c0, tagColor: "#5fd17a",
+    abundance: 3, size: 1.5,
+    what: "The largest white blood cell. Once it enters tissue it matures into a macrophage — a 'big eater' that cleans up debris.",
+    does: ["Engulfs dead cells, pathogens and debris.", "Presents fragments of invaders to lymphocytes to launch a targeted attack.",
+      "Becomes specialised resident cells in organs (like microglia in the brain)."],
+    affects: ["Chronic inflammation keeps them activated, feeding atherosclerosis.", "They drive clean-up and repair after injury."],
     stats: { "Lifespan": "Hours in blood, months in tissue", "% of WBCs": "2–8%", "Made in": "Bone marrow", "Diameter": "15–20 µm" },
-    fact: "Macrophages that swallow fatty deposits in artery walls become 'foam cells' — an early step in heart disease."
+    fact: "Macrophages that gorge on fatty deposits in artery walls become 'foam cells' — an early step in heart disease."
   },
   platelet: {
-    name: "Platelet",
-    latin: "Thrombocyte",
-    color: 0xffd27f,
-    tagColor: "#ffb347",
-    abundance: 18,
-    size: 0.42,
-    what: "Not a whole cell but a tiny fragment broken off from giant marrow cells called megakaryocytes.",
-    does: [
-      "Rushes to damaged vessel walls and sticks to form a plug.",
-      "Releases chemical signals that recruit more platelets and trigger clotting.",
-      "Works with the protein fibrin to seal wounds."
-    ],
-    affects: [
-      "Too few (thrombocytopenia) causes easy bruising and bleeding.",
-      "Too many or overactive ones cause dangerous clots, strokes and heart attacks.",
-      "Aspirin makes platelets less sticky — why it's used to prevent clots."
-    ],
-    stats: { "Lifespan": "~8–10 days", "Count": "150k–400k per µL", "Made in": "Bone marrow", "Diameter": "2–3 µm" },
-    fact: "Platelets can change shape in under a second, sprouting sticky arms the moment they sense a wound."
+    name: "Platelet", latin: "Thrombocyte", color: 0xffd27f, tagColor: "#ffb347",
+    abundance: 18, size: 0.45,
+    what: "Not a whole cell but a tiny fragment shed from giant marrow cells called megakaryocytes.",
+    does: ["Rushes to damaged vessel walls and sticks to form a plug.", "Releases signals that recruit more platelets and start clotting.",
+      "Works with the protein fibrin to seal a wound."],
+    affects: ["Too few (thrombocytopenia) causes easy bruising and bleeding.", "Too many or overactive ones cause dangerous clots, strokes and heart attacks.",
+      "Aspirin makes platelets less sticky — why it's used to prevent clots."],
+    stats: { "Lifespan": "~8–10 days", "Count": "150k–400k /µL", "Made in": "Bone marrow", "Diameter": "2–3 µm" },
+    fact: "A platelet can change shape in under a second, sprouting sticky arms the instant it senses a wound."
   },
   pathogen: {
-    name: "Bacterium",
-    latin: "Invading pathogen",
-    color: 0x6fe86f,
-    tagColor: "#5bd15b",
-    abundance: 2,
-    size: 0.6,
-    what: "An uninvited guest — a single-celled microbe that has entered the bloodstream and is being hunted by white blood cells.",
-    does: [
-      "Tries to multiply and steal nutrients from the host.",
-      "Some release toxins that damage tissue.",
-      "Triggers the immune system, causing fever and inflammation."
-    ],
-    affects: [
-      "Antibiotics kill or stop many bacteria — but overuse breeds resistance.",
-      "White blood cells, antibodies and the complement system attack them.",
-      "Bacteria in the blood (sepsis) is a medical emergency."
-    ],
+    name: "Bacterium", latin: "Invading pathogen", color: 0x6fe86f, tagColor: "#5bd15b",
+    abundance: 2, size: 0.62,
+    what: "An uninvited guest — a single-celled microbe in the bloodstream, being hunted by white blood cells.",
+    does: ["Tries to multiply and steal nutrients from the host.", "Some release toxins that damage tissue.",
+      "Triggers the immune system, causing fever and inflammation."],
+    affects: ["Antibiotics kill or stall many bacteria — but overuse breeds resistance.", "White blood cells, antibodies and the complement system attack them.",
+      "Bacteria loose in the blood (sepsis) is a medical emergency."],
     stats: { "Type": "Prokaryote", "Reproduction": "Every ~20 min", "Threat": "Variable", "Diameter": "1–5 µm" },
     fact: "A single bacterium dividing every 20 minutes could, unchecked, become billions within a day."
   }
@@ -315,497 +291,571 @@ const VESSEL_FACTS = [
   "If you laid all your blood vessels end to end, they'd stretch about 100,000 km — enough to circle the Earth twice.",
   "The inner lining of every vessel is a single layer of endothelial cells covering an area the size of a tennis court.",
   "Blood makes a full lap of your body in about 60 seconds at rest.",
-  "Arteries have thick muscular walls to handle high pressure; veins have valves to stop blood flowing backward.",
-  "Capillaries are so narrow that red blood cells must fold up and pass through in single file.",
+  "Arteries have thick muscular walls for high pressure; veins have valves to stop blood flowing backward.",
+  "Capillaries are so narrow that red blood cells must fold and pass through in single file.",
   "Your heart pumps about 7,500 litres of blood every day through this network.",
-  "The endothelium isn't just a pipe lining — it releases nitric oxide to relax vessels and control blood pressure.",
+  "The endothelium isn't just a lining — it releases nitric oxide to relax vessels and control blood pressure.",
   "Veins hold about 70% of your blood volume at any moment, acting as a reservoir.",
   "The aorta, your largest artery, is about as wide as a garden hose.",
-  "Vessels can grow new branches on demand — a process called angiogenesis that tumours hijack to feed themselves."
+  "Vessels can sprout new branches on demand — angiogenesis — which tumours hijack to feed themselves.",
+  "The 'lub-dub' of a heartbeat is the sound of heart valves snapping shut, not the muscle itself.",
+  "Blood is about 55% plasma — a straw-coloured fluid that's 90% water carrying everything else along."
 ];
 
-// ---------- Three.js scene setup ---------------------------------------------
-let scene, camera, renderer, controls, raycaster, mouse;
-let vesselGroup, cellGroup, wallMesh;
-const cells = [];                 // { mesh, type, data, speed, angle, radius, spin }
-let paused = false;
-let flowSpeed = 1;
-let showLabels = false;
-let crossSection = false;
-const VESSEL_LENGTH = 120;
-const VESSEL_RADIUS = 9;
+// ---------- globals ----------------------------------------------------------
+let scene, camera, renderer, controls, composer, bloomPass, raycaster, mouse;
+let vesselGroup, cellGroup, glowGroup, wallMesh, innerMesh, plasma;
+const cells = [];
+let paused = false, flowSpeed = 1, showLabels = false, crossSection = false, rideMode = false;
+let userInteracted = false;
 const clock = new THREE.Clock();
-const typeVisible = {};
-Object.keys(CELL_DB).forEach(k => typeVisible[k] = true);
+const typeVisible = {}; Object.keys(CELL_DB).forEach(k => typeVisible[k] = true);
 
+// vessel geometry constants
+const R = 7;                 // tube radius
+const SAMPLES = 900;         // frame-table resolution along the curve
+let curve, curveLen = 1;
+const fPos = [], fTan = [], fNor = [], fBin = [];   // precomputed parallel-transport frames
+const up = new THREE.Vector3(0, 1, 0);
+
+// heartbeat
+let bpm = 72, beatPhase = 0, lastBeatPulse = 0;
+
+// reusable temp vectors
+const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _n = new THREE.Vector3(),
+      _b = new THREE.Vector3(), _o = new THREE.Vector3(), _look = new THREE.Vector3();
+
+// ---------- curve + frame table ---------------------------------------------
+function buildCurve() {
+  const pts = [
+    new THREE.Vector3(-70,  2,   0), new THREE.Vector3(-40, 12, -22),
+    new THREE.Vector3( -5, -6, -34), new THREE.Vector3( 32, 14, -18),
+    new THREE.Vector3( 64,  0,  16), new THREE.Vector3( 40,-14,  40),
+    new THREE.Vector3( -2,  8,  38), new THREE.Vector3(-42,-10,  20),
+  ];
+  curve = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5);
+  curveLen = curve.getLength();
+
+  // parallel-transport frames so the cross-section doesn't suddenly flip
+  let prevN = null;
+  for (let i = 0; i < SAMPLES; i++) {
+    const t = i / SAMPLES;
+    const p = curve.getPointAt(t);
+    const tan = curve.getTangentAt(t).normalize();
+    let n;
+    if (!prevN) {
+      n = new THREE.Vector3().crossVectors(up, tan);
+      if (n.lengthSq() < 1e-5) n = new THREE.Vector3(1, 0, 0);
+      n.normalize();
+    } else {
+      // project previous normal onto the plane perpendicular to the new tangent
+      n = prevN.clone().sub(tan.clone().multiplyScalar(prevN.dot(tan)));
+      if (n.lengthSq() < 1e-6) n = new THREE.Vector3().crossVectors(up, tan);
+      n.normalize();
+    }
+    const bn = new THREE.Vector3().crossVectors(tan, n).normalize();
+    fPos.push(p); fTan.push(tan); fNor.push(n); fBin.push(bn);
+    prevN = n;
+  }
+}
+
+// interpolated frame at parameter t (0..1, wraps)
+function frameAt(t) {
+  t = t - Math.floor(t);
+  const f = t * SAMPLES; let i = Math.floor(f); const frac = f - i;
+  const i2 = (i + 1) % SAMPLES; i = i % SAMPLES;
+  _p.copy(fPos[i]).lerp(fPos[i2], frac);
+  _t.copy(fTan[i]).lerp(fTan[i2], frac).normalize();
+  _n.copy(fNor[i]).lerp(fNor[i2], frac).normalize();
+  _b.copy(fBin[i]).lerp(fBin[i2], frac).normalize();
+}
+
+// world position for a cell at param t, radial offset (radius, angle) → out
+function placeOnTube(t, radius, angle, out) {
+  frameAt(t);
+  _o.copy(_n).multiplyScalar(Math.cos(angle) * radius)
+    .addScaledVector(_b, Math.sin(angle) * radius);
+  out.copy(_p).add(_o);
+}
+
+// ---------- init -------------------------------------------------------------
 function init() {
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x2a0510, 0.011);
+  scene.fog = new THREE.FogExp2(0x35040f, 0.018);
 
-  camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 600);
-  camera.position.set(0, 6, 38);
+  camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.05, 800);
+  camera.position.set(0, 10, 60);
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
   document.getElementById('app').appendChild(renderer.domElement);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.06;
-  controls.minDistance = 4;
-  controls.maxDistance = 180;
-  controls.target.set(0, 0, 0);
+  controls.enableDamping = true; controls.dampingFactor = 0.06;
+  controls.minDistance = 3; controls.maxDistance = 220;
+  controls.autoRotate = true; controls.autoRotateSpeed = 0.5;
+  controls.addEventListener('start', () => { userInteracted = true; controls.autoRotate = false; });
 
-  raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2();
+  raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
 
-  // Lighting
-  scene.add(new THREE.AmbientLight(0x88334a, 0.9));
-  const key = new THREE.PointLight(0xff8fa3, 1.6, 300); key.position.set(20, 30, 40); scene.add(key);
-  const rim = new THREE.PointLight(0x4fc3f7, 1.1, 300); rim.position.set(-30, -10, -20); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(0, 50, 0); scene.add(fill);
+  // lighting
+  scene.add(new THREE.AmbientLight(0x88334a, 1.0));
+  const key  = new THREE.PointLight(0xff8fa3, 2.0, 400); key.position.set(30, 40, 50); scene.add(key);
+  const rim  = new THREE.PointLight(0x4fc3f7, 1.3, 400); rim.position.set(-40, -20, -30); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(0, 60, 0); scene.add(fill);
+  // a light that travels with the rider so the tunnel ahead is lit
+  riderLight = new THREE.PointLight(0xffb3c6, 0, 60); scene.add(riderLight);
 
+  buildCurve();
   buildVessel();
-  spawnCells(70);
-  buildLegend();
-  buildTour();
-  addPlasmaParticles();
+  spawnCells(120);
+  addPlasma();
+  setupBloom();
 
-  window.addEventListener('resize', onResize);
+  buildLegend(); buildTour(); buildECG();
+
+  addEventListener('resize', onResize);
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
-  renderer.domElement.addEventListener('pointermove', onHover);
+  renderer.domElement.addEventListener('pointermove', onPointerMove);
+  addEventListener('wheel', onWheelRide, { passive: true });
 
   document.getElementById('loader').style.display = 'none';
   startFactTicker();
-  setTimeout(() => { document.getElementById('hint').style.opacity = 0; }, 7000);
+  setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = 0; }, 8000);
   animate();
 }
 
-// ---------- Vessel geometry --------------------------------------------------
+let riderLight;
+
+// ---------- vessel geometry --------------------------------------------------
 function buildVessel() {
-  vesselGroup = new THREE.Group();
-  scene.add(vesselGroup);
+  vesselGroup = new THREE.Group(); scene.add(vesselGroup);
 
-  // Outer wall — semi-transparent tube, viewed from inside
-  const wallGeo = new THREE.CylinderGeometry(VESSEL_RADIUS, VESSEL_RADIUS, VESSEL_LENGTH, 48, 80, true);
-  // gentle organic waviness
-  const pos = wallGeo.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const ripple = Math.sin(y * 0.18) * 0.5 + Math.cos((x+z) * 0.4) * 0.25;
-    const len = Math.sqrt(x*x + z*z) || 1;
-    pos.setX(i, x + (x/len)*ripple);
-    pos.setZ(i, z + (z/len)*ripple);
-  }
-  wallGeo.computeVertexNormals();
-  wallGeo.rotateZ(Math.PI/2); // align tube along X axis (flow direction)
+  const tubeGeo = new THREE.TubeGeometry(curve, 600, R, 36, true);
 
+  // muscular outer wall, seen from inside
   const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x7a1530, emissive: 0x40060f, emissiveIntensity: 0.4,
-    roughness: 0.55, metalness: 0.0, side: THREE.BackSide,
-    transparent: true, opacity: 0.92
+    color: 0x7a1530, emissive: 0x50080f, emissiveIntensity: 0.55,
+    roughness: 0.6, metalness: 0.0, side: THREE.BackSide, transparent: true, opacity: 0.96
   });
-  wallMesh = new THREE.Mesh(wallGeo, wallMat);
-  wallMesh.userData.isWall = true;
-  vesselGroup.add(wallMesh);
+  wallMesh = new THREE.Mesh(tubeGeo, wallMat); vesselGroup.add(wallMesh);
 
-  // Inner endothelial sheen (front side faint) so the tube reads when cross-sectioned
+  // faint inner endothelial sheen
   const innerMat = new THREE.MeshStandardMaterial({
-    color: 0xb03050, roughness: 0.4, metalness: 0.1, side: THREE.FrontSide,
-    transparent: true, opacity: 0.12
-  });
-  const inner = new THREE.Mesh(wallGeo.clone(), innerMat);
-  vesselGroup.add(inner);
+    color: 0xc23a58, emissive: 0x80101f, emissiveIntensity: 0.25,
+    roughness: 0.35, metalness: 0.1, side: THREE.FrontSide, transparent: true, opacity: 0.10 });
+  innerMesh = new THREE.Mesh(tubeGeo.clone(), innerMat); vesselGroup.add(innerMesh);
 
-  // Endothelial cell pattern — faint rings of nuclei along the wall
-  const nucGeo = new THREE.SphereGeometry(0.35, 8, 8);
-  const nucMat = new THREE.MeshStandardMaterial({ color: 0x5a0a18, emissive: 0x801025, emissiveIntensity: 0.5, roughness: 0.6 });
-  const nuclei = new THREE.InstancedMesh(nucGeo, nucMat, 260);
-  let n = 0; const m = new THREE.Matrix4();
-  for (let ring = 0; ring < 26; ring++) {
-    const px = -VESSEL_LENGTH/2 + ring * (VESSEL_LENGTH/25);
-    for (let a = 0; a < 10; a++) {
-      const ang = (a/10) * Math.PI*2 + ring*0.3;
-      const r = VESSEL_RADIUS - 0.6;
-      m.makeTranslation(px, Math.sin(ang)*r, Math.cos(ang)*r);
-      nuclei.setMatrixAt(n++, m);
+  // endothelial nuclei studded along the wall (instanced, hugging the tube)
+  const nucGeo = new THREE.SphereGeometry(0.42, 8, 8);
+  const nucMat = new THREE.MeshStandardMaterial({ color: 0x6a0c1a, emissive: 0xb01530, emissiveIntensity: 0.6, roughness: 0.6 });
+  const RINGS = 150, PER = 7, nuclei = new THREE.InstancedMesh(nucGeo, nucMat, RINGS*PER);
+  const m = new THREE.Matrix4(); let idx = 0;
+  for (let r = 0; r < RINGS; r++) {
+    const t = r / RINGS;
+    for (let a = 0; a < PER; a++) {
+      const ang = (a/PER)*Math.PI*2 + r*0.5;
+      placeOnTube(t, R-0.45, ang, _look);
+      m.makeTranslation(_look.x, _look.y, _look.z);
+      nuclei.setMatrixAt(idx++, m);
     }
   }
-  nuclei.count = n;
   vesselGroup.add(nuclei);
-
-  // Faint guide rings to convey depth / flow
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff5a78, transparent: true, opacity: 0.07 });
-  for (let i = -5; i <= 5; i++) {
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(VESSEL_RADIUS-0.3, 0.08, 6, 40), ringMat);
-    ring.position.x = i * 11; ring.rotation.y = Math.PI/2;
-    vesselGroup.add(ring);
-  }
 }
 
-// ---------- Cell construction ------------------------------------------------
+// ---------- glow sprite ------------------------------------------------------
+let glowTex;
+function makeGlowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d').createRadialGradient(64,64,0,64,64,64);
+  const ctx = c.getContext('2d');
+  g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.25,'rgba(255,255,255,0.55)');
+  g.addColorStop(0.6,'rgba(255,255,255,0.12)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+  return new THREE.CanvasTexture(c);
+}
+
+// ---------- cell construction ------------------------------------------------
 function makeCellMesh(type) {
-  const d = CELL_DB[type];
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({
-    color: d.color, roughness: 0.35, metalness: 0.05,
-    emissive: d.color, emissiveIntensity: 0.12
-  });
+  const d = CELL_DB[type]; const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: d.color, roughness: 0.32, metalness: 0.05,
+    emissive: d.color, emissiveIntensity: 0.18 });
 
   if (type === 'rbc') {
-    // biconcave disc via flattened, dented sphere
     const geo = new THREE.SphereGeometry(d.size, 32, 24);
     const p = geo.attributes.position;
-    for (let i = 0; i < p.count; i++) {
-      const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
-      const r = Math.sqrt(x*x+z*z)/d.size;     // 0 centre → 1 rim
-      const dent = (1 - Math.pow(r,2)) * 0.55;  // pinch the middle
-      p.setY(i, (y*0.32) - Math.sign(y)*0 - (y>=0?dent:-dent)*0);
-      // create biconcave: thin centre, thicker rim
-      const thick = 0.18 + 0.42*Math.pow(r,2);
-      p.setY(i, Math.sign(y) * thick * d.size);
-    }
-    geo.computeVertexNormals();
-    const m = new THREE.Mesh(geo, mat); g.add(m);
-  } else if (type === 'platelet') {
-    const geo = new THREE.IcosahedronGeometry(d.size, 1);
-    const p = geo.attributes.position;
-    for (let i=0;i<p.count;i++){ p.setY(i, p.getY(i)*0.4); }
+    for (let i=0;i<p.count;i++){ const x=p.getX(i),z=p.getZ(i),y=p.getY(i);
+      const r = Math.min(1, Math.sqrt(x*x+z*z)/d.size);
+      const thick = 0.16 + 0.46*r*r;                 // thin centre, fat rim → biconcave
+      p.setY(i, Math.sign(y)*thick*d.size); }
     geo.computeVertexNormals();
     g.add(new THREE.Mesh(geo, mat));
+  } else if (type === 'platelet') {
+    const geo = new THREE.IcosahedronGeometry(d.size, 1);
+    const p = geo.attributes.position; for (let i=0;i<p.count;i++) p.setY(i, p.getY(i)*0.4);
+    geo.computeVertexNormals(); g.add(new THREE.Mesh(geo, mat));
   } else if (type === 'pathogen') {
-    // rod / capsule shape (built from a cylinder + two end caps; CapsuleGeometry
-    // doesn't exist in three.js r128, so we assemble it manually)
-    const rLen = d.size*1.2, rRad = d.size*0.45;
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(rRad, rRad, rLen, 12), mat);
+    const rLen=d.size*1.2, rRad=d.size*0.45;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(rRad,rRad,rLen,12), mat);
     body.rotation.z = Math.PI/2; g.add(body);
-    const capGeo = new THREE.SphereGeometry(rRad, 12, 8);
-    const cap1 = new THREE.Mesh(capGeo, mat); cap1.position.x =  rLen/2; g.add(cap1);
-    const cap2 = new THREE.Mesh(capGeo, mat); cap2.position.x = -rLen/2; g.add(cap2);
-    // flagellum hint
-    const tailMat = new THREE.MeshBasicMaterial({ color: d.color, transparent:true, opacity:0.6 });
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.08, 1.2, 6), tailMat);
-    tail.position.x = -d.size*1.1; tail.rotation.z = Math.PI/2; g.add(tail);
+    const cap = new THREE.SphereGeometry(rRad,12,8);
+    const c1=new THREE.Mesh(cap,mat); c1.position.x= rLen/2; g.add(c1);
+    const c2=new THREE.Mesh(cap,mat); c2.position.x=-rLen/2; g.add(c2);
   } else {
-    // white blood cells — lumpy spheres with a visible nucleus
     const geo = new THREE.IcosahedronGeometry(d.size, 2);
-    const p = geo.attributes.position; const v = new THREE.Vector3();
+    const p = geo.attributes.position, v = new THREE.Vector3();
     for (let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i);
-      const bump = 1 + 0.12*Math.sin(v.x*5)*Math.cos(v.y*5)*Math.sin(v.z*5);
-      v.multiplyScalar(bump); p.setXYZ(i, v.x, v.y, v.z); }
+      v.multiplyScalar(1 + 0.12*Math.sin(v.x*5)*Math.cos(v.y*5)*Math.sin(v.z*5));
+      p.setXYZ(i, v.x, v.y, v.z); }
     geo.computeVertexNormals();
-    const membrane = new THREE.MeshStandardMaterial({
-      color: d.color, roughness: 0.25, metalness: 0.0,
-      transparent: true, opacity: 0.82, emissive: d.color, emissiveIntensity: 0.15 });
+    const membrane = new THREE.MeshStandardMaterial({ color:d.color, roughness:0.25,
+      transparent:true, opacity:0.85, emissive:d.color, emissiveIntensity:0.2 });
     g.add(new THREE.Mesh(geo, membrane));
-    // nucleus
-    const nucColor = (type==='wbc_lymphocyte') ? 0x2a6fb0 : 0x6a3da0;
-    const nuc = new THREE.Mesh(new THREE.SphereGeometry(d.size*0.55, 16, 16),
-      new THREE.MeshStandardMaterial({ color: nucColor, roughness:0.6, emissive: nucColor, emissiveIntensity:0.25 }));
-    if (type === 'wbc_neutrophil') {
-      // multi-lobed nucleus: a few small spheres
-      for (let i=0;i<3;i++){ const lobe = nuc.clone(); lobe.scale.setScalar(0.5);
-        lobe.position.set((i-1)*d.size*0.4, Math.sin(i)*d.size*0.2, Math.cos(i)*d.size*0.2); g.add(lobe); }
-    } else { g.add(nuc); }
+    const nucCol = (type==='wbc_lymphocyte') ? 0x2a6fb0 : 0x6a3da0;
+    const nuc = new THREE.Mesh(new THREE.SphereGeometry(d.size*0.55,16,16),
+      new THREE.MeshStandardMaterial({ color:nucCol, roughness:0.6, emissive:nucCol, emissiveIntensity:0.3 }));
+    if (type==='wbc_neutrophil') { for (let i=0;i<3;i++){ const lobe=nuc.clone(); lobe.scale.setScalar(0.5);
+        lobe.position.set((i-1)*d.size*0.4, Math.sin(i)*d.size*0.2, Math.cos(i)*d.size*0.2); g.add(lobe);} }
+    else g.add(nuc);
   }
   return g;
 }
 
 function spawnCells(count) {
-  cellGroup = new THREE.Group();
-  scene.add(cellGroup);
-  const types = [];
-  Object.keys(CELL_DB).forEach(t => { for (let i=0;i<CELL_DB[t].abundance;i++) types.push(t); });
-  for (let i = 0; i < count; i++) {
-    const type = types[Math.floor(Math.random()*types.length)];
-    addCell(type, true);
-  }
+  cellGroup = new THREE.Group(); scene.add(cellGroup);
+  glowGroup = new THREE.Group(); scene.add(glowGroup);
+  glowTex = makeGlowTexture();
+  const pool = [];
+  Object.keys(CELL_DB).forEach(t => { for (let i=0;i<CELL_DB[t].abundance;i++) pool.push(t); });
+  for (let i=0;i<count;i++) addCell(pool[(Math.random()*pool.length)|0]);
 }
 
-function addCell(type, randomX) {
-  const data = CELL_DB[type];
+function addCell(type) {
+  const d = CELL_DB[type];
   const mesh = makeCellMesh(type);
-  const angle = Math.random() * Math.PI * 2;
-  // keep cells inside vessel, denser toward centre (faster flow)
-  const radius = Math.sqrt(Math.random()) * (VESSEL_RADIUS - data.size - 1);
-  const x = randomX ? (Math.random()-0.5) * VESSEL_LENGTH : -VESSEL_LENGTH/2 - Math.random()*10;
-  mesh.position.set(x, Math.sin(angle)*radius, Math.cos(angle)*radius);
-  mesh.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
-  mesh.userData = { type, data, isCell: true };
+  const angle = Math.random()*Math.PI*2;
+  const radius = Math.sqrt(Math.random())*(R - d.size - 0.6);
+  const tval = Math.random();
+  mesh.userData = { type, data:d, isCell:true };
   cellGroup.add(mesh);
-  cells.push({
-    mesh, type, data,
-    baseSpeed: 6 + (1 - radius/VESSEL_RADIUS) * 9,   // centre flows faster (parabolic profile)
-    radius, angle,
-    spin: new THREE.Vector3((Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5, (Math.random()-0.5)*1.5),
-    wobble: Math.random()*Math.PI*2
-  });
-  mesh.visible = typeVisible[type];
+
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color:d.color,
+    transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, opacity:0.55 }));
+  glow.scale.setScalar(d.size*4.2); glowGroup.add(glow);
+
+  const c = { mesh, glow, type, data:d, tval, radius, angle,
+    baseSpeed: 4 + (1 - radius/R)*7,        // centre flows faster (parabolic profile)
+    spin: new THREE.Vector3((Math.random()-.5)*1.5,(Math.random()-.5)*1.5,(Math.random()-.5)*1.5),
+    wob: Math.random()*Math.PI*2 };
+  cells.push(c);
+  mesh.visible = glow.visible = typeVisible[type];
+  placeOnTube(tval, radius, angle, mesh.position);
+  glow.position.copy(mesh.position);
 }
 
-// ---------- Plasma particles (ambient flow) ----------------------------------
-let plasma;
-function addPlasmaParticles() {
-  const N = 600; const geo = new THREE.BufferGeometry();
-  const arr = new Float32Array(N*3);
-  for (let i=0;i<N;i++){
-    const a = Math.random()*Math.PI*2; const r = Math.sqrt(Math.random())*(VESSEL_RADIUS-0.5);
-    arr[i*3] = (Math.random()-0.5)*VESSEL_LENGTH;
-    arr[i*3+1] = Math.sin(a)*r; arr[i*3+2] = Math.cos(a)*r;
-  }
-  geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
-  const mat = new THREE.PointsMaterial({ color: 0xffaabf, size: 0.18, transparent:true, opacity:0.5 });
+// ---------- plasma particles -------------------------------------------------
+function addPlasma() {
+  const N = 700; const arr = new Float32Array(N*3); plasmaData = [];
+  for (let i=0;i<N;i++){ const t=Math.random(), a=Math.random()*Math.PI*2, r=Math.sqrt(Math.random())*(R-0.4);
+    plasmaData.push({t, a, r}); placeOnTube(t, r, a, _look);
+    arr[i*3]=_look.x; arr[i*3+1]=_look.y; arr[i*3+2]=_look.z; }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
+  const mat = new THREE.PointsMaterial({ map: glowTex || makeGlowTexture(), color:0xffaabf, size:0.7,
+    transparent:true, opacity:0.6, blending:THREE.AdditiveBlending, depthWrite:false });
   plasma = new THREE.Points(geo, mat); scene.add(plasma);
 }
+let plasmaData = [];
 
-// ---------- Animation loop ---------------------------------------------------
+// ---------- bloom ------------------------------------------------------------
+function setupBloom() {
+  if (!BLOOM_OK || !THREE.EffectComposer || !THREE.UnrealBloomPass || !THREE.RenderPass) { BLOOM_OK = false; return; }
+  try {
+    composer = new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.85, 0.65, 0.82);
+    composer.addPass(bloomPass);
+  } catch (e) { BLOOM_OK = false; composer = null; }
+}
+function renderFrame() { if (composer) composer.render(); else renderer.render(scene, camera); }
+
+// ---------- heartbeat --------------------------------------------------------
+// returns a 0..1 envelope: a strong "lub" then a softer "dub" per beat
+function beatEnvelope(phase) {
+  const lub = Math.exp(-Math.pow((phase-0.10)/0.05, 2));
+  const dub = 0.55*Math.exp(-Math.pow((phase-0.32)/0.06, 2));
+  return Math.min(1, lub + dub);
+}
+// a stylised ECG (PQRST) trace for the monitor
+function ecgValue(phase) {
+  let v = 0;
+  v += 0.12*Math.exp(-Math.pow((phase-0.16)/0.025,2));     // P
+  v -= 0.08*Math.exp(-Math.pow((phase-0.27)/0.012,2));     // Q
+  v += 1.00*Math.exp(-Math.pow((phase-0.30)/0.010,2));     // R
+  v -= 0.22*Math.exp(-Math.pow((phase-0.33)/0.014,2));     // S
+  v += 0.28*Math.exp(-Math.pow((phase-0.52)/0.045,2));     // T
+  return v;
+}
+
+// ---------- animation --------------------------------------------------------
+let rideT = 0;                 // rider parameter along the curve
+const lookOffset = { x: 0, y: 0 };
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
+
+  // advance heartbeat
+  beatPhase += dt * (bpm/60);
+  if (beatPhase >= 1) beatPhase -= 1;
+  const env = beatEnvelope(beatPhase);
+  const pulse = 0.55 + env * 0.9;          // flow multiplier — surges each beat
+  if (env > 0.6 && performance.now() - lastBeatPulse > 250) { lastBeatPulse = performance.now(); if (audioOn) thump(); }
+
+  // throb the wall + bloom with the beat
+  wallMesh.material.emissiveIntensity = 0.45 + env*0.5;
+  if (bloomPass) bloomPass.strength = 0.7 + env*0.55;
+  document.getElementById('vignette').style.filter = `brightness(${1 + env*0.12})`;
+
   if (!paused) {
-    const eff = flowSpeed;
+    const eff = flowSpeed * pulse;
     for (const c of cells) {
-      c.mesh.position.x += c.baseSpeed * eff * dt;
-      c.wobble += dt;
-      // gentle radial wobble to feel alive
-      const wob = Math.sin(c.wobble*2) * 0.15;
-      c.mesh.position.y = Math.sin(c.angle)*(c.radius+wob);
-      c.mesh.position.z = Math.cos(c.angle)*(c.radius+wob);
+      c.tval += (c.baseSpeed * eff * dt) / curveLen;
+      if (c.tval > 1) c.tval -= 1;
+      c.wob += dt;
+      const rr = c.radius + Math.sin(c.wob*2)*0.15;
+      placeOnTube(c.tval, rr, c.angle, c.mesh.position);
+      c.glow.position.copy(c.mesh.position);
       c.mesh.rotation.x += c.spin.x*dt; c.mesh.rotation.y += c.spin.y*dt; c.mesh.rotation.z += c.spin.z*dt;
-      if (c.mesh.position.x > VESSEL_LENGTH/2 + 4) {
-        c.mesh.position.x = -VESSEL_LENGTH/2 - Math.random()*6;
-        c.angle = Math.random()*Math.PI*2;
-        c.radius = Math.sqrt(Math.random())*(VESSEL_RADIUS - c.data.size - 1);
-        c.baseSpeed = 6 + (1 - c.radius/VESSEL_RADIUS)*9;
-      }
     }
-    // drift plasma
+    // plasma drifts along the tube too
     const pp = plasma.geometry.attributes.position;
-    for (let i=0;i<pp.count;i++){ let x = pp.getX(i) + 11*eff*dt;
-      if (x > VESSEL_LENGTH/2) x = -VESSEL_LENGTH/2; pp.setX(i,x); }
+    for (let i=0;i<plasmaData.length;i++){ const d=plasmaData[i];
+      d.t += (9*eff*dt)/curveLen; if (d.t>1) d.t-=1;
+      placeOnTube(d.t, d.r, d.a, _look);
+      pp.setXYZ(i, _look.x, _look.y, _look.z); }
     pp.needsUpdate = true;
   }
-  controls.update();
-  if (focusTarget) updateFocus(dt);
-  renderer.render(scene, camera);
+
+  if (rideMode) updateRide(dt, env); else controls.update();
+  if (focusTarget && !rideMode) updateFocus(dt);
+
+  drawECG(dt);
+  renderFrame();
 }
 
-// ---------- Interaction ------------------------------------------------------
+// ---------- ride mode --------------------------------------------------------
+function updateRide(dt, env) {
+  const eff = flowSpeed * (0.55 + env*0.9);
+  rideT += ((4.5*eff*dt) / curveLen);
+  if (rideT > 1) rideT -= 1;
+
+  frameAt(rideT);
+  // camera sits just off-centre, swaying gently, riding the current
+  const sway = Math.sin(performance.now()*0.0009)*1.1;
+  const bob  = Math.sin(performance.now()*0.0016)*0.5 + env*0.4;   // jolt on each beat
+  camera.position.copy(_p)
+    .addScaledVector(_n, bob)
+    .addScaledVector(_b, sway);
+  camera.up.copy(_n);
+
+  // look ahead down the vessel, plus mouse free-look
+  frameAt(rideT + 0.012);
+  _look.copy(_p)
+    .addScaledVector(_b, lookOffset.x * 6)
+    .addScaledVector(_n, lookOffset.y * 6 + bob);
+  camera.lookAt(_look);
+
+  riderLight.position.copy(camera.position).addScaledVector(_t, 4);
+}
+
+// ---------- interaction ------------------------------------------------------
 let hovered = null;
-function onHover(e) {
-  mouse.x = (e.clientX/window.innerWidth)*2 - 1;
-  mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
+function onPointerMove(e) {
+  mouse.x = (e.clientX/innerWidth)*2 - 1;
+  mouse.y = -(e.clientY/innerHeight)*2 + 1;
+  if (rideMode) { lookOffset.x = mouse.x; lookOffset.y = mouse.y; return; }
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(cellGroup.children, true);
-  const hit = hits.find(h => topCell(h.object))?.object;
-  const cell = hit ? topCell(hit) : null;
+  const hit = raycaster.intersectObjects(cellGroup.children, true).find(h => topCell(h.object));
+  const cell = hit ? topCell(hit.object) : null;
   document.body.style.cursor = cell ? 'pointer' : 'default';
-  if (hovered && hovered !== cell) setEmissive(hovered, false);
-  if (cell) setEmissive(cell, true);
+  if (hovered && hovered !== cell) setHover(hovered,false);
+  if (cell) setHover(cell,true);
   hovered = cell;
 }
-
-function topCell(obj) { let o = obj; while (o && !o.userData.isCell) o = o.parent; return o; }
-function setEmissive(group, on) {
-  group.traverse(m => { if (m.material && m.material.emissiveIntensity !== undefined) {
-    m.material.emissiveIntensity = on ? 0.6 : (m.userData.baseEmissive ?? 0.12);
-    if (m.userData.baseEmissive === undefined) m.userData.baseEmissive = 0.12; }});
-  group.scale.setScalar(on ? 1.15 : 1);
-}
+function topCell(o){ while(o && !o.userData.isCell) o=o.parent; return o; }
+function setHover(group,on){ group.scale.setScalar(on?1.18:1);
+  group.traverse(m=>{ if(m.material && m.material.emissiveIntensity!==undefined){
+    if(m.userData.base===undefined) m.userData.base=m.material.emissiveIntensity;
+    m.material.emissiveIntensity = on?0.8:m.userData.base; }}); }
 
 function onPointerDown(e) {
-  mouse.x = (e.clientX/window.innerWidth)*2 - 1;
-  mouse.y = -(e.clientY/window.innerHeight)*2 + 1;
+  mouse.x = (e.clientX/innerWidth)*2 - 1; mouse.y = -(e.clientY/innerHeight)*2 + 1;
   raycaster.setFromCamera(mouse, camera);
-  const hits = raycaster.intersectObjects(cellGroup.children, true);
-  const hit = hits.find(h => topCell(h.object));
-  if (hit) { const cell = topCell(hit.object); showInfo(cell.userData.type); flyTo(cell); }
+  const hit = raycaster.intersectObjects(cellGroup.children, true).find(h => topCell(h.object));
+  if (hit) { const cell = topCell(hit.object); showInfo(cell.userData.type); if (!rideMode) flyTo(cell); }
 }
+function onWheelRide(e){ if(!rideMode) return; // scroll changes pace while riding
+  flowSpeed = Math.max(0, Math.min(3, flowSpeed + (e.deltaY>0?-0.12:0.12)));
+  document.getElementById('speed').value = flowSpeed; }
 
-// ---------- Info panel -------------------------------------------------------
+// ---------- info panel -------------------------------------------------------
 function showInfo(type) {
   const d = CELL_DB[type];
-  document.getElementById('info-tag').textContent = d.latin;
-  document.getElementById('info-tag').style.background = d.tagColor;
-  document.getElementById('info-tag').style.color = '#1a0008';
+  const tag = document.getElementById('info-tag');
+  tag.textContent = d.latin; tag.style.background = d.tagColor; tag.style.color = '#1a0008';
   document.getElementById('info-title').textContent = d.name;
   document.getElementById('info-latin').textContent = '“' + d.fact + '”';
-  const stats = Object.entries(d.stats).map(([k,v]) =>
-    `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  const stats = Object.entries(d.stats).map(([k,v]) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
   document.getElementById('info-body').innerHTML = `
     <section><h4>What it is</h4><p>${d.what}</p></section>
     <section><h4>Key stats</h4><div class="stat-grid">${stats}</div></section>
     <section><h4>What it does</h4><ul>${d.does.map(x=>`<li>${x}</li>`).join('')}</ul></section>
-    <section><h4>What affects it</h4><ul>${d.affects.map(x=>`<li>${x}</li>`).join('')}</ul></section>
-  `;
+    <section><h4>What affects it</h4><ul>${d.affects.map(x=>`<li>${x}</li>`).join('')}</ul></section>`;
   document.getElementById('info').classList.add('open');
 }
-document.getElementById('info-close').onclick = () => {
-  document.getElementById('info').classList.remove('open'); focusTarget = null; };
+document.getElementById('info-close').onclick = () => { document.getElementById('info').classList.remove('open'); focusTarget=null; };
 
-// ---------- Camera focus / fly-to --------------------------------------------
-let focusTarget = null, focusFrom = null, focusProgress = 0;
-function flyTo(cell) {
-  focusTarget = cell;
-  focusFrom = { pos: camera.position.clone(), target: controls.target.clone() };
-  focusProgress = 0;
-}
-function updateFocus(dt) {
-  focusProgress = Math.min(1, focusProgress + dt*1.4);
-  const t = focusProgress*focusProgress*(3-2*focusProgress); // smoothstep
-  const cp = focusTarget.position.clone();
-  const desired = cp.clone().add(new THREE.Vector3(0, 2.2, 7));
+// ---------- explore-mode fly-to ----------------------------------------------
+let focusTarget=null, focusFrom=null, focusProg=0;
+function flyTo(cell){ controls.autoRotate=false; focusTarget=cell;
+  focusFrom={pos:camera.position.clone(), target:controls.target.clone()}; focusProg=0; }
+function updateFocus(dt){ focusProg=Math.min(1, focusProg+dt*1.3);
+  const t=focusProg*focusProg*(3-2*focusProg);
+  const cp=focusTarget.position.clone();
   controls.target.lerpVectors(focusFrom.target, cp, t);
-  camera.position.lerpVectors(focusFrom.pos, desired, t);
-  if (focusProgress >= 1) focusFrom = { pos: camera.position.clone(), target: controls.target.clone() };
-}
+  camera.position.lerpVectors(focusFrom.pos, cp.clone().add(new THREE.Vector3(0,2.4,8)), t);
+  if (focusProg>=1) focusFrom={pos:camera.position.clone(), target:controls.target.clone()}; }
 
-// ---------- Legend & filtering -----------------------------------------------
-function buildLegend() {
-  const box = document.getElementById('legend-items');
-  box.innerHTML = '';
-  Object.keys(CELL_DB).forEach(type => {
-    const d = CELL_DB[type];
-    const el = document.createElement('div');
-    el.className = 'legend-item';
-    el.innerHTML = `<span class="swatch" style="background:${d.tagColor}"></span>
-      <span>${d.name}</span><span class="count" id="cnt-${type}"></span>`;
-    el.onclick = () => toggleType(type, el);
-    box.appendChild(el);
-  });
+// ---------- legend & filter --------------------------------------------------
+function buildLegend(){
+  const box=document.getElementById('legend-items'); box.innerHTML='';
+  Object.keys(CELL_DB).forEach(type=>{ const d=CELL_DB[type];
+    const el=document.createElement('div'); el.className='legend-item'+(typeVisible[type]?'':' off');
+    el.innerHTML=`<span class="swatch" style="background:${d.tagColor}"></span><span>${d.name}</span><span class="count" id="cnt-${type}"></span>`;
+    el.onclick=()=>toggleType(type,el); box.appendChild(el); });
   updateCounts();
 }
-function toggleType(type, el) {
-  typeVisible[type] = !typeVisible[type];
-  el.classList.toggle('off', !typeVisible[type]);
-  cells.forEach(c => { if (c.type === type) c.mesh.visible = typeVisible[type]; });
-}
-function updateCounts() {
-  const counts = {}; cells.forEach(c => counts[c.type] = (counts[c.type]||0)+1);
-  Object.keys(CELL_DB).forEach(t => {
-    const e = document.getElementById('cnt-'+t); if (e) e.textContent = counts[t]||0; });
+function toggleType(type,el){ typeVisible[type]=!typeVisible[type]; el.classList.toggle('off',!typeVisible[type]);
+  cells.forEach(c=>{ if(c.type===type){ c.mesh.visible=typeVisible[type]; c.glow.visible=typeVisible[type]; }}); }
+function updateCounts(){ const counts={}; cells.forEach(c=>counts[c.type]=(counts[c.type]||0)+1);
+  Object.keys(CELL_DB).forEach(t=>{ const e=document.getElementById('cnt-'+t); if(e) e.textContent=counts[t]||0; }); }
+
+// ---------- guided tour ------------------------------------------------------
+function buildTour(){
+  const list=document.getElementById('tour-list');
+  Object.keys(CELL_DB).forEach(type=>{ const d=CELL_DB[type];
+    const b=document.createElement('button'); b.className='btn'; b.style.cssText='font-size:12px;padding:6px 10px;text-align:left';
+    b.textContent='→ Visit a '+d.name;
+    b.onclick=()=>{ if(rideMode) toggleRide(false);
+      if(!typeVisible[type]){ typeVisible[type]=true; buildLegend(); cells.forEach(c=>{if(c.type===type){c.mesh.visible=true;c.glow.visible=true;}}); }
+      const pool=cells.filter(c=>c.type===type && c.mesh.visible); if(!pool.length) return;
+      const pick=pool.reduce((a,b)=> a.mesh.position.distanceTo(camera.position)<b.mesh.position.distanceTo(camera.position)?a:b);
+      showInfo(type); flyTo(pick.mesh); };
+    list.appendChild(b); });
 }
 
-// ---------- Guided tour ------------------------------------------------------
-function buildTour() {
-  const list = document.getElementById('tour-list');
-  Object.keys(CELL_DB).forEach(type => {
-    const d = CELL_DB[type];
-    const b = document.createElement('button');
-    b.className = 'btn'; b.style.fontSize = '12px'; b.style.padding = '6px 10px';
-    b.style.textAlign = 'left';
-    b.textContent = '→ Visit a ' + d.name;
-    b.onclick = () => {
-      // find nearest visible cell of this type, ensure visible
-      if (!typeVisible[type]) { typeVisible[type] = true; buildLegend(); cells.forEach(c=>{if(c.type===type)c.mesh.visible=true;}); }
-      const pool = cells.filter(c => c.type === type);
-      if (!pool.length) return;
-      const pick = pool.reduce((a,b)=> a.mesh.position.distanceTo(camera.position) < b.mesh.position.distanceTo(camera.position) ? a : b);
-      showInfo(type); flyTo(pick.mesh);
-    };
-    list.appendChild(b);
-  });
+// ---------- ECG monitor ------------------------------------------------------
+let ecgCtx, ecgBuf, ecgW, ecgH, ecgWrite=0, ecgAccum=0;
+function buildECG(){ const cv=document.getElementById('ecg-canvas'); ecgCtx=cv.getContext('2d');
+  ecgW=cv.width; ecgH=cv.height; ecgBuf=new Array(ecgW).fill(0); }
+function drawECG(dt){
+  // feed samples at a steady rate so the trace scrolls smoothly
+  ecgAccum += dt; const step=1/240;
+  while (ecgAccum>0){ ecgAccum-=step; ecgBuf[ecgWrite]=ecgValue(beatPhase); ecgWrite=(ecgWrite+1)%ecgW; }
+  ecgCtx.clearRect(0,0,ecgW,ecgH);
+  ecgCtx.strokeStyle='rgba(255,90,120,0.18)'; ecgCtx.lineWidth=1;
+  ecgCtx.beginPath(); ecgCtx.moveTo(0,ecgH*0.62); ecgCtx.lineTo(ecgW,ecgH*0.62); ecgCtx.stroke();
+  ecgCtx.strokeStyle='#5bff9b'; ecgCtx.lineWidth=1.6; ecgCtx.shadowColor='#5bff9b'; ecgCtx.shadowBlur=6;
+  ecgCtx.beginPath();
+  for (let x=0;x<ecgW;x++){ const v=ecgBuf[(ecgWrite+x)%ecgW]; const y=ecgH*0.62 - v*ecgH*0.5;
+    if(x===0) ecgCtx.moveTo(x,y); else ecgCtx.lineTo(x,y); }
+  ecgCtx.stroke(); ecgCtx.shadowBlur=0;
 }
 
-// ---------- Controls UI ------------------------------------------------------
-document.getElementById('btn-pause').onclick = (e) => {
-  paused = !paused; e.target.textContent = paused ? '▶ Play' : '⏸ Pause';
-  e.target.classList.toggle('active', paused);
-};
-document.getElementById('speed').oninput = (e) => { flowSpeed = parseFloat(e.target.value); };
-document.getElementById('btn-reset').onclick = () => {
-  focusTarget = null;
-  controls.target.set(0,0,0);
-  camera.position.set(0,6,38);
-};
-document.getElementById('btn-labels').onclick = (e) => {
-  showLabels = !showLabels; e.target.classList.toggle('active', showLabels);
-  toggleLabels(showLabels);
-};
-document.getElementById('btn-view').onclick = (e) => {
-  crossSection = !crossSection; e.target.classList.toggle('active', crossSection);
-  wallMesh.material.opacity = crossSection ? 0.22 : 0.92;
-  wallMesh.material.side = crossSection ? THREE.DoubleSide : THREE.BackSide;
-  scene.fog.density = crossSection ? 0.004 : 0.011;
-  if (crossSection) { camera.position.set(0, 26, 30); controls.target.set(0,0,0); focusTarget=null; }
-};
-
-// ---------- Floating labels (sprites) ----------------------------------------
-let labelSprites = [];
-function toggleLabels(on) {
-  labelSprites.forEach(s => scene.remove(s)); labelSprites = [];
-  if (!on) return;
-  const seen = {};
-  // label one representative of each type currently visible
-  Object.keys(CELL_DB).forEach(type => {
-    if (!typeVisible[type]) return;
-    const c = cells.find(c => c.type === type && c.mesh.visible);
-    if (!c) return;
-    const spr = makeLabel(CELL_DB[type].name, CELL_DB[type].tagColor);
-    spr.userData.follow = c.mesh; labelSprites.push(spr); scene.add(spr);
-  });
+// ---------- controls UI ------------------------------------------------------
+document.getElementById('btn-ride').onclick = () => toggleRide(!rideMode);
+function toggleRide(on){
+  rideMode = on;
+  const btn=document.getElementById('btn-ride');
+  btn.textContent = on ? '🚪 Exit ride' : '🎢 Ride the bloodstream';
+  btn.classList.toggle('active', on);
+  controls.enabled = !on; controls.autoRotate = false;
+  document.getElementById('vignette').classList.toggle('ride', on);
+  riderLight.intensity = on ? 2.4 : 0;
+  document.getElementById('info').classList.remove('open');
+  const badge=document.getElementById('ridebadge'); badge.style.opacity = on?1:0;
+  if (on) { rideT = 0; camera.fov = 78; setTimeout(()=>{badge.style.opacity=0;}, 3500); }
+  else { camera.fov = 58; camera.up.set(0,1,0); camera.position.set(0,10,60); controls.target.set(0,0,0); }
+  camera.updateProjectionMatrix();
 }
-function makeLabel(text, color) {
-  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64;
-  const ctx = cv.getContext('2d');
-  ctx.fillStyle = 'rgba(10,4,16,0.8)'; roundRect(ctx,2,2,252,60,12); ctx.fill();
-  ctx.strokeStyle = color; ctx.lineWidth = 3; roundRect(ctx,2,2,252,60,12); ctx.stroke();
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 26px Segoe UI, sans-serif';
-  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text, 128, 34);
-  const tex = new THREE.CanvasTexture(cv);
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest:false, transparent:true }));
-  spr.scale.set(7,1.75,1); return spr;
-}
-function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
-  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+document.getElementById('btn-pause').onclick = e => { paused=!paused;
+  e.target.textContent = paused?'▶ Play':'⏸ Pause'; e.target.classList.toggle('active',paused); };
+document.getElementById('speed').oninput = e => flowSpeed = parseFloat(e.target.value);
+document.getElementById('bpm').oninput = e => { bpm = parseInt(e.target.value);
+  document.getElementById('bpm-readout').textContent = bpm+' BPM'; };
+document.getElementById('btn-reset').onclick = () => { if(rideMode) toggleRide(false);
+  focusTarget=null; controls.target.set(0,0,0); camera.position.set(0,10,60); controls.autoRotate=true; userInteracted=false; };
+document.getElementById('btn-labels').onclick = e => { showLabels=!showLabels; e.target.classList.toggle('active',showLabels); toggleLabels(showLabels); };
+document.getElementById('btn-view').onclick = e => { crossSection=!crossSection; e.target.classList.toggle('active',crossSection);
+  wallMesh.material.opacity = crossSection?0.18:0.96;
+  wallMesh.material.side = crossSection?THREE.DoubleSide:THREE.BackSide;
+  scene.fog.density = crossSection?0.006:0.018; };
+document.getElementById('btn-sound').onclick = e => { toggleAudio(); e.target.classList.toggle('active',audioOn);
+  e.target.textContent = (audioOn?'🔊':'🔇')+' Heartbeat'; };
 
-// update labels each frame
+// ---------- floating labels --------------------------------------------------
+let labelSprites=[];
+function toggleLabels(on){ labelSprites.forEach(s=>scene.remove(s)); labelSprites=[]; if(!on) return;
+  Object.keys(CELL_DB).forEach(type=>{ if(!typeVisible[type]) return;
+    const c=cells.find(c=>c.type===type && c.mesh.visible); if(!c) return;
+    const spr=makeLabel(CELL_DB[type].name, CELL_DB[type].tagColor); spr.userData.follow=c.mesh;
+    labelSprites.push(spr); scene.add(spr); }); }
+function makeLabel(text,color){ const cv=document.createElement('canvas'); cv.width=256; cv.height=64;
+  const ctx=cv.getContext('2d'); ctx.fillStyle='rgba(10,4,16,0.82)'; rr(ctx,2,2,252,60,12); ctx.fill();
+  ctx.strokeStyle=color; ctx.lineWidth=3; rr(ctx,2,2,252,60,12); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 26px Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText(text,128,34); const t=new THREE.CanvasTexture(cv);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true})); s.scale.set(7,1.75,1); return s; }
+function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 (function labelLoop(){ requestAnimationFrame(labelLoop);
-  labelSprites.forEach(s => { if (s.userData.follow) {
-    s.position.copy(s.userData.follow.position); s.position.y += 2.2; } });
-})();
+  labelSprites.forEach(s=>{ if(s.userData.follow){ s.position.copy(s.userData.follow.position); s.position.y+=2.4; }}); })();
 
-// ---------- Fun fact ticker --------------------------------------------------
-let factIdx = 0;
-function startFactTicker() {
-  const el = document.getElementById('fact-txt');
-  el.textContent = VESSEL_FACTS[0];
-  setInterval(() => {
-    el.style.opacity = 0;
-    setTimeout(() => { factIdx = (factIdx+1) % VESSEL_FACTS.length;
-      el.textContent = VESSEL_FACTS[factIdx]; el.style.opacity = 1; }, 500);
-  }, 7000);
-}
+// ---------- synthesized heartbeat (WebAudio) ---------------------------------
+let audioCtx=null, audioOn=false;
+function toggleAudio(){ audioOn=!audioOn;
+  if (audioOn && !audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audioOn=false; } }
+  if (audioOn && audioCtx && audioCtx.state==='suspended') audioCtx.resume(); }
+function thump(){ if(!audioCtx) return; const now=audioCtx.currentTime;
+  hit(now, 55, 0.9, 0.16); hit(now+0.16, 42, 0.6, 0.22); }       // lub … dub
+function hit(t,freq,gain,dur){ const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.type='sine'; o.frequency.setValueAtTime(freq*1.6,t); o.frequency.exponentialRampToValueAtTime(freq,t+0.06);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(gain,t+0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g).connect(audioCtx.destination);
+  o.start(t); o.stop(t+dur+0.02); }
 
-// ---------- Resize -----------------------------------------------------------
-function onResize() {
-  camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
+// ---------- fun fact ticker --------------------------------------------------
+let factIdx=0;
+function startFactTicker(){ const el=document.getElementById('fact-txt'); el.textContent=VESSEL_FACTS[0];
+  setInterval(()=>{ el.style.opacity=0; setTimeout(()=>{ factIdx=(factIdx+1)%VESSEL_FACTS.length;
+    el.textContent=VESSEL_FACTS[factIdx]; el.style.opacity=1; },500); }, 8000); }
 
-// periodically refresh counts as cells recycle (counts are stable but keep UI live)
-setInterval(updateCounts, 2000);
+// ---------- resize -----------------------------------------------------------
+function onResize(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  if (composer) composer.setSize(innerWidth,innerHeight);
+  if (bloomPass) bloomPass.setSize(innerWidth,innerHeight); }
+setInterval(updateCounts, 2500);
 
-if (typeof THREE === 'undefined') {
-  loadFail('Three.js core');
-} else if (typeof THREE.OrbitControls === 'undefined') {
-  loadFail('OrbitControls');
-} else {
-  try {
-    init();
-  } catch (err) {
-    console.error(err);
-    const l = document.getElementById('loader');
-    if (l) l.innerHTML = '<div style="max-width:440px;text-align:center;padding:24px">' +
-      '<div style="font-size:40px">⚠️</div>' +
-      '<p style="color:#ff8da0;margin-top:14px;font-size:16px">Something went wrong starting the simulation.</p>' +
-      '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">' +
-      (err && err.message ? err.message : err) + '</small></div>';
-  }
-}
+// ---------- boot -------------------------------------------------------------
+if (typeof THREE === 'undefined') { loadFail('Three.js core'); }
+else if (typeof THREE.OrbitControls === 'undefined') { loadFail('OrbitControls'); }
+else { try { init(); } catch(err){ console.error(err);
+  const l=document.getElementById('loader'); if(l) l.innerHTML='<div style="max-width:440px;text-align:center;padding:24px">'+
+    '<div style="font-size:40px">⚠️</div><p style="color:#ff8da0;margin-top:14px;font-size:16px">Something went wrong starting the simulation.</p>'+
+    '<small style="display:block;margin-top:10px;color:#b89aa6;line-height:1.5">'+(err&&err.message?err.message:err)+'</small></div>'; } }
 </script>
 </body>
 </html>

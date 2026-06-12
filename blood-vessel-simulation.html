@@ -56,6 +56,20 @@
   .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
   input[type=range] { width: 96px; accent-color: var(--accent); cursor: pointer; }
 
+  /* Scenarios panel */
+  #scenarios { left: 16px; top: 132px; padding: 12px 14px; width: 250px; }
+  #scenarios h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 9px; }
+  .scn { display:block; width:100%; text-align:left; margin-bottom:6px; }
+  .scn .em { font-size:11px; color:var(--muted); display:block; margin-top:2px; font-weight:400; }
+  .scn.active .em { color:#1a0008; }
+
+  /* Scenario caption banner */
+  #caption { top: 70px; left: 50%; transform: translateX(-50%); max-width: 620px; width: max-content;
+    padding: 11px 20px; text-align: center; opacity: 0; transition: opacity 0.5s; pointer-events: none;
+    border-color: rgba(79,195,247,0.4); }
+  #caption.show { opacity: 1; }
+  #caption b { color: #ffd9e0; } #caption span { color: #cfe9ff; font-size: 13px; }
+
   #legend { top: 16px; right: 16px; padding: 12px 14px; width: 224px; }
   #legend h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 10px; }
   .legend-item { display: flex; align-items: center; gap: 9px; padding: 6px 8px;
@@ -136,6 +150,16 @@
   <p>Drag to orbit · scroll to zoom · click a cell to inspect it. Hit <b>Ride the bloodstream</b> to flow through the vessel — or on a VR headset, tap <b>ENTER VR</b> (top) to step inside for real.</p>
 </div>
 
+<div id="scenarios" class="panel">
+  <h3>Vessel scenarios</h3>
+  <button class="btn scn active" id="scn-healthy">❤️ Healthy<span class="em">Normal, calm blood flow</span></button>
+  <button class="btn scn" id="scn-infection">🦠 Infection<span class="em">White cells hunt & engulf bacteria</span></button>
+  <button class="btn scn" id="scn-clot">🩹 Injury & clot<span class="em">Platelets seal a wound</span></button>
+  <button class="btn scn" id="scn-plaque">🧈 Plaque buildup<span class="em">A fatty deposit narrows the vessel</span></button>
+</div>
+
+<div id="caption" class="panel"></div>
+
 <div id="legend" class="panel">
   <h3>Cells in view</h3>
   <div id="legend-items"></div>
@@ -163,6 +187,7 @@
 
 <div id="controls" class="panel">
   <button class="btn primary" id="btn-ride">🎢 Ride the bloodstream</button>
+  <button class="btn" id="btn-tour">🎬 Tour</button>
   <button class="btn" id="btn-pause">⏸ Pause</button>
   <div class="ctrl-group">Flow <input type="range" id="speed" min="0" max="3" step="0.05" value="1"></div>
   <button class="btn active" id="btn-dof">🔭 Depth of field</button>
@@ -428,6 +453,7 @@ function init() {
   buildCurve();
   buildVessel();
   spawnCells(175);
+  buildScenarioObjects();
   addPlasma();
   makeMotes();
   setupBloom();
@@ -708,11 +734,13 @@ function addCell(type) {
   const c = { mesh, glow, type, data:d, tval, radius, angle,
     baseSpeed: 4 + (1 - radius/R)*7,        // centre flows faster (parabolic profile)
     spin: new THREE.Vector3((Math.random()-.5)*1.5,(Math.random()-.5)*1.5,(Math.random()-.5)*1.5),
-    wob: Math.random()*Math.PI*2 };
+    wob: Math.random()*Math.PI*2,
+    active: true, frozen: false, target: null, scaleMul: 1, scaleTarget: 1, extra: false };
   cells.push(c);
   mesh.visible = glow.visible = typeVisible[type];
   placeOnTube(tval, radius, angle, mesh.position);
   glow.position.copy(mesh.position);
+  return c;
 }
 
 // ---------- plasma particles -------------------------------------------------
@@ -895,16 +923,33 @@ function animate() {
 
   updateMotes(dt);
 
+  try { updateScenario(dt); } catch (e) { console.error(e); }
+
   if (!paused) {
     const eff = flowSpeed * gPulse;
     for (const c of cells) {
+      // engulf / respawn scaling animation (used by phagocytosis)
+      if (c.scaleMul !== 1 || c.scaleTarget !== 1) {
+        c.scaleMul += (c.scaleTarget - c.scaleMul) * dt * 4;
+        c.mesh.scale.setScalar(Math.max(0.001, c.scaleMul));
+        if (c.scaleTarget === 0 && c.scaleMul < 0.05) respawnBacterium(c);
+      }
+      if (c.frozen) continue;                 // stuck in a clot — don't move
       c.tval += (c.baseSpeed * eff * dt) / curveLen;
       if (c.tval > 1) c.tval -= 1;
       c.wob += dt;
-      const rr = c.radius + Math.sin(c.wob*2)*0.15;
+      let rr = c.radius + Math.sin(c.wob*2)*0.15;
+      if (scenario === 'plaque') {            // squeeze through the narrowing, faster
+        const dd = circDist(c.tval, PLAQUE_T);
+        if (dd < 0.05) { rr *= 0.35 + 0.65*(dd/0.05); c.tval += (0.05-dd)*eff*dt*4; }
+      }
       placeOnTube(c.tval, rr, c.angle, c.mesh.position);
       c.glow.position.copy(c.mesh.position);
       c.mesh.rotation.x += c.spin.x*dt; c.mesh.rotation.y += c.spin.y*dt; c.mesh.rotation.z += c.spin.z*dt;
+      if (c.type === 'rbc') {                  // oxygen exchange: bright → dark around the loop
+        const oxy = 0.5 + 0.5*Math.cos(c.tval*Math.PI*2);
+        c.mesh.children[0].material.color.copy(RBC_OXY).lerp(RBC_DEOXY, 1-oxy);
+      }
     }
     // plasma drifts along the tube too
     const pp = plasma.geometry.attributes.position;
@@ -953,6 +998,133 @@ function updateRide(dt, env) {
   riderLight.position.copy(camera.position).addScaledVector(_t, 4);
   riderLight.intensity = 2.2 + env*1.6;
 }
+
+// ---------- scenarios (interactive biology) ----------------------------------
+let scenario = 'healthy';
+const PLAQUE_T = 0.62, WOUND_T = 0.32, WOUND_A = Math.PI*0.5, MAX_CLOT = 40;
+const RBC_OXY = new THREE.Color(0xff2233), RBC_DEOXY = new THREE.Color(0x7a1018);
+let woundMesh=null, clotMass=null, plaqueMesh=null, clotCount=0, extraBacteria=[], captionTimer=null;
+const SCN_CAPTIONS = {
+  healthy: null,
+  infection: { b:'Infection', s:'Bacteria have entered the bloodstream — watch neutrophils and monocytes chase them down and engulf them, a process called phagocytosis.' },
+  clot:      { b:'Injury & clotting', s:'The wall is wounded (the glowing patch). Platelets rush in, stick to it and to each other, and build a clot to seal the breach — haemostasis.' },
+  plaque:    { b:'Atherosclerosis', s:'A fatty plaque bulges into the vessel and narrows it, forcing blood to speed up through the gap. Such deposits can rupture and trigger clots.' },
+  engulf:    { b:'Phagocytosis!', s:'A white blood cell just engulfed and destroyed a bacterium.' },
+  clotDone:  { b:'Clot formed', s:'Enough platelets have plugged the wound. In the body, fibrin threads would now reinforce the seal.' }
+};
+function circDist(a,b){ const d=Math.abs(a-b); return Math.min(d,1-d); }
+function shortestDelta(from,to){ let d=to-from; if(d>0.5)d-=1; if(d<-0.5)d+=1; return d; }
+function angleDelta(from,to){ let d=to-from; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; return d; }
+
+function buildScenarioObjects(){
+  placeOnTube(WOUND_T, R-0.4, WOUND_A, _look);
+  woundMesh = new THREE.Mesh(new THREE.SphereGeometry(1.7,16,16),
+    new THREE.MeshStandardMaterial({ color:0xff3b30, emissive:0xff2a1a, emissiveIntensity:0.8, roughness:0.5 }));
+  woundMesh.position.copy(_look); woundMesh.scale.set(1.5,1.5,0.5); woundMesh.visible=false; scene.add(woundMesh);
+  clotMass = new THREE.Mesh(new THREE.IcosahedronGeometry(1,2),
+    new THREE.MeshPhysicalMaterial({ color:0x8e1818, roughness:0.55, clearcoat:0.4, emissive:0x300505, emissiveIntensity:0.3 }));
+  clotMass.position.copy(_look); clotMass.visible=false; clotMass.scale.setScalar(0.01); scene.add(clotMass);
+  placeOnTube(PLAQUE_T, R-0.3, -Math.PI*0.4, _look);
+  plaqueMesh = new THREE.Mesh(new THREE.SphereGeometry(R*0.7,20,16),
+    new THREE.MeshPhysicalMaterial({ color:0xd9c27a, roughness:0.6, clearcoat:0.3, emissive:0x3a3010, emissiveIntensity:0.2 }));
+  plaqueMesh.position.copy(_look); plaqueMesh.scale.set(1.4,0.6,1.7); plaqueMesh.visible=false; scene.add(plaqueMesh);
+}
+
+function showCaption(obj, ms){
+  const el=document.getElementById('caption'); if(!el) return;
+  if(captionTimer){ clearTimeout(captionTimer); captionTimer=null; }
+  if(!obj){ el.classList.remove('show'); return; }
+  el.innerHTML='<b>'+obj.b+'</b> &nbsp; <span>'+obj.s+'</span>'; el.classList.add('show');
+  if(ms&&ms>0) captionTimer=setTimeout(()=>{
+    if(scenario!=='healthy' && SCN_CAPTIONS[scenario] && !tourActive) showCaption(SCN_CAPTIONS[scenario],0);
+    else el.classList.remove('show');
+  }, ms);
+}
+
+function setScenario(name){
+  scenario=name;
+  // reset every special state
+  cells.forEach(c=>{ c.frozen=false; c.target=null;
+    if(c.type==='pathogen'){ c.active=true; if(c.scaleTarget===0){ c.scaleTarget=1; c.scaleMul=1; c.mesh.scale.setScalar(1);} } });
+  clotCount=0; if(clotMass){ clotMass.visible=false; clotMass.scale.setScalar(0.01); }
+  if(woundMesh) woundMesh.visible=false; if(plaqueMesh) plaqueMesh.visible=false;
+  removeExtraBacteria();
+  if(name==='infection') spawnExtraBacteria(12);
+  if(name==='clot'){ if(woundMesh) woundMesh.visible=true; if(clotMass) clotMass.visible=true; }
+  if(name==='plaque' && plaqueMesh) plaqueMesh.visible=true;
+  document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('scn-'+name); if(btn) btn.classList.add('active');
+  showCaption(SCN_CAPTIONS[name], name==='healthy'?0:0);
+}
+function spawnExtraBacteria(n){ for(let i=0;i<n;i++){ const c=addCell('pathogen'); c.extra=true; extraBacteria.push(c);} }
+function removeExtraBacteria(){ for(const c of extraBacteria){ cellGroup.remove(c.mesh); glowGroup.remove(c.glow);
+  const i=cells.indexOf(c); if(i>=0) cells.splice(i,1); } extraBacteria=[]; }
+function respawnBacterium(c){ c.tval=Math.random(); c.angle=Math.random()*Math.PI*2;
+  c.radius=Math.sqrt(Math.random())*(R-c.data.size-0.6); c.active=true; c.frozen=false; c.scaleMul=0.05; c.scaleTarget=1; }
+
+function updateScenario(dt){
+  if(scenario==='infection') updateInfection(dt);
+  else if(scenario==='clot') updateClot(dt);
+}
+function updateInfection(dt){
+  const bacteria = cells.filter(c=>c.type==='pathogen' && c.active && c.scaleTarget===1);
+  const hunters  = cells.filter(c=>c.type==='wbc_neutrophil' || c.type==='wbc_monocyte');
+  for(const h of hunters){
+    if(!h.target || !h.target.active || h.target.scaleTarget===0) h.target = nearestBacterium(h,bacteria);
+    const t=h.target; if(!t) continue;
+    h.tval += shortestDelta(h.tval,t.tval)*Math.min(1,dt*1.1); h.tval=(h.tval+1)%1;
+    h.radius += (t.radius-h.radius)*Math.min(1,dt*2.5);
+    h.angle  += angleDelta(h.angle,t.angle)*Math.min(1,dt*2.5);
+    if(h.mesh.position.distanceTo(t.mesh.position) < (h.data.size+t.data.size)){
+      t.active=false; t.scaleTarget=0; h.target=null;
+      h.scaleTarget=1.3; setTimeout(()=>{ h.scaleTarget=1; },260);
+      showCaption(SCN_CAPTIONS.engulf, 2400);
+    }
+  }
+}
+function nearestBacterium(h,bacteria){ let best=null,bd=1e9;
+  for(const b of bacteria){ const d=circDist(h.tval,b.tval); if(d<bd){bd=d;best=b;} } return best; }
+function updateClot(dt){
+  if(!woundMesh) return;
+  woundMesh.material.emissiveIntensity = 0.6 + Math.sin(tElapsed*4)*0.25;
+  for(const p of cells){
+    if(p.type!=='platelet' || p.frozen || !p.active) continue;
+    if(circDist(p.tval, WOUND_T) < 0.045 && clotCount < MAX_CLOT){
+      p.tval  += shortestDelta(p.tval, WOUND_T)*Math.min(1,dt*3); p.tval=(p.tval+1)%1;
+      p.radius += ((R-1.2)-p.radius)*Math.min(1,dt*3);
+      p.angle += angleDelta(p.angle, WOUND_A)*Math.min(1,dt*3);
+      placeOnTube(p.tval,p.radius,p.angle,_look);
+      if(_look.distanceTo(woundMesh.position) < 2.3){
+        p.frozen=true; p.mesh.position.copy(_look); p.glow.position.copy(_look); clotCount++;
+        clotMass.visible=true; clotMass.scale.setScalar(0.4 + Math.sqrt(clotCount)*0.5);
+        if(clotCount===MAX_CLOT) showCaption(SCN_CAPTIONS.clotDone, 0);
+      }
+    }
+  }
+}
+
+// ---------- cinematic guided tour --------------------------------------------
+let tourActive=false, tourTimers=[];
+function startTour(){
+  if(tourActive){ stopTour(); return; }
+  if(intro) clearIntro(); if(rideMode) toggleRide(false);
+  tourActive=true; document.getElementById('btn-tour').classList.add('active'); controls.autoRotate=false;
+  showCaption({ b:'Guided tour', s:'Sit back — visiting each kind of cell travelling in the bloodstream.' }, 3400);
+  const types=Object.keys(CELL_DB); let delay=3600;
+  types.forEach(type=>{
+    tourTimers.push(setTimeout(()=>{ if(!tourActive) return;
+      if(!typeVisible[type]){ typeVisible[type]=true; buildLegend(); cells.forEach(c=>{if(c.type===type){c.mesh.visible=true;c.glow.visible=true;}}); }
+      const pool=cells.filter(c=>c.type===type && c.active && c.mesh.visible);
+      if(pool.length){ const pick=pool[(Math.random()*pool.length)|0]; showInfo(type); flyTo(pick.mesh);
+        showCaption({ b:CELL_DB[type].name, s:CELL_DB[type].what }, 5400); }
+    }, delay));
+    delay += 5600;
+  });
+  tourTimers.push(setTimeout(stopTour, delay+400));
+}
+function stopTour(){ tourActive=false; const b=document.getElementById('btn-tour'); if(b) b.classList.remove('active');
+  tourTimers.forEach(clearTimeout); tourTimers=[]; controls.autoRotate=true;
+  if(scenario!=='healthy') showCaption(SCN_CAPTIONS[scenario],0); else showCaption(null); }
 
 // ---------- interaction ------------------------------------------------------
 let hovered = null;
@@ -1077,6 +1249,9 @@ function toggleRide(on){
 }
 document.getElementById('btn-pause').onclick = e => { paused=!paused;
   e.target.textContent = paused?'▶ Play':'⏸ Pause'; e.target.classList.toggle('active',paused); };
+document.getElementById('btn-tour').onclick = startTour;
+['healthy','infection','clot','plaque'].forEach(name =>
+  document.getElementById('scn-'+name).onclick = () => setScenario(name));
 document.getElementById('speed').oninput = e => flowSpeed = parseFloat(e.target.value);
 document.getElementById('btn-dof').onclick = e => {
   dofOn = !dofOn; e.target.classList.toggle('active', dofOn);

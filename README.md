@@ -71,6 +71,22 @@ everything else works normally.
 
 > Flow is steady and calm (the heartbeat pulsing is off).
 
+### 🧪 Interactive scenarios (teaching sandbox)
+
+Switch the vessel between four live states from the **Vessel scenarios** panel:
+
+- **Healthy** — normal, calm flow.
+- **Infection** — bacteria enter the blood and white cells actively chase and
+  **engulf** them (phagocytosis), with a caption explaining what's happening.
+- **Injury & clot** — a wound glows on the wall; platelets rush in, stick, and
+  build a growing **clot** to seal it (haemostasis).
+- **Plaque buildup** — a fatty deposit narrows the vessel and blood **speeds up**
+  through the gap (atherosclerosis).
+
+Plus **oxygen exchange**: red blood cells shift from bright oxygenated red to
+darker as they release oxygen around the loop, and a **🎬 Tour** button runs an
+automated narrated journey to each cell type.
+
 ### Learning features
 
 - **Guided tour** — buttons that fly you to each cell type

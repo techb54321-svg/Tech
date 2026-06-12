@@ -133,7 +133,7 @@
 
 <div id="header" class="panel">
   <h1>🩸 3D Blood Vessel Explorer</h1>
-  <p>Drag to orbit · scroll to zoom · click a cell to inspect it. Or hit <b>Ride the bloodstream</b> to flow through the vessel yourself.</p>
+  <p>Drag to orbit · scroll to zoom · click a cell to inspect it. Hit <b>Ride the bloodstream</b> to flow through the vessel — or on a VR headset, tap <b>ENTER VR</b> (top) to step inside for real.</p>
 </div>
 
 <div id="legend" class="panel">
@@ -191,9 +191,11 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="noBloom()"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="noBloom()"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="noBloom()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js" onerror="noVR()"></script>
 <script>
-let BLOOM_OK = true;
+let BLOOM_OK = true, VR_OK = true;
 function noBloom(){ BLOOM_OK = false; }
+function noVR(){ VR_OK = false; }
 function bloomOnly(){ /* OrbitControls failed — fatal */ loadFail('OrbitControls'); }
 function loadFail(what) {
   const l = document.getElementById('loader');
@@ -304,7 +306,8 @@ const VESSEL_FACTS = [
 
 // ---------- globals ----------------------------------------------------------
 let scene, camera, renderer, controls, composer, bloomPass, raycaster, mouse;
-let vesselGroup, cellGroup, glowGroup, wallMesh, innerMesh, plasma;
+let vesselGroup, cellGroup, glowGroup, wallMesh, innerMesh, plasma, playerRig;
+const _vrM = new THREE.Matrix4();
 const cells = [];
 let paused = false, flowSpeed = 1, showLabels = false, crossSection = false, rideMode = false;
 let userInteracted = false;
@@ -401,6 +404,11 @@ function init() {
 
   raycaster = new THREE.Raycaster(); mouse = new THREE.Vector2();
 
+  // player rig — in VR the headset moves the camera; we move the rig down the
+  // vessel so you're carried along while you look around freely. Stays at the
+  // origin (identity) on desktop so the normal camera maths is unaffected.
+  playerRig = new THREE.Group(); scene.add(playerRig); playerRig.add(camera);
+
   // lighting
   scene.add(new THREE.AmbientLight(0x88334a, 1.0));
   const key  = new THREE.PointLight(0xff8fa3, 2.0, 400); key.position.set(30, 40, 50); scene.add(key);
@@ -416,6 +424,7 @@ function init() {
   makeMotes();
   setupBloom();
   setupIntro();
+  setupVR();
 
   buildLegend(); buildTour(); buildECG();
 
@@ -427,7 +436,49 @@ function init() {
   document.getElementById('loader').style.display = 'none';
   startFactTicker();
   setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = 0; }, 8000);
-  animate();
+  renderer.setAnimationLoop(animate);   // setAnimationLoop drives both desktop and WebXR
+}
+
+// ---------- WebXR / VR -------------------------------------------------------
+let inVR = false;
+function setupVR() {
+  if (!VR_OK || typeof VRButton === 'undefined') return;
+  renderer.xr.enabled = true;
+  let btn;
+  try { btn = VRButton.createButton(renderer); } catch (e) { return; }
+  // reposition the auto-generated button so it doesn't sit on top of the controls
+  btn.style.position = 'fixed'; btn.style.left = '50%'; btn.style.top = '16px';
+  btn.style.bottom = 'auto'; btn.style.transform = 'translateX(-50%)'; btn.style.zIndex = 25;
+  document.body.appendChild(btn);
+
+  renderer.xr.addEventListener('sessionstart', () => {
+    inVR = true; clearIntro(); rideMode = false; controls.enabled = false;
+    rideT = 0; riderLight.intensity = 2.4;
+    document.getElementById('vignette').classList.add('ride');
+    if (!audioOn) document.getElementById('btn-sound').click();   // immerse with sound
+  });
+  renderer.xr.addEventListener('sessionend', () => {
+    inVR = false; controls.enabled = true;
+    playerRig.position.set(0,0,0); playerRig.quaternion.identity();
+    camera.position.set(0,10,60); camera.up.set(0,1,0); camera.fov = 58; camera.updateProjectionMatrix();
+    controls.target.set(0,0,0); document.getElementById('vignette').classList.remove('ride');
+  });
+}
+// carry the rig down the vessel; the headset supplies the head look on top
+function updateVR(dt, env) {
+  const eff = flowSpeed * (0.55 + env*0.9);
+  rideT += (4.2*eff*dt) / curveLen; if (rideT > 1) rideT -= 1;
+  frameAt(rideT);
+  const bob = Math.sin(performance.now()*0.0016)*0.3 + env*0.25;
+  playerRig.position.copy(_p).addScaledVector(_n, bob);
+  const zA = _t.clone().multiplyScalar(-1);   // camera looks down -Z → forward = tangent
+  const yA = _n.clone();
+  const xA = new THREE.Vector3().crossVectors(yA, zA).normalize();
+  yA.crossVectors(zA, xA).normalize();
+  _vrM.makeBasis(xA, yA, zA);
+  playerRig.quaternion.setFromRotationMatrix(_vrM);
+  riderLight.position.copy(playerRig.position).addScaledVector(_t, 4);
+  riderLight.intensity = 2.2 + env*1.6;
 }
 
 let riderLight;
@@ -599,7 +650,8 @@ let plasmaData = [];
 // In ride mode they rip backward, giving a visceral feeling of hurtling forward.
 let motes;
 function makeMotes() {
-  scene.add(camera);                  // so the camera's children actually render
+  // camera is already parented to playerRig (which is in the scene), so its
+  // children render. Motes ride with the camera and stream past for parallax.
   const N = 220, arr = new Float32Array(N*3);
   for (let i=0;i<N;i++){ arr[i*3]=(Math.random()-0.5)*30; arr[i*3+1]=(Math.random()-0.5)*20; arr[i*3+2]=-2-Math.random()*46; }
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(arr,3));
@@ -651,7 +703,11 @@ function setupBloom() {
     if (THREE.ShaderPass) { fxPass = new THREE.ShaderPass(FXShader); fxPass.renderToScreen = true; composer.addPass(fxPass); }
   } catch (e) { BLOOM_OK = false; composer = null; }
 }
-function renderFrame() { if (composer) composer.render(); else renderer.render(scene, camera); }
+function renderFrame() {
+  // EffectComposer can't drive stereo WebXR, so render straight through in VR
+  if (composer && !(renderer.xr && renderer.xr.isPresenting)) composer.render();
+  else renderer.render(scene, camera);
+}
 
 // ---------- heartbeat --------------------------------------------------------
 // returns a 0..1 envelope: a strong "lub" then a softer "dub" per beat
@@ -712,7 +768,6 @@ let rideT = 0;                 // rider parameter along the curve
 let tElapsed = 0;
 const lookOffset = { x: 0, y: 0 };
 function animate() {
-  requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   tElapsed += dt;
 
@@ -754,10 +809,11 @@ function animate() {
     pp.needsUpdate = true;
   }
 
-  if (intro) updateIntro(dt);
+  if (inVR) updateVR(dt, env);
+  else if (intro) updateIntro(dt);
   else if (rideMode) updateRide(dt, env);
   else controls.update();
-  if (focusTarget && !rideMode && !intro) updateFocus(dt);
+  if (focusTarget && !rideMode && !intro && !inVR) updateFocus(dt);
 
   drawECG(dt);
   renderFrame();

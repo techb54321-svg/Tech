@@ -40,6 +40,18 @@ The simulation models the main things travelling in your blood:
 - **Platelets (thrombocytes)** — clotting fragments
 - **Bacteria** — invading pathogens being hunted
 
+### 🥽 VR mode
+
+Open the page on a WebXR-capable headset (Meta Quest, etc.) and tap **ENTER VR**
+to be physically inside the vessel — fully head-tracked, looking around in every
+direction while the current carries you down the bloodstream.
+
+**To use VR you must serve the file over HTTPS** (WebXR is blocked on `file://`).
+The easiest way: enable **GitHub Pages** for this repo (Settings → Pages → deploy
+from the `main` branch), then open the published URL in your headset's browser.
+On desktop without a headset the button simply reads "VR NOT SUPPORTED" and
+everything else works normally.
+
 ### Immersive & cinematic features
 
 - **Dive-in intro** — the camera swoops down out of the body and plunges into

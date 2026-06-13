@@ -194,6 +194,7 @@
   <button class="btn" id="btn-sound">🔇 Sound</button>
   <button class="btn" id="btn-view">🩻 Cross-section</button>
   <button class="btn" id="btn-labels">🏷 Labels</button>
+  <button class="btn active" id="btn-vrperf">🚀 VR perf</button>
   <button class="btn" id="btn-reset">↺ Reset</button>
 </div>
 
@@ -474,7 +475,7 @@ function init() {
 }
 
 // ---------- WebXR / VR -------------------------------------------------------
-let inVR = false, vrControllers = [], vrPanel, vrPanelCanvas, vrPanelCtx, vrPanelTex;
+let inVR = false, vrPerf = true, vrControllers = [], vrPanel, vrPanelCanvas, vrPanelCtx, vrPanelTex;
 let vrLateral = 0;                 // sideways offset within the tube (strafe)
 const _vrMat = new THREE.Matrix4(), _vrDir = new THREE.Vector3(), _vrFwd = new THREE.Vector3();
 function setupVR() {
@@ -485,6 +486,7 @@ function setupVR() {
   btn.style.position = 'fixed'; btn.style.left = '50%'; btn.style.top = '16px';
   btn.style.bottom = 'auto'; btn.style.transform = 'translateX(-50%)'; btn.style.zIndex = 25;
   document.body.appendChild(btn);
+  try { renderer.xr.setFoveation(1); } catch(e) {}     // blur the periphery to save GPU
 
   // controllers (added to the rig so they share the moving space). Each gets a
   // laser pointer; the trigger inspects whatever cell it's aimed at.
@@ -511,16 +513,28 @@ function setupVR() {
     inVR = true; clearIntro(); rideMode = false; controls.enabled = false;
     rideT = 0; vrLateral = 0; riderLight.intensity = 2.4;
     vrControllers.forEach(c=>c.visible=true);
+    applyVRPerf(vrPerf);
     document.getElementById('vignette').classList.add('ride');
     if (!audioOn) document.getElementById('btn-sound').click();
   });
   renderer.xr.addEventListener('sessionend', () => {
     inVR = false; controls.enabled = true;
     vrControllers.forEach(c=>c.visible=false); if(vrPanel) vrPanel.visible=false;
+    applyVRPerf(false);
     playerRig.position.set(0,0,0); playerRig.quaternion.identity();
     camera.position.set(0,10,60); camera.up.set(0,1,0); camera.fov = 58; camera.updateProjectionMatrix();
     controls.target.set(0,0,0); document.getElementById('vignette').classList.remove('ride');
   });
+}
+
+// VR performance mode: thin the dense red cells/platelets/plasma and drop the
+// render resolution so the headset stays smooth. White cells & bacteria are kept
+// (they're few and matter for the scenarios).
+function applyVRPerf(on){
+  cells.forEach((c,i)=>{ c.perfHide = on && (c.type==='rbc'||c.type==='platelet') && (i%3!==0); });
+  if (plasma) plasma.visible = !on;
+  if (motes)  motes.visible  = !on;
+  try { renderer.xr.setFramebufferScaleFactor(on ? 0.7 : 1.0); } catch(e) {}
 }
 
 // read the left thumbstick from the active XR session, if any
@@ -823,7 +837,7 @@ function addCell(type) {
     baseSpeed: 4 + (1 - radius/R)*7,        // centre flows faster (parabolic profile)
     spin: new THREE.Vector3((Math.random()-.5)*1.5,(Math.random()-.5)*1.5,(Math.random()-.5)*1.5),
     wob: Math.random()*Math.PI*2,
-    active: true, frozen: false, target: null, scaleMul: 1, scaleTarget: 1, extra: false };
+    active: true, frozen: false, target: null, scaleMul: 1, scaleTarget: 1, extra: false, perfHide: false };
   cells.push(c);
   mesh.visible = glow.visible = typeVisible[type];
   placeOnTube(tval, radius, angle, mesh.position);
@@ -1038,7 +1052,7 @@ function animate() {
       }
       placeOnTube(c.tval, rr, c.angle, c.mesh.position);
       c.glow.position.copy(c.mesh.position);
-      const vis = typeVisible[c.type] && c.mesh.position.distanceTo(_camW) > 3.0;
+      const vis = typeVisible[c.type] && !c.perfHide && c.mesh.position.distanceTo(_camW) > 3.0;
       c.mesh.visible = vis;
       if (c.glow.material.opacity > 0) c.glow.visible = vis;
       c.mesh.rotation.x += c.spin.x*dt; c.mesh.rotation.y += c.spin.y*dt; c.mesh.rotation.z += c.spin.z*dt;
@@ -1529,6 +1543,8 @@ document.getElementById('btn-view').onclick = e => { crossSection=!crossSection;
   scene.fog.density = crossSection?0.006:0.02; };
 document.getElementById('btn-sound').onclick = e => { toggleAudio(); e.target.classList.toggle('active',audioOn);
   e.target.textContent = (audioOn?'🔊':'🔇')+' Sound'; };
+document.getElementById('btn-vrperf').onclick = e => { vrPerf=!vrPerf; e.target.classList.toggle('active',vrPerf);
+  if(inVR) applyVRPerf(vrPerf); };
 // no heartbeat → hide the ECG monitor
 { const ecg=document.getElementById('ecg'); if(ecg) ecg.style.display='none'; }
 

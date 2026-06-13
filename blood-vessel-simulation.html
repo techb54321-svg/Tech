@@ -357,7 +357,7 @@ let bokehPass = null, dofOn = true;
 
 // reusable temp vectors
 const _p = new THREE.Vector3(), _t = new THREE.Vector3(), _n = new THREE.Vector3(),
-      _b = new THREE.Vector3(), _o = new THREE.Vector3(), _look = new THREE.Vector3();
+      _b = new THREE.Vector3(), _o = new THREE.Vector3(), _look = new THREE.Vector3(), _camW = new THREE.Vector3();
 
 // ---------- curve + frame table ---------------------------------------------
 function buildCurve() {
@@ -824,7 +824,7 @@ function setupBloom() {
         bokehPass.enabled = dofOn; composer.addPass(bokehPass);
       } catch (e) { bokehPass = null; }
     }
-    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.5, 0.6, 0.85);
+    bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.55, 0.9);
     composer.addPass(bloomPass);
     if (THREE.ShaderPass) { fxPass = new THREE.ShaderPass(FXShader); fxPass.renderToScreen = true; composer.addPass(fxPass); }
   } catch (e) { BLOOM_OK = false; composer = null; }
@@ -920,7 +920,7 @@ function animate() {
 
   // wall + bloom + post-fx (gentle throb only when the heartbeat is on)
   wallMesh.material.emissiveIntensity = 0.32 + env*0.32;
-  if (bloomPass) bloomPass.strength = 0.42 + env*0.35;
+  if (bloomPass) bloomPass.strength = 0.28 + env*0.25;
   if (fxPass) { fxPass.uniforms.uAberr.value = 0.0022 + env*0.004 + (rideMode?0.004:0);
     fxPass.uniforms.uVig.value = rideMode?1.18:1.0; fxPass.uniforms.uTime.value = tElapsed; }
   for (const s of breathShaders) { s.uniforms.uTime.value = tElapsed; s.uniforms.uPulse.value = env; }
@@ -934,6 +934,7 @@ function animate() {
 
   if (!paused) {
     const eff = flowSpeed * gPulse;
+    camera.getWorldPosition(_camW);              // hide cells that would clip the lens
     for (const c of cells) {
       // engulf / respawn scaling animation (used by phagocytosis)
       if (c.scaleMul !== 1 || c.scaleTarget !== 1) {
@@ -952,6 +953,9 @@ function animate() {
       }
       placeOnTube(c.tval, rr, c.angle, c.mesh.position);
       c.glow.position.copy(c.mesh.position);
+      const vis = typeVisible[c.type] && c.mesh.position.distanceTo(_camW) > 3.0;
+      c.mesh.visible = vis;
+      if (c.glow.material.opacity > 0) c.glow.visible = vis;
       c.mesh.rotation.x += c.spin.x*dt; c.mesh.rotation.y += c.spin.y*dt; c.mesh.rotation.z += c.spin.z*dt;
       if (c.type === 'rbc') {                  // oxygen exchange: bright → dark around the loop
         const oxy = 0.5 + 0.5*Math.cos(c.tval*Math.PI*2);
@@ -1087,8 +1091,9 @@ function makeFatTextures(){
   const rgC=document.createElement('canvas'); rgC.width=rgC.height=S; const rc=rgC.getContext('2d');
   const rg=rc.createImageData(S,S), rd=rg.data;
   for(let i=0;i<S*S;i++){ const v=hd[i*4]/255;
-    cd[i*4]=185+v*55; cd[i*4+1]=148+v*60; cd[i*4+2]=52+v*46; cd[i*4+3]=255;   // mottled yellow
-    const rough=Math.max(0.12,Math.min(1,0.7 - v*0.5)); const rv=rough*255;   // ridges wet
+    // pale, slightly desaturated fatty yellow — darker tan in the crevices
+    cd[i*4]=196+v*40; cd[i*4+1]=176+v*46; cd[i*4+2]=96+v*44; cd[i*4+3]=255;
+    const rough=Math.max(0.38,Math.min(1,0.85 - v*0.4)); const rv=rough*255;  // waxy, not mirror
     rd[i*4]=rd[i*4+1]=rd[i*4+2]=rv; rd[i*4+3]=255;
   }
   cc.putImageData(col,0,0); rc.putImageData(rg,0,0);
@@ -1108,30 +1113,36 @@ function makeFatTextures(){
 function makePlaque(){
   const grp = new THREE.Group();
   const tex = makeFatTextures();
-  // one bumpy nodule geometry, reused; irregular silhouette
-  const nodGeo = new THREE.SphereGeometry(1, 16, 12);
-  const np=nodGeo.attributes.position, nv=new THREE.Vector3();
-  for(let i=0;i<np.count;i++){ nv.fromBufferAttribute(np,i);
-    nv.multiplyScalar(1 + 0.16*Math.sin(nv.x*4.2)*Math.cos(nv.y*3.6)*Math.sin(nv.z*4.0));
-    np.setXYZ(i, nv.x, nv.y, nv.z); }
-  nodGeo.computeVertexNormals();
+  // a few irregular nodule geometries so the cluster isn't all the same blob
+  const nodGeos = [];
+  for (let k=0;k<4;k++){
+    const geo = new THREE.SphereGeometry(1, 28, 20);
+    const np=geo.attributes.position, nv=new THREE.Vector3(); const ph=k*1.7;
+    for(let i=0;i<np.count;i++){ nv.fromBufferAttribute(np,i);
+      // layered lobing so each nodule is genuinely lumpy, not a smooth ball
+      const d = 0.22*Math.sin(nv.x*2.4+ph)*Math.cos(nv.y*2.1)*Math.sin(nv.z*2.6)
+              + 0.12*Math.sin(nv.x*5.0)*Math.sin(nv.y*4.6+ph)*Math.cos(nv.z*5.2)
+              + 0.06*Math.sin(nv.x*9.0+ph)*Math.cos(nv.z*8.4);
+      nv.multiplyScalar(1 + d); np.setXYZ(i, nv.x, nv.y, nv.z); }
+    geo.computeVertexNormals(); nodGeos.push(geo);
+  }
   const fatMat = new THREE.MeshPhysicalMaterial({ color:0xffffff, map:tex.map,
-    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(1.4,1.4),
-    roughness:1.0, metalness:0.0, clearcoat:0.65, clearcoatRoughness:0.42 });
-  // three big fatty masses around the wall, each a tight cluster of nodules
-  const lobeAngles = [0.6, 2.7, 4.5];
+    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(1.1,1.1),
+    roughness:1.0, metalness:0.0, clearcoat:0.3, clearcoatRoughness:0.55 });
+  // big fatty masses around the wall, each a dense fused cluster of small nodules
+  const lobeAngles = [0.4, 1.8, 3.2, 4.6, 5.8];
   for (const baseAng of lobeAngles){
     const lobeT = PLAQUE_T + (Math.random()-0.5)*0.04;
-    const nodules = 42 + (Math.random()*14|0);
+    const nodules = 55 + (Math.random()*20|0);
     for (let i=0;i<nodules;i++){
-      const tt  = lobeT + (Math.random()-0.5)*0.075;
-      const ang = baseAng + (Math.random()-0.5)*1.5;
-      const inset = 0.5 + Math.random()*0.45;          // bulge into the lumen
+      const tt  = lobeT + (Math.random()-0.5)*0.085;
+      const ang = baseAng + (Math.random()-0.5)*1.4;
+      const inset = 0.52 + Math.random()*0.46;         // bulge into the lumen
       placeOnTube(tt, R*inset, ang, _look);
-      const size = 0.55 + Math.random()*1.05;
-      const lump = new THREE.Mesh(nodGeo, fatMat);
+      const size = 0.4 + Math.random()*0.85;
+      const lump = new THREE.Mesh(nodGeos[(Math.random()*nodGeos.length)|0], fatMat);
       lump.position.copy(_look);
-      lump.scale.setScalar(size);
+      lump.scale.set(size*(0.8+Math.random()*0.5), size*(0.8+Math.random()*0.5), size*(0.8+Math.random()*0.5));
       lump.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
       grp.add(lump);
     }
@@ -1186,7 +1197,10 @@ function setScenario(name){
       p.frozen=false; p.tval=(WOUND_T-0.12+ i*0.003 +1)%1; p.radius=2+Math.random()*3; });
     flyToTubePoint(WOUND_T, WOUND_A);
   }
-  if(name==='plaque'){ setFlow(0.7); if(plaqueMesh) plaqueMesh.visible=true; flyToTubePoint(PLAQUE_T, 0.5); }
+  if(name==='plaque'){ setFlow(0.7); if(plaqueMesh) plaqueMesh.visible=true;
+    // sit upstream in the open channel, looking through the narrowing
+    frameAt(PLAQUE_T-0.07); const camp=_p.clone().addScaledVector(_n,0.4);
+    frameAt(PLAQUE_T+0.02); tweenCamera(camp, _p.clone(), 1.8); }
 
   document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('scn-'+name); if(btn) btn.classList.add('active');

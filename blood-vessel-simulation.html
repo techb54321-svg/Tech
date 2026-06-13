@@ -1028,47 +1028,81 @@ let woundLight=null;
 function buildScenarioObjects(){
   placeOnTube(WOUND_T, R-0.6, WOUND_A, _look);
   woundMesh = new THREE.Mesh(new THREE.SphereGeometry(2.6,20,16),
-    new THREE.MeshStandardMaterial({ color:0xff2a1a, emissive:0xff1a0a, emissiveIntensity:1.0, roughness:0.45 }));
+    new THREE.MeshStandardMaterial({ color:0x8a1410, emissive:0x6a0c06, emissiveIntensity:0.5, roughness:0.5 }));
   woundMesh.position.copy(_look); woundMesh.scale.set(2.0,2.0,0.7); woundMesh.visible=false; scene.add(woundMesh);
   woundLight = new THREE.PointLight(0xff3020, 0, 30); woundLight.position.copy(_look); scene.add(woundLight);
-  clotMass = new THREE.Mesh(new THREE.IcosahedronGeometry(1,3),
-    new THREE.MeshPhysicalMaterial({ color:0x8e1818, roughness:0.55, clearcoat:0.4, emissive:0x400606, emissiveIntensity:0.4 }));
+  clotMass = makeClot();
   clotMass.position.copy(_look); clotMass.visible=false; clotMass.scale.setScalar(0.01); scene.add(clotMass);
   plaqueMesh = makePlaque(); plaqueMesh.visible=false; scene.add(plaqueMesh);
 }
 
-// a lumpy, cauliflower-like atherosclerotic plaque: clusters of bumpy yellow
-// nodules studded along the wall, narrowing the lumen — like the reference image
+// a realistic thrombus: a dark glistening mass of trapped red cells bound in a
+// pale criss-crossing fibrin mesh, with sticky platelet nodules
+function makeClot(){
+  const grp = new THREE.Group();
+  const cellGeo = new THREE.IcosahedronGeometry(1,2);
+  const bp=cellGeo.attributes.position, bv=new THREE.Vector3();
+  for(let i=0;i<bp.count;i++){ bv.fromBufferAttribute(bp,i);
+    bv.multiplyScalar(1+0.1*Math.sin(bv.x*5)*Math.cos(bv.y*5)*Math.sin(bv.z*5)); bp.setXYZ(i,bv.x,bv.y,bv.z); }
+  cellGeo.computeVertexNormals();
+  // dark core
+  const core = new THREE.Mesh(cellGeo, new THREE.MeshPhysicalMaterial({
+    color:0x4a0a10, roughness:0.5, clearcoat:0.6, clearcoatRoughness:0.3 }));
+  core.scale.setScalar(1.3); grp.add(core);
+  // trapped red cells clumped through the mass
+  const rbcMat = new THREE.MeshStandardMaterial({ color:0x8e141c, roughness:0.4 });
+  for(let i=0;i<26;i++){ const m=new THREE.Mesh(cellGeo, rbcMat);
+    const p=new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).multiplyScalar(1.9);
+    m.position.copy(p); m.scale.setScalar(0.4+Math.random()*0.45);
+    m.rotation.set(Math.random()*6,Math.random()*6,Math.random()*6); grp.add(m); }
+  // sticky pale platelet nodules on the surface
+  const pltMat = new THREE.MeshStandardMaterial({ color:0xe7c9a0, roughness:0.6 });
+  for(let i=0;i<18;i++){ const m=new THREE.Mesh(cellGeo, pltMat);
+    const dir=new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize();
+    m.position.copy(dir.multiplyScalar(1.1+Math.random()*0.6)); m.scale.setScalar(0.28+Math.random()*0.3); grp.add(m); }
+  // fibrin strands — thin pale cylinders criss-crossing the clot
+  const fibMat = new THREE.MeshStandardMaterial({ color:0xe6b8b8, roughness:0.7, transparent:true, opacity:0.55 });
+  for(let i=0;i<40;i++){
+    const a=new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).multiplyScalar(2.7);
+    const b=new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).multiplyScalar(2.7);
+    const len=a.distanceTo(b); if(len<0.5) continue;
+    const fib=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,len,5), fibMat);
+    fib.position.copy(a).add(b).multiplyScalar(0.5);
+    fib.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), b.clone().sub(a).normalize());
+    grp.add(fib);
+  }
+  return grp;
+}
+
+// big, glossy, lobed atherosclerotic plaque — a few large fatty masses bulging
+// from the wall with a wet sheen, crowding the lumen (like the reference)
 function makePlaque(){
   const grp = new THREE.Group();
-  const lumpGeo = new THREE.IcosahedronGeometry(1, 2);
-  // pre-bump the base nodule so each lump has an irregular, fatty surface
-  const bp = lumpGeo.attributes.position, bv = new THREE.Vector3();
+  const blobGeo = new THREE.IcosahedronGeometry(1, 3);
+  const bp = blobGeo.attributes.position, bv = new THREE.Vector3();
   for (let i=0;i<bp.count;i++){ bv.fromBufferAttribute(bp,i);
-    bv.multiplyScalar(1 + 0.18*Math.sin(bv.x*4)*Math.cos(bv.y*4)*Math.sin(bv.z*4));
+    bv.multiplyScalar(1 + 0.14*Math.sin(bv.x*3.3)*Math.cos(bv.y*3.1)*Math.sin(bv.z*2.9));
     bp.setXYZ(i, bv.x, bv.y, bv.z); }
-  lumpGeo.computeVertexNormals();
-  const baseCol = new THREE.Color(0xe6c468), warmCol = new THREE.Color(0xc98a2e);
-  // build along the wall over a span of the tube, leaving a narrow channel
-  for (let s=0; s<70; s++){
-    const tt = PLAQUE_T + (Math.random()-0.5)*0.11;
-    const ang = Math.random()*Math.PI*2;
-    const inset = 0.45 + Math.random()*0.5;            // how far it bulges inward
-    placeOnTube(tt, R*inset, ang, _look);
-    const size = 0.8 + Math.random()*1.7;
-    const col = baseCol.clone().lerp(warmCol, Math.random());
-    const mat = new THREE.MeshStandardMaterial({ color: col, roughness: 0.72, metalness: 0.0,
-      emissive: 0x261a06, emissiveIntensity: 0.15 });
-    const lump = new THREE.Mesh(lumpGeo, mat);
-    lump.position.copy(_look);
-    lump.scale.set(size, size*(0.7+Math.random()*0.5), size);
-    lump.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
-    grp.add(lump);
-    // occasional reddish fleck embedded in the fat (cholesterol crystals / blood)
-    if (Math.random()<0.25){ const fl=new THREE.Mesh(new THREE.SphereGeometry(0.18+Math.random()*0.2,6,6),
-      new THREE.MeshStandardMaterial({ color:0x7a1414, roughness:0.6 }));
-      fl.position.copy(_look).addScaledVector(new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5), size*0.8);
-      grp.add(fl); }
+  blobGeo.computeVertexNormals();
+  const yellows = [0xeac457, 0xe3b63f, 0xf0cf6a, 0xcf9a34];
+  const lobeAngles = [0.5, 2.2, 3.9, 5.4];        // a few big masses around the wall
+  for (const baseAng of lobeAngles){
+    const lobeT = PLAQUE_T + (Math.random()-0.5)*0.05;
+    const count = 10 + (Math.random()*6|0);
+    for (let i=0;i<count;i++){
+      const tt  = lobeT + (Math.random()-0.5)*0.06;
+      const ang = baseAng + (Math.random()-0.5)*0.95;
+      const inset = 0.48 + Math.random()*0.46;     // how far it bulges into the lumen
+      placeOnTube(tt, R*inset, ang, _look);
+      const size = 1.5 + Math.random()*1.9;
+      const col = new THREE.Color(yellows[i%yellows.length]).offsetHSL(0,0,(Math.random()-0.5)*0.06);
+      const mat = new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.42,
+        clearcoat: 0.7, clearcoatRoughness: 0.35, metalness: 0.0 });
+      const lump = new THREE.Mesh(blobGeo, mat); lump.position.copy(_look);
+      lump.scale.set(size, size*(0.8+Math.random()*0.4), size);
+      lump.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
+      grp.add(lump);
+    }
   }
   return grp;
 }
@@ -1096,11 +1130,16 @@ function setScenario(name){
   if(woundLight) woundLight.intensity=0;
   removeExtraBacteria();
 
+  // slow the flow during scenarios so the action is easy to follow
+  const setFlow = v => { flowSpeed=v; const sl=document.getElementById('speed'); if(sl) sl.value=v; };
+
   if(name==='healthy'){
+    setFlow(1);
     camTween=null; controls.target.set(0,0,0); camera.position.set(0,12,62);
     camera.up.set(0,1,0); camera.fov=58; camera.updateProjectionMatrix(); controls.autoRotate=true;
   }
   if(name==='infection'){
+    setFlow(0.55);
     spawnExtraBacteria(22, INFECT_T);                 // a swarm, clustered in view
     // pull the white cells to the action so the hunt happens on screen
     cells.filter(c=>c.type==='wbc_neutrophil'||c.type==='wbc_monocyte').forEach(h=>{
@@ -1108,13 +1147,14 @@ function setScenario(name){
     flyToTubePoint(INFECT_T);
   }
   if(name==='clot'){
+    setFlow(0.5);
     if(woundMesh) woundMesh.visible=true; if(clotMass) clotMass.visible=true;
     // queue a stream of platelets just upstream of the wound
     cells.filter(c=>c.type==='platelet').slice(0,40).forEach((p,i)=>{
       p.frozen=false; p.tval=(WOUND_T-0.12+ i*0.003 +1)%1; p.radius=2+Math.random()*3; });
-    flyToTubePoint(WOUND_T);
+    flyToTubePoint(WOUND_T, WOUND_A);
   }
-  if(name==='plaque'){ if(plaqueMesh) plaqueMesh.visible=true; flyToTubePoint(PLAQUE_T); }
+  if(name==='plaque'){ setFlow(0.7); if(plaqueMesh) plaqueMesh.visible=true; flyToTubePoint(PLAQUE_T, 0.5); }
 
   document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('scn-'+name); if(btn) btn.classList.add('active');
@@ -1152,9 +1192,8 @@ function nearestBacterium(h,bacteria){ let best=null,bd=1e9;
   for(const b of bacteria){ const d=circDist(h.tval,b.tval); if(d<bd){bd=d;best=b;} } return best; }
 function updateClot(dt){
   if(!woundMesh) return;
-  const p2 = 0.8 + Math.sin(tElapsed*4)*0.3;
-  woundMesh.material.emissiveIntensity = p2;
-  if(woundLight) woundLight.intensity = 2.2 + Math.sin(tElapsed*4)*0.8;
+  woundMesh.material.emissiveIntensity = 0.4 + Math.sin(tElapsed*4)*0.15;
+  if(woundLight) woundLight.intensity = 2.0 + Math.sin(tElapsed*4)*0.7;
   for(const p of cells){
     if(p.type!=='platelet' || p.frozen || !p.active) continue;
     if(circDist(p.tval, WOUND_T) < 0.045 && clotCount < MAX_CLOT){
@@ -1164,7 +1203,7 @@ function updateClot(dt){
       placeOnTube(p.tval,p.radius,p.angle,_look);
       if(_look.distanceTo(woundMesh.position) < 2.3){
         p.frozen=true; p.mesh.position.copy(_look); p.glow.position.copy(_look); clotCount++;
-        clotMass.visible=true; clotMass.scale.setScalar(0.4 + Math.sqrt(clotCount)*0.5);
+        clotMass.visible=true; clotMass.scale.setScalar(0.5 + Math.sqrt(clotCount)*0.28);
         if(clotCount===MAX_CLOT) showCaption(SCN_CAPTIONS.clotDone, 0);
       }
     }
@@ -1263,10 +1302,14 @@ function updateCamTween(dt){ camTween.t=Math.min(1, camTween.t+dt/camTween.dur);
   camera.position.lerpVectors(camTween.fromPos, camTween.toPos, e);
   controls.target.lerpVectors(camTween.fromTarget, camTween.toTarget, e);
   if (camTween.t>=1) camTween=null; }
-// position the camera inside the tube, just behind a point, looking at the action
-function flyToTubePoint(tval){ frameAt(tval);
-  const p=_p.clone(), tan=_t.clone(), nor=_n.clone();
-  tweenCamera(p.clone().addScaledVector(tan,-9).addScaledVector(nor,3.5), p, 1.6); }
+// position the camera inside the tube, behind a point, looking at the action.
+// pass an angle to centre a feature that sits on the wall (wound, plaque lobe).
+function flyToTubePoint(tval, angle){ frameAt(tval);
+  const p=_p.clone(), tan=_t.clone(), nor=_n.clone(), bin=_b.clone();
+  const look = (angle===undefined) ? p
+    : p.clone().addScaledVector(nor, Math.cos(angle)*R*0.45).addScaledVector(bin, Math.sin(angle)*R*0.45);
+  const cam = p.clone().addScaledVector(tan,-12).addScaledVector(nor,3.5);
+  tweenCamera(cam, look, 1.8); }
 
 // ---------- legend & filter --------------------------------------------------
 function buildLegend(){

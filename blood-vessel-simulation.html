@@ -947,9 +947,13 @@ function animate() {
       if (c.tval > 1) c.tval -= 1;
       c.wob += dt;
       let rr = c.radius + Math.sin(c.wob*2)*0.15;
-      if (scenario === 'plaque') {            // squeeze through the narrowing, faster
-        const dd = circDist(c.tval, PLAQUE_T);
-        if (dd < 0.09) { rr *= 0.18 + 0.82*(dd/0.09); c.tval += (0.09-dd)*eff*dt*7; }
+      if (scenario === 'plaque') {            // divert around the one-sided mound, faster
+        const bulge = plaqueBulgeAt(c.tval, c.angle);
+        if (bulge > 0) {
+          const maxR = Math.max(0.4, R - bulge - c.data.size - 0.5);
+          if (rr > maxR) rr = maxR;
+          c.tval += 0.02*eff*dt*4;            // accelerate through the throat
+        }
       }
       placeOnTube(c.tval, rr, c.angle, c.mesh.position);
       c.glow.position.copy(c.mesh.position);
@@ -1014,6 +1018,18 @@ function updateRide(dt, env) {
 // ---------- scenarios (interactive biology) ----------------------------------
 let scenario = 'healthy';
 const PLAQUE_T = 0.62, WOUND_T = 0.32, WOUND_A = Math.PI*0.5, MAX_CLOT = 40;
+const PLAQUE_A = Math.PI*0.5, PLAQUE_SPAN = 0.11, PLAQUE_AHW = 1.3, PLAQUE_MAX = R*0.62;
+// smooth one-sided plaque height: a raised mound that fades to nothing at its edges,
+// with deterministic organic lumps so the mesh and the flow-diversion physics agree
+function plaqueBulgeAt(t, ang){
+  const dt = circDist(t, PLAQUE_T); if(dt >= PLAQUE_SPAN) return 0;
+  const da = angleDelta(ang, PLAQUE_A); if(Math.abs(da) >= PLAQUE_AHW) return 0;
+  const env = Math.pow(Math.cos((dt/PLAQUE_SPAN)*Math.PI*0.5) * Math.cos((da/PLAQUE_AHW)*Math.PI*0.5), 1.3);
+  const lump = 0.80 + 0.15*Math.sin(da*5.0 + t*90.0)
+                    + 0.09*Math.sin(da*9.0 - t*60.0)*Math.cos(t*140.0)
+                    + 0.05*Math.sin(da*15.0 + t*210.0);
+  return PLAQUE_MAX * env * lump;
+}
 const RBC_OXY = new THREE.Color(0xc8202c), RBC_DEOXY = new THREE.Color(0x781018);
 let woundMesh=null, clotMass=null, plaqueMesh=null, clotCount=0, extraBacteria=[], captionTimer=null;
 const SCN_CAPTIONS = {
@@ -1108,46 +1124,34 @@ function makeFatTextures(){
   return fatTex;
 }
 
-// atherosclerotic plaque as fused clusters of small bumpy nodules (cauliflower /
-// popcorn fat), wet and glistening, crowding the lumen — like the reference image
+// atherosclerotic plaque as a single continuous raised lesion on ONE wall of the
+// vessel — a lumpy fatty mound that bulges into the lumen and fades into the wall
+// at its edges (a focal atheroma), with a glistening fat texture
 function makePlaque(){
-  const grp = new THREE.Group();
   const tex = makeFatTextures();
-  // a few irregular nodule geometries so the cluster isn't all the same blob
-  const nodGeos = [];
-  for (let k=0;k<4;k++){
-    const geo = new THREE.SphereGeometry(1, 28, 20);
-    const np=geo.attributes.position, nv=new THREE.Vector3(); const ph=k*1.7;
-    for(let i=0;i<np.count;i++){ nv.fromBufferAttribute(np,i);
-      // layered lobing so each nodule is genuinely lumpy, not a smooth ball
-      const d = 0.22*Math.sin(nv.x*2.4+ph)*Math.cos(nv.y*2.1)*Math.sin(nv.z*2.6)
-              + 0.12*Math.sin(nv.x*5.0)*Math.sin(nv.y*4.6+ph)*Math.cos(nv.z*5.2)
-              + 0.06*Math.sin(nv.x*9.0+ph)*Math.cos(nv.z*8.4);
-      nv.multiplyScalar(1 + d); np.setXYZ(i, nv.x, nv.y, nv.z); }
-    geo.computeVertexNormals(); nodGeos.push(geo);
-  }
-  const fatMat = new THREE.MeshPhysicalMaterial({ color:0xffffff, map:tex.map,
-    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(1.1,1.1),
-    roughness:1.0, metalness:0.0, clearcoat:0.3, clearcoatRoughness:0.55 });
-  // big fatty masses around the wall, each a dense fused cluster of small nodules
-  const lobeAngles = [0.4, 1.8, 3.2, 4.6, 5.8];
-  for (const baseAng of lobeAngles){
-    const lobeT = PLAQUE_T + (Math.random()-0.5)*0.04;
-    const nodules = 55 + (Math.random()*20|0);
-    for (let i=0;i<nodules;i++){
-      const tt  = lobeT + (Math.random()-0.5)*0.085;
-      const ang = baseAng + (Math.random()-0.5)*1.4;
-      const inset = 0.52 + Math.random()*0.46;         // bulge into the lumen
-      placeOnTube(tt, R*inset, ang, _look);
-      const size = 0.4 + Math.random()*0.85;
-      const lump = new THREE.Mesh(nodGeos[(Math.random()*nodGeos.length)|0], fatMat);
-      lump.position.copy(_look);
-      lump.scale.set(size*(0.8+Math.random()*0.5), size*(0.8+Math.random()*0.5), size*(0.8+Math.random()*0.5));
-      lump.rotation.set(Math.random()*6, Math.random()*6, Math.random()*6);
-      grp.add(lump);
+  const NU=80, NV=70, W=NV+1;
+  const pos=[], uv=[], idx=[];
+  for(let iu=0;iu<=NU;iu++){
+    const t = (PLAQUE_T - PLAQUE_SPAN + (2*PLAQUE_SPAN)*(iu/NU) + 1) % 1;
+    for(let iv=0;iv<=NV;iv++){
+      const ang = PLAQUE_A - PLAQUE_AHW + (2*PLAQUE_AHW)*(iv/NV);
+      const bulge = plaqueBulgeAt(t, ang);
+      placeOnTube(t, R - 0.15 - bulge, ang, _look);     // surface sits inside the wall
+      pos.push(_look.x, _look.y, _look.z);
+      uv.push((iv/NV)*4.5, (iu/NU)*5.5);
     }
   }
-  return grp;
+  for(let iu=0;iu<NU;iu++) for(let iv=0;iv<NV;iv++){
+    const a=iu*W+iv, b=a+1, c=a+W, d=c+1; idx.push(a,c,b, b,c,d);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+  geo.setIndex(idx); geo.computeVertexNormals();
+  const mat = new THREE.MeshPhysicalMaterial({ color:0xffffff, map:tex.map,
+    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(0.85,0.85),
+    roughness:1.0, metalness:0.0, clearcoat:0.26, clearcoatRoughness:0.62, side:THREE.DoubleSide });
+  return new THREE.Mesh(geo, mat);
 }
 
 function showCaption(obj, ms){
@@ -1198,9 +1202,12 @@ function setScenario(name){
     flyToTubePoint(WOUND_T, WOUND_A);
   }
   if(name==='plaque'){ setFlow(0.7); if(plaqueMesh) plaqueMesh.visible=true;
-    // sit upstream in the open channel, looking through the narrowing
-    frameAt(PLAQUE_T-0.07); const camp=_p.clone().addScaledVector(_n,0.4);
-    frameAt(PLAQUE_T+0.02); tweenCamera(camp, _p.clone(), 1.8); }
+    // view the mound from the open (opposite) side of the lumen
+    frameAt(PLAQUE_T);
+    const pd = _n.clone().multiplyScalar(Math.cos(PLAQUE_A)).addScaledVector(_b, Math.sin(PLAQUE_A)).normalize();
+    const camp = _p.clone().addScaledVector(pd, -R*0.55).addScaledVector(_t, -7).addScaledVector(_n, 0.5);
+    const tgt  = _p.clone().addScaledVector(pd, R*0.35);
+    tweenCamera(camp, tgt, 1.8); }
 
   document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('scn-'+name); if(btn) btn.classList.add('active');

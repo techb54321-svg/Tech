@@ -474,38 +474,118 @@ function init() {
 }
 
 // ---------- WebXR / VR -------------------------------------------------------
-let inVR = false;
+let inVR = false, vrControllers = [], vrPanel, vrPanelCanvas, vrPanelCtx, vrPanelTex;
+let vrLateral = 0;                 // sideways offset within the tube (strafe)
+const _vrMat = new THREE.Matrix4(), _vrDir = new THREE.Vector3(), _vrFwd = new THREE.Vector3();
 function setupVR() {
   if (!VR_OK || typeof VRButton === 'undefined') return;
   renderer.xr.enabled = true;
   let btn;
   try { btn = VRButton.createButton(renderer); } catch (e) { return; }
-  // reposition the auto-generated button so it doesn't sit on top of the controls
   btn.style.position = 'fixed'; btn.style.left = '50%'; btn.style.top = '16px';
   btn.style.bottom = 'auto'; btn.style.transform = 'translateX(-50%)'; btn.style.zIndex = 25;
   document.body.appendChild(btn);
 
+  // controllers (added to the rig so they share the moving space). Each gets a
+  // laser pointer; the trigger inspects whatever cell it's aimed at.
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-5)]);
+  for (let i=0;i<2;i++){
+    const ctrl = renderer.xr.getController(i);
+    const laser = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color:0x66ccff, transparent:true, opacity:0.8 }));
+    laser.scale.z = 1; ctrl.add(laser);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.02,8,8), new THREE.MeshBasicMaterial({ color:0x66ccff }));
+    tip.position.z = -0.04; ctrl.add(tip);
+    ctrl.visible = false;
+    ctrl.addEventListener('selectstart', () => onVRSelect(ctrl));
+    playerRig.add(ctrl); vrControllers.push(ctrl);
+  }
+  // floating 3D info panel (the HTML panels aren't visible inside a headset)
+  vrPanelCanvas = document.createElement('canvas'); vrPanelCanvas.width=1024; vrPanelCanvas.height=768;
+  vrPanelCtx = vrPanelCanvas.getContext('2d');
+  vrPanelTex = new THREE.CanvasTexture(vrPanelCanvas);
+  vrPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.12),
+    new THREE.MeshBasicMaterial({ map:vrPanelTex, transparent:true }));
+  vrPanel.visible=false; vrPanel.renderOrder=999; scene.add(vrPanel);
+
   renderer.xr.addEventListener('sessionstart', () => {
     inVR = true; clearIntro(); rideMode = false; controls.enabled = false;
-    rideT = 0; riderLight.intensity = 2.4;
+    rideT = 0; vrLateral = 0; riderLight.intensity = 2.4;
+    vrControllers.forEach(c=>c.visible=true);
     document.getElementById('vignette').classList.add('ride');
-    if (!audioOn) document.getElementById('btn-sound').click();   // immerse with sound
+    if (!audioOn) document.getElementById('btn-sound').click();
   });
   renderer.xr.addEventListener('sessionend', () => {
     inVR = false; controls.enabled = true;
+    vrControllers.forEach(c=>c.visible=false); if(vrPanel) vrPanel.visible=false;
     playerRig.position.set(0,0,0); playerRig.quaternion.identity();
     camera.position.set(0,10,60); camera.up.set(0,1,0); camera.fov = 58; camera.updateProjectionMatrix();
     controls.target.set(0,0,0); document.getElementById('vignette').classList.remove('ride');
   });
 }
-// carry the rig down the vessel; the headset supplies the head look on top
+
+// read the left thumbstick from the active XR session, if any
+function readThumbstick(){
+  const s = renderer.xr.getSession && renderer.xr.getSession();
+  if (!s) return null;
+  for (const src of s.inputSources){
+    if (src.gamepad && src.gamepad.axes && src.gamepad.axes.length>=4){
+      // axes[2],[3] are the thumbstick on Quest Touch controllers
+      const x=src.gamepad.axes[2]||0, y=src.gamepad.axes[3]||0;
+      if (src.handedness==='left' || src.handedness==='none') return {x,y};
+      if (!s._anyStick) s._anyStick={x,y};
+    }
+  }
+  return s._anyStick || null;
+}
+
+// fire a ray from the controller and open the floating panel for any cell hit
+function onVRSelect(ctrl){
+  _vrMat.identity().extractRotation(ctrl.matrixWorld);
+  raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+  raycaster.ray.direction.set(0,0,-1).applyMatrix4(_vrMat).normalize();
+  const hit = raycaster.intersectObjects(cellGroup.children, true).find(h=>topCell(h.object));
+  if (hit){ drawVRPanel(topCell(hit.object).userData.type); placeVRPanel(); vrPanel.visible=true; }
+  else if (vrPanel) vrPanel.visible=false;
+}
+function placeVRPanel(){
+  camera.getWorldPosition(_camW); camera.getWorldDirection(_vrFwd);
+  vrPanel.position.copy(_camW).addScaledVector(_vrFwd, 2.2);
+}
+function drawVRPanel(type){
+  const d=CELL_DB[type], ctx=vrPanelCtx, W=1024, H=768;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(14,5,18,0.94)'; rr(ctx,4,4,W-8,H-8,30); ctx.fill();
+  ctx.strokeStyle=d.tagColor; ctx.lineWidth=8; rr(ctx,4,4,W-8,H-8,30); ctx.stroke();
+  ctx.fillStyle=d.tagColor; ctx.font='bold 64px Segoe UI, sans-serif'; ctx.fillText(d.name, 56, 110);
+  ctx.fillStyle='#c9aebb'; ctx.font='italic 36px Segoe UI, sans-serif'; ctx.fillText(d.latin, 56, 162);
+  let y=232; ctx.fillStyle='#f3e9ee'; ctx.font='34px Segoe UI, sans-serif';
+  y = wrapText(ctx, d.what, 56, y, W-112, 46) + 24;
+  ctx.fillStyle=d.tagColor; ctx.font='bold 30px Segoe UI, sans-serif'; ctx.fillText('WHAT IT DOES', 56, y); y+=46;
+  ctx.fillStyle='#e8dde3'; ctx.font='30px Segoe UI, sans-serif';
+  d.does.slice(0,3).forEach(t=>{ y = wrapText(ctx, '• '+t, 56, y, W-112, 40) + 10; });
+  vrPanelTex.needsUpdate=true;
+}
+function wrapText(ctx, text, x, y, maxW, lh){
+  const words=text.split(' '); let line='';
+  for (const w of words){ const test=line+w+' ';
+    if (ctx.measureText(test).width>maxW && line){ ctx.fillText(line, x, y); line=w+' '; y+=lh; }
+    else line=test; }
+  ctx.fillText(line, x, y); return y;
+}
+
+// move yourself through the vessel with the thumbstick; head supplies the look
 function updateVR(dt, env) {
-  const eff = flowSpeed * gPulse;
-  rideT += (4.2*eff*dt) / curveLen; if (rideT > 1) rideT -= 1;
+  const stick = readThumbstick();
+  const fwd = stick ? -stick.y : 0.2;          // push up = forward; gentle drift if no stick
+  const strafe = stick ? stick.x : 0;
+  rideT += (fwd * 7.0 * dt) / curveLen; rideT=(rideT+1)%1;
+  vrLateral += strafe * 7.0 * dt;
+  vrLateral = Math.max(-(R-2), Math.min(R-2, vrLateral));
+
   frameAt(rideT);
-  const bob = Math.sin(performance.now()*0.0016)*0.3 + env*0.25;
-  playerRig.position.copy(_p).addScaledVector(_n, bob);
-  const zA = _t.clone().multiplyScalar(-1);   // camera looks down -Z → forward = tangent
+  const bob = Math.sin(performance.now()*0.0016)*0.25 + env*0.2;
+  playerRig.position.copy(_p).addScaledVector(_n, bob).addScaledVector(_b, vrLateral);
+  const zA = _t.clone().multiplyScalar(-1);     // camera forward = down the vessel
   const yA = _n.clone();
   const xA = new THREE.Vector3().crossVectors(yA, zA).normalize();
   yA.crossVectors(zA, xA).normalize();
@@ -513,6 +593,7 @@ function updateVR(dt, env) {
   playerRig.quaternion.setFromRotationMatrix(_vrM);
   riderLight.position.copy(playerRig.position).addScaledVector(_t, 4);
   riderLight.intensity = 2.2 + env*1.6;
+  if (vrPanel && vrPanel.visible){ camera.getWorldPosition(_camW); vrPanel.lookAt(_camW); }
 }
 
 let riderLight;

@@ -44,7 +44,15 @@ The simulation models the main things travelling in your blood:
 
 Open the page on a WebXR-capable headset (Meta Quest, etc.) and tap **ENTER VR**
 to be physically inside the vessel — fully head-tracked, looking around in every
-direction while the current carries you down the bloodstream.
+direction. With a Quest controller you can move yourself through it:
+
+- **Left thumbstick** — push forward/back to fly along the vessel, left/right to
+  drift sideways across the lumen.
+- **Laser pointer + trigger** — aim at any cell and pull the trigger to open a
+  floating 3D info panel describing it (the normal HTML panels aren't visible in
+  a headset, so this one lives in the 3D scene and faces you).
+
+With no controller input you simply drift gently forward.
 
 **To use VR you must serve the file over HTTPS** (WebXR is blocked on `file://`).
 The easiest way: enable **GitHub Pages** for this repo (Settings → Pages → deploy

@@ -1113,18 +1113,23 @@ function updateRide(dt, env) {
 // ---------- scenarios (interactive biology) ----------------------------------
 let scenario = 'healthy';
 const PLAQUE_T = 0.62, WOUND_T = 0.32, WOUND_A = Math.PI*0.5, MAX_CLOT = 40;
-const PLAQUE_A = Math.PI*0.5, PLAQUE_SPAN = 0.11, PLAQUE_AHW = 1.3, PLAQUE_MAX = R*0.62;
-// smooth one-sided plaque height: a raised mound that fades to nothing at its edges,
-// with deterministic organic lumps so the mesh and the flow-diversion physics agree
+const PLAQUE_A = Math.PI*0.5, PLAQUE_SPAN = 0.12, PLAQUE_AHW = 1.35, PLAQUE_MAX = R*0.64;
+// one-sided plaque height field: a multi-lobed irregular mound that fades to the
+// wall at its edges. Deterministic so the mesh and the flow-diversion agree.
 function plaqueBulgeAt(t, ang){
   const dt = circDist(t, PLAQUE_T); if(dt >= PLAQUE_SPAN) return 0;
   const da = angleDelta(ang, PLAQUE_A); if(Math.abs(da) >= PLAQUE_AHW) return 0;
-  const env = Math.pow(Math.cos((dt/PLAQUE_SPAN)*Math.PI*0.5) * Math.cos((da/PLAQUE_AHW)*Math.PI*0.5), 1.3);
-  const lump = 0.80 + 0.15*Math.sin(da*5.0 + t*90.0)
-                    + 0.09*Math.sin(da*9.0 - t*60.0)*Math.cos(t*140.0)
-                    + 0.05*Math.sin(da*15.0 + t*210.0);
-  return PLAQUE_MAX * env * lump;
+  const env = Math.pow(Math.cos((dt/PLAQUE_SPAN)*Math.PI*0.5) * Math.cos((da/PLAQUE_AHW)*Math.PI*0.5), 1.25);
+  // several smooth sub-lobes → an irregular, multi-bulge lesion
+  const G=(a,da0,sa,dt0,st)=> a*Math.exp(-(((da-da0)*(da-da0))/(2*sa*sa) + ((dt-dt0)*(dt-dt0))/(2*st*st)));
+  let lobes = G(1.0,0.0,0.20,0.0,0.05) + G(0.85,-0.6,0.22,0.02,0.05)
+            + G(0.8,0.62,0.24,-0.03,0.05) + G(0.6,0.25,0.16,0.05,0.04);
+  lobes = Math.min(1.0, lobes);
+  const lump = 1 + 0.16*Math.sin(da*9+t*120)*Math.cos(t*90) + 0.09*Math.sin(da*16-t*60);
+  return PLAQUE_MAX * env * (0.42 + 0.58*lobes) * lump;
 }
+function fbm3(x,y,z){ return Math.sin(x*1.7)*Math.sin(y*1.5+1)*Math.sin(z*1.9+2)
+  + 0.5*Math.sin(x*3.7+1)*Math.sin(z*3.1) + 0.25*Math.sin(y*6.0)*Math.sin(x*5.3); }
 const RBC_OXY = new THREE.Color(0xc8202c), RBC_DEOXY = new THREE.Color(0x781018);
 let woundMesh=null, clotMass=null, plaqueMesh=null, clotCount=0, extraBacteria=[], captionTimer=null;
 const SCN_CAPTIONS = {
@@ -1224,8 +1229,9 @@ function makeFatTextures(){
 // at its edges (a focal atheroma), with a glistening fat texture
 function makePlaque(){
   const tex = makeFatTextures();
-  const NU=80, NV=70, W=NV+1;
-  const pos=[], uv=[], idx=[];
+  const NU=104, NV=92, W=NV+1;
+  const pos=[], uv=[], col=[], idx=[], bratio=[];
+  const cCore=new THREE.Color(0xe7c258), cEdge=new THREE.Color(0xb05848);   // lipid → fibrous/red
   for(let iu=0;iu<=NU;iu++){
     const t = (PLAQUE_T - PLAQUE_SPAN + (2*PLAQUE_SPAN)*(iu/NU) + 1) % 1;
     for(let iv=0;iv<=NV;iv++){
@@ -1233,7 +1239,14 @@ function makePlaque(){
       const bulge = plaqueBulgeAt(t, ang);
       placeOnTube(t, R - 0.15 - bulge, ang, _look);     // surface sits inside the wall
       pos.push(_look.x, _look.y, _look.z);
-      uv.push((iv/NV)*4.5, (iu/NU)*5.5);
+      uv.push((iv/NV)*5.5, (iu/NU)*6.5);
+      const br=Math.min(1, bulge/(PLAQUE_MAX*0.85)); bratio.push(br);
+      // lipid-yellow core blending to a reddish fibrous cap at the thin edges
+      const c=cEdge.clone().lerp(cCore, Math.pow(br,0.55));
+      c.multiplyScalar(0.86 + 0.28*Math.random());                   // mottling
+      if(Math.random()<0.05) c.setRGB(0.42+Math.random()*0.1,0.07,0.06);  // cholesterol/blood speck
+      else if(Math.random()<0.04) c.lerp(new THREE.Color(0xf2e3b0), 0.5); // pale crystal fleck
+      col.push(c.r, c.g, c.b);
     }
   }
   for(let iu=0;iu<NU;iu++) for(let iv=0;iv<NV;iv++){
@@ -1242,10 +1255,21 @@ function makePlaque(){
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
   geo.setIndex(idx); geo.computeVertexNormals();
-  const mat = new THREE.MeshPhysicalMaterial({ color:0xffffff, map:tex.map,
-    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(0.85,0.85),
-    roughness:1.0, metalness:0.0, clearcoat:0.26, clearcoatRoughness:0.62, side:THREE.DoubleSide });
+  // real geometric cauliflower bumps along the surface normal, fading at edges
+  const pa=geo.attributes.position, na=geo.attributes.normal;
+  for(let i=0;i<pa.count;i++){ const br=bratio[i]; if(br<=0.02) continue;
+    const x=pa.getX(i), y=pa.getY(i), z=pa.getZ(i);
+    const n = 0.6*fbm3(x*0.85,y*0.85,z*0.85) + 0.4*fbm3(x*2.0,y*2.0,z*2.0);
+    const amp = 0.42*br;
+    pa.setXYZ(i, x+na.getX(i)*n*amp, y+na.getY(i)*n*amp, z+na.getZ(i)*n*amp);
+  }
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshPhysicalMaterial({ vertexColors:true,
+    normalMap:tex.normalMap, roughnessMap:tex.roughnessMap, normalScale:new THREE.Vector2(1.15,1.15),
+    roughness:1.0, metalness:0.0, clearcoat:0.5, clearcoatRoughness:0.45,
+    emissive:0x140d04, emissiveIntensity:0.25, side:THREE.DoubleSide });
   return new THREE.Mesh(geo, mat);
 }
 

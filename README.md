@@ -4,6 +4,13 @@ An interactive, fully 3D simulation of the inside of a blood vessel. Fly through
 the bloodstream, watch cells flow past, and click any cell to learn what it is,
 what it does, and what affects it.
 
+## Mobile
+
+The page is touch- and phone-friendly: drag with one finger to orbit, pinch to
+zoom, tap a cell to inspect it. On phones it automatically runs a lighter scene
+(fewer cells, no depth-of-field, capped resolution) so it stays smooth, the UI
+reflows to fit a small screen, and the headset-VR button is hidden.
+
 ## How to run
 
 No build step, no server needed. Just open the file in any modern browser:

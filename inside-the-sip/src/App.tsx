@@ -24,8 +24,12 @@ export function App() {
       <Overlay selected={selected} />
       <Canvas
         shadows
-        camera={{ position: [0, 1.6, 0.6], fov: 60 }}
+        camera={{ position: [0, 1.45, 0.55], fov: 60 }}
         gl={{ antialias: true }}
+        // Aim the desktop preview camera at the table so the drinks are clearly
+        // framed on a 2D screen. In VR this is ignored — the headset pose drives
+        // the camera and the user simply looks down at the table.
+        onCreated={({ camera }) => camera.lookAt(0, 0.78, -0.7)}
       >
         <color attach="background" args={['#3a2a33']} />
 

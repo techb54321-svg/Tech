@@ -126,6 +126,15 @@ inside-the-sip/
 - Only a single soft contact shadow is used — no heavy real-time shadow maps.
 - All forced motion will use a comfort vignette and gentle, limited rotation.
 
+## Fonts
+
+The world-space caption uses a **locally bundled** font
+(`public/fonts/Caption-Bold.ttf`, which is DejaVu Sans Bold — a freely
+redistributable font). This is deliberate: drei's `<Text>` otherwise fetches
+font data from a CDN, and on a headset with restricted network that request can
+fail and blank the whole scene. Bundling the font keeps the experience working
+fully offline.
+
 ## A note on the rest of this repository
 
 The files in the repo root (`blood-vessel-simulation.html`, etc.) are a separate,

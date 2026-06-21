@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { Text } from '@react-three/drei'
 import { BackSide } from 'three'
 import { Drink } from '../components/Drink'
+import { SceneErrorBoundary } from '../components/SceneErrorBoundary'
 import type { DrinkChoice } from '../types'
 
 interface ChoiceSceneProps {
@@ -24,26 +25,32 @@ export function ChoiceScene({ onSelect, selected }: ChoiceSceneProps) {
         <meshBasicMaterial color="#3a2a33" side={BackSide} />
       </mesh>
 
-      {/* Floating narration caption, world-space and readable in VR. The font
-          loads asynchronously and *suspends*, so it MUST sit inside its own
-          Suspense boundary — otherwise it would blank the whole 3D scene while
-          (or if) the font fails to load. fallback={null} = scene shows now,
-          caption pops in when the font is ready. */}
-      <Suspense fallback={null}>
-        <Text
-          position={[0, 1.7, -0.9]}
-          fontSize={0.07}
-          color="#fff4e6"
-          anchorX="center"
-          anchorY="middle"
-          maxWidth={1.4}
-          textAlign="center"
-          outlineWidth={0.004}
-          outlineColor="#3a1f12"
-        >
-          Reach out and choose a drink.
-        </Text>
-      </Suspense>
+      {/* Floating narration caption, world-space and readable in VR.
+          IMPORTANT: we load a *bundled local* font (public/fonts) and pass it
+          explicitly. drei's <Text> otherwise fetches font data from a CDN
+          (unicode-font-resolver); if that network request fails the promise
+          rejects and crashes the whole scene to black — which is fatal on a
+          headset with restricted network. A local font has no such dependency.
+          It's still wrapped in Suspense (pending load) AND an error boundary
+          (defence-in-depth) so the scene always renders regardless. */}
+      <SceneErrorBoundary>
+        <Suspense fallback={null}>
+          <Text
+            font="/fonts/Caption-Bold.ttf"
+            position={[0, 1.7, -0.9]}
+            fontSize={0.07}
+            color="#fff4e6"
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={1.4}
+            textAlign="center"
+            outlineWidth={0.004}
+            outlineColor="#3a1f12"
+          >
+            Reach out and choose a drink.
+          </Text>
+        </Suspense>
+      </SceneErrorBoundary>
 
       {/* Cosy round table — rounded top, no sharp edges. */}
       <group position={[0, 0, -0.7]}>

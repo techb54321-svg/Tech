@@ -49,17 +49,21 @@ export function Drink({ kind, position, onSelect, selected }: DrinkProps) {
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Glass body — soft, rounded cylinder, slightly translucent. */}
+      {/* Glass body — soft, rounded cylinder, slightly translucent.
+          NOTE: we intentionally avoid MeshPhysicalMaterial `transmission` here.
+          Transmission needs a separate render pass that the Quest browser
+          renders black (or breaks the whole frame) in an immersive WebXR
+          session. A plain transparent standard material gives a convincing
+          glass look and is rock-solid in VR — and cheaper, which suits the
+          framerate budget. */}
       <mesh castShadow position={[0, 0.09, 0]}>
         <cylinderGeometry args={[0.045, 0.038, 0.18, 32]} />
-        <meshPhysicalMaterial
-          color="#ffffff"
-          transmission={0.9}
-          thickness={0.4}
-          roughness={0.05}
-          ior={1.45}
+        <meshStandardMaterial
+          color="#eaf6ff"
           transparent
-          opacity={0.5}
+          opacity={0.32}
+          roughness={0.12}
+          metalness={0}
         />
       </mesh>
 

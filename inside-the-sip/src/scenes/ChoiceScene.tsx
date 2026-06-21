@@ -1,4 +1,6 @@
+import { Suspense } from 'react'
 import { Text } from '@react-three/drei'
+import { BackSide } from 'three'
 import { Drink } from '../components/Drink'
 import type { DrinkChoice } from '../types'
 
@@ -13,23 +15,38 @@ interface ChoiceSceneProps {
 export function ChoiceScene({ onSelect, selected }: ChoiceSceneProps) {
   return (
     <group>
-      {/* Floating narration caption, world-space and readable in VR. */}
-      <Text
-        position={[0, 1.7, -0.9]}
-        fontSize={0.07}
-        color="#fff4e6"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={1.4}
-        textAlign="center"
-        outlineWidth={0.004}
-        outlineColor="#3a1f12"
-      >
-        Reach out and choose a drink.
-      </Text>
+      {/* Enveloping warm backdrop. An inverted sphere (BackSide) so the user is
+          always inside a soft cosy "room" rather than floating in a black void
+          in any direction they look. meshBasic = unlit, so it's guaranteed
+          visible regardless of lighting, and it's a single cheap draw call. */}
+      <mesh>
+        <sphereGeometry args={[12, 32, 16]} />
+        <meshBasicMaterial color="#3a2a33" side={BackSide} />
+      </mesh>
+
+      {/* Floating narration caption, world-space and readable in VR. The font
+          loads asynchronously and *suspends*, so it MUST sit inside its own
+          Suspense boundary — otherwise it would blank the whole 3D scene while
+          (or if) the font fails to load. fallback={null} = scene shows now,
+          caption pops in when the font is ready. */}
+      <Suspense fallback={null}>
+        <Text
+          position={[0, 1.7, -0.9]}
+          fontSize={0.07}
+          color="#fff4e6"
+          anchorX="center"
+          anchorY="middle"
+          maxWidth={1.4}
+          textAlign="center"
+          outlineWidth={0.004}
+          outlineColor="#3a1f12"
+        >
+          Reach out and choose a drink.
+        </Text>
+      </Suspense>
 
       {/* Cosy round table — rounded top, no sharp edges. */}
-      <group position={[0, 0, -0.6]}>
+      <group position={[0, 0, -0.7]}>
         <mesh position={[0, 0.74, 0]} castShadow receiveShadow>
           <cylinderGeometry args={[0.45, 0.45, 0.04, 48]} />
           <meshStandardMaterial color="#b5742f" roughness={0.6} />
@@ -53,13 +70,13 @@ export function ChoiceScene({ onSelect, selected }: ChoiceSceneProps) {
       {/* The two drinks sit on the tabletop (table top at y ≈ 0.76). */}
       <Drink
         kind="water"
-        position={[-0.18, 0.76, -0.6]}
+        position={[-0.18, 0.76, -0.7]}
         onSelect={onSelect}
         selected={selected === 'water'}
       />
       <Drink
         kind="coke"
-        position={[0.18, 0.76, -0.6]}
+        position={[0.18, 0.76, -0.7]}
         onSelect={onSelect}
         selected={selected === 'coke'}
       />

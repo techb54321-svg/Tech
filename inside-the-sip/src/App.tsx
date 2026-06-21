@@ -27,9 +27,12 @@ export function App() {
         camera={{ position: [0, 1.6, 0.6], fov: 60 }}
         gl={{ antialias: true }}
       >
-        <color attach="background" args={['#1a0f14']} />
+        <color attach="background" args={['#3a2a33']} />
 
-        {/* Soft GI-style lighting: warm key, cool fill, gentle rim + ambient. */}
+        {/* Soft GI-style lighting: warm key, cool fill, gentle rim + ambient.
+            The hemisphere light guarantees everything is softly lit from every
+            angle so nothing reads as pure black in the headset. */}
+        <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#3a241a" />
         <ambientLight intensity={0.5} color="#ffe9d6" />
         <directionalLight
           position={[2.5, 4, 2]}

@@ -20,7 +20,7 @@ export function SceneStub({ step }: { step: JourneyStep }) {
   return (
     <group position={step.position}>
       {/* Enveloping coloured room (seen from the inside). */}
-      <mesh>
+      <mesh raycast={() => null}>
         <sphereGeometry args={[3.4, 32, 24]} />
         <meshStandardMaterial
           color={step.color}

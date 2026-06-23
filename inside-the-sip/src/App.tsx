@@ -30,7 +30,7 @@ export function App() {
         <directionalLight position={[-3, 2, -1]} intensity={0.4} color="#8fb6ff" />
 
         {/* Large enclosing backdrop so the user is never in a black void. */}
-        <mesh>
+        <mesh raycast={() => null}>
           <sphereGeometry args={[40, 32, 16]} />
           <meshBasicMaterial color="#1c1018" side={BackSide} />
         </mesh>

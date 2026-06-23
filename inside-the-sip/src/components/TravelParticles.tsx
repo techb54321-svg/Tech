@@ -22,7 +22,7 @@ export function TravelParticles({ count = 500 }: { count?: number }) {
   }, [count])
 
   return (
-    <points geometry={geometry}>
+    <points geometry={geometry} raycast={() => null}>
       <pointsMaterial
         size={0.03}
         sizeAttenuation

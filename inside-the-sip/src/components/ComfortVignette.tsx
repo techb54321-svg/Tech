@@ -27,8 +27,10 @@ export function ComfortVignette() {
 
   return (
     <group ref={grp}>
-      {/* Ring with a clear central hole; dark periphery. Always drawn on top. */}
-      <mesh position={[0, 0, -0.12]} renderOrder={999}>
+      {/* Ring with a clear central hole; dark periphery. Always drawn on top.
+          raycast is disabled so this head-locked overlay never intercepts the
+          controller/hand ray (otherwise it would block selecting anything). */}
+      <mesh position={[0, 0, -0.12]} renderOrder={999} raycast={() => null}>
         <ringGeometry args={[0.055, 0.6, 64]} />
         <meshBasicMaterial
           ref={mat}

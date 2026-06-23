@@ -4,14 +4,16 @@ import { BackSide, type Group, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
 
-// Scene 2 — The Spin / dive-in. A dramatic "warp" plunge into the body: streaks
-// rush past you out of a bright portal ahead, the intensity builds, and you
-// plunge into light before arriving at the mouth.
+// Scenes 2 & 10 — The Spin. A dramatic comfort-safe "warp": streaks rush past a
+// bright portal, intensity builds, and a white burst transitions the scene.
+//  - dive-IN (default): you plunge toward a growing portal, into the body.
+//  - dive-OUT (reverse): streaks recede and the portal shrinks as you rise back
+//    out to the table.
 //
 // COMFORT: the camera/headset is never moved or rotated — only the *world*
 // streaks past (vection from optic flow, not real motion), and the comfort
 // vignette tightens during the rush. Auto-advances after the build-up.
-export function SpinScene() {
+export function SpinScene({ reverse = false }: { reverse?: boolean }) {
   const start = useRef<number | null>(null)
   const portal = useRef<Group>(null)
   const flash = useRef<Mesh>(null)
@@ -21,12 +23,13 @@ export function SpinScene() {
     const e = s.clock.elapsedTime - start.current // seconds since arrival
     const climax = Math.min(e / 2.5, 1)
 
-    // The portal ahead grows and spins faster as we plunge toward it.
+    // Portal grows as we plunge in; shrinks/recedes as we pull back out.
     if (portal.current) {
-      portal.current.scale.setScalar(0.5 + climax * climax * 2.4)
-      portal.current.rotation.z = s.clock.elapsedTime * (1.5 + climax * 3)
+      const sc = reverse ? 2.9 - climax * climax * 2.4 : 0.5 + climax * climax * 2.4
+      portal.current.scale.setScalar(Math.max(0.05, sc))
+      portal.current.rotation.z = s.clock.elapsedTime * (1.5 + climax * 3) * (reverse ? -1 : 1)
     }
-    // A white burst that floods the view right at the climax (plunge into light).
+    // A white burst that floods the view at the climax (the transition moment).
     if (flash.current) {
       const m = flash.current.material as { opacity: number }
       m.opacity = Math.max(0, (climax - 0.7) / 0.3) * 0.9
@@ -64,7 +67,8 @@ export function SpinScene() {
           const s = i * 2.713
           const rx = s - Math.floor(s)
           const a = ((s * 1.91) - Math.floor(s * 1.91)) * Math.PI * 2
-          const p = (t * 0.6 + rx) % 1 // 0 = far ahead, 1 = just past you
+          const raw = (t * 0.6 + rx) % 1
+          const p = reverse ? 1 - raw : raw // dive-out: streaks recede instead
           const radius = 0.04 + p * p * 2.6 // spreads as it nears (perspective)
           d.position.set(
             Math.cos(a) * radius,

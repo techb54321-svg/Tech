@@ -72,5 +72,6 @@ const CUE: Record<string, number> = {
   pancreas: 622,
   liver: 311,
   brain: 698,
+  spinback: 392,
   return: 523,
 }

@@ -19,6 +19,7 @@ const FOG: Record<string, { color: string; density: number }> = {
   pancreas: { color: '#7c561c', density: 0.06 },
   liver: { color: '#4f2e14', density: 0.07 },
   brain: { color: '#141d4a', density: 0.05 },
+  spinback: { color: '#2a1640', density: 0.045 },
   return: { color: '#241019', density: 0.05 },
 }
 

@@ -33,6 +33,7 @@ export const STEPS: JourneyStep[] = [
   { id: 'pancreas', title: 'The Pancreas', caption: 'The pancreas sends out insulin "keys".', color: '#e3b44a', position: [9.5, -9, -1.5], advance: 'continue' },
   { id: 'liver', title: 'The Liver', caption: 'The liver stores the extra sugar as fat.', color: '#a06a38', position: [11.5, -8, 2.5], advance: 'continue' },
   { id: 'brain', title: 'The Brain', caption: 'A buzzy sugar "high" lights up the brain.', color: '#4aa0e6', position: [9, -5, 6.5], advance: 'continue' },
+  { id: 'spinback', title: 'Rising Back Out', caption: 'And back out you rise...', color: '#7d5bd0', position: [4.5, -2.5, 4], advance: 'auto', dwell: 2.5 },
   { id: 'return', title: 'The Choice, Again', caption: 'Back at the table. The same choice — now you know.', color: '#caa15a', position: [0, 0, 0], advance: 'select' },
 ]
 

@@ -24,6 +24,8 @@ function sceneFor(id: string) {
       return <ChoiceScene />
     case 'spin':
       return <SpinScene />
+    case 'spinback':
+      return <SpinScene reverse />
     case 'mouth':
       return <MouthScene />
     case 'esophagus':

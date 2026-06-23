@@ -23,7 +23,8 @@ export function ComfortVignette() {
     // it further for extra comfort during the intense optic flow.
     if (mat.current) {
       const moving = status === 'traveling' || step.advance === 'auto'
-      const target = step.id === 'spin' ? 0.94 : moving ? 0.88 : 0
+      const isSpin = step.id === 'spin' || step.id === 'spinback'
+      const target = isSpin ? 0.94 : moving ? 0.88 : 0
       mat.current.opacity += (target - mat.current.opacity) * (1 - Math.pow(0.0005, delta))
     }
   })

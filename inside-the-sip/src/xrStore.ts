@@ -12,8 +12,8 @@ export const xrStore = createXRStore({
   // crashes the whole immersive render to pure black with no controllers.
   // Disabling the models removes that network dependency entirely while
   // keeping ray-point + trigger/pinch selection fully working offline.
-  controller: { model: false },
-  hand: { model: false },
+  controller: { model: false, rayPointer: true },
+  hand: { model: false, rayPointer: true },
   // Load WebXR input-source layouts from a *locally bundled* copy
   // (public/webxr-profiles) instead of the default jsdelivr CDN, so nothing is
   // fetched over the network when the session starts. This is the real fix for

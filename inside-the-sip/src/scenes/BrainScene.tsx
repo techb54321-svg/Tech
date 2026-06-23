@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type MeshStandardMaterial, type Object3D } from 'three'
+import { BackSide, type MeshStandardMaterial, type Object3D, type PointLight } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
 
@@ -12,14 +12,17 @@ import { Glow } from '../components/Glow'
 // activity, typically followed by a dip ("crash"). Simplified, transient.
 export function BrainScene() {
   const sparkMat = useRef<MeshStandardMaterial>(null)
+  const buzz = useRef<PointLight>(null)
 
   useFrame((s) => {
-    if (!sparkMat.current) return
     const t = s.clock.elapsedTime
     // Fast jitter + slow surge/crash envelope.
     const jitter = 0.6 + 0.4 * Math.sin(t * 14)
     const envelope = 0.6 + 0.5 * Math.sin(t * 0.5) // slow rise and dip = crash hint
-    sparkMat.current.emissiveIntensity = Math.max(0.2, 1.6 * jitter * envelope)
+    const energy = Math.max(0.2, jitter * envelope)
+    if (sparkMat.current) sparkMat.current.emissiveIntensity = 1.6 * energy
+    // A flickering electric light pulses the whole space with the buzz.
+    if (buzz.current) buzz.current.intensity = 1 + energy * 6
   })
 
   return (
@@ -30,6 +33,8 @@ export function BrainScene() {
         <meshStandardMaterial color="#3a4a8a" side={BackSide} roughness={0.9} emissive="#222a55" emissiveIntensity={0.4} />
       </mesh>
 
+      <pointLight ref={buzz} position={[0, 1.2, -1.2]} color="#a9c8ff" intensity={3} distance={12} decay={2} />
+
       {/* Soft electric glow filling the space (the "buzz"). */}
       <Glow position={[0, 1.1, -1.4]} color="#9fd0ff" size={5} opacity={0.4} />
       <Glow position={[1.2, 1.6, -1.0]} color="#fff0a0" size={2.2} opacity={0.5} />
@@ -37,7 +42,7 @@ export function BrainScene() {
 
       {/* Neuron cell bodies, scattered and gently bobbing (instanced). */}
       <InstancedSwarm
-        count={36}
+        count={48}
         update={(d: Object3D, i: number, t: number) => {
           const s = i * 8.21
           const rx = s - Math.floor(s)

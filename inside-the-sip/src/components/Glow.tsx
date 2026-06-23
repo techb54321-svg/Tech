@@ -42,6 +42,7 @@ export function Glow({ position = [0, 0, 0], color = '#ffffff', size = 0.5, opac
         opacity={opacity}
         depthWrite={false}
         toneMapped={false}
+        fog={false}
       />
     </sprite>
   )

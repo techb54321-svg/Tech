@@ -40,7 +40,7 @@ export function Caption({
           renderOrder={999}
         >
           {children}
-          <meshBasicMaterial color={color} depthTest={false} depthWrite={false} transparent toneMapped={false} />
+          <meshBasicMaterial color={color} depthTest={false} depthWrite={false} transparent toneMapped={false} fog={false} />
         </Text>
       </Suspense>
     </SceneErrorBoundary>

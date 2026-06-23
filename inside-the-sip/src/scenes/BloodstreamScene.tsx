@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type Mesh, type Object3D } from 'three'
+import { BackSide, type Mesh, type Object3D, type PointLight } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
 
@@ -11,17 +11,28 @@ import { Glow } from '../components/Glow'
 // Educational note: glucose the body can't use right away is converted to fat
 // for storage — the literal poke->morph makes that visible.
 export function BloodstreamScene() {
+  const heart = useRef<PointLight>(null)
+  // A double-thump heartbeat pulse lighting the vessel from within — life.
+  useFrame((s) => {
+    if (!heart.current) return
+    const t = (s.clock.elapsedTime % 1.1) / 1.1
+    const beat = Math.exp(-Math.pow((t - 0.1) * 6, 2)) + 0.6 * Math.exp(-Math.pow((t - 0.32) * 6, 2))
+    heart.current.intensity = 2 + beat * 9
+  })
+
   return (
     <group>
-      {/* Vessel wall, seen from inside. */}
+      {/* Long vessel wall, seen from inside (wide for a sense of scale). */}
       <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[2.2, 2.2, 16, 32, 1, true]} />
+        <cylinderGeometry args={[2.6, 2.6, 24, 40, 1, true]} />
         <meshStandardMaterial color="#b83646" side={BackSide} roughness={0.85} emissive="#7a1f2c" emissiveIntensity={0.35} />
       </mesh>
 
+      <pointLight ref={heart} position={[0, 1.0, -1]} color="#ff4d5e" intensity={4} distance={14} decay={2} />
+
       {/* Drifting biconcave red blood cells (instanced, squashed spheres). */}
       <InstancedSwarm
-        count={50}
+        count={70}
         update={(d: Object3D, i: number, t: number) => {
           const s = i * 3.77
           const rx = s - Math.floor(s)

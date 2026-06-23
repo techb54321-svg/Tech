@@ -9,6 +9,7 @@ import { Narration } from './components/Narration'
 import { ContinueButton } from './components/ContinueButton'
 import { ComfortVignette } from './components/ComfortVignette'
 import { TravelParticles } from './components/TravelParticles'
+import { Atmosphere } from './components/Atmosphere'
 import { AudioCues } from './audio/AudioCues'
 
 // Phase 2 — Journey framework.
@@ -21,7 +22,16 @@ export function App() {
   return (
     <>
       <Overlay />
-      <Canvas camera={{ position: [0, 1.5, 0.6], fov: 60 }} gl={{ antialias: true }}>
+      <Canvas
+        camera={{ position: [0, 1.5, 0.6], fov: 60 }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        dpr={[1, 1.5]}
+        onCreated={({ gl }) => {
+          // Slightly punchier exposure for a cinematic, glowing look (R3F
+          // already uses ACES filmic tone mapping + sRGB output).
+          gl.toneMappingExposure = 1.15
+        }}
+      >
         <color attach="background" args={['#1c1018']} />
 
         {/* Soft GI-style lighting that reaches the whole journey volume. */}
@@ -47,6 +57,7 @@ export function App() {
               <ContinueButton />
             </CameraRig>
 
+            <Atmosphere />
             <ActiveScene />
             <TravelParticles />
             <ComfortVignette />

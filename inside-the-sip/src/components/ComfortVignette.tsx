@@ -10,7 +10,7 @@ import { useJourney } from '../journey/JourneyContext'
 export function ComfortVignette() {
   const grp = useRef<Group>(null)
   const mat = useRef<MeshBasicMaterial>(null)
-  const { status } = useJourney()
+  const { status, step } = useJourney()
   const { camera } = useThree()
 
   useFrame((_, delta) => {
@@ -18,9 +18,12 @@ export function ComfortVignette() {
     // Stick the vignette to the head pose every frame.
     grp.current.position.copy(camera.position)
     grp.current.quaternion.copy(camera.quaternion)
-    // Fade with motion: visible while traveling, gone when paused.
+    // Fade in during any forced motion: travel between scenes AND the guided
+    // 'auto' beats (the dive-in spin, the esophagus slide). The dive tightens
+    // it further for extra comfort during the intense optic flow.
     if (mat.current) {
-      const target = status === 'traveling' ? 0.9 : 0
+      const moving = status === 'traveling' || step.advance === 'auto'
+      const target = step.id === 'spin' ? 0.94 : moving ? 0.88 : 0
       mat.current.opacity += (target - mat.current.opacity) * (1 - Math.pow(0.0005, delta))
     }
   })

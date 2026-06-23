@@ -10,6 +10,7 @@ import { ContinueButton } from './components/ContinueButton'
 import { ComfortVignette } from './components/ComfortVignette'
 import { TravelParticles } from './components/TravelParticles'
 import { Atmosphere } from './components/Atmosphere'
+import { EnvironmentMap } from './components/EnvironmentMap'
 import { AudioCues } from './audio/AudioCues'
 
 // Phase 2 — Journey framework.
@@ -34,9 +35,10 @@ export function App() {
       >
         <color attach="background" args={['#1c1018']} />
 
-        {/* Soft GI-style lighting that reaches the whole journey volume. */}
-        <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#2a1a22" />
-        <ambientLight intensity={0.45} color="#ffe9d6" />
+        {/* Soft GI-style lighting. Toned down because the baked environment map
+            (EnvironmentMap) now contributes image-based ambient + reflections. */}
+        <hemisphereLight intensity={0.45} color="#ffe9d6" groundColor="#2a1a22" />
+        <ambientLight intensity={0.25} color="#ffe9d6" />
         {/* Warm key, cool fill, and a cool rim light from behind for a soft
             Pixar-style three-point feel. */}
         <directionalLight position={[2.5, 4, 2]} intensity={1.4} color="#fff1d8" />
@@ -57,6 +59,7 @@ export function App() {
               <ContinueButton />
             </CameraRig>
 
+            <EnvironmentMap />
             <Atmosphere />
             <ActiveScene />
             <TravelParticles />

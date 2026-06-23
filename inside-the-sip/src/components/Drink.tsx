@@ -87,7 +87,7 @@ function CokeCan() {
       {/* Red body */}
       <mesh position={[0, 0.075, 0]}>
         <cylinderGeometry args={[0.033, 0.033, 0.13, 32]} />
-        <meshStandardMaterial color="#d81f26" roughness={0.35} metalness={0.25} />
+        <meshStandardMaterial color="#d81f26" roughness={0.22} metalness={0.55} envMapIntensity={1.4} />
       </mesh>
       {/* White swoosh band around the middle */}
       <mesh position={[0, 0.07, 0]}>
@@ -124,9 +124,10 @@ function WaterGlass() {
         <meshStandardMaterial
           color="#eaf6ff"
           transparent
-          opacity={0.18}
-          roughness={0.06}
-          metalness={0}
+          opacity={0.22}
+          roughness={0.04}
+          metalness={0.1}
+          envMapIntensity={1.6}
         />
       </mesh>
       {/* Water inside */}

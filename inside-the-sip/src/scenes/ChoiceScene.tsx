@@ -47,7 +47,11 @@ export function ChoiceScene({ onSelect, selected }: ChoiceSceneProps) {
             outlineWidth={0.004}
             outlineColor="#3a1f12"
           >
-            Reach out and choose a drink.
+            {selected === null
+              ? 'Reach out and choose a drink.'
+              : selected === 'coke'
+                ? 'You picked the Coke.'
+                : 'You picked the water.'}
           </Text>
         </Suspense>
       </SceneErrorBoundary>
@@ -80,12 +84,14 @@ export function ChoiceScene({ onSelect, selected }: ChoiceSceneProps) {
         position={[-0.18, 0.76, -0.7]}
         onSelect={onSelect}
         selected={selected === 'water'}
+        dimmed={selected === 'coke'}
       />
       <Drink
         kind="coke"
         position={[0.18, 0.76, -0.7]}
         onSelect={onSelect}
         selected={selected === 'coke'}
+        dimmed={selected === 'water'}
       />
 
       {/* Floor — a warm soft disc so the user has a sense of ground. */}

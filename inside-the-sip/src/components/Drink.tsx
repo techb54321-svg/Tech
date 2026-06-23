@@ -8,25 +8,30 @@ interface DrinkProps {
   position: [number, number, number]
   onSelect: (kind: DrinkChoice) => void
   selected: boolean
+  // Something else has been selected (so this one fades back to demote it).
+  dimmed: boolean
 }
 
 // A grabbable/selectable drink, all procedural rounded geometry (Pixar style).
 // Coke = a recognisable red can; water = a clear glass of water.
-export function Drink({ kind, position, onSelect, selected }: DrinkProps) {
+export function Drink({ kind, position, onSelect, selected, dimmed }: DrinkProps) {
   const group = useRef<Group>(null)
   const [hovered, setHovered] = useState(false)
   const isCoke = kind === 'coke'
 
-  // Soft hover/selection feedback: gentle lift + scale, frame-rate independent.
+  // Feedback: hover = small lift; SELECTED = big leap, scale-up and a slow
+  // celebratory spin; a non-selected drink shrinks away. Frame-rate independent.
   useFrame((_, delta) => {
     if (!group.current) return
-    const targetScale = hovered || selected ? 1.12 : 1
-    const targetLift = selected ? 0.06 : hovered ? 0.03 : 0
+    const targetScale = selected ? 1.35 : dimmed ? 0.6 : hovered ? 1.12 : 1
+    const targetLift = selected ? 0.14 : hovered ? 0.03 : 0
     const k = 1 - Math.pow(0.001, delta)
     const s = group.current.scale.x + (targetScale - group.current.scale.x) * k
     group.current.scale.setScalar(s)
     group.current.position.y =
       position[1] + (targetLift - (group.current.position.y - position[1])) * k
+    // Spin the chosen drink so the selection is unmistakable in VR.
+    if (selected) group.current.rotation.y += delta * 1.6
   })
 
   // Selection fires on pointer DOWN (trigger pull / hand pinch) rather than a

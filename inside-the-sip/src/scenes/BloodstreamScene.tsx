@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 6 — The Bloodstream. A red vessel tunnel with biconcave red blood cells
 // drifting past and sparkly glucose particles swirling. Interactive: poke a
@@ -56,6 +57,9 @@ export function BloodstreamScene() {
         <meshStandardMaterial color="#eaffff" emissive="#9fe8ff" emissiveIntensity={1.2} roughness={0.2} />
       </InstancedSwarm>
 
+      {/* Soft warm glow through the vessel. */}
+      <Glow position={[0, 1.0, -1.5]} color="#ff8a98" size={4} opacity={0.35} />
+
       {/* A handful of pokeable glucose crystals that morph into fat. */}
       {POKE_SPOTS.map((p, i) => (
         <SugarBit key={i} position={p} />
@@ -80,34 +84,39 @@ function SugarBit({ position }: { position: [number, number, number] }) {
   useFrame((s, delta) => {
     if (!ref.current) return
     ref.current.rotation.y += delta * (fat ? 0.4 : 1.5)
-    ref.current.position.y = position[1] + Math.sin(s.clock.elapsedTime * 1.4 + position[0]) * 0.04
+    ref.current.position.y = Math.sin(s.clock.elapsedTime * 1.4 + position[0]) * 0.04
     const target = fat ? 1.0 : hovered ? 1.25 : 1
     const cur = ref.current.scale.x
     ref.current.scale.setScalar(cur + (target - cur) * (1 - Math.pow(0.001, delta)))
   })
 
+  const select = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    setFat(true)
+  }
+
   return (
-    <mesh
-      ref={ref}
-      position={position}
-      onPointerDown={(e) => {
-        e.stopPropagation()
-        setFat(true)
-      }}
-      onPointerOver={(e) => {
-        e.stopPropagation()
-        setHovered(true)
-      }}
-      onPointerOut={() => setHovered(false)}
-      scale={1}
-    >
-      {fat ? <sphereGeometry args={[0.11, 16, 12]} /> : <boxGeometry args={[0.1, 0.1, 0.1]} />}
-      <meshStandardMaterial
-        color={fat ? '#ffd86b' : '#eaffff'}
-        emissive={fat ? '#e0a022' : '#9fe8ff'}
-        emissiveIntensity={fat ? 0.5 : 1.0}
-        roughness={fat ? 0.5 : 0.2}
-      />
-    </mesh>
+    <group position={position}>
+      <mesh
+        ref={ref}
+        onPointerDown={select}
+        onClick={select}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          setHovered(true)
+        }}
+        onPointerOut={() => setHovered(false)}
+      >
+        {fat ? <sphereGeometry args={[0.11, 16, 12]} /> : <boxGeometry args={[0.1, 0.1, 0.1]} />}
+        <meshStandardMaterial
+          color={fat ? '#ffd86b' : '#eaffff'}
+          emissive={fat ? '#e0a022' : '#9fe8ff'}
+          emissiveIntensity={fat ? 0.6 : 1.0}
+          roughness={fat ? 0.5 : 0.2}
+        />
+      </mesh>
+      {/* Glow halo — cyan glucose sparkle, warm gold once it becomes fat. */}
+      <Glow color={fat ? '#ffd86b' : '#9fe8ff'} size={fat ? 0.5 : 0.34} opacity={0.7} />
+    </group>
   )
 }

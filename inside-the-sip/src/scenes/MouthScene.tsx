@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
 // droplets wash down; tapping a tooth reveals stylised enamel erosion (a soft
@@ -40,6 +41,9 @@ export function MouthScene() {
         return <Tooth key={i} position={[x, y, z]} rotation={[0, -a * 0.4, 0]} />
       })}
 
+      {/* Acidic glow washing over the teeth. */}
+      <Glow position={[0, 1.4, -1.1]} color="#cfff66" size={2.6} opacity={0.4} />
+
       {/* Glowing sugar-acid droplets drifting down over the teeth. */}
       <InstancedSwarm
         count={40}
@@ -67,8 +71,12 @@ function frac(n: number) {
 
 function Tongue() {
   const ref = useRef<Mesh>(null)
+  // Squash-and-stretch: as it stretches taller it gets thinner, and vice
+  // versa (roughly volume-preserving) — the classic lively, cartoony feel.
   useFrame((s) => {
-    if (ref.current) ref.current.scale.y = 1 + Math.sin(s.clock.elapsedTime * 1.5) * 0.06
+    if (!ref.current) return
+    const stretch = 1 + Math.sin(s.clock.elapsedTime * 1.5) * 0.12
+    ref.current.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch))
   })
   return (
     <mesh ref={ref} position={[0, 0.7, -1.2]} rotation={[-0.5, 0, 0]} raycast={() => null}>

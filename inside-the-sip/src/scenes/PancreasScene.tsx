@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, MathUtils, type Group, type Mesh, type MeshStandardMaterial, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 7 — The Pancreas. The pancreas pulses and sends out insulin "keys".
 // Interactive: tap a cell to send an insulin key into its keyhole — the door
@@ -25,6 +26,9 @@ export function PancreasScene() {
       </mesh>
 
       <Pancreas />
+
+      {/* Golden insulin glow around the pancreas. */}
+      <Glow position={[-1.6, 1.0, -0.8]} color="#ffd05a" size={2.4} opacity={0.5} />
 
       {/* Ambient insulin keys drifting out from the pancreas (instanced). */}
       <InstancedSwarm

@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Group, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 8 — The Liver. A large, friendly liver. Pale yellow fat globules
 // gradually accumulate on it (a gentle, non-judgemental fatty-liver visual).
@@ -18,6 +19,9 @@ export function LiverScene() {
       </mesh>
 
       <Liver />
+
+      {/* Soft warm glow around the liver. */}
+      <Glow position={[0, 1.3, -1.4]} color="#ffb86a" size={2.8} opacity={0.4} />
 
       {/* Fat globules slowly appearing on/around the liver (instanced). They
           ramp up in size over time to show accumulation. */}

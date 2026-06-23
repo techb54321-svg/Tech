@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 5 — The Stomach. A churning, gently glowing chamber. The walls slowly
 // pulse and gastric bubbles swirl. A brief beat before the journey continues
@@ -28,6 +29,9 @@ export function StomachScene() {
         <circleGeometry args={[2.6, 48]} />
         <meshStandardMaterial color="#f2b24a" emissive="#e08a2a" emissiveIntensity={0.5} roughness={0.4} transparent opacity={0.85} />
       </mesh>
+
+      {/* Warm glow rising from the gastric pool. */}
+      <Glow position={[0, 0.1, 0]} color="#ffb24a" size={3.5} opacity={0.4} />
 
       {/* Churning bubbles swirling around the chamber (instanced). */}
       <InstancedSwarm

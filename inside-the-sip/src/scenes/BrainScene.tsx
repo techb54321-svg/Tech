@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type MeshStandardMaterial, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
+import { Glow } from '../components/Glow'
 
 // Scene 9 — The Brain. Neurons fire with bright, hyperactive sparks: the sugar
 // "high". The buzz escalates in surges and briefly dims (a hint of the crash
@@ -28,6 +29,11 @@ export function BrainScene() {
         <sphereGeometry args={[4.5, 32, 24]} />
         <meshStandardMaterial color="#3a4a8a" side={BackSide} roughness={0.9} emissive="#222a55" emissiveIntensity={0.4} />
       </mesh>
+
+      {/* Soft electric glow filling the space (the "buzz"). */}
+      <Glow position={[0, 1.1, -1.4]} color="#9fd0ff" size={5} opacity={0.4} />
+      <Glow position={[1.2, 1.6, -1.0]} color="#fff0a0" size={2.2} opacity={0.5} />
+      <Glow position={[-1.1, 0.7, -1.2]} color="#c0a0ff" size={2} opacity={0.45} />
 
       {/* Neuron cell bodies, scattered and gently bobbing (instanced). */}
       <InstancedSwarm

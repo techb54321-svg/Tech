@@ -6,13 +6,14 @@ guided journey showing what sugar does — then returned to the same choice, now
 better informed. Health education through embodied storytelling, built to run
 straight in the headset browser (no app store, no sideloading).
 
-> **Status: Phase 3 — Scene content.** Each scene now has real procedural
-> geometry, instanced particle systems, and interactive moments: the mouth
-> (tap teeth to erode), esophagus (peristaltic slide), stomach (churning
-> chamber), bloodstream (red cells + poke glucose to morph it into fat),
-> pancreas (tap a cell to send an insulin key into its lock so glucose enters),
-> liver (fat accumulating), and brain (escalating sugar-high sparks). The spin
-> transitions get their full treatment in Phase 4.
+> **Status: Phase 4 — Pixar polish.** Adds the comfort-safe **spin** vortex
+> transition, VR-safe **glow** (additive sprite halos faking bloom — no
+> off-screen postprocessing, which breaks/slows WebXR), warmer three-point
+> **lighting** (key + cool fill + rim), **squash-and-stretch** on living
+> tissue, and an **audio-cue** system (soft procedural chimes per scene, with
+> a clear hook for real narration). DoF is intentionally omitted (it fights
+> stereo vision in VR). Earlier phases: full 10-scene journey with real
+> geometry, instanced particles, and interactions.
 >
 > **How to travel:** choose a drink to begin; at each pause-point point the ray
 > at the glowing **Continue** button and pull the trigger (or pinch) to fly to

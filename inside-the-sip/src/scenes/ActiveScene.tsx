@@ -1,5 +1,6 @@
 import { ChoiceScene } from './ChoiceScene'
 import { SceneStub } from './SceneStub'
+import { SpinScene } from './SpinScene'
 import { MouthScene } from './MouthScene'
 import { EsophagusScene } from './EsophagusScene'
 import { StomachScene } from './StomachScene'
@@ -21,6 +22,8 @@ function sceneFor(id: string) {
     case 'choice':
     case 'return':
       return <ChoiceScene />
+    case 'spin':
+      return <SpinScene />
     case 'mouth':
       return <MouthScene />
     case 'esophagus':
@@ -35,8 +38,7 @@ function sceneFor(id: string) {
       return <LiverScene />
     case 'brain':
       return <BrainScene />
-    // 'spin' (and any fallback) still uses the placeholder; the real spin
-    // transition is Phase 4.
+    // Fallback (should not occur now that every step has a real scene).
     default:
       return <SceneStub />
   }

@@ -9,6 +9,7 @@ import { Narration } from './components/Narration'
 import { ContinueButton } from './components/ContinueButton'
 import { ComfortVignette } from './components/ComfortVignette'
 import { TravelParticles } from './components/TravelParticles'
+import { AudioCues } from './audio/AudioCues'
 
 // Phase 2 — Journey framework.
 // A scene state machine (JourneyProvider) drives progression through the 10
@@ -26,8 +27,11 @@ export function App() {
         {/* Soft GI-style lighting that reaches the whole journey volume. */}
         <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#2a1a22" />
         <ambientLight intensity={0.45} color="#ffe9d6" />
+        {/* Warm key, cool fill, and a cool rim light from behind for a soft
+            Pixar-style three-point feel. */}
         <directionalLight position={[2.5, 4, 2]} intensity={1.4} color="#fff1d8" />
         <directionalLight position={[-3, 2, -1]} intensity={0.4} color="#8fb6ff" />
+        <directionalLight position={[0, 3, -5]} intensity={0.5} color="#bfe0ff" />
 
         {/* Large enclosing backdrop so the user is never in a black void. */}
         <mesh raycast={() => null}>
@@ -46,6 +50,7 @@ export function App() {
             <ActiveScene />
             <TravelParticles />
             <ComfortVignette />
+            <AudioCues />
           </JourneyProvider>
         </XR>
       </Canvas>

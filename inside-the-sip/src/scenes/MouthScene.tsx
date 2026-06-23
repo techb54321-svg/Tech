@@ -1,8 +1,9 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
+import { enamelTextures } from '../textures/surfaces'
 
 // Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
 // droplets wash down; tapping a tooth reveals stylised enamel erosion (a soft
@@ -90,6 +91,7 @@ function Tooth({ position, rotation }: { position: [number, number, number]; rot
   const [eroded, setEroded] = useState(false)
   const [hovered, setHovered] = useState(false)
   const ref = useRef<Mesh>(null)
+  const enamel = useMemo(enamelTextures, [])
 
   useFrame((_, delta) => {
     if (!ref.current) return
@@ -112,13 +114,18 @@ function Tooth({ position, rotation }: { position: [number, number, number]; rot
         }}
         onPointerOut={() => setHovered(false)}
       >
-        {/* Rounded, friendly tooth (capsule). */}
+        {/* Rounded, friendly tooth (capsule) with procedural enamel detail. */}
         <capsuleGeometry args={[0.11, 0.16, 8, 16]} />
         <meshStandardMaterial
-          color={eroded ? '#d8c39a' : '#fffaf0'}
-          roughness={eroded ? 0.8 : 0.25}
-          emissive={eroded ? '#7a5a2a' : '#fff3da'}
-          emissiveIntensity={eroded ? 0.2 : 0.15}
+          map={enamel.map}
+          bumpMap={enamel.bump}
+          bumpScale={0.015}
+          color={eroded ? '#cdb487' : '#ffffff'}
+          roughness={eroded ? 0.8 : 0.18}
+          metalness={0.02}
+          envMapIntensity={1.3}
+          emissive={eroded ? '#5a3f1a' : '#fff3da'}
+          emissiveIntensity={eroded ? 0.18 : 0.1}
         />
       </mesh>
 

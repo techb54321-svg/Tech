@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { BackSide, type Mesh, type Object3D, type PointLight } from 'three'
+import { useMemo } from 'react'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
+import { vesselTextures } from '../textures/surfaces'
 
 // Scene 6 — The Bloodstream. A red vessel tunnel with biconcave red blood cells
 // drifting past and sparkly glucose particles swirling. Interactive: poke a
@@ -12,6 +14,7 @@ import { Glow } from '../components/Glow'
 // for storage — the literal poke->morph makes that visible.
 export function BloodstreamScene() {
   const heart = useRef<PointLight>(null)
+  const wall = useMemo(vesselTextures, [])
   // A double-thump heartbeat pulse lighting the vessel from within — life.
   useFrame((s) => {
     if (!heart.current) return
@@ -22,10 +25,22 @@ export function BloodstreamScene() {
 
   return (
     <group>
-      {/* Long vessel wall, seen from inside (wide for a sense of scale). */}
+      {/* Long vessel wall, seen from inside (wide for a sense of scale).
+          Procedural wet-flesh texture + bump for real surface relief; low
+          roughness so the heartbeat light + env map give a wet sheen. */}
       <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[2.6, 2.6, 24, 40, 1, true]} />
-        <meshStandardMaterial color="#b83646" side={BackSide} roughness={0.85} emissive="#7a1f2c" emissiveIntensity={0.35} />
+        <meshStandardMaterial
+          map={wall.map}
+          bumpMap={wall.bump}
+          bumpScale={0.06}
+          side={BackSide}
+          roughness={0.5}
+          metalness={0.05}
+          envMapIntensity={1.1}
+          emissive="#5a141f"
+          emissiveIntensity={0.25}
+        />
       </mesh>
 
       <pointLight ref={heart} position={[0, 1.0, -1]} color="#ff4d5e" intensity={4} distance={14} decay={2} />

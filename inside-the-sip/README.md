@@ -135,6 +135,17 @@ font data from a CDN, and on a headset with restricted network that request can
 fail and blank the whole scene. Bundling the font keeps the experience working
 fully offline.
 
+## WebXR controller profiles (bundled offline)
+
+`@react-three/xr` normally fetches WebXR controller/hand layout data from a CDN
+(`@webxr-input-profiles/assets` on jsdelivr) when the immersive session starts.
+On a headset whose network blocks that CDN, the fetch throws and crashes the
+whole XR render to a **pure-black view with no controllers**. To prevent this,
+the JSON layouts are bundled locally in `public/webxr-profiles/` and the store
+points `baseAssetPath` there (built from `window.location.origin` so it works on
+localhost, a LAN IP, or a tunnel). The 3D controller models are disabled
+(`model: false`) — ray pointers + trigger/pinch selection still work fully.
+
 ## A note on the rest of this repository
 
 The files in the repo root (`blood-vessel-simulation.html`, etc.) are a separate,

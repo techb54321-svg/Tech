@@ -5,13 +5,22 @@ import { createXRStore } from '@react-three/xr'
 // (see the interaction model in the brief). Foveated rendering is turned up
 // to protect the framerate budget (72–90 fps) on mobile hardware.
 export const xrStore = createXRStore({
-  hand: true,
-  controller: true,
+  // Render ray pointers for BOTH controllers and hands, but disable the 3D
+  // input-source MODELS. The default models are fetched from a CDN
+  // (@webxr-input-profiles/assets on jsdelivr); when that request is blocked —
+  // as it is on many headset networks — the failure throws inside <XR> and
+  // crashes the whole immersive render to pure black with no controllers.
+  // Disabling the models removes that network dependency entirely while
+  // keeping ray-point + trigger/pinch selection fully working offline.
+  controller: { model: false },
+  hand: { model: false },
+  // Load WebXR input-source layouts from a *locally bundled* copy
+  // (public/webxr-profiles) instead of the default jsdelivr CDN, so nothing is
+  // fetched over the network when the session starts. This is the real fix for
+  // the pure-black headset view — the CDN fetch was failing and crashing <XR>.
+  baseAssetPath: `${window.location.origin}/webxr-profiles/`,
   foveation: 1,
-  // Disable the built-in WebXR *emulator*. By default @react-three/xr injects
-  // the Immersive Web Emulation Runtime on localhost when no real headset is
-  // present — but it renders a full-screen z-index:999 overlay that covers our
-  // scene (and the Enter VR button) on a desktop browser, looking like a black
-  // screen. We test on a real Quest 3, so the emulator is just in the way.
+  // Disable the built-in WebXR emulator: on a desktop browser its full-screen
+  // overlay covers the scene. We test on a real Quest 3.
   emulate: false,
 })

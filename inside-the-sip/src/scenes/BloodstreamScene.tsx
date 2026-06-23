@@ -29,7 +29,7 @@ export function BloodstreamScene() {
           Procedural wet-flesh texture + bump for real surface relief; low
           roughness so the heartbeat light + env map give a wet sheen. */}
       <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[2.6, 2.6, 24, 40, 1, true]} />
+        <cylinderGeometry args={[3.6, 3.6, 60, 48, 1, true]} />
         <meshStandardMaterial
           map={wall.map}
           bumpMap={wall.bump}
@@ -43,39 +43,61 @@ export function BloodstreamScene() {
         />
       </mesh>
 
-      <pointLight ref={heart} position={[0, 1.0, -1]} color="#ff4d5e" intensity={4} distance={14} decay={2} />
+      <pointLight ref={heart} position={[0, 1.0, -1]} color="#ff4d5e" intensity={4} distance={26} decay={2} />
 
-      {/* Drifting biconcave red blood cells (instanced, squashed spheres). */}
+      {/* NEAR red blood cells — big, close, fast (strong parallax foreground). */}
       <InstancedSwarm
-        count={70}
+        count={80}
         update={(d: Object3D, i: number, t: number) => {
           const s = i * 3.77
           const rx = s - Math.floor(s)
           const ry = (s * 1.9) - Math.floor(s * 1.9)
           const ang = rx * Math.PI * 2
-          const r = 0.6 + ry * 1.2
-          const z = ((ry * 16 + t * 1.8) % 16) - 8
+          const r = 0.5 + ry * 2.0
+          const z = ((ry * 60 + t * 3.2) % 60) - 30
           d.position.set(Math.cos(ang) * r, 1.0 + Math.sin(ang) * r * 0.4, -z)
           d.rotation.set(rx * 6, ry * 6, t * 0.5 + i)
-          d.scale.set(0.22, 0.09, 0.22) // biconcave disc look
+          d.scale.set(0.26, 0.1, 0.26) // biconcave disc look
         }}
       >
         <sphereGeometry args={[1, 16, 12]} />
         <meshStandardMaterial color="#e2515f" roughness={0.5} emissive="#9c2a36" emissiveIntensity={0.3} />
       </InstancedSwarm>
 
-      {/* Ambient sparkly glucose dust (instanced). */}
+      {/* FAR red blood cells — small, distant, slow. The big depth gap between
+          this layer and the near one is what produces the parallax/vastness. */}
       <InstancedSwarm
-        count={80}
+        count={90}
+        update={(d: Object3D, i: number, t: number) => {
+          const s = i * 5.13
+          const rx = s - Math.floor(s)
+          const ry = (s * 1.7) - Math.floor(s * 1.7)
+          const ang = rx * Math.PI * 2
+          const r = 2.4 + ry * 1.0 // hugging the far wall
+          const z = ((ry * 60 + t * 1.1) % 60) - 30
+          d.position.set(Math.cos(ang) * r, 1.0 + Math.sin(ang) * r * 0.4, -z)
+          d.rotation.set(rx * 6, ry * 6, t * 0.3 + i)
+          d.scale.set(0.13, 0.05, 0.13)
+        }}
+      >
+        <sphereGeometry args={[1, 12, 8]} />
+        <meshStandardMaterial color="#c43f4c" roughness={0.6} emissive="#7a1f2a" emissiveIntensity={0.25} />
+      </InstancedSwarm>
+
+      {/* Sparkly glucose dust at multiple depths — twinkles streaming past. */}
+      <InstancedSwarm
+        count={140}
         update={(d: Object3D, i: number, t: number) => {
           const s = i * 9.17
           const rx = s - Math.floor(s)
           const ry = (s * 2.7) - Math.floor(s * 2.7)
           const ang = rx * Math.PI * 2 + t * 0.6
-          const r = 0.3 + ry * 1.7
-          const z = ((ry * 16 + t * 2.4) % 16) - 8
+          const r = 0.25 + ry * 3.0
+          // Nearer dust moves faster than far dust => layered parallax.
+          const speed = 4.5 - (r / 3.25) * 3.2
+          const z = ((ry * 60 + t * speed) % 60) - 30
           d.position.set(Math.cos(ang) * r, 1.0 + Math.sin(ang) * r * 0.4, -z)
-          const tw = 0.02 + (0.5 + 0.5 * Math.sin(t * 5 + i)) * 0.03
+          const tw = 0.015 + (0.5 + 0.5 * Math.sin(t * 5 + i)) * 0.03
           d.scale.setScalar(tw)
         }}
       >

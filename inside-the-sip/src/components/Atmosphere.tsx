@@ -15,10 +15,10 @@ const FOG: Record<string, { color: string; density: number }> = {
   mouth: { color: '#6e1f2c', density: 0.085 },
   esophagus: { color: '#8a3744', density: 0.11 },
   stomach: { color: '#a0501c', density: 0.075 },
-  bloodstream: { color: '#5e1019', density: 0.06 },
+  bloodstream: { color: '#5e1019', density: 0.04 },
   pancreas: { color: '#7c561c', density: 0.06 },
   liver: { color: '#4f2e14', density: 0.07 },
-  brain: { color: '#141d4a', density: 0.05 },
+  brain: { color: '#141d4a', density: 0.032 },
   spinback: { color: '#2a1640', density: 0.045 },
   return: { color: '#241019', density: 0.05 },
 }

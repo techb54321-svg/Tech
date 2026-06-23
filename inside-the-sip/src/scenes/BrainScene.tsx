@@ -29,36 +29,59 @@ export function BrainScene() {
     <group>
       {/* Brain interior — cool, with a warm hint so it isn't cold. */}
       <mesh raycast={() => null}>
-        <sphereGeometry args={[4.5, 32, 24]} />
-        <meshStandardMaterial color="#3a4a8a" side={BackSide} roughness={0.9} emissive="#222a55" emissiveIntensity={0.4} />
+        <sphereGeometry args={[18, 32, 24]} />
+        <meshStandardMaterial color="#2a3568" side={BackSide} roughness={0.9} emissive="#181f44" emissiveIntensity={0.45} />
       </mesh>
 
-      <pointLight ref={buzz} position={[0, 1.2, -1.2]} color="#a9c8ff" intensity={3} distance={12} decay={2} />
+      <pointLight ref={buzz} position={[0, 1.2, -1.2]} color="#a9c8ff" intensity={3} distance={22} decay={2} />
 
       {/* Soft electric glow filling the space (the "buzz"). */}
       <Glow position={[0, 1.1, -1.4]} color="#9fd0ff" size={5} opacity={0.4} />
       <Glow position={[1.2, 1.6, -1.0]} color="#fff0a0" size={2.2} opacity={0.5} />
       <Glow position={[-1.1, 0.7, -1.2]} color="#c0a0ff" size={2} opacity={0.45} />
 
-      {/* Neuron cell bodies, scattered and gently bobbing (instanced). */}
+      {/* NEAR neurons — larger, closer, bobbing (parallax foreground). */}
       <InstancedSwarm
-        count={48}
+        count={54}
         update={(d: Object3D, i: number, t: number) => {
           const s = i * 8.21
           const rx = s - Math.floor(s)
           const ry = (s * 1.7) - Math.floor(s * 1.7)
           const rz = (s * 3.3) - Math.floor(s * 3.3)
           d.position.set(
-            (rx - 0.5) * 3.4,
-            1.0 + (ry - 0.5) * 2.6,
-            -0.6 - rz * 2.6,
+            (rx - 0.5) * 5.5,
+            1.0 + (ry - 0.5) * 4.2,
+            -0.4 - rz * 4.0,
           )
           const bob = 1 + Math.sin(t * 2 + i) * 0.1
-          d.scale.setScalar((0.06 + rx * 0.06) * bob)
+          d.scale.setScalar((0.07 + rx * 0.07) * bob)
         }}
       >
         <icosahedronGeometry args={[1, 1]} />
         <meshStandardMaterial color="#9fb0ff" emissive="#6f86ff" emissiveIntensity={0.6} roughness={0.4} flatShading />
+      </InstancedSwarm>
+
+      {/* FAR neurons — a deep field of tiny, dim, slowly-drifting specks, like
+          distant stars. The huge depth gap vs the near layer makes the brain
+          feel like a vast cosmos and gives strong parallax as you move. */}
+      <InstancedSwarm
+        count={200}
+        update={(d: Object3D, i: number, t: number) => {
+          const s = i * 4.67
+          const rx = s - Math.floor(s)
+          const ry = (s * 1.3) - Math.floor(s * 1.3)
+          const rz = (s * 2.9) - Math.floor(s * 2.9)
+          d.position.set(
+            (rx - 0.5) * 17,
+            1.0 + (ry - 0.5) * 13,
+            -3 - rz * 11,
+          )
+          const tw = 1 + Math.sin(t * 1.2 + i) * 0.25
+          d.scale.setScalar((0.02 + rx * 0.03) * tw)
+        }}
+      >
+        <icosahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial color="#aebbff" emissive="#5f78e0" emissiveIntensity={0.7} roughness={0.5} flatShading />
       </InstancedSwarm>
 
       {/* Hyperactive synaptic sparks zipping around fast (instanced). The shared
@@ -72,11 +95,11 @@ export function BrainScene() {
           const rz = (s * 4.1) - Math.floor(s * 4.1)
           const speed = 1.5 + rx * 2.5
           const ph = (t * speed + rx * 6) % (Math.PI * 2)
-          const r = 0.5 + ry * 2.4
+          const r = 0.5 + ry * 4.2
           d.position.set(
             Math.cos(ph + i) * r,
             1.0 + Math.sin(ph * 1.3 + i) * r * 0.7,
-            -0.8 - rz * 2.2 + Math.sin(ph) * 0.4,
+            -0.8 - rz * 4.5 + Math.sin(ph) * 0.5,
           )
           d.scale.setScalar(0.015 + (0.5 + 0.5 * Math.sin(t * 12 + i)) * 0.02)
         }}

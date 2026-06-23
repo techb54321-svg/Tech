@@ -1,14 +1,16 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type Mesh, type Object3D } from 'three'
+import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
+import { stomachTextures } from '../textures/surfaces'
 
 // Scene 5 — The Stomach. A churning, gently glowing chamber. The walls slowly
 // pulse and gastric bubbles swirl. A brief beat before the journey continues
 // into the bloodstream.
 export function StomachScene() {
   const wall = useRef<Mesh>(null)
+  const tex = useMemo(stomachTextures, [])
   useFrame((s) => {
     if (wall.current) {
       const p = 1 + Math.sin(s.clock.elapsedTime * 0.8) * 0.04
@@ -18,10 +20,22 @@ export function StomachScene() {
 
   return (
     <group>
-      {/* Pulsing stomach wall (seen from inside), warm and glowing. */}
+      {/* Pulsing stomach wall — wet flesh PBR + subsurface sheen. */}
       <mesh ref={wall} raycast={() => null}>
-        <sphereGeometry args={[3.2, 32, 24]} />
-        <meshStandardMaterial color="#e08a3c" side={BackSide} roughness={0.85} emissive="#b25a1f" emissiveIntensity={0.35} />
+        <sphereGeometry args={[3.2, 48, 32]} />
+        <meshPhysicalMaterial
+          map={tex.map}
+          normalMap={tex.normal}
+          normalScale={new Vector2(0.8, 0.8)}
+          roughnessMap={tex.roughness}
+          side={BackSide}
+          roughness={0.7}
+          sheen={0.8}
+          sheenColor="#ffb066"
+          sheenRoughness={0.5}
+          emissive="#b25a1f"
+          emissiveIntensity={0.35}
+        />
       </mesh>
 
       {/* Glowing gastric pool below. */}

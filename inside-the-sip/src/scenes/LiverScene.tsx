@@ -1,8 +1,9 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type Group, type Object3D } from 'three'
+import { BackSide, Vector2, type Group, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
+import { liverTextures } from '../textures/surfaces'
 
 // Scene 8 — The Liver. A large, friendly liver. Pale yellow fat globules
 // gradually accumulate on it (a gentle, non-judgemental fatty-liver visual).
@@ -51,6 +52,7 @@ export function LiverScene() {
 
 function Liver() {
   const ref = useRef<Group>(null)
+  const tex = useMemo(liverTextures, [])
   useFrame((s) => {
     if (ref.current) {
       const p = 1 + Math.sin(s.clock.elapsedTime * 0.9) * 0.03
@@ -59,15 +61,35 @@ function Liver() {
   })
   return (
     <group ref={ref} position={[0, 1.3, -1.4]} raycast={() => null}>
-      {/* Large right lobe. */}
+      {/* Large right lobe — glossy wet liver tissue (PBR + sheen). */}
       <mesh position={[-0.35, 0, 0]} scale={[1.1, 0.8, 0.7]}>
-        <sphereGeometry args={[0.7, 28, 20]} />
-        <meshStandardMaterial color="#9c2f33" roughness={0.5} emissive="#6a1f22" emissiveIntensity={0.3} />
+        <sphereGeometry args={[0.7, 40, 28]} />
+        <meshPhysicalMaterial
+          map={tex.map}
+          normalMap={tex.normal}
+          normalScale={new Vector2(0.7, 0.7)}
+          roughnessMap={tex.roughness}
+          roughness={0.55}
+          sheen={0.7}
+          sheenColor="#d2565a"
+          emissive="#6a1f22"
+          emissiveIntensity={0.28}
+        />
       </mesh>
       {/* Smaller left lobe. */}
       <mesh position={[0.55, -0.05, 0.05]} scale={[0.8, 0.7, 0.65]}>
-        <sphereGeometry args={[0.55, 24, 18]} />
-        <meshStandardMaterial color="#a8383c" roughness={0.5} emissive="#751f22" emissiveIntensity={0.3} />
+        <sphereGeometry args={[0.55, 36, 24]} />
+        <meshPhysicalMaterial
+          map={tex.map}
+          normalMap={tex.normal}
+          normalScale={new Vector2(0.7, 0.7)}
+          roughnessMap={tex.roughness}
+          roughness={0.55}
+          sheen={0.7}
+          sheenColor="#d2565a"
+          emissive="#751f22"
+          emissiveIntensity={0.28}
+        />
       </mesh>
     </group>
   )

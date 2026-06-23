@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type Mesh, type Object3D } from 'three'
+import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
-import { enamelTextures } from '../textures/surfaces'
+import { enamelTextures, mouthTextures } from '../textures/surfaces'
 
 // Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
 // droplets wash down; tapping a tooth reveals stylised enamel erosion (a soft
@@ -15,13 +15,26 @@ export function MouthScene() {
   const teeth = Array.from({ length: 7 }, (_, i) => i)
   const arc = 1.5 // radians spread
   const radius = 0.95
+  const flesh = useMemo(mouthTextures, [])
 
   return (
     <group>
-      {/* Warm enveloping mouth interior. */}
+      {/* Warm enveloping mouth interior — wet flesh PBR + subsurface sheen. */}
       <mesh raycast={() => null}>
-        <sphereGeometry args={[4, 32, 24]} />
-        <meshStandardMaterial color="#d96b78" side={BackSide} roughness={0.9} emissive="#7a2a38" emissiveIntensity={0.25} />
+        <sphereGeometry args={[4, 48, 32]} />
+        <meshPhysicalMaterial
+          map={flesh.map}
+          normalMap={flesh.normal}
+          normalScale={new Vector2(0.8, 0.8)}
+          roughnessMap={flesh.roughness}
+          side={BackSide}
+          roughness={0.7}
+          sheen={0.9}
+          sheenColor="#ff8a98"
+          sheenRoughness={0.5}
+          emissive="#7a2a38"
+          emissiveIntensity={0.25}
+        />
       </mesh>
 
       {/* Soft pink tongue below, gently breathing. */}
@@ -118,12 +131,13 @@ function Tooth({ position, rotation }: { position: [number, number, number]; rot
         <capsuleGeometry args={[0.11, 0.16, 8, 16]} />
         <meshStandardMaterial
           map={enamel.map}
-          bumpMap={enamel.bump}
-          bumpScale={0.015}
+          normalMap={enamel.normal}
+          normalScale={new Vector2(0.4, 0.4)}
+          roughnessMap={enamel.roughness}
           color={eroded ? '#cdb487' : '#ffffff'}
-          roughness={eroded ? 0.8 : 0.18}
+          roughness={eroded ? 0.95 : 0.5}
           metalness={0.02}
-          envMapIntensity={1.3}
+          envMapIntensity={1.4}
           emissive={eroded ? '#5a3f1a' : '#fff3da'}
           emissiveIntensity={eroded ? 0.18 : 0.1}
         />

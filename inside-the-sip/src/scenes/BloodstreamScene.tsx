@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, type Mesh, type Object3D, type PointLight } from 'three'
+import { BackSide, Vector2, type Mesh, type Object3D, type PointLight } from 'three'
 import { useMemo } from 'react'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
@@ -30,14 +30,18 @@ export function BloodstreamScene() {
           roughness so the heartbeat light + env map give a wet sheen. */}
       <mesh raycast={() => null} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[3.6, 3.6, 60, 48, 1, true]} />
-        <meshStandardMaterial
+        <meshPhysicalMaterial
           map={wall.map}
-          bumpMap={wall.bump}
-          bumpScale={0.06}
+          normalMap={wall.normal}
+          normalScale={new Vector2(0.9, 0.9)}
+          roughnessMap={wall.roughness}
           side={BackSide}
-          roughness={0.5}
-          metalness={0.05}
+          roughness={0.65}
+          metalness={0}
           envMapIntensity={1.1}
+          sheen={0.8}
+          sheenColor="#ff6f7e"
+          sheenRoughness={0.5}
           emissive="#5a141f"
           emissiveIntensity={0.25}
         />

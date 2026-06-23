@@ -6,17 +6,18 @@ guided journey showing what sugar does — then returned to the same choice, now
 better informed. Health education through embodied storytelling, built to run
 straight in the headset browser (no app store, no sideloading).
 
-> **Status: Phase 2 — Journey framework.** A scene state machine drives
-> progression through all 10 scenes; a spline camera flies the player through
-> the body; shared systems provide narration captions, a Continue affordance,
-> and a comfort vignette during motion. Scenes 2–9 are travel-able placeholders
-> (the table Choice scene is real). Phase 3 fills in each scene's real geometry
-> and interactions.
+> **Status: Phase 3 — Scene content.** Each scene now has real procedural
+> geometry, instanced particle systems, and interactive moments: the mouth
+> (tap teeth to erode), esophagus (peristaltic slide), stomach (churning
+> chamber), bloodstream (red cells + poke glucose to morph it into fat),
+> pancreas (tap a cell to send an insulin key into its lock so glucose enters),
+> liver (fat accumulating), and brain (escalating sugar-high sparks). The spin
+> transitions get their full treatment in Phase 4.
 >
 > **How to travel:** choose a drink to begin; at each pause-point point the ray
 > at the glowing **Continue** button and pull the trigger (or pinch) to fly to
 > the next scene. A couple of beats (the spin, the esophagus) advance on their
-> own.
+> own. Tip: append `?scene=N` to the URL (N = 0–9) to jump straight to a scene.
 
 ## Tech stack
 

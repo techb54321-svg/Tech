@@ -30,11 +30,20 @@ const JourneyCtx = createContext<JourneyValue | null>(null)
 
 // The top-level journey state machine: which scene we're on (`index`) and
 // whether we're paused at it or `traveling` to it along the spline.
+// Optional ?scene=<index> lets you jump straight to a scene for testing
+// (e.g. .../Tech/?scene=6 opens the pancreas). Defaults to the start.
+function initialIndex() {
+  const raw = new URLSearchParams(window.location.search).get('scene')
+  const n = raw == null ? 0 : parseInt(raw, 10)
+  return Number.isFinite(n) && n >= 0 && n < STEPS.length ? n : 0
+}
+
 export function JourneyProvider({ children }: { children: ReactNode }) {
-  const [index, setIndex] = useState(0)
+  const start = initialIndex()
+  const [index, setIndex] = useState(start)
   const [status, setStatus] = useState<Status>('paused')
   const [drink, setDrink] = useState<DrinkChoice | null>(null)
-  const indexRef = useRef(0)
+  const indexRef = useRef(start)
 
   const advance = useCallback(() => {
     if (indexRef.current >= STEPS.length - 1) return // already at the end

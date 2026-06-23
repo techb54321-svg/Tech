@@ -11,8 +11,12 @@ interface CaptionProps {
 }
 
 // Reusable world-space caption, readable in VR. Uses the locally bundled font
-// (never a CDN — that crashed the scene on restricted networks) and is wrapped
-// in Suspense + an error boundary so a font hiccup can never blank the scene.
+// (never a CDN) and is wrapped in Suspense + an error boundary so a font hiccup
+// can never blank the scene.
+//
+// The text always draws ON TOP of scene geometry (depthTest off + high
+// renderOrder) so captions stay readable even when teeth, organs, etc. sit in
+// front of them.
 export function Caption({
   children,
   position = [0, 0, 0],
@@ -27,15 +31,16 @@ export function Caption({
           font={`${import.meta.env.BASE_URL}fonts/Caption-Bold.ttf`}
           position={position}
           fontSize={fontSize}
-          color={color}
           anchorX="center"
           anchorY="middle"
           maxWidth={maxWidth}
           textAlign="center"
-          outlineWidth={0.004}
+          outlineWidth={fontSize * 0.08}
           outlineColor="#2a160e"
+          renderOrder={999}
         >
           {children}
+          <meshBasicMaterial color={color} depthTest={false} depthWrite={false} transparent toneMapped={false} />
         </Text>
       </Suspense>
     </SceneErrorBoundary>

@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import type { Mesh } from 'three'
 import { Caption } from './Caption'
 import { useJourney } from '../journey/JourneyContext'
 
 // A floating "Continue" affordance shown at interactive pause-points. Parented
-// to the rig so it's always reachable in front of the user. Point at it and
-// pull the trigger / pinch to travel to the next scene.
+// to the rig so it's always reachable in front of the user, and drawn ON TOP of
+// scene geometry (depthTest off) so it can never get hidden behind teeth,
+// organs, etc. Point at it and pull the trigger / pinch to travel onward.
 export function ContinueButton() {
   const { status, step, advance } = useJourney()
   const [hover, setHover] = useState(false)
+  const ref = useRef<Mesh>(null)
 
-  // Only show when paused at a step that waits for an explicit "continue".
+  // Gentle pulse so it draws the eye.
+  useFrame((s) => {
+    if (ref.current) {
+      const p = (hover ? 1.12 : 1) + Math.sin(s.clock.elapsedTime * 3) * 0.04
+      ref.current.scale.setScalar(p)
+    }
+  })
+
   if (status !== 'paused' || step.advance !== 'continue') return null
 
   const press = (e: { stopPropagation: () => void }) => {
@@ -18,8 +29,10 @@ export function ContinueButton() {
   }
 
   return (
-    <group position={[0, 1.05, -1.2]}>
+    <group position={[0, 1.15, -1.0]}>
       <mesh
+        ref={ref}
+        renderOrder={998}
         onPointerDown={press}
         onClick={press}
         onPointerOver={(e) => {
@@ -27,17 +40,11 @@ export function ContinueButton() {
           setHover(true)
         }}
         onPointerOut={() => setHover(false)}
-        scale={hover ? 1.08 : 1}
       >
-        <cylinderGeometry args={[0.07, 0.07, 0.03, 32]} />
-        <meshStandardMaterial
-          color={hover ? '#ffd166' : '#ff9f43'}
-          emissive="#ff9f43"
-          emissiveIntensity={hover ? 0.6 : 0.35}
-          roughness={0.4}
-        />
+        <cylinderGeometry args={[0.1, 0.1, 0.04, 36]} />
+        <meshBasicMaterial color={hover ? '#ffd166' : '#ff9f43'} depthTest={false} toneMapped={false} />
       </mesh>
-      <Caption position={[0, -0.12, 0]} fontSize={0.045} color="#ffe9d6">
+      <Caption position={[0, -0.16, 0]} fontSize={0.05} color="#ffe9d6">
         Continue
       </Caption>
     </group>

@@ -18,7 +18,7 @@ export const xrStore = createXRStore({
   // (public/webxr-profiles) instead of the default jsdelivr CDN, so nothing is
   // fetched over the network when the session starts. This is the real fix for
   // the pure-black headset view — the CDN fetch was failing and crashing <XR>.
-  baseAssetPath: `${window.location.origin}/webxr-profiles/`,
+  baseAssetPath: `${window.location.origin}${import.meta.env.BASE_URL}webxr-profiles/`,
   foveation: 1,
   // Disable the built-in WebXR emulator: on a desktop browser its full-screen
   // overlay covers the scene. We test on a real Quest 3.

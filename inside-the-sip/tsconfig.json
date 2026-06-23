@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["@react-three/fiber"]
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src"]
 }

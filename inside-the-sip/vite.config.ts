@@ -6,6 +6,9 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 // serve over TLS via basic-ssl — even in dev. The cert is self-signed, so the
 // Quest browser will show a one-time warning you must accept (see README).
 export default defineConfig({
+  // When deployed to GitHub Pages the app is served from /<repo>/ (e.g.
+  // /Tech/). The deploy workflow sets VITE_BASE accordingly; local dev uses '/'.
+  base: process.env.VITE_BASE || '/',
   plugins: [react(), basicSsl()],
   server: {
     // Bind to all interfaces so the headset can reach the dev machine over LAN.

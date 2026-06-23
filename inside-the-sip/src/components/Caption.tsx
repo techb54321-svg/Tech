@@ -24,7 +24,7 @@ export function Caption({
     <SceneErrorBoundary>
       <Suspense fallback={null}>
         <Text
-          font="/fonts/Caption-Bold.ttf"
+          font={`${import.meta.env.BASE_URL}fonts/Caption-Bold.ttf`}
           position={position}
           fontSize={fontSize}
           color={color}

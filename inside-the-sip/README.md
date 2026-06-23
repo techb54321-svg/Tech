@@ -6,10 +6,17 @@ guided journey showing what sugar does — then returned to the same choice, now
 better informed. Health education through embodied storytelling, built to run
 straight in the headset browser (no app store, no sideloading).
 
-> **Status: Phase 1 — Walking skeleton.** Enters VR on Quest 3 over HTTPS,
-> renders the warm table with a grabbable glass of water and a glass of Coke,
-> and logs which drink you selected. The full 10-scene journey is added in
-> later phases.
+> **Status: Phase 2 — Journey framework.** A scene state machine drives
+> progression through all 10 scenes; a spline camera flies the player through
+> the body; shared systems provide narration captions, a Continue affordance,
+> and a comfort vignette during motion. Scenes 2–9 are travel-able placeholders
+> (the table Choice scene is real). Phase 3 fills in each scene's real geometry
+> and interactions.
+>
+> **How to travel:** choose a drink to begin; at each pause-point point the ray
+> at the glowing **Continue** button and pull the trigger (or pinch) to fly to
+> the next scene. A couple of beats (the spin, the esophagus) advance on their
+> own.
 
 ## Tech stack
 

@@ -1,56 +1,60 @@
-import { useCallback, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { XR } from '@react-three/xr'
+import { BackSide } from 'three'
 import { xrStore } from './xrStore'
-import { ChoiceScene } from './scenes/ChoiceScene'
-import type { DrinkChoice } from './types'
+import { JourneyProvider } from './journey/JourneyContext'
+import { CameraRig } from './journey/CameraRig'
+import { ActiveScene } from './scenes/ActiveScene'
+import { Narration } from './components/Narration'
+import { ContinueButton } from './components/ContinueButton'
+import { ComfortVignette } from './components/ComfortVignette'
+import { TravelParticles } from './components/TravelParticles'
 
-// Phase 1 — Walking skeleton.
-// Enters VR on Quest 3 over HTTPS, renders the warm table with a grabbable
-// water + Coke, and logs which drink the user selected. The full guided
-// journey (spin, mouth, bloodstream, …) is wired up in later phases.
+// Phase 2 — Journey framework.
+// A scene state machine (JourneyProvider) drives progression through the 10
+// scenes; the CameraRig flies the player along a spline; narration captions,
+// a Continue affordance, and a comfort vignette are shared systems. Scenes are
+// stubbed (SceneStub) so the whole journey is travel-able end-to-end. Phase 3
+// fills in each scene's real geometry and interactions.
 export function App() {
-  const [selected, setSelected] = useState<DrinkChoice | null>(null)
-
-  const handleSelect = useCallback((kind: DrinkChoice) => {
-    setSelected(kind)
-    // Phase 1 deliverable: log the choice. Later this kicks off "The Spin".
-    console.log(`[Inside the Sip] Drink selected: ${kind}`)
-  }, [])
-
   return (
     <>
-      <Overlay selected={selected} />
-      <Canvas
-        camera={{ position: [0, 1.45, 0.55], fov: 60 }}
-        gl={{ antialias: true }}
-        // Aim the desktop preview camera at the table so the drinks are clearly
-        // framed on a 2D screen. In VR this is ignored — the headset pose drives
-        // the camera and the user simply looks down at the table.
-        onCreated={({ camera }) => camera.lookAt(0, 0.78, -0.7)}
-      >
-        <color attach="background" args={['#3a2a33']} />
+      <Overlay />
+      <Canvas camera={{ position: [0, 1.5, 0.6], fov: 60 }} gl={{ antialias: true }}>
+        <color attach="background" args={['#1c1018']} />
 
-        {/* Soft GI-style lighting: warm key, cool fill, gentle rim + ambient.
-            The hemisphere light guarantees everything is softly lit from every
-            angle so nothing reads as pure black in the headset. */}
-        <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#3a241a" />
-        <ambientLight intensity={0.5} color="#ffe9d6" />
-        <directionalLight position={[2.5, 4, 2]} intensity={1.6} color="#fff1d8" />
-        <directionalLight position={[-3, 2, -1]} intensity={0.5} color="#8fb6ff" />
-        <pointLight position={[0, 2, -2]} intensity={0.4} color="#ffd1a8" />
+        {/* Soft GI-style lighting that reaches the whole journey volume. */}
+        <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#2a1a22" />
+        <ambientLight intensity={0.45} color="#ffe9d6" />
+        <directionalLight position={[2.5, 4, 2]} intensity={1.4} color="#fff1d8" />
+        <directionalLight position={[-3, 2, -1]} intensity={0.4} color="#8fb6ff" />
+
+        {/* Large enclosing backdrop so the user is never in a black void. */}
+        <mesh>
+          <sphereGeometry args={[40, 32, 16]} />
+          <meshBasicMaterial color="#1c1018" side={BackSide} />
+        </mesh>
 
         <XR store={xrStore}>
-          <ChoiceScene onSelect={handleSelect} selected={selected} />
+          <JourneyProvider>
+            {/* HUD-like world UI is parented to the rig (stays in front). */}
+            <CameraRig>
+              <Narration />
+              <ContinueButton />
+            </CameraRig>
+
+            <ActiveScene />
+            <TravelParticles />
+            <ComfortVignette />
+          </JourneyProvider>
         </XR>
       </Canvas>
     </>
   )
 }
 
-// HTML overlay shown on the 2D page (before entering VR): the Enter VR button
-// and a small readout of the current choice for desktop testing.
-function Overlay({ selected }: { selected: DrinkChoice | null }) {
+// 2D overlay shown before entering VR: title + Enter VR button.
+function Overlay() {
   return (
     <div
       style={{
@@ -71,13 +75,7 @@ function Overlay({ selected }: { selected: DrinkChoice | null }) {
           A WebXR journey for Meta Quest 3
         </p>
       </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        {selected && (
-          <div style={{ fontSize: 14, opacity: 0.85 }}>
-            You chose: <strong>{selected === 'coke' ? 'Coke 🥤' : 'Water 💧'}</strong>
-          </div>
-        )}
         <button
           onClick={() => xrStore.enterVR()}
           style={{
@@ -95,9 +93,9 @@ function Overlay({ selected }: { selected: DrinkChoice | null }) {
         >
           Enter VR
         </button>
-        <p style={{ margin: 0, fontSize: 12, opacity: 0.6, maxWidth: 320, textAlign: 'center' }}>
-          On desktop you can still click the drinks to test selection. Put on the
-          Quest 3 and tap Enter VR for the full scene.
+        <p style={{ margin: 0, fontSize: 12, opacity: 0.6, maxWidth: 340, textAlign: 'center' }}>
+          Put on the Quest 3 and tap Enter VR. Choose a drink to begin the journey;
+          point + trigger the Continue button to travel between scenes.
         </p>
       </div>
     </div>

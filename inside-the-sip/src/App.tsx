@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { XR } from '@react-three/xr'
-import { ContactShadows } from '@react-three/drei'
 import { xrStore } from './xrStore'
 import { ChoiceScene } from './scenes/ChoiceScene'
 import type { DrinkChoice } from './types'
@@ -23,7 +22,6 @@ export function App() {
     <>
       <Overlay selected={selected} />
       <Canvas
-        shadows
         camera={{ position: [0, 1.45, 0.55], fov: 60 }}
         gl={{ antialias: true }}
         // Aim the desktop preview camera at the table so the drinks are clearly
@@ -38,27 +36,12 @@ export function App() {
             angle so nothing reads as pure black in the headset. */}
         <hemisphereLight intensity={0.7} color="#ffe9d6" groundColor="#3a241a" />
         <ambientLight intensity={0.5} color="#ffe9d6" />
-        <directionalLight
-          position={[2.5, 4, 2]}
-          intensity={1.6}
-          color="#fff1d8"
-          castShadow
-          shadow-mapSize={[1024, 1024]}
-        />
+        <directionalLight position={[2.5, 4, 2]} intensity={1.6} color="#fff1d8" />
         <directionalLight position={[-3, 2, -1]} intensity={0.5} color="#8fb6ff" />
         <pointLight position={[0, 2, -2]} intensity={0.4} color="#ffd1a8" />
 
         <XR store={xrStore}>
           <ChoiceScene onSelect={handleSelect} selected={selected} />
-          {/* Single soft contact shadow keeps it grounded without costly
-              real-time shadow maps everywhere (performance budget). */}
-          <ContactShadows
-            position={[0, 0.001, -0.6]}
-            scale={2}
-            blur={2.5}
-            opacity={0.35}
-            far={1.5}
-          />
         </XR>
       </Canvas>
     </>

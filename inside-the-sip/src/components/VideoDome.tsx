@@ -54,7 +54,8 @@ export function VideoDome({ src, radius = 8, onError }: VideoDomeProps) {
   return (
     <mesh scale={[-1, 1, 1]} raycast={() => null}>
       <sphereGeometry args={[radius, 60, 40]} />
-      <meshBasicMaterial map={texture} toneMapped={false} />
+      {/* fog off — a 360 backdrop must not be dimmed by the scene's fog. */}
+      <meshBasicMaterial map={texture} toneMapped={false} fog={false} />
     </mesh>
   )
 }

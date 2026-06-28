@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
+import { VideoDome } from '../components/VideoDome'
 import { enamelTextures, mouthTextures } from '../textures/surfaces'
 
 // Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
@@ -11,7 +12,26 @@ import { enamelTextures, mouthTextures } from '../textures/surfaces'
 //
 // Educational note: sugar feeds mouth bacteria that produce acid, which
 // dissolves enamel over time. Simplified here to a single tap-to-erode beat.
+//
+// If a 360° video of the cola wash / decay is bundled at
+// public/videos/mouth360.mp4, the mouth becomes an immersive video dome;
+// otherwise it falls back to the hand-built procedural mouth below.
 export function MouthScene() {
+  const [videoFailed, setVideoFailed] = useState(false)
+  if (!videoFailed) {
+    return (
+      <group>
+        <VideoDome
+          src={`${import.meta.env.BASE_URL}videos/mouth360.mp4`}
+          onError={() => setVideoFailed(true)}
+        />
+      </group>
+    )
+  }
+  return <ProceduralMouth />
+}
+
+function ProceduralMouth() {
   const teeth = Array.from({ length: 7 }, (_, i) => i)
   const arc = 1.5 // radians spread
   const radius = 0.95

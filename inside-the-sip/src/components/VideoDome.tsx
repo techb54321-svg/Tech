@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BackSide, SRGBColorSpace, VideoTexture } from 'three'
+import { SRGBColorSpace, VideoTexture } from 'three'
 
 interface VideoDomeProps {
   src: string
@@ -48,11 +48,13 @@ export function VideoDome({ src, radius = 8, onError }: VideoDomeProps) {
 
   if (!texture) return null
 
-  // Inverted on X so the equirectangular map isn't mirrored from the inside.
+  // Standard 360 setup: scale the sphere -1 on X so we view it from the inside
+  // with the equirectangular map correctly (un-mirrored) oriented. Default
+  // (front) side — combining this with BackSide double-flips and breaks it.
   return (
     <mesh scale={[-1, 1, 1]} raycast={() => null}>
       <sphereGeometry args={[radius, 60, 40]} />
-      <meshBasicMaterial map={texture} side={BackSide} toneMapped={false} />
+      <meshBasicMaterial map={texture} toneMapped={false} />
     </mesh>
   )
 }

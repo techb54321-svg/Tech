@@ -515,7 +515,15 @@ function setupVR() {
   btn.style.position = 'fixed'; btn.style.left = '50%'; btn.style.top = '16px';
   btn.style.bottom = 'auto'; btn.style.transform = 'translateX(-50%)'; btn.style.zIndex = 25;
   document.body.appendChild(btn);
-  if (IS_MOBILE) btn.style.display = 'none';            // phones can't do headset VR
+  // Hide the button only on devices that truly can't do headset VR (real phones).
+  // A Quest reports as "mobile" too, so check actual WebXR support before hiding.
+  if (IS_MOBILE) {
+    if (navigator.xr && navigator.xr.isSessionSupported) {
+      navigator.xr.isSessionSupported('immersive-vr')
+        .then(ok => { if (!ok) btn.style.display = 'none'; })
+        .catch(() => { btn.style.display = 'none'; });
+    } else { btn.style.display = 'none'; }
+  }
   try { renderer.xr.setFoveation(1); } catch(e) {}     // blur the periphery to save GPU
 
   // controllers (added to the rig so they share the moving space). Each gets a

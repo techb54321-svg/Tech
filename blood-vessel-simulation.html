@@ -124,6 +124,14 @@
     background: rgba(0,0,0,0.4); padding: 6px 14px; border-radius: 20px; pointer-events: none;
     transition: opacity 0.6s; z-index: 11; }
 
+  /* prominent Enter-VR button (shown only on WebXR headsets) */
+  #btn-entervr { position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    display: none; z-index: 60; background: linear-gradient(90deg,#3ddc97,#1fb6ff);
+    color:#04121a; font-weight:700; font-size:16px; letter-spacing:0.5px;
+    border:none; border-radius:12px; padding:13px 26px; cursor:pointer;
+    box-shadow:0 6px 26px rgba(31,182,255,0.5); }
+  #btn-entervr:hover { filter:brightness(1.08); }
+
   #ridebadge { top: 50%; left: 50%; transform: translate(-50%,-50%); text-align:center;
     pointer-events:none; opacity:0; transition:opacity 0.5s; z-index: 9; }
   #ridebadge .big { font-size: 22px; font-weight:700; letter-spacing:2px; color:#ffd9e0; text-shadow:0 0 20px #ff2a55; }
@@ -159,6 +167,7 @@
 <body>
 <div id="app"></div>
 <div id="vignette"></div>
+<button id="btn-entervr">🥽 Enter VR</button>
 
 <div id="loader">
   <div class="pulse"></div>
@@ -508,22 +517,16 @@ let inVR = false, vrPerf = true, vrControllers = [], vrPanel, vrPanelCanvas, vrP
 let vrLateral = 0;                 // sideways offset within the tube (strafe)
 const _vrMat = new THREE.Matrix4(), _vrDir = new THREE.Vector3(), _vrFwd = new THREE.Vector3();
 function setupVR() {
-  if (!VR_OK || typeof VRButton === 'undefined') return;
   renderer.xr.enabled = true;
-  let btn;
-  try { btn = VRButton.createButton(renderer); } catch (e) { return; }
-  btn.style.position = 'fixed'; btn.style.left = '50%'; btn.style.top = '16px';
-  btn.style.bottom = 'auto'; btn.style.transform = 'translateX(-50%)'; btn.style.zIndex = 25;
-  document.body.appendChild(btn);
-  // Hide the button only on devices that truly can't do headset VR (real phones).
-  // A Quest reports as "mobile" too, so check actual WebXR support before hiding.
-  if (IS_MOBILE) {
-    if (navigator.xr && navigator.xr.isSessionSupported) {
-      navigator.xr.isSessionSupported('immersive-vr')
-        .then(ok => { if (!ok) btn.style.display = 'none'; })
-        .catch(() => { btn.style.display = 'none'; });
-    } else { btn.style.display = 'none'; }
+  // Our own Enter-VR button (no dependency on the external VRButton library, which
+  // may be blocked on some networks). Talks to WebXR directly.
+  const btn = document.getElementById('btn-entervr');
+  if (navigator.xr && navigator.xr.isSessionSupported) {
+    navigator.xr.isSessionSupported('immersive-vr')
+      .then(ok => { if (ok && btn) { btn.style.display = 'block'; btn.textContent = '🥽 Enter VR'; } })
+      .catch(() => {});
   }
+  if (btn) btn.onclick = enterVR;
   try { renderer.xr.setFoveation(1); } catch(e) {}     // blur the periphery to save GPU
 
   // controllers (added to the rig so they share the moving space). Each gets a
@@ -563,6 +566,14 @@ function setupVR() {
     camera.position.set(0,10,60); camera.up.set(0,1,0); camera.fov = 58; camera.updateProjectionMatrix();
     controls.target.set(0,0,0); document.getElementById('vignette').classList.remove('ride');
   });
+}
+// request an immersive VR session directly (no external library needed)
+function enterVR(){
+  if (!navigator.xr){ alert('This browser has no WebXR. Open the page in the Meta Quest Browser.'); return; }
+  if (inVR){ const s=renderer.xr.getSession && renderer.xr.getSession(); if(s) s.end(); return; }
+  navigator.xr.requestSession('immersive-vr', { optionalFeatures:['local-floor','bounded-floor','hand-tracking'] })
+    .then(session => renderer.xr.setSession(session))
+    .catch(err => alert('Could not start VR: ' + (err && err.message ? err.message : err)));
 }
 
 // VR performance mode: thin the dense red cells/platelets/plasma and drop the

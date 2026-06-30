@@ -1509,16 +1509,25 @@ function startTour(){
   if(tourActive){ stopTour(); return; }
   if(intro) clearIntro(); if(rideMode) toggleRide(false);
   tourActive=true; document.getElementById('btn-tour').classList.add('active'); controls.autoRotate=false;
-  showCaption({ b:'Guided tour', s:'Sit back — visiting each kind of cell travelling in the bloodstream.' }, 3400);
-  const types=Object.keys(CELL_DB); let delay=3600;
+  if(!inVR) showCaption({ b:'Guided tour', s:'Sit back — visiting each kind of cell travelling in the bloodstream.' }, 3400);
+  const types=Object.keys(CELL_DB); let delay = inVR ? 300 : 3600;
+  const step = inVR ? 6500 : 5600;
   types.forEach(type=>{
     tourTimers.push(setTimeout(()=>{ if(!tourActive) return;
       if(!typeVisible[type]){ typeVisible[type]=true; buildLegend(); cells.forEach(c=>{if(c.type===type){c.mesh.visible=true;c.glow.visible=true;}}); }
       const pool=cells.filter(c=>c.type===type && c.active && c.mesh.visible);
-      if(pool.length){ const pick=pool[(Math.random()*pool.length)|0]; showInfo(type); flyTo(pick.mesh);
-        showCaption({ b:CELL_DB[type].name, s:CELL_DB[type].what }, 5400); }
+      if(!pool.length) return;
+      const pick=pool[(Math.random()*pool.length)|0];
+      if(inVR){
+        // teleport just behind a cell of this type and show the 3D info panel
+        rideT=(pick.tval - 0.05 + 1)%1; vrLateral=0;
+        drawVRPanel(type); placeVRPanel(); if(vrPanel) vrPanel.visible=true;
+      } else {
+        showInfo(type); flyTo(pick.mesh);
+        showCaption({ b:CELL_DB[type].name, s:CELL_DB[type].what }, 5400);
+      }
     }, delay));
-    delay += 5600;
+    delay += step;
   });
   tourTimers.push(setTimeout(stopTour, delay+400));
 }

@@ -558,7 +558,7 @@ function setupVR() {
   vrPanelCtx = vrPanelCanvas.getContext('2d');
   vrPanelTex = new THREE.CanvasTexture(vrPanelCanvas);
   vrPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.2),
-    new THREE.MeshBasicMaterial({ map:vrPanelTex, transparent:true, depthTest:false }));
+    new THREE.MeshBasicMaterial({ map:vrPanelTex, transparent:true, depthTest:false, side:THREE.DoubleSide }));
   vrPanel.visible=false; vrPanel.renderOrder=999; scene.add(vrPanel);
 
   // in-VR menu panel — always floats to your lower-left; point at it & trigger
@@ -566,7 +566,7 @@ function setupVR() {
   vrMenuCtx = vrMenuCanvas.getContext('2d');
   vrMenuTex = new THREE.CanvasTexture(vrMenuCanvas);
   vrMenu = new THREE.Mesh(new THREE.PlaneGeometry(0.82,1.12),
-    new THREE.MeshBasicMaterial({ map:vrMenuTex, transparent:true, depthTest:false }));
+    new THREE.MeshBasicMaterial({ map:vrMenuTex, transparent:true, depthTest:false, side:THREE.DoubleSide }));
   vrMenu.visible=false; vrMenu.renderOrder=998; scene.add(vrMenu);
   drawVRMenu();
 
@@ -629,6 +629,7 @@ function onVRSelect(ctrl){
   raycaster.ray.direction.set(0,0,-1).applyMatrix4(_vrMat).normalize();
   // menu?
   if (vrMenu && vrMenu.visible){
+    vrMenu.updateWorldMatrix(true, false);          // it moves every frame
     const mHit = raycaster.intersectObject(vrMenu, false)[0];
     if (mHit && mHit.uv){
       const slots = VR_MENU.length + 1;              // slot 0 is the title row
@@ -1442,6 +1443,12 @@ function setScenario(name){
     const tgt  = _p.clone().addScaledVector(pd, R*0.35);
     tweenCamera(camp, tgt, 1.8); }
 
+  // in VR the camera tweens don't apply — instead carry the rider to the action
+  if (inVR) {
+    const loc = name==='infection'?INFECT_T : name==='clot'?WOUND_T : name==='plaque'?PLAQUE_T : null;
+    if (loc!==null) { rideT = (loc - 0.06 + 1) % 1; vrLateral = 0; }
+    if (vrMenu) drawVRMenu();
+  }
   document.querySelectorAll('.scn').forEach(b=>b.classList.remove('active'));
   const btn=document.getElementById('scn-'+name); if(btn) btn.classList.add('active');
   showCaption(SCN_CAPTIONS[name], 0);

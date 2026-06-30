@@ -4,7 +4,7 @@ name: Deploy Inside the Sip to GitHub Pages
 # working branch, so the headset just opens a stable HTTPS link.
 on:
   push:
-    branches: [claude/wizardly-noether-ji4obu]
+    branches: [claude/wizardly-noether-ji4obu, claude/inside-sip-opening-8iki6t]
   workflow_dispatch:
 
 permissions:

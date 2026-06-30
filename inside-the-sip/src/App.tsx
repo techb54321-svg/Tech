@@ -1,81 +1,111 @@
 import { Canvas } from '@react-three/fiber'
 import { XR } from '@react-three/xr'
-import { BackSide } from 'three'
+import { BackSide, FogExp2 } from 'three'
 import { xrStore } from './xrStore'
-import { JourneyProvider } from './journey/JourneyContext'
-import { CameraRig } from './journey/CameraRig'
-import { ActiveScene } from './scenes/ActiveScene'
-import { Narration } from './components/Narration'
-import { ContinueButton } from './components/ContinueButton'
-import { ComfortVignette } from './components/ComfortVignette'
-import { TravelParticles } from './components/TravelParticles'
-import { Atmosphere } from './components/Atmosphere'
 import { EnvironmentMap } from './components/EnvironmentMap'
-import { AudioCues } from './audio/AudioCues'
+import { Sequencer } from './sequence/Sequencer'
+import { TableScene } from './scenes/TableScene'
+import { MouthScene } from './scenes/MouthScene'
+import { SequenceVignette } from './components/SequenceVignette'
+import { SequenceFX } from './components/SequenceFX'
+import { SequenceAudio } from './audio/SequenceAudio'
+import { useSequence } from './store'
+import { useThree } from '@react-three/fiber'
+import { useEffect } from 'react'
 
-// Phase 2 — Journey framework.
-// A scene state machine (JourneyProvider) drives progression through the 10
-// scenes; the CameraRig flies the player along a spline; narration captions,
-// a Continue affordance, and a comfort vignette are shared systems. Scenes are
-// stubbed (SceneStub) so the whole journey is travel-able end-to-end. Phase 3
-// fills in each scene's real geometry and interactions.
+// Harmless QA bridge: exposes the three.js scene/camera/gl on window for
+// headless smoke tests and console debugging.
+function DebugBridge() {
+  const state = useThree()
+  useEffect(() => {
+    ;(window as unknown as { sip3?: unknown }).sip3 = state
+  }, [state])
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// "Inside the Sip" — OPENING SEQUENCE.
+//
+// A guided, photoreal, ~80 s cinematic ride with exactly one interaction (the
+// drink choice). Choosing cola auto-plays: arrival on the tongue → the cola
+// flood → acid forming → enamel eroding to dentin → a held reference shot →
+// fade to black. That black is the single clean HAND-OFF where later scenes
+// attach (see the marked slot in MouthScene).
+//
+// Architecture:
+//   store.ts                 shared state (beat, drink, erosion, flood, drown)
+//   sequence/beatMachine.ts  the explicit state machine
+//   sequence/timeline.ts     beat durations + dolly + erosion/flood curves
+//   sequence/Sequencer.tsx   the one timeline controller (no setTimeouts)
+//   scenes/                  TableScene (Beat 0), MouthScene (Beats 1–5)
+//   components/, shaders/    teeth/tongue/cola + the enamel erosion shader
+// ---------------------------------------------------------------------------
+
 export function App() {
   return (
     <>
       <Overlay />
       <Canvas
-        camera={{ position: [0, 1.5, 0.6], fov: 60 }}
+        camera={{ position: [0, 1.6, 0], fov: 68 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
         dpr={[1, 1.5]}
-        onCreated={({ gl }) => {
-          // Slightly punchier exposure for a cinematic, glowing look (R3F
-          // already uses ACES filmic tone mapping + sRGB output).
-          gl.toneMappingExposure = 1.15
+        onCreated={({ gl, scene }) => {
+          gl.toneMappingExposure = 1.1
+          // Light haze for depth + the "Powers of Ten" sense of scale.
+          scene.fog = new FogExp2('#1a0c0a', 0.04)
         }}
       >
-        <color attach="background" args={['#1c1018']} />
+        <color attach="background" args={['#140a09']} />
 
-        {/* Soft GI-style lighting. Toned down because the baked environment map
-            (EnvironmentMap) now contributes image-based ambient + reflections. */}
-        <hemisphereLight intensity={0.45} color="#ffe9d6" groundColor="#2a1a22" />
-        <ambientLight intensity={0.25} color="#ffe9d6" />
-        {/* Warm key, cool fill, and a cool rim light from behind for a soft
-            Pixar-style three-point feel. */}
-        <directionalLight position={[2.5, 4, 2]} intensity={1.4} color="#fff1d8" />
-        <directionalLight position={[-3, 2, -1]} intensity={0.4} color="#8fb6ff" />
-        <directionalLight position={[0, 3, -5]} intensity={0.5} color="#bfe0ff" />
+        {/* Gentle fill so nothing is ever a pure-black void; the scenes carry
+            their own warm key + rim lights, and the baked environment map
+            (EnvironmentMap) supplies image-based ambient + reflections. */}
+        <ambientLight intensity={0.22} color="#ffe2c8" />
+        <hemisphereLight intensity={0.3} color="#ffe9d6" groundColor="#2a1118" />
 
-        {/* Large enclosing backdrop so the user is never in a black void. */}
+        {/* Far backdrop sphere — a safety net behind every scene. */}
         <mesh raycast={() => null}>
           <sphereGeometry args={[40, 32, 16]} />
-          <meshBasicMaterial color="#1c1018" side={BackSide} />
+          <meshBasicMaterial color="#140a09" side={BackSide} fog={false} />
         </mesh>
 
-        <XR store={xrStore}>
-          <JourneyProvider>
-            {/* HUD-like world UI is parented to the rig (stays in front). */}
-            <CameraRig>
-              <Narration />
-              <ContinueButton />
-            </CameraRig>
+        <EnvironmentMap />
+        <DebugBridge />
 
-            <EnvironmentMap />
-            <Atmosphere />
-            <ActiveScene />
-            <TravelParticles />
-            <ComfortVignette />
-            <AudioCues />
-          </JourneyProvider>
+        <XR store={xrStore}>
+          <Sequencer>
+            <Scenes />
+            <SequenceFX />
+            <SequenceVignette />
+            <SequenceAudio />
+          </Sequencer>
         </XR>
       </Canvas>
     </>
   )
 }
 
-// 2D overlay shown before entering VR: title + Enter VR button.
+// Mounts the right scene for the current beat. The MouthScene is mounted from
+// the DROWN beat onward — i.e. while the caramel overlay still covers the view
+// — so its shaders compile behind the curtain and the hard cut into the mouth
+// doesn't hitch.
+function Scenes() {
+  const beat = useSequence((s) => s.beat)
+  const atTable = beat === 'CHOICE' || beat === 'WATER' || beat === 'DROWN'
+  const inMouth = beat !== 'CHOICE' && beat !== 'WATER'
+  return (
+    <>
+      {atTable && <TableScene />}
+      {inMouth && <MouthScene />}
+    </>
+  )
+}
+
+// 2D pre-VR overlay: title + Enter VR button.
 function Overlay() {
   return (
     <div
+      id="sip-overlay"
       style={{
         position: 'absolute',
         inset: 0,
@@ -91,7 +121,7 @@ function Overlay() {
       <div style={{ textAlign: 'center', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
         <h1 style={{ margin: 0, fontSize: 28, letterSpacing: 0.5 }}>Inside the Sip</h1>
         <p style={{ margin: '6px 0 0', opacity: 0.8, fontSize: 14 }}>
-          A WebXR journey for Meta Quest 3
+          What one sip does to your teeth — in 80 seconds
         </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
@@ -113,8 +143,8 @@ function Overlay() {
           Enter VR
         </button>
         <p style={{ margin: 0, fontSize: 12, opacity: 0.6, maxWidth: 340, textAlign: 'center' }}>
-          Put on the Quest 3 and tap Enter VR. Choose a drink to begin the journey;
-          point + trigger the Continue button to travel between scenes.
+          Put on the Quest 3 and tap Enter VR. Choose a drink to begin — point and
+          pull the trigger, or simply look at it for a moment.
         </p>
       </div>
     </div>

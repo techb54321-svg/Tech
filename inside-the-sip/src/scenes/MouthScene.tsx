@@ -1,175 +1,101 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
+import { type Group, type Object3D } from 'three'
+import { Tongue } from '../components/Tongue'
+import { Teeth } from '../components/Teeth'
+import { ColaFluid } from '../components/ColaFluid'
 import { InstancedSwarm } from '../components/InstancedSwarm'
-import { Glow } from '../components/Glow'
-import { VideoDome } from '../components/VideoDome'
-import { enamelTextures, mouthTextures } from '../textures/surfaces'
+import { store } from '../store'
+import { DOLLY } from '../sequence/timeline'
 
-// Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
-// droplets wash down; tapping a tooth reveals stylised enamel erosion (a soft
-// brown patch + a small cavity), informative rather than gory.
+// Beats 1–5 — inside the mouth.
 //
-// Educational note: sugar feeds mouth bacteria that produce acid, which
-// dissolves enamel over time. Simplified here to a single tap-to-erode beat.
+//   1 ARRIVAL : standing on the tongue, the teeth towering as enamel cliffs
+//   2 FLOOD   : the cola tide cascades over the enamel
+//   3 ACID    : the surface frosts and pits (uErosion 0 → 0.3)
+//   4 EROSION : the hero beat — enamel pits, recedes, cracks, sloughs; dentin
+//               shows through (uErosion 0.3 → 1)
+//   5 HOLD    : pull back to frame the eroded tooth beside the clean reference,
+//               then fade to black at the HAND-OFF.
 //
-// If a 360° video of the cola wash / decay is bundled at
-// public/videos/mouth360.mp4, the mouth becomes an immersive video dome;
-// otherwise it falls back to the hand-built procedural mouth below.
+// The whole mouth is authored at a small local scale and blown up here so the
+// ~5 mm-tall viewer at the origin is dwarfed by it. Per-beat the group gently
+// DOLLIES toward/away from the stationary player (comfortable VR) — the only
+// "camera" motion, always wrapped in the comfort vignette.
+
+const BASE_SCALE = 2.6
+const BASE_Z = -0.6
+const BASE_Y = -0.9
+const frac = (n: number) => n - Math.floor(n)
+
 export function MouthScene() {
-  const [videoFailed, setVideoFailed] = useState(false)
-  if (!videoFailed) {
-    return (
-      <group>
-        <VideoDome
-          src={`${import.meta.env.BASE_URL}videos/mouth360.mp4`}
-          onError={() => setVideoFailed(true)}
-        />
-      </group>
-    )
-  }
-  return <ProceduralMouth />
-}
-
-function ProceduralMouth() {
-  const teeth = Array.from({ length: 7 }, (_, i) => i)
-  const arc = 1.5 // radians spread
-  const radius = 0.95
-  const flesh = useMemo(mouthTextures, [])
-
-  return (
-    <group>
-      {/* Warm enveloping mouth interior — wet flesh PBR + subsurface sheen. */}
-      <mesh raycast={() => null}>
-        <sphereGeometry args={[4, 48, 32]} />
-        <meshPhysicalMaterial
-          map={flesh.map}
-          normalMap={flesh.normal}
-          normalScale={new Vector2(0.8, 0.8)}
-          roughnessMap={flesh.roughness}
-          side={BackSide}
-          roughness={0.7}
-          sheen={0.9}
-          sheenColor="#ff8a98"
-          sheenRoughness={0.5}
-          emissive="#7a2a38"
-          emissiveIntensity={0.25}
-        />
-      </mesh>
-
-      {/* Soft pink tongue below, gently breathing. */}
-      <Tongue />
-
-      {/* Upper gum arch behind the teeth. */}
-      <mesh position={[0, 1.62, -1.3]} raycast={() => null}>
-        <torusGeometry args={[radius, 0.12, 16, 48, arc]} />
-        <meshStandardMaterial color="#e88a98" roughness={0.6} emissive="#c25a68" emissiveIntensity={0.3} />
-      </mesh>
-
-      {/* Row of giant teeth, each tappable. */}
-      {teeth.map((i) => {
-        const a = -arc / 2 + (arc * i) / (teeth.length - 1)
-        const x = Math.sin(a) * radius
-        const y = 1.42 + Math.cos(a) * 0.05
-        const z = -1.3 - Math.cos(a) * radius * 0.15
-        return <Tooth key={i} position={[x, y, z]} rotation={[0, -a * 0.4, 0]} />
-      })}
-
-      {/* Acidic glow washing over the teeth. */}
-      <Glow position={[0, 1.4, -1.1]} color="#cfff66" size={2.6} opacity={0.4} />
-
-      {/* Glowing sugar-acid droplets drifting down over the teeth. */}
-      <InstancedSwarm
-        count={40}
-        update={(d: Object3D, i: number, t: number) => {
-          const seed = i * 12.9898
-          const rx = frac(Math.sin(seed) * 43758.5)
-          const rz = frac(Math.sin(seed + 1) * 43758.5)
-          const speed = 0.25 + rx * 0.25
-          const fall = ((t * speed + rx) % 1) // 0..1 loop
-          d.position.set(-0.9 + rx * 1.8, 1.75 - fall * 0.9, -1.15 + (rz - 0.5) * 0.5)
-          const s = 0.03 + rz * 0.03
-          d.scale.setScalar(s * (1 - fall * 0.3))
-        }}
-      >
-        <sphereGeometry args={[1, 10, 10]} />
-        <meshStandardMaterial color="#d8ff7a" emissive="#aaff33" emissiveIntensity={1.1} roughness={0.3} transparent opacity={0.85} />
-      </InstancedSwarm>
-    </group>
-  )
-}
-
-function frac(n: number) {
-  return n - Math.floor(n)
-}
-
-function Tongue() {
-  const ref = useRef<Mesh>(null)
-  // Squash-and-stretch: as it stretches taller it gets thinner, and vice
-  // versa (roughly volume-preserving) — the classic lively, cartoony feel.
-  useFrame((s) => {
-    if (!ref.current) return
-    const stretch = 1 + Math.sin(s.clock.elapsedTime * 1.5) * 0.12
-    ref.current.scale.set(1 / Math.sqrt(stretch), stretch, 1 / Math.sqrt(stretch))
-  })
-  return (
-    <mesh ref={ref} position={[0, 0.7, -1.2]} rotation={[-0.5, 0, 0]} raycast={() => null}>
-      <sphereGeometry args={[0.55, 24, 16]} />
-      <meshStandardMaterial color="#e06b80" roughness={0.7} emissive="#b03a52" emissiveIntensity={0.25} />
-    </mesh>
-  )
-}
-
-function Tooth({ position, rotation }: { position: [number, number, number]; rotation: [number, number, number] }) {
-  const [eroded, setEroded] = useState(false)
-  const [hovered, setHovered] = useState(false)
-  const ref = useRef<Mesh>(null)
-  const enamel = useMemo(enamelTextures, [])
+  const mouth = useRef<Group>(null)
 
   useFrame((_, delta) => {
-    if (!ref.current) return
-    const target = hovered ? 1.08 : 1
-    ref.current.scale.x += (target - ref.current.scale.x) * (1 - Math.pow(0.001, delta))
-    ref.current.scale.z = ref.current.scale.x
+    const grp = mouth.current
+    if (!grp) return
+    const d = DOLLY[store.getState().beat] ?? DOLLY.ARRIVAL
+    const k = 1 - Math.pow(0.02, Math.min(delta, 0.05)) // gentle, frame-safe
+    const targetZ = BASE_Z + d.z
+    const targetScale = BASE_SCALE * d.scale
+    grp.position.z += (targetZ - grp.position.z) * k
+    const s = grp.scale.x + (targetScale - grp.scale.x) * k
+    grp.scale.setScalar(s)
   })
 
   return (
-    <group position={position} rotation={rotation}>
-      <mesh
-        ref={ref}
-        onPointerDown={(e) => {
-          e.stopPropagation()
-          setEroded(true)
-        }}
-        onPointerOver={(e) => {
-          e.stopPropagation()
-          setHovered(true)
-        }}
-        onPointerOut={() => setHovered(false)}
-      >
-        {/* Rounded, friendly tooth (capsule) with procedural enamel detail. */}
-        <capsuleGeometry args={[0.11, 0.16, 8, 16]} />
-        <meshStandardMaterial
-          map={enamel.map}
-          normalMap={enamel.normal}
-          normalScale={new Vector2(0.4, 0.4)}
-          roughnessMap={enamel.roughness}
-          color={eroded ? '#cdb487' : '#ffffff'}
-          roughness={eroded ? 0.95 : 0.5}
-          metalness={0.02}
-          envMapIntensity={1.4}
-          emissive={eroded ? '#5a3f1a' : '#fff3da'}
-          emissiveIntensity={eroded ? 0.18 : 0.1}
-        />
-      </mesh>
+    <group ref={mouth} position={[0, BASE_Y, BASE_Z]} scale={BASE_SCALE}>
+      {/* Warm organic interior glow + a cool rim so the cliffs read dramatic.
+          1–2 real-time lights only; the rest is the baked environment map.
+          Depth/scale haze is handled by the scene fog (App), not big sprites —
+          oversized additive glows read as solid blobs in-headset. */}
+      <pointLight position={[0, 1.2, 1.6]} intensity={6} distance={9} decay={2} color="#ffb98a" />
+      <pointLight position={[0, 2.6, -1.2]} intensity={3} distance={10} decay={2} color="#9fc4ff" />
 
-      {/* Cavity appears when eroded. */}
-      {eroded && (
-        <mesh position={[0, 0.04, 0.1]} raycast={() => null}>
-          <sphereGeometry args={[0.045, 12, 12]} />
-          <meshStandardMaterial color="#3a2412" roughness={1} />
-        </mesh>
-      )}
+      <Tongue />
+      <Teeth />
+      <ColaFluid />
+      <DentinFlecks />
+
+      {/* ----------------------------------------------------------------- */}
+      {/* BEAT 5 HAND-OFF SLOT.                                              */}
+      {/* This is the single clean hand-off point for the rest of the       */}
+      {/* journey. The opening sequence ends here: after Beat 5 the screen  */}
+      {/* fades to black (see SequenceFX) and the machine rests on HANDOFF. */}
+      {/* Later scenes (esophagus → stomach → …) attach to THIS group.      */}
+      {/* Intentionally empty — no narration, no stats. Do not fill here.   */}
+      <group name="handoff-slot" />
+      {/* ----------------------------------------------------------------- */}
     </group>
+  )
+}
+
+// Dissolved enamel flecks carried off in the fluid during EROSION. They fade in
+// with erosion and drift down and away, selling "material is being lost".
+function DentinFlecks() {
+  return (
+    <InstancedSwarm
+      count={48}
+      update={(d: Object3D, i: number, t: number) => {
+        const erosion = store.getState().erosion
+        const seed = i * 7.13
+        const rx = frac(Math.sin(seed) * 43758.5)
+        const rz = frac(Math.sin(seed + 2.1) * 43758.5)
+        const speed = 0.3 + rx * 0.4
+        const life = frac(t * speed + rx)
+        const a = -0.8 + rx * 1.6
+        const R = 1.1
+        const x = Math.sin(a) * R + (rz - 0.5) * 0.1
+        const z = -0.5 - (1 - Math.cos(a)) * 0.5
+        const y = 1.0 - life * 0.9 // sink down through the fluid
+        d.position.set(x, y, z + 0.05)
+        d.rotation.set(t * speed * 3 + i, t * speed * 2, i)
+        const vis = Math.max(0, (erosion - 0.4) / 0.6) // only once eroding
+        d.scale.setScalar((0.01 + rz * 0.015) * vis)
+      }}
+    >
+      <octahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#d8c08a" roughness={0.8} metalness={0} />
+    </InstancedSwarm>
   )
 }

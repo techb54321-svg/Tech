@@ -6,19 +6,59 @@ guided journey showing what sugar does — then returned to the same choice, now
 better informed. Health education through embodied storytelling, built to run
 straight in the headset browser (no app store, no sideloading).
 
-> **Status: Phase 4 — Pixar polish.** Adds the comfort-safe **spin** vortex
-> transition, VR-safe **glow** (additive sprite halos faking bloom — no
-> off-screen postprocessing, which breaks/slows WebXR), warmer three-point
-> **lighting** (key + cool fill + rim), **squash-and-stretch** on living
-> tissue, and an **audio-cue** system (soft procedural chimes per scene, with
-> a clear hook for real narration). DoF is intentionally omitted (it fights
-> stereo vision in VR). Earlier phases: full 10-scene journey with real
-> geometry, instanced particles, and interactions.
+> **Status: Opening sequence.** The app now boots straight into the
+> photoreal, ~80-second **opening sequence** — a guided cinematic ride whose
+> single job is to make you *feel* what cola does to your teeth before any
+> narration or statistics:
 >
-> **How to travel:** choose a drink to begin; at each pause-point point the ray
-> at the glowing **Continue** button and pull the trigger (or pinch) to fly to
-> the next scene. A couple of beats (the spin, the esophagus) advance on their
-> own. Tip: append `?scene=N` to the URL (N = 0–9) to jump straight to a scene.
+> **The Choice → the Flood → Acid → Erosion → Hold.** You stand at a dim table
+> and pick a drink (the only interaction). Choose cola and the lens drowns in
+> caramel, hard-cutting you down onto the surface of your own tongue — ~5 mm
+> tall, the teeth towering as enamel cliffs. Cola floods over them, the surface
+> frosts and pits as the pH drops, then the enamel demineralises in real time —
+> pitting, receding, cracking, sloughing away to reveal the yellower dentin
+> beneath — before a held shot of the eroded tooth beside a clean reference and
+> a fade to black. That black is a clean **hand-off point** where the rest of
+> the journey (the scenes below) attaches.
+
+### How the opening sequence works
+
+- **One interaction.** Select a drink by **controller ray + trigger**, or — on
+  a headset with no controllers — by **gaze-and-dwell** (look at it for ~1.5 s;
+  a reticle fills). Everything after the cola choice auto-plays on a timeline.
+- **Explicit state machine + timeline controller** (no scattered `setTimeout`s):
+  `src/sequence/beatMachine.ts` owns the beats, `src/sequence/timeline.ts` owns
+  durations + the erosion/flood curves + the per-beat dolly, and
+  `src/sequence/Sequencer.tsx` is the single per-frame driver. State lives in a
+  tiny zustand-shaped store (`src/store.ts`).
+- **Shader-driven enamel erosion** (`src/shaders/enamel.ts`): one PBR mesh is
+  animated by a single `uErosion` uniform (0 → 1) — roughness rises
+  (glossy → matte → frosted), a noise-masked pitting + inward vertex recession
+  kicks in, cracks spider out, and a fresnel+noise dissolve sloughs the outer
+  shell off to expose a separate dentin core. No per-frame mesh swaps.
+- **Faked-expensive look** for Quest framerate: cheap wrap-lighting instead of
+  real SSS, fresnel translucency instead of a refraction pass, IBL + 1–2
+  real-time lights, fog (not big sprites) for haze, instanced bubbles/papillae.
+- **Comfort:** the viewer never locomotes; the giant mouth gently *dollies*
+  around the stationary player, with a motion **vignette** during every move.
+- **Audio:** fully procedural (Web Audio, no files) — muffled heartbeat + room
+  rumble that shifts per beat (faltering at the erosion peak), rushing
+  liquid/fizz, a low dissolving grind and a single discordant note.
+
+> Tip: append `?beat=ARRIVAL` (or `FLOOD`, `ACID`, `EROSION`, `HOLD`) to the URL
+> to jump straight into a ride beat for preview/QA.
+
+---
+
+The remainder of this README documents the **later scenes** (the full 10-scene
+body journey) that attach at the opening sequence's hand-off point.
+
+> **Earlier journey — Pixar polish.** Comfort-safe **spin** vortex transition,
+> VR-safe **glow** (additive sprite halos faking bloom), warmer three-point
+> **lighting**, **squash-and-stretch** on living tissue, and a per-scene
+> **audio-cue** system. Full 10-scene journey with real geometry, instanced
+> particles, and interactions. Tip: append `?scene=N` (N = 0–9) to jump to a
+> scene.
 
 ## Tech stack
 

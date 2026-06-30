@@ -514,8 +514,19 @@ function init() {
 
 // ---------- WebXR / VR -------------------------------------------------------
 let inVR = false, vrPerf = true, vrControllers = [], vrPanel, vrPanelCanvas, vrPanelCtx, vrPanelTex;
+let vrMenu, vrMenuCanvas, vrMenuCtx, vrMenuTex;
 let vrLateral = 0;                 // sideways offset within the tube (strafe)
-const _vrMat = new THREE.Matrix4(), _vrDir = new THREE.Vector3(), _vrFwd = new THREE.Vector3();
+const _vrMat = new THREE.Matrix4(), _vrDir = new THREE.Vector3(), _vrFwd = new THREE.Vector3(),
+      _vrQuat = new THREE.Quaternion(), _vrRight = new THREE.Vector3(), _vrUp = new THREE.Vector3();
+// the in-VR menu (point with a controller + trigger to pick)
+const VR_MENU = [
+  { label:'❤ Healthy',        scn:'healthy',   act:()=>setScenario('healthy') },
+  { label:'🦠 Infection',      scn:'infection', act:()=>setScenario('infection') },
+  { label:'🩹 Injury & clot',  scn:'clot',      act:()=>setScenario('clot') },
+  { label:'🧈 Plaque',         scn:'plaque',    act:()=>setScenario('plaque') },
+  { label:'🎬 Guided tour',    act:()=>startTour() },
+  { label:'🚪 Exit VR',        act:()=>{ const s=renderer.xr.getSession&&renderer.xr.getSession(); if(s) s.end(); } },
+];
 function setupVR() {
   renderer.xr.enabled = true;
   // Our own Enter-VR button (no dependency on the external VRButton library, which
@@ -543,24 +554,34 @@ function setupVR() {
     playerRig.add(ctrl); vrControllers.push(ctrl);
   }
   // floating 3D info panel (the HTML panels aren't visible inside a headset)
-  vrPanelCanvas = document.createElement('canvas'); vrPanelCanvas.width=1024; vrPanelCanvas.height=768;
+  vrPanelCanvas = document.createElement('canvas'); vrPanelCanvas.width=1024; vrPanelCanvas.height=820;
   vrPanelCtx = vrPanelCanvas.getContext('2d');
   vrPanelTex = new THREE.CanvasTexture(vrPanelCanvas);
-  vrPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.12),
-    new THREE.MeshBasicMaterial({ map:vrPanelTex, transparent:true }));
+  vrPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.5,1.2),
+    new THREE.MeshBasicMaterial({ map:vrPanelTex, transparent:true, depthTest:false }));
   vrPanel.visible=false; vrPanel.renderOrder=999; scene.add(vrPanel);
+
+  // in-VR menu panel — always floats to your lower-left; point at it & trigger
+  vrMenuCanvas = document.createElement('canvas'); vrMenuCanvas.width=380; vrMenuCanvas.height=520;
+  vrMenuCtx = vrMenuCanvas.getContext('2d');
+  vrMenuTex = new THREE.CanvasTexture(vrMenuCanvas);
+  vrMenu = new THREE.Mesh(new THREE.PlaneGeometry(0.82,1.12),
+    new THREE.MeshBasicMaterial({ map:vrMenuTex, transparent:true, depthTest:false }));
+  vrMenu.visible=false; vrMenu.renderOrder=998; scene.add(vrMenu);
+  drawVRMenu();
 
   renderer.xr.addEventListener('sessionstart', () => {
     inVR = true; clearIntro(); rideMode = false; controls.enabled = false;
     rideT = 0; vrLateral = 0; riderLight.intensity = 2.4;
     vrControllers.forEach(c=>c.visible=true);
+    if (vrMenu) vrMenu.visible = true; drawVRMenu();
     applyVRPerf(vrPerf);
     document.getElementById('vignette').classList.add('ride');
     if (!audioOn) document.getElementById('btn-sound').click();
   });
   renderer.xr.addEventListener('sessionend', () => {
     inVR = false; controls.enabled = true;
-    vrControllers.forEach(c=>c.visible=false); if(vrPanel) vrPanel.visible=false;
+    vrControllers.forEach(c=>c.visible=false); if(vrPanel) vrPanel.visible=false; if(vrMenu) vrMenu.visible=false;
     applyVRPerf(false);
     playerRig.position.set(0,0,0); playerRig.quaternion.identity();
     camera.position.set(0,10,60); camera.up.set(0,1,0); camera.fov = 58; camera.updateProjectionMatrix();
@@ -601,32 +622,67 @@ function readThumbstick(){
   return s._anyStick || null;
 }
 
-// fire a ray from the controller and open the floating panel for any cell hit
+// fire a ray from the controller; hit the menu first, otherwise inspect a cell
 function onVRSelect(ctrl){
   _vrMat.identity().extractRotation(ctrl.matrixWorld);
   raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
   raycaster.ray.direction.set(0,0,-1).applyMatrix4(_vrMat).normalize();
+  // menu?
+  if (vrMenu && vrMenu.visible){
+    const mHit = raycaster.intersectObject(vrMenu, false)[0];
+    if (mHit && mHit.uv){
+      const slots = VR_MENU.length + 1;              // slot 0 is the title row
+      const slot = Math.floor((1 - mHit.uv.y) * slots);
+      const idx = slot - 1;
+      if (idx>=0 && idx<VR_MENU.length){ VR_MENU[idx].act(); drawVRMenu(); }
+      return;
+    }
+  }
+  // otherwise a cell
   const hit = raycaster.intersectObjects(cellGroup.children, true).find(h=>topCell(h.object));
   if (hit){ drawVRPanel(topCell(hit.object).userData.type); placeVRPanel(); vrPanel.visible=true; }
   else if (vrPanel) vrPanel.visible=false;
 }
 function placeVRPanel(){
-  camera.getWorldPosition(_camW); camera.getWorldDirection(_vrFwd);
+  // place 2.2 m ahead and orient it exactly like the head, so it's always upright
+  camera.getWorldPosition(_camW); camera.getWorldQuaternion(_vrQuat);
+  _vrFwd.set(0,0,-1).applyQuaternion(_vrQuat);
   vrPanel.position.copy(_camW).addScaledVector(_vrFwd, 2.2);
+  vrPanel.quaternion.copy(_vrQuat);
 }
 function drawVRPanel(type){
-  const d=CELL_DB[type], ctx=vrPanelCtx, W=1024, H=768;
+  const d=CELL_DB[type], ctx=vrPanelCtx, W=1024, H=820, M=60;
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle='rgba(14,5,18,0.94)'; rr(ctx,4,4,W-8,H-8,30); ctx.fill();
-  ctx.strokeStyle=d.tagColor; ctx.lineWidth=8; rr(ctx,4,4,W-8,H-8,30); ctx.stroke();
-  ctx.fillStyle=d.tagColor; ctx.font='bold 64px Segoe UI, sans-serif'; ctx.fillText(d.name, 56, 110);
-  ctx.fillStyle='#c9aebb'; ctx.font='italic 36px Segoe UI, sans-serif'; ctx.fillText(d.latin, 56, 162);
-  let y=232; ctx.fillStyle='#f3e9ee'; ctx.font='34px Segoe UI, sans-serif';
-  y = wrapText(ctx, d.what, 56, y, W-112, 46) + 24;
-  ctx.fillStyle=d.tagColor; ctx.font='bold 30px Segoe UI, sans-serif'; ctx.fillText('WHAT IT DOES', 56, y); y+=46;
-  ctx.fillStyle='#e8dde3'; ctx.font='30px Segoe UI, sans-serif';
-  d.does.slice(0,3).forEach(t=>{ y = wrapText(ctx, '• '+t, 56, y, W-112, 40) + 10; });
+  ctx.fillStyle='rgba(14,5,18,0.96)'; rr(ctx,6,6,W-12,H-12,34); ctx.fill();
+  ctx.strokeStyle=d.tagColor; ctx.lineWidth=10; rr(ctx,6,6,W-12,H-12,34); ctx.stroke();
+  ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  let y=118;
+  ctx.fillStyle=d.tagColor; ctx.font='bold 70px Segoe UI, sans-serif'; ctx.fillText(d.name, M, y); y+=58;
+  ctx.fillStyle='#c9aebb'; ctx.font='italic 38px Segoe UI, sans-serif'; ctx.fillText(d.latin, M, y); y+=78;
+  ctx.fillStyle='#f3e9ee'; ctx.font='37px Segoe UI, sans-serif';
+  y = wrapText(ctx, d.what, M, y, W-2*M, 52) + 56;
+  ctx.fillStyle=d.tagColor; ctx.font='bold 34px Segoe UI, sans-serif'; ctx.fillText('WHAT IT DOES', M, y); y+=58;
+  ctx.fillStyle='#e8dde3'; ctx.font='35px Segoe UI, sans-serif';
+  for (const t of d.does.slice(0,2)){ y = wrapText(ctx, '•  '+t, M, y, W-2*M, 48) + 26; if (y>H-70) break; }
   vrPanelTex.needsUpdate=true;
+}
+function drawVRMenu(){
+  const ctx=vrMenuCtx, W=380, H=520, N=VR_MENU.length, slots=N+1, sh=H/slots;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='rgba(12,4,16,0.92)'; rr(ctx,5,5,W-10,H-10,22); ctx.fill();
+  ctx.strokeStyle='rgba(255,90,120,0.55)'; ctx.lineWidth=5; rr(ctx,5,5,W-10,H-10,22); ctx.stroke();
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillStyle='#ff8da0'; ctx.font='bold 26px Segoe UI, sans-serif'; ctx.fillText('MENU', 28, sh*0.5);
+  for (let i=0;i<N;i++){
+    const yTop = sh*(i+1)+6, h=sh-12;
+    const active = VR_MENU[i].scn && VR_MENU[i].scn===scenario;
+    ctx.fillStyle = active ? 'rgba(255,90,120,0.4)' : 'rgba(255,255,255,0.07)';
+    rr(ctx,18,yTop,W-36,h,14); ctx.fill();
+    ctx.fillStyle='#f3e9ee'; ctx.font='27px Segoe UI, sans-serif';
+    ctx.fillText(VR_MENU[i].label, 36, yTop+h/2);
+  }
+  ctx.textBaseline='alphabetic';
+  vrMenuTex.needsUpdate=true;
 }
 function wrapText(ctx, text, x, y, maxW, lh){
   const words=text.split(' '); let line='';
@@ -656,7 +712,16 @@ function updateVR(dt, env) {
   playerRig.quaternion.setFromRotationMatrix(_vrM);
   riderLight.position.copy(playerRig.position).addScaledVector(_t, 4);
   riderLight.intensity = 2.2 + env*1.6;
-  if (vrPanel && vrPanel.visible){ camera.getWorldPosition(_camW); vrPanel.lookAt(_camW); }
+  // keep the menu floating at your lower-left, facing you (the info panel stays
+  // put where it was spawned so you can look around it)
+  if (vrMenu && vrMenu.visible){
+    camera.getWorldPosition(_camW); camera.getWorldQuaternion(_vrQuat);
+    _vrFwd.set(0,0,-1).applyQuaternion(_vrQuat);
+    _vrRight.set(1,0,0).applyQuaternion(_vrQuat);
+    _vrUp.set(0,1,0).applyQuaternion(_vrQuat);
+    vrMenu.position.copy(_camW).addScaledVector(_vrFwd,1.7).addScaledVector(_vrRight,-0.92).addScaledVector(_vrUp,-0.4);
+    vrMenu.quaternion.copy(_vrQuat);
+  }
 }
 
 let riderLight;

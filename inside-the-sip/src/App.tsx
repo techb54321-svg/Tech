@@ -5,7 +5,7 @@ import { xrStore } from './xrStore'
 import { EnvironmentMap } from './components/EnvironmentMap'
 import { Sequencer } from './sequence/Sequencer'
 import { TableScene } from './scenes/TableScene'
-import { MouthScene } from './scenes/MouthScene'
+import { MouthFilm } from './scenes/MouthFilm'
 import { SequenceVignette } from './components/SequenceVignette'
 import { SequenceFX } from './components/SequenceFX'
 import { SequenceAudio } from './audio/SequenceAudio'
@@ -85,18 +85,19 @@ export function App() {
   )
 }
 
-// Mounts the right scene for the current beat. The MouthScene is mounted from
-// the DROWN beat onward — i.e. while the caramel overlay still covers the view
-// — so its shaders compile behind the curtain and the hard cut into the mouth
-// doesn't hitch.
+// Mounts the right scene for the current beat. The table (Beat 0) is real-time;
+// the mouth (Beats 1–5) is the pre-rendered film (MouthFilm), which falls back
+// to the real-time procedural mouth if the render file isn't present. The
+// caramel "drown" cut (DROWN) stays on the table side so the hard cut lands as
+// the film takes over at ARRIVAL.
 function Scenes() {
   const beat = useSequence((s) => s.beat)
   const atTable = beat === 'CHOICE' || beat === 'WATER' || beat === 'DROWN'
-  const inMouth = beat !== 'CHOICE' && beat !== 'WATER'
+  const inMouth = !atTable
   return (
     <>
       {atTable && <TableScene />}
-      {inMouth && <MouthScene />}
+      {inMouth && <MouthFilm />}
     </>
   )
 }

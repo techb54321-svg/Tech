@@ -45,6 +45,18 @@ straight in the headset browser (no app store, no sideloading).
   rumble that shifts per beat (faltering at the erosion peak), rushing
   liquid/fizz, a low dissolving grind and a single discordant note.
 
+### Photoreal mouth = a pre-rendered 360° film
+
+Real-time photorealism isn't reachable on a Quest 3's mobile GPU, so the mouth
+beats (1–5) play a **pre-rendered, path-traced 360° film** (ideally
+**stereoscopic over-under** for real 3D depth) on a dome around the stationary
+viewer — the drink choice stays real-time. Drop the render at
+`public/videos/mouth360.mp4` and it auto-plays (mono `2:1` vs. stereo `1:1` is
+auto-detected); if it's missing, the app falls back to the real-time procedural
+mouth so nothing breaks. **See [`RENDER_SPEC.md`](./RENDER_SPEC.md)** for the
+exact format, camera rig, per-beat storyboard/timings, and material/lighting
+guidance to produce it.
+
 > Tip: append `?beat=ARRIVAL` (or `FLOOD`, `ACID`, `EROSION`, `HOLD`) to the URL
 > to jump straight into a ride beat for preview/QA.
 

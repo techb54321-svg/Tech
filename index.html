@@ -3,18 +3,51 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3D Blood Vessel Explorer</title>
-<meta http-equiv="refresh" content="0; url=blood-vessel-simulation.html" />
-<link rel="canonical" href="blood-vessel-simulation.html" />
+<title>VR Biology Experiences</title>
 <style>
-  html,body{height:100%;margin:0;background:#07030c;color:#b89aa6;
-    font-family:system-ui,Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center}
-  a{color:#ff8da0}
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; font-family:system-ui,"Segoe UI",Roboto,sans-serif; color:#f3e9ee;
+    background:radial-gradient(circle at 50% 30%, #1a0512, #07030c 70%); }
+  .wrap { min-height:100%; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; padding:40px 20px; gap:34px; }
+  h1 { font-size:clamp(26px,5vw,44px); font-weight:800; text-align:center;
+    background:linear-gradient(90deg,#ff8da0,#ff5a78,#4fc3f7); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; }
+  p.sub { color:#b89aa6; text-align:center; margin-top:-18px; font-size:15px; }
+  .cards { display:flex; gap:24px; flex-wrap:wrap; justify-content:center; width:100%; max-width:820px; }
+  a.card { flex:1 1 320px; max-width:380px; text-decoration:none; color:inherit;
+    border:1px solid rgba(255,90,120,0.35); border-radius:18px; padding:28px 26px;
+    background:rgba(20,8,24,0.75); backdrop-filter:blur(8px); transition:transform .15s, box-shadow .15s; }
+  a.card:hover { transform:translateY(-4px); box-shadow:0 14px 44px rgba(255,60,90,0.28); }
+  .card .emoji { font-size:46px; }
+  .card h2 { font-size:22px; margin:14px 0 8px; }
+  .card p { color:#c9aebb; font-size:14px; line-height:1.5; }
+  .card .go { margin-top:18px; display:inline-block; font-weight:700; color:#1a0008;
+    background:linear-gradient(90deg,#ff5a78,#ff8da0); padding:10px 18px; border-radius:10px; font-size:14px; }
+  .sip .go { background:linear-gradient(90deg,#3ddc97,#1fb6ff); color:#04121a; }
+  footer { color:#6b5560; font-size:12px; text-align:center; margin-top:10px; }
 </style>
-<script>location.replace('blood-vessel-simulation.html');</script>
 </head>
 <body>
-  <p>Loading the 3D Blood Vessel Explorer… if it doesn't open,
-     <a href="blood-vessel-simulation.html">tap here</a>.</p>
+  <div class="wrap">
+    <h1>🧬 VR Biology Experiences</h1>
+    <p class="sub">Two immersive 3D journeys — open on a computer, phone, or Meta Quest headset.</p>
+    <div class="cards">
+      <a class="card vessel" href="blood-vessel-simulation.html">
+        <div class="emoji">🩸</div>
+        <h2>3D Blood Vessel Explorer</h2>
+        <p>Fly through a living blood vessel, meet every kind of cell, and explore infection,
+           clotting and plaque scenarios. Works in the browser and in VR.</p>
+        <span class="go">Enter →</span>
+      </a>
+      <a class="card sip" href="sip/">
+        <div class="emoji">🥤</div>
+        <h2>Inside the Sip</h2>
+        <p>What one sip of a sugary drink does to your teeth — an 80-second guided VR journey.</p>
+        <span class="go">Enter →</span>
+      </a>
+    </div>
+    <footer>Tip: for VR, open this page in the Meta Quest browser and tap “Enter VR” inside an experience.</footer>
+  </div>
 </body>
 </html>

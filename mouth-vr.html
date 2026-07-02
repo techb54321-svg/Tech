@@ -149,6 +149,8 @@ const CONFIG = {
 let scene, camera, renderer, playerRig, clock, envRT;
 let placeholder = null, loadedModel = null;
 let tongueY = 0;               // walking surface height in world space
+let modelBaseScale = 1;        // the loaded model's fitted scale (breathing oscillates around it)
+let motes = null, motePhase = null, moteSpeed = null;  // floating saliva particles
 const GLTF_OK = () => window.__flags.GLTF;
 const ENV_OK  = () => window.__flags.ENV;
 
@@ -183,6 +185,7 @@ function init(){
 
   setupLights();
   setupEnvironment();
+  buildSalivaMotes();
 
   placeholder = buildPlaceholderMouth();
   scene.add(placeholder);
@@ -229,6 +232,58 @@ function setupEnvironment(){
     envRT = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04);
     scene.environment = envRT.texture;
   } catch(e){ /* non-fatal */ }
+}
+
+// ---- Floating saliva motes: soft glowing specks drifting in the moist air ----
+function buildSalivaMotes(){
+  const N = 120;
+  const R = CONFIG.INTERIOR_M * 0.5;
+  const pos = new Float32Array(N * 3);
+  motePhase = new Float32Array(N);
+  moteSpeed = new Float32Array(N);
+  const fract = x => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); }; // 0..1
+  for (let i = 0; i < N; i++){
+    pos[i*3+0] = fract(i*12.9898) * R*1.4 - R*0.7;   // pseudo-random x across the cavity
+    pos[i*3+1] = fract(i*78.233)  * R*0.9 + 0.5;     // y within the cavity
+    pos[i*3+2] = fract(i*37.719)  * R*1.4 - R*0.5;   // z
+    motePhase[i] = i * 0.6;
+    moteSpeed[i] = 0.15 + fract(i*4.1) * 0.35;       // gentle upward drift
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  // Soft round sprite so each mote is a glowing dot, not a hard square.
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g2 = c.getContext('2d');
+  const grd = g2.createRadialGradient(32,32,0, 32,32,32);
+  grd.addColorStop(0, 'rgba(255,240,245,0.7)');
+  grd.addColorStop(0.4, 'rgba(255,200,212,0.25)');
+  grd.addColorStop(1, 'rgba(255,200,212,0)');
+  g2.fillStyle = grd; g2.fillRect(0,0,64,64);
+  const tex = new THREE.CanvasTexture(c);
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.11, map: tex, transparent: true, depthWrite: false,
+    opacity: 0.5, sizeAttenuation: true });
+  motes = new THREE.Points(geo, mat);
+  motes.frustumCulled = false;
+  scene.add(motes);
+}
+
+// Drift the motes slowly upward with a lazy side-to-side sway; recycle them to
+// the floor when they rise out of the cavity so the air always feels alive.
+function updateSalivaMotes(dt){
+  if (!motes) return;
+  const R = CONFIG.INTERIOR_M * 0.5;
+  const p = motes.geometry.attributes.position;
+  for (let i = 0; i < p.count; i++){
+    let y = p.getY(i) + moteSpeed[i] * dt;
+    let x = p.getX(i) + Math.sin(t*0.6 + motePhase[i]) * dt * 0.15;
+    let z = p.getZ(i) + Math.cos(t*0.5 + motePhase[i]) * dt * 0.15;
+    if (y > R*1.0){ y = 0.3; }   // rose to the roof — drop back down to the tongue
+    p.setXYZ(i, x, y, z);
+  }
+  p.needsUpdate = true;
 }
 
 // ---- Placeholder mouth (used until mouth.glb is provided) ---------------------
@@ -341,6 +396,7 @@ function tryLoadModel(){
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const s = CONFIG.INTERIOR_M / maxDim;
     model.scale.setScalar(s);
+    modelBaseScale = s;   // remembered so the "breathing" animation oscillates around it
 
     // Recompute after scaling to seat it on the floor and centre horizontally.
     const box2 = new THREE.Box3().setFromObject(model);
@@ -626,10 +682,20 @@ function animate(time, frame){
     followGround();                          // stand on the tongue surface right beneath you
     if (frame) keepEyeAboveTongue(frame);   // VR safety: never sink into the tongue
 
-    // Gentle life: uvula sway + breathing light.
-    const uv = (loadedModel || placeholder) && (placeholder ? placeholder.getObjectByName('uvula') : null);
+    // ---- Living ambience ----
+    const breath = Math.sin(t * 0.7);            // slow, calm breathing cycle (~9s)
+
+    // The whole mouth gently swells and settles as if breathing.
+    if (loadedModel) loadedModel.scale.setScalar(modelBaseScale * (1 + breath * 0.006));
+
+    // Uvula sway + warm light pulsing with the breath.
+    const uv = placeholder ? placeholder.getObjectByName('uvula') : null;
     if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
-    if (warmLight) warmLight.intensity = 0.65 + Math.sin(t*0.8)*0.1;
+    if (warmLight)  warmLight.intensity  = 0.65 + breath * 0.12;
+    if (moistLight) moistLight.intensity = 0.55 + (Math.sin(t*0.9)*0.5+0.5) * 0.35;  // throat glow throbs
+    if (scene.fog)  scene.fog.density    = 0.018 + breath * 0.002;                    // moist air pulses
+
+    updateSalivaMotes(dt);                        // floating specks drift in the air
 
     // Ambient sound breathes with the light.
     if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;

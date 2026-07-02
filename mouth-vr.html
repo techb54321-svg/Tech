@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Inside the Mouth — VR</title>
+<style>
+  :root{ --flesh:#c85b6a; --deep:#3a0d16; }
+  html,body{height:100%;margin:0;background:#160308;overflow:hidden;
+    font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#ffe9ee}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+
+  /* ---- Loading / status ---- */
+  #loader{position:fixed;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;z-index:40;
+    background:radial-gradient(circle at 50% 40%, #4a0f1c 0%, #160308 70%);
+    transition:opacity .6s}
+  #loader.hidden{opacity:0;pointer-events:none}
+  .spinner{width:54px;height:54px;border-radius:50%;
+    border:4px solid rgba(255,150,170,.25);border-top-color:#ff8da0;
+    animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loader p{margin:0;font-size:15px;color:#ffc3ce;letter-spacing:.3px}
+  #loader small{color:#b98a94;font-size:12px}
+
+  /* ---- Title / instructions overlay ---- */
+  #intro{position:fixed;left:16px;top:16px;z-index:30;max-width:340px;
+    background:rgba(30,6,12,.62);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,140,160,.22);border-radius:14px;padding:14px 16px;
+    transition:opacity .8s}
+  #intro.gone{opacity:0;pointer-events:none}
+  #intro h1{margin:0 0 6px;font-size:18px;letter-spacing:.4px}
+  #intro h1 span{opacity:.6;font-weight:500;font-size:13px}
+  #intro p{margin:6px 0;font-size:13px;line-height:1.5;color:#f4c9d2}
+  #intro kbd{background:#5c1826;border:1px solid #7d2536;border-radius:5px;
+    padding:1px 6px;font-size:12px;font-family:inherit}
+
+  /* ---- Bottom hint ---- */
+  #hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    z-index:30;background:rgba(20,4,9,.7);border:1px solid rgba(255,140,160,.2);
+    border-radius:999px;padding:9px 18px;font-size:13px;color:#ffd2db;
+    text-align:center;transition:opacity .8s}
+  #hint.gone{opacity:0;pointer-events:none}
+
+  /* ---- Buttons cluster (top-right) ---- */
+  #ui{position:fixed;right:14px;top:14px;z-index:30;display:flex;gap:8px;
+    flex-wrap:wrap;justify-content:flex-end;max-width:60vw}
+  .btn{appearance:none;border:1px solid rgba(255,140,160,.35);
+    background:rgba(40,8,16,.72);color:#ffe1e7;border-radius:10px;
+    padding:8px 12px;font-size:13px;cursor:pointer;letter-spacing:.3px;
+    transition:background .2s,transform .1s}
+  .btn:hover{background:rgba(70,14,26,.85)}
+  .btn:active{transform:scale(.96)}
+  .btn.on{background:#8a2338;border-color:#ff8da0}
+
+  /* VRButton (three.js) gets themed via JS; keep it centered-top */
+  #err{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+    z-index:50;max-width:460px;background:rgba(40,6,12,.95);
+    border:1px solid #ff8da0;border-radius:14px;padding:20px 22px;
+    display:none;font-size:14px;line-height:1.5}
+  #err h2{margin:0 0 8px;font-size:16px;color:#ff8da0}
+  a{color:#ff9fb0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <p id="loadmsg">Entering the mouth…</p>
+  <small id="loadsub">loading the 3D engine</small>
+</div>
+
+<div id="intro">
+  <h1>Inside the Mouth <span>· stand on the tongue</span></h1>
+  <p>You're shrunk down inside a human mouth, standing on the tongue and looking
+     toward the throat.</p>
+  <p><b>Desktop:</b> click to look around · <kbd>W A S D</kbd> to walk ·
+     <kbd>Shift</kbd> to run · <kbd>Esc</kbd> to release the mouse.</p>
+  <p><b>VR headset:</b> tap <b>ENTER VR</b> · left thumbstick to walk ·
+     right thumbstick to snap-turn.</p>
+</div>
+
+<div id="ui">
+  <button class="btn" id="btn-tour" title="Auto walk-through">🎬 Tour</button>
+  <button class="btn" id="btn-sound" title="Toggle ambience">🔊 Sound</button>
+  <button class="btn" id="btn-reset" title="Back to the tongue">↺ Reset</button>
+</div>
+
+<div id="hint" class="">Click the scene, then use <b>W A S D</b> to explore · or tap <b>ENTER VR</b></div>
+
+<div id="err">
+  <h2>Couldn't start the 3D engine</h2>
+  <p id="errmsg">A required library failed to load. Check your internet
+     connection and refresh.</p>
+</div>
+
+<!-- CDN load-failure handlers, defined first so a failing <script onerror> below
+     never calls an undefined function. -->
+<script>
+  window.__flags = { GLTF:true, ENV:true };
+  function fatal(what){
+    var e=document.getElementById('err'); if(e) e.style.display='block';
+    var m=document.getElementById('errmsg');
+    if(m) m.textContent = what+' failed to load. Check your connection and refresh.';
+  }
+  function noGLTF(){ window.__flags.GLTF=false; }
+  function noEnv(){ window.__flags.ENV=false; }
+</script>
+
+<!-- three.js r128 + UMD helpers (same stack as the blood-vessel sim) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        onerror="fatal('Three.js core')"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"
+        onerror="noGLTF()"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"
+        onerror="noEnv()"></script>
+<!-- VR entry is handled by an inline WebXR button below (no external dependency,
+     because r128's UMD VRButton isn't published to the CDN). -->
+
+<script>
+/* =============================================================================
+   INSIDE THE MOUTH — an immersive WebXR experience.
+
+   Drop your Meshy export next to this file as "mouth.glb" and it will be loaded
+   automatically, auto-scaled so you're tiny inside it, and you'll be placed
+   standing on the tongue. Until then a hand-built placeholder mouth is shown so
+   the experience works right away.
+
+   To use VR you must serve this over HTTPS (WebXR is blocked on file://).
+   Easiest path: enable GitHub Pages for this repo and open the URL in a headset.
+   ========================================================================== */
+
+// ---- Tweakables --------------------------------------------------------------
+const CONFIG = {
+  MODEL_URL:   'mouth.glb',  // your Meshy export (optional; placeholder used if absent)
+  INTERIOR_M:  16,           // how big the mouth interior feels, in metres (bigger = more cavernous)
+  EYE_HEIGHT:  1.6,          // standing eye height on desktop (metres)
+  MOVE_SPEED:  2.6,          // walking speed (m/s)
+  RUN_MULT:    2.2,          // Shift / run multiplier
+  START:       new THREE.Vector3(0, 0, 3.5), // where you spawn on the tongue
+  FACE:        new THREE.Vector3(0, 0, -1),  // looking toward the throat
+};
+
+let scene, camera, renderer, playerRig, clock, envRT;
+let placeholder = null, loadedModel = null;
+let tongueY = 0;               // walking surface height in world space
+const GLTF_OK = () => window.__flags.GLTF;
+const ENV_OK  = () => window.__flags.ENV;
+
+window.addEventListener('load', () => {
+  if (window.THREE) init();
+  else fatal('Three.js core');   // core didn't load — show the friendly error
+});
+
+// ---- Init --------------------------------------------------------------------
+function init(){
+  clock = new THREE.Clock();
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2a0710);
+  scene.fog = new THREE.FogExp2(0x40101c, 0.018);
+
+  renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.9;
+  document.getElementById('app').appendChild(renderer.domElement);
+
+  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.01, 500);
+
+  // The player rig owns the camera so we can move & turn the whole viewpoint;
+  // in VR the headset moves the camera *within* the rig.
+  playerRig = new THREE.Group();
+  playerRig.add(camera);
+  scene.add(playerRig);
+  camera.position.set(0, CONFIG.EYE_HEIGHT, 0);
+
+  setupLights();
+  setupEnvironment();
+
+  placeholder = buildPlaceholderMouth();
+  scene.add(placeholder);
+
+  spawnOnTongue();
+  setupDesktopControls();
+  setupVR();
+  setupUI();
+  buildAmbientSound();
+
+  window.addEventListener('resize', onResize);
+
+  // Try to load the real model; keep the placeholder if it isn't there.
+  tryLoadModel();
+
+  // Reveal
+  setTimeout(() => document.getElementById('loader').classList.add('hidden'), 500);
+  setTimeout(() => { const h=document.getElementById('hint'); if(h) h.classList.add('gone'); }, 9000);
+
+  renderer.setAnimationLoop(animate);
+}
+
+// ---- Lighting ----------------------------------------------------------------
+let warmLight, moistLight;
+function setupLights(){
+  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.55));
+  // Warm "throat glow" that travels with the player for a subsurface feel.
+  warmLight = new THREE.PointLight(0xffb38f, 2.2, 40, 2);
+  warmLight.position.set(0, 2.2, 0);
+  playerRig.add(warmLight);
+  // Cool rim from the "opening" ahead so the throat reads as depth.
+  moistLight = new THREE.PointLight(0xff6f8a, 1.4, 60, 2);
+  moistLight.position.set(0, 3, -CONFIG.INTERIOR_M*0.5);
+  scene.add(moistLight);
+}
+
+// ---- Image-based lighting so PBR materials (Meshy models) look right ---------
+function setupEnvironment(){
+  if (!ENV_OK() || typeof THREE.RoomEnvironment === 'undefined') return;
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    envRT = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04);
+    scene.environment = envRT.texture;
+  } catch(e){ /* non-fatal */ }
+}
+
+// ---- Placeholder mouth (used until mouth.glb is provided) ---------------------
+function buildPlaceholderMouth(){
+  const g = new THREE.Group();
+  const R = CONFIG.INTERIOR_M * 0.5;
+
+  const flesh = new THREE.MeshStandardMaterial({
+    color:0x9c2f3e, roughness:0.5, metalness:0.0, envMapIntensity:0.35,
+    side:THREE.BackSide, emissive:0x3a0710, emissiveIntensity:0.45 });
+
+  // Cavern: inside of a squashed sphere = cheeks, palate, floor.
+  const cavern = new THREE.Mesh(new THREE.SphereGeometry(R, 48, 32), flesh);
+  cavern.scale.set(1.15, 0.85, 1.35);
+  cavern.position.y = R*0.55;
+  wobble(cavern.geometry, R*0.06);
+  g.add(cavern);
+
+  // Tongue — the domed floor you stand on, with a central groove.
+  const tongueMat = new THREE.MeshStandardMaterial({
+    color:0xb2515f, roughness:0.6, metalness:0.0, envMapIntensity:0.4,
+    emissive:0x3a0912, emissiveIntensity:0.28 });
+  const tongueGeo = new THREE.SphereGeometry(R*0.9, 64, 48, 0, Math.PI*2, 0, Math.PI*0.5);
+  const p = tongueGeo.attributes.position;
+  for (let i=0;i<p.count;i++){
+    const x=p.getX(i), y=p.getY(i), z=p.getZ(i);
+    const groove = Math.exp(-(x*x)/(R*R*0.02)) * R*0.12;   // central midline dip
+    const bumps = (Math.sin(x*3.1)+Math.cos(z*2.7))*0.04*R; // papillae texture
+    p.setY(i, y*0.28 - groove + bumps);
+  }
+  tongueGeo.computeVertexNormals();
+  const tongue = new THREE.Mesh(tongueGeo, tongueMat);
+  tongue.position.y = -0.2;
+  g.add(tongue);
+  tongueY = 0;
+
+  // Teeth — two arches of enamel blocks around the front.
+  const enamel = new THREE.MeshStandardMaterial({
+    color:0xfbf3e6, roughness:0.25, metalness:0.0,
+    emissive:0x201a12, emissiveIntensity:0.15 });
+  const arch = (yTop, tall) => {
+    const grp = new THREE.Group();
+    const n = 22, aR = R*0.92;
+    for (let i=0;i<n;i++){
+      const a = (i/(n-1))*Math.PI*1.15 - Math.PI*0.075; // front arc
+      const t = new THREE.Mesh(new THREE.BoxGeometry(R*0.11, tall, R*0.13), enamel);
+      t.position.set(Math.cos(a)*aR, yTop, -Math.sin(a)*aR + R*0.15);
+      t.lookAt(0, yTop, R*0.15);
+      grp.add(t);
+    }
+    return grp;
+  };
+  g.add(arch(R*0.16, R*0.22));          // lower teeth ring
+  const upper = arch(R*0.95, R*0.22);   // upper teeth ring
+  g.add(upper);
+
+  // Palate ridges (rugae) on the roof.
+  const ridgeMat = new THREE.MeshStandardMaterial({ color:0xc85868, roughness:0.5 });
+  for (let i=0;i<5;i++){
+    const ridge = new THREE.Mesh(new THREE.TorusGeometry(R*0.28 - i*R*0.03, R*0.02, 8, 30, Math.PI), ridgeMat);
+    ridge.position.set(0, R*1.02, R*0.1 + i*R*0.08);
+    ridge.rotation.x = Math.PI*0.5;
+    g.add(ridge);
+  }
+
+  // Uvula — the little pendant at the back of the throat.
+  const uvulaMat = new THREE.MeshStandardMaterial({ color:0xc24a5c, roughness:0.5,
+    emissive:0x30060e, emissiveIntensity:0.3 });
+  const uvulaGeo = (typeof THREE.CapsuleGeometry === 'function')
+      ? new THREE.CapsuleGeometry(R*0.05, R*0.18, 6, 12)
+      : new THREE.CylinderGeometry(R*0.05, R*0.02, R*0.22, 12);
+  const uvula = new THREE.Mesh(uvulaGeo, uvulaMat);
+  uvula.position.set(0, R*0.95, -R*1.05);
+  uvula.name = 'uvula';
+  g.add(uvula);
+
+  // Throat — a dark receding opening at the back.
+  const throatMat = new THREE.MeshStandardMaterial({ color:0x24040c, roughness:0.9,
+    side:THREE.BackSide });
+  const throat = new THREE.Mesh(new THREE.CylinderGeometry(R*0.32, R*0.18, R*1.1, 32, 1, true), throatMat);
+  throat.rotation.x = Math.PI*0.5;
+  throat.position.set(0, R*0.5, -R*1.25);
+  g.add(throat);
+
+  return g;
+}
+
+// Randomly nudge vertices for an organic, non-CG-perfect surface.
+function wobble(geo, amt){
+  const p = geo.attributes.position;
+  for (let i=0;i<p.count;i++){
+    const n = Math.sin(p.getX(i)*1.7)*Math.cos(p.getY(i)*2.1)*Math.sin(p.getZ(i)*1.3);
+    p.setXYZ(i, p.getX(i)+n*amt, p.getY(i)+n*amt*0.5, p.getZ(i)+n*amt);
+  }
+  geo.computeVertexNormals();
+}
+
+// ---- Load the real Meshy model (if present) ---------------------------------
+function tryLoadModel(){
+  if (!GLTF_OK() || typeof THREE.GLTFLoader === 'undefined') return;
+  const loader = new THREE.GLTFLoader();
+  loader.load(CONFIG.MODEL_URL, (gltf) => {
+    const model = gltf.scene;
+
+    // Auto-fit: scale so the model's largest dimension == INTERIOR_M, then
+    // recentre it around the player and put the floor at y=0.
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const s = CONFIG.INTERIOR_M / maxDim;
+    model.scale.setScalar(s);
+
+    // Recompute after scaling to seat it on the floor and centre horizontally.
+    const box2 = new THREE.Box3().setFromObject(model);
+    const c2 = new THREE.Vector3(); box2.getCenter(c2);
+    model.position.x -= c2.x;
+    model.position.z -= c2.z;
+    model.position.y -= box2.min.y;   // floor rests at y=0
+    tongueY = 0;
+
+    // Show interior surfaces even if the model is a closed shell.
+    model.traverse(o => {
+      if (o.isMesh && o.material){
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach(m => { m.side = THREE.DoubleSide; });
+      }
+    });
+
+    scene.add(model);
+    loadedModel = model;
+    if (placeholder){ scene.remove(placeholder); placeholder = null; }
+    spawnOnTongue();
+    toast('Loaded your mouth model ✓');
+  },
+  undefined,
+  () => { /* no mouth.glb yet — keep the placeholder silently */ });
+}
+
+// ---- Spawn / reset the player standing on the tongue -------------------------
+function spawnOnTongue(){
+  playerRig.position.copy(CONFIG.START);
+  playerRig.position.y = tongueY;
+  yaw = Math.atan2(CONFIG.FACE.x, CONFIG.FACE.z) + Math.PI; // face the throat
+  pitch = 0;
+  applyLook();
+}
+
+// ---- Desktop controls: pointer-lock look + WASD -----------------------------
+let yaw = Math.PI, pitch = 0;
+const keys = Object.create(null);
+let pointerLocked = false;
+
+function setupDesktopControls(){
+  const dom = renderer.domElement;
+  dom.addEventListener('click', () => { if (!renderer.xr.isPresenting) dom.requestPointerLock(); });
+  document.addEventListener('pointerlockchange', () => {
+    pointerLocked = document.pointerLockElement === dom;
+    const intro = document.getElementById('intro');
+    if (pointerLocked && intro) intro.classList.add('gone');
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!pointerLocked) return;
+    yaw   -= e.movementX * 0.0022;
+    pitch -= e.movementY * 0.0022;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch));
+    applyLook();
+  });
+  addEventListener('keydown', e => { keys[e.code] = true; });
+  addEventListener('keyup',   e => { keys[e.code] = false; });
+
+  // Touch look (phones) — drag to look around.
+  let tx=0, ty=0, touching=false;
+  dom.addEventListener('touchstart', e => { touching=true; tx=e.touches[0].clientX; ty=e.touches[0].clientY; }, {passive:true});
+  dom.addEventListener('touchmove', e => {
+    if(!touching) return;
+    const t=e.touches[0];
+    yaw   -= (t.clientX - tx)*0.005; pitch -= (t.clientY - ty)*0.005;
+    pitch = Math.max(-1.3, Math.min(1.3, pitch));
+    tx=t.clientX; ty=t.clientY; applyLook();
+  }, {passive:true});
+  dom.addEventListener('touchend', () => { touching=false; }, {passive:true});
+}
+
+function applyLook(){
+  if (renderer.xr.isPresenting) return;    // headset owns orientation in VR
+  playerRig.rotation.y = yaw;
+  camera.rotation.x = pitch;
+}
+
+function updateDesktopMove(dt){
+  if (renderer.xr.isPresenting) return;
+  let f = 0, s = 0;
+  if (keys['KeyW']||keys['ArrowUp'])    f += 1;
+  if (keys['KeyS']||keys['ArrowDown'])  f -= 1;
+  if (keys['KeyA']||keys['ArrowLeft'])  s -= 1;
+  if (keys['KeyD']||keys['ArrowRight']) s += 1;
+  if (!f && !s) return;
+  const spd = CONFIG.MOVE_SPEED * (keys['ShiftLeft']||keys['ShiftRight'] ? CONFIG.RUN_MULT : 1) * dt;
+  // Move relative to where you're looking (ignore pitch so you stay on the tongue).
+  const sinY = Math.sin(yaw), cosY = Math.cos(yaw);
+  playerRig.position.x += (-sinY*f + cosY*s) * spd;
+  playerRig.position.z += (-cosY*f - sinY*s) * spd;
+  playerRig.position.y = tongueY;
+}
+
+// ---- VR: inline WebXR button + thumbstick locomotion + snap turn ------------
+let snapCooldown = 0, xrSession = null;
+function setupVR(){
+  renderer.xr.enabled = true;
+  renderer.xr.setReferenceSpaceType('local-floor');
+
+  // Build our own "ENTER VR" button (r128's UMD VRButton isn't on the CDN).
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  Object.assign(btn.style, {
+    position:'fixed', left:'50%', top:'14px', bottom:'auto',
+    transform:'translateX(-50%)', zIndex:'31', minWidth:'120px'
+  });
+  btn.textContent = 'CHECKING VR…';
+  btn.disabled = true;
+  document.body.appendChild(btn);
+
+  if (!('xr' in navigator)){
+    btn.textContent = 'VR NOT AVAILABLE';   // needs a WebXR browser + HTTPS
+    btn.title = 'Open on a WebXR headset over HTTPS to enter VR.';
+    return;
+  }
+  navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+    if (!ok){ btn.textContent = 'VR NOT SUPPORTED'; return; }
+    btn.textContent = 'ENTER VR'; btn.disabled = false;
+    btn.onclick = () => {
+      if (xrSession){ xrSession.end(); return; }
+      navigator.xr.requestSession('immersive-vr', {
+        optionalFeatures:['local-floor','bounded-floor','hand-tracking','layers']
+      }).then(onXRStart).catch(err => toast('Could not start VR: '+err.message));
+    };
+  }).catch(() => { btn.textContent = 'VR NOT SUPPORTED'; });
+
+  function onXRStart(session){
+    xrSession = session;
+    btn.textContent = 'EXIT VR';
+    renderer.xr.setSession(session);
+    document.getElementById('intro').classList.add('gone');
+    camera.rotation.set(0,0,0); playerRig.rotation.y = yaw;
+    playerRig.position.y = tongueY;
+    session.addEventListener('end', () => {
+      xrSession = null; btn.textContent = 'ENTER VR';
+    });
+  }
+
+  // Simple controller rays so you can see where your hands point.
+  const rayGeo = new THREE.BufferGeometry().setFromPoints(
+    [new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-3)]);
+  for (let i=0;i<2;i++){
+    const c = renderer.xr.getController(i);
+    c.add(new THREE.Line(rayGeo, new THREE.LineBasicMaterial({color:0xff9fb0, transparent:true, opacity:0.5})));
+    playerRig.add(c);
+  }
+}
+
+const _head = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+function updateVRMove(dt){
+  const session = renderer.xr.getSession && renderer.xr.getSession();
+  if (!session) return;
+  for (const src of session.inputSources){
+    if (!src.gamepad) continue;
+    const ax = src.gamepad.axes;
+    const lx = ax[2] ?? ax[0] ?? 0, ly = ax[3] ?? ax[1] ?? 0;
+    const hand = src.handedness;
+
+    if (hand === 'left' || hand === 'none'){
+      if (Math.abs(lx)>0.15 || Math.abs(ly)>0.15){
+        // Walk relative to head yaw so "forward" is where you're looking.
+        camera.getWorldQuaternion(_q); _e.setFromQuaternion(_q,'YXZ');
+        const hy = _e.y;
+        const spd = CONFIG.MOVE_SPEED * dt;
+        playerRig.position.x += ( Math.sin(hy)*(-ly) + Math.cos(hy)*(lx)) * spd;
+        playerRig.position.z += ( Math.cos(hy)*(-ly) - Math.sin(hy)*(lx)) * spd;
+        playerRig.position.y = tongueY;
+      }
+    }
+    if (hand === 'right'){
+      if (Math.abs(lx) > 0.7 && snapCooldown <= 0){
+        playerRig.rotation.y -= Math.sign(lx) * Math.PI/6;  // 30° snap turn
+        snapCooldown = 0.35;
+      }
+    }
+  }
+  snapCooldown -= dt;
+}
+
+// ---- UI buttons --------------------------------------------------------------
+let touring = false, tourT = 0;
+function setupUI(){
+  document.getElementById('btn-reset').onclick = () => { touring = false; spawnOnTongue(); };
+  document.getElementById('btn-tour').onclick = (e) => {
+    touring = !touring; tourT = 0;
+    e.currentTarget.classList.toggle('on', touring);
+    document.getElementById('intro').classList.add('gone');
+  };
+  document.getElementById('btn-sound').onclick = (e) => {
+    audioOn = !audioOn; e.currentTarget.classList.toggle('on', audioOn);
+    setAmbient(audioOn);
+  };
+}
+
+// Auto walk-through: glide from the tip of the tongue back toward the throat.
+function updateTour(dt){
+  if (!touring || renderer.xr.isPresenting) return;
+  tourT += dt * 0.06;
+  const R = CONFIG.INTERIOR_M * 0.5;
+  const t = (tourT % 1);
+  playerRig.position.set(0, tongueY, R*0.9 - t*R*1.9);  // roll toward the throat
+  yaw = Math.PI; pitch = -0.12 + Math.sin(tourT*3)*0.05;
+  applyLook();
+}
+
+// ---- Ambient sound (generated in-browser, no files) -------------------------
+let audioCtx, ambientNode, ambientGain, audioOn = false;
+function buildAmbientSound(){ /* created lazily on first enable */ }
+function setAmbient(on){
+  try{
+    if (on){
+      if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (!ambientNode){
+        // Soft wet "breath" — filtered noise gently pulsing.
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate*2, audioCtx.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i=0;i<d.length;i++) d[i] = (Math.random()*2-1)*0.5;
+        ambientNode = audioCtx.createBufferSource();
+        ambientNode.buffer = buf; ambientNode.loop = true;
+        const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=520;
+        ambientGain = audioCtx.createGain(); ambientGain.gain.value = 0.0;
+        ambientNode.connect(lp).connect(ambientGain).connect(audioCtx.destination);
+        ambientNode.start();
+      }
+      ambientGain.gain.setTargetAtTime(0.14, audioCtx.currentTime, 0.5);
+    } else if (ambientGain){
+      ambientGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.3);
+    }
+  }catch(e){ /* audio optional */ }
+}
+
+// ---- Small toast -------------------------------------------------------------
+function toast(msg){
+  const h = document.getElementById('hint');
+  if (!h) return;
+  h.innerHTML = msg; h.classList.remove('gone');
+  setTimeout(() => h.classList.add('gone'), 4000);
+}
+
+// ---- Loop --------------------------------------------------------------------
+let t = 0;
+function animate(){
+  const dt = Math.min(clock.getDelta(), 0.05);
+  t += dt;
+
+  updateDesktopMove(dt);
+  updateVRMove(dt);
+  updateTour(dt);
+
+  // Gentle life: uvula sway + breathing light.
+  const uv = (loadedModel || placeholder) && (placeholder ? placeholder.getObjectByName('uvula') : null);
+  if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
+  if (warmLight) warmLight.intensity = 2.1 + Math.sin(t*0.8)*0.25;
+
+  // Ambient sound breathes with the light.
+  if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;
+
+  renderer.render(scene, camera);
+}
+
+function onResize(){
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+}
+</script>
+</body>
+</html>

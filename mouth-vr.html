@@ -170,7 +170,7 @@ function init(){
   renderer.toneMappingExposure = 0.9;
   document.getElementById('app').appendChild(renderer.domElement);
 
-  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.01, 500);
+  camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.05, 500);
 
   // The player rig owns the camera so we can move & turn the whole viewpoint;
   // in VR the headset moves the camera *within* the rig.
@@ -206,7 +206,8 @@ function init(){
 // ---- Lighting ----------------------------------------------------------------
 let warmLight, moistLight;
 function setupLights(){
-  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.5));
+  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.6));
+  scene.add(new THREE.AmbientLight(0xff8090, 0.25));   // floor of light so nothing is ever fully black
   // Gentle warm fill just behind/above the head, so it lights what's ahead
   // without a hotspot on the wet surface right in front of you.
   warmLight = new THREE.PointLight(0xffb38f, 0.8, 30, 2);
@@ -477,7 +478,7 @@ function setupVR(){
     btn.onclick = () => {
       if (xrSession){ xrSession.end(); return; }
       navigator.xr.requestSession('immersive-vr', {
-        optionalFeatures:['local-floor','bounded-floor','hand-tracking','layers']
+        optionalFeatures:['local-floor','bounded-floor','hand-tracking']
       }).then(onXRStart).catch(err => toast('Could not start VR: '+err.message));
     };
   }).catch(() => { btn.textContent = 'VR NOT SUPPORTED'; });
@@ -599,23 +600,41 @@ function toast(msg){
 
 // ---- Loop --------------------------------------------------------------------
 let t = 0;
-function animate(){
+function animate(time, frame){
   const dt = Math.min(clock.getDelta(), 0.05);
   t += dt;
 
-  updateDesktopMove(dt);
-  updateVRMove(dt);
-  updateTour(dt);
+  try {
+    updateDesktopMove(dt);
+    updateVRMove(dt);
+    updateTour(dt);
+    if (frame) keepEyeAboveTongue(frame);   // VR safety: never sink into the tongue
 
-  // Gentle life: uvula sway + breathing light.
-  const uv = (loadedModel || placeholder) && (placeholder ? placeholder.getObjectByName('uvula') : null);
-  if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
-  if (warmLight) warmLight.intensity = 0.65 + Math.sin(t*0.8)*0.1;
+    // Gentle life: uvula sway + breathing light.
+    const uv = (loadedModel || placeholder) && (placeholder ? placeholder.getObjectByName('uvula') : null);
+    if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
+    if (warmLight) warmLight.intensity = 0.65 + Math.sin(t*0.8)*0.1;
 
-  // Ambient sound breathes with the light.
-  if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;
+    // Ambient sound breathes with the light.
+    if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;
+  } catch (e) { /* never let a per-frame error kill the render loop (esp. in VR) */ }
 
   renderer.render(scene, camera);
+}
+
+// If the headset gives an eye-level (not floor) reference space, the real eye
+// height isn't added and the camera can end up buried inside the tongue mesh
+// (which looks like a black screen). Measure the actual head height each frame
+// and lift the rig so the eye always clears the tongue surface.
+function keepEyeAboveTongue(frame){
+  if (!renderer.xr.isPresenting) return;
+  const refSpace = renderer.xr.getReferenceSpace && renderer.xr.getReferenceSpace();
+  if (!refSpace) return;
+  const pose = frame.getViewerPose(refSpace);
+  if (!pose) return;
+  const headWorldY = playerRig.position.y + pose.transform.position.y;
+  const minEye = tongueY + 1.2;
+  if (headWorldY < minEye) playerRig.position.y += (minEye - headWorldY);
 }
 
 function onResize(){

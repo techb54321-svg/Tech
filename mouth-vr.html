@@ -142,6 +142,8 @@ const CONFIG = {
   START:       new THREE.Vector3(0, 1.6, 2.5), // spawn XZ inside the cavity (Y auto-set to the tongue)
   FACE:        new THREE.Vector3(0, 0, -1),    // looking toward the throat
   AUTO_FLOOR:  true,         // raycast down at spawn to find the tongue surface automatically
+  VR_SUPERSAMPLE: 1.6,       // render sharper than the headset default (1.0). Higher = crisper but heavier.
+  VR_FOVEATION:   0,         // 0 = no peripheral blur (sharpest), 1 = max blur (fastest)
 };
 
 let scene, camera, renderer, playerRig, clock, envRT;
@@ -348,11 +350,19 @@ function tryLoadModel(){
     model.position.y -= box2.min.y;   // floor rests at y=0
     tongueY = 0;
 
-    // Show interior surfaces even if the model is a closed shell.
+    // Show interior surfaces even if the model is a closed shell, and crank up
+    // anisotropic filtering so textures stay sharp on surfaces angling away
+    // from you (the tongue and palate stretching toward the throat).
+    const maxAniso = renderer.capabilities.getMaxAnisotropy();
     model.traverse(o => {
       if (o.isMesh && o.material){
         const mats = Array.isArray(o.material) ? o.material : [o.material];
-        mats.forEach(m => { m.side = THREE.DoubleSide; });
+        mats.forEach(m => {
+          m.side = THREE.DoubleSide;
+          ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(k => {
+            if (m[k]){ m[k].anisotropy = maxAniso; m[k].needsUpdate = true; }
+          });
+        });
       }
     });
 
@@ -455,6 +465,10 @@ let snapCooldown = 0, xrSession = null;
 function setupVR(){
   renderer.xr.enabled = true;
   renderer.xr.setReferenceSpaceType('local-floor');
+  // Render the headset framebuffer larger than the default so the image is
+  // crisp (the Quest default is fairly soft). Must be set before the session
+  // builds its layer.
+  try { renderer.xr.setFramebufferScaleFactor(CONFIG.VR_SUPERSAMPLE); } catch(e){}
 
   // Build our own "ENTER VR" button (r128's UMD VRButton isn't on the CDN).
   const btn = document.createElement('button');
@@ -487,6 +501,7 @@ function setupVR(){
     xrSession = session;
     btn.textContent = 'EXIT VR';
     renderer.xr.setSession(session);
+    try { renderer.xr.setFoveation(CONFIG.VR_FOVEATION); } catch(e){}  // sharp edges to the periphery
     document.getElementById('intro').classList.add('gone');
     camera.rotation.set(0,0,0); playerRig.rotation.y = yaw;
     playerRig.position.y = tongueY;

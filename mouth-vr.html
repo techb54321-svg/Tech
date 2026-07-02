@@ -171,7 +171,7 @@ function init(){
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.9;
+  renderer.toneMappingExposure = 0.82;
   document.getElementById('app').appendChild(renderer.domElement);
 
   camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.05, 500);
@@ -209,29 +209,79 @@ function init(){
 }
 
 // ---- Lighting ----------------------------------------------------------------
-let warmLight, moistLight;
+let warmLight, moistLight, throatGlow, keyLight;
 function setupLights(){
-  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.6));
-  scene.add(new THREE.AmbientLight(0xff8090, 0.25));   // floor of light so nothing is ever fully black
-  // Gentle warm fill just behind/above the head, so it lights what's ahead
-  // without a hotspot on the wet surface right in front of you.
-  warmLight = new THREE.PointLight(0xffb38f, 0.8, 30, 2);
+  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.45));
+  scene.add(new THREE.AmbientLight(0xff8090, 0.18));   // floor of light so nothing is ever fully black
+
+  // Warm key from high in front — carves out form and throws wet glints on the
+  // enamel and tongue (this is what makes surfaces pop against the environment).
+  keyLight = new THREE.DirectionalLight(0xffd8bf, 0.6);
+  keyLight.position.set(3, 10, 4);
+  scene.add(keyLight);
+
+  // Gentle warm fill just behind/above the head so nearby surfaces aren't flat.
+  warmLight = new THREE.PointLight(0xffb38f, 0.7, 30, 2);
   warmLight.position.set(0, 1.2, 1.4);   // +Z is behind you (you look toward -Z)
   playerRig.add(warmLight);
-  // Deeper glow down the throat so it reads as receding depth.
-  moistLight = new THREE.PointLight(0xff6f8a, 0.6, 30, 2);
-  moistLight.position.set(0, 3, -3);
+
+  // The throat: a coloured light plus a visible emissive glow, so the depth
+  // ahead genuinely glows and reads as the "mouth of the cave".
+  moistLight = new THREE.PointLight(0xff5a76, 1.6, 34, 2);
+  moistLight.position.set(0, 2.6, -5);
   scene.add(moistLight);
+  // Soft glow deep in the throat — a sprite (always-facing radial haze) so it
+  // reads as receding, glowing depth rather than a solid ball.
+  const gc = document.createElement('canvas'); gc.width = gc.height = 128;
+  const gg = gc.getContext('2d');
+  const gr = gg.createRadialGradient(64,64,0, 64,64,64);
+  gr.addColorStop(0, 'rgba(255,120,140,0.9)');
+  gr.addColorStop(0.5, 'rgba(255,70,100,0.35)');
+  gr.addColorStop(1, 'rgba(255,70,100,0)');
+  gg.fillStyle = gr; gg.fillRect(0,0,128,128);
+  throatGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(gc), color: 0xffffff, transparent: true,
+    opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false }));
+  throatGlow.position.set(0, 2.4, -6.8);
+  throatGlow.scale.set(7, 7, 1);
+  scene.add(throatGlow);
 }
 
-// ---- Image-based lighting so PBR materials (Meshy models) look right ---------
+// ---- Image-based lighting: a warm, contrasty environment so wet surfaces get
+// real, punchy reflections (a neutral studio env made everything look matte). --
 function setupEnvironment(){
-  if (!ENV_OK() || typeof THREE.RoomEnvironment === 'undefined') return;
   try {
     const pmrem = new THREE.PMREMGenerator(renderer);
-    envRT = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04);
+    // Build an equirectangular gradient: bright warm "roof glow" up top fading to
+    // deep flesh-red below, with a soft hotspot that becomes a glint on wet enamel.
+    const cv = document.createElement('canvas'); cv.width = 512; cv.height = 256;
+    const g = cv.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0.00, '#ffd9c0');   // top: warm light
+    grad.addColorStop(0.35, '#e8807f');
+    grad.addColorStop(0.65, '#a83646');
+    grad.addColorStop(1.00, '#3a0c17');   // bottom: dark red
+    g.fillStyle = grad; g.fillRect(0, 0, 512, 256);
+    // hotspot — a bright soft blob that reads as a specular highlight
+    const hs = g.createRadialGradient(190, 70, 4, 190, 70, 90);
+    hs.addColorStop(0, 'rgba(255,250,240,0.95)');
+    hs.addColorStop(1, 'rgba(255,250,240,0)');
+    g.fillStyle = hs; g.fillRect(0, 0, 512, 256);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    envRT = pmrem.fromEquirectangular(tex);
     scene.environment = envRT.texture;
-  } catch(e){ /* non-fatal */ }
+    tex.dispose();
+  } catch(e){
+    // Fallback to the neutral studio env if the gradient path fails.
+    try {
+      if (ENV_OK() && typeof THREE.RoomEnvironment !== 'undefined'){
+        const p2 = new THREE.PMREMGenerator(renderer);
+        envRT = p2.fromScene(new THREE.RoomEnvironment(), 0.04);
+        scene.environment = envRT.texture;
+      }
+    } catch(e2){ /* non-fatal */ }
+  }
 }
 
 // ---- Floating saliva motes: soft glowing specks drifting in the moist air ----
@@ -272,15 +322,18 @@ function buildSalivaMotes(){
 
 // Drift the motes slowly upward with a lazy side-to-side sway; recycle them to
 // the floor when they rise out of the cavity so the air always feels alive.
-function updateSalivaMotes(dt){
+function updateSalivaMotes(dt, breath){
   if (!motes) return;
   const R = CONFIG.INTERIOR_M * 0.5;
+  const flow = -breath * 1.2;   // inhale draws the motes toward the throat (-Z), exhale pushes back
   const p = motes.geometry.attributes.position;
   for (let i = 0; i < p.count; i++){
     let y = p.getY(i) + moteSpeed[i] * dt;
-    let x = p.getX(i) + Math.sin(t*0.6 + motePhase[i]) * dt * 0.15;
-    let z = p.getZ(i) + Math.cos(t*0.5 + motePhase[i]) * dt * 0.15;
-    if (y > R*1.0){ y = 0.3; }   // rose to the roof — drop back down to the tongue
+    let x = p.getX(i) + Math.sin(t*0.6 + motePhase[i]) * dt * 0.2;
+    let z = p.getZ(i) + Math.cos(t*0.5 + motePhase[i]) * dt * 0.2 + flow * dt;
+    if (y > R*1.0){ y = 0.3; }                 // rose to the roof — drop back to the tongue
+    if (z < -R*0.7) z = R*0.7;                 // drifted into the throat — recycle to the front
+    if (z >  R*0.8) z = -R*0.5;
     p.setXYZ(i, x, y, z);
   }
   p.needsUpdate = true;
@@ -381,6 +434,27 @@ function wobble(geo, amt){
   geo.computeVertexNormals();
 }
 
+// Turn a loaded PBR material into a wet, glossy version: keep its textures but
+// add a clearcoat sheen (like a film of saliva) and stronger reflections. This
+// is what makes the teeth read as glossy enamel and the tongue/gums look moist.
+function wetify(m, maxAniso){
+  const p = new THREE.MeshPhysicalMaterial();
+  // carry over the baked PBR maps + base factors from the Meshy material
+  ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap','alphaMap'].forEach(k => {
+    if (m[k]){ p[k] = m[k]; p[k].anisotropy = maxAniso; p[k].needsUpdate = true; }
+  });
+  if (m.color)       p.color.copy(m.color);
+  if (m.emissive)    p.emissive.copy(m.emissive);
+  if (m.normalScale) p.normalScale.copy(m.normalScale);
+  p.metalness = m.metalness != null ? m.metalness : 0.0;
+  p.roughness = (m.roughness != null ? m.roughness : 1.0) * 0.85;  // a touch glossier = wetter
+  p.envMapIntensity = 0.7;          // reflect the warm environment, but gently
+  p.clearcoat = 0.4;                // a soft saliva film, not a mirror
+  p.clearcoatRoughness = 0.32;      // diffuse, wet-looking highlights (no hard glare)
+  p.side = THREE.DoubleSide;
+  return p;
+}
+
 // ---- Load the real Meshy model (if present) ---------------------------------
 function tryLoadModel(){
   if (!GLTF_OK() || typeof THREE.GLTFLoader === 'undefined') return;
@@ -406,19 +480,15 @@ function tryLoadModel(){
     model.position.y -= box2.min.y;   // floor rests at y=0
     tongueY = 0;
 
-    // Show interior surfaces even if the model is a closed shell, and crank up
-    // anisotropic filtering so textures stay sharp on surfaces angling away
-    // from you (the tongue and palate stretching toward the throat).
+    // Upgrade every material to a wet, glossy physical material: a clearcoat
+    // "saliva sheen" over enamel/tongue/gums, punchy reflections, and max
+    // anisotropic filtering so textures stay sharp where they angle away.
     const maxAniso = renderer.capabilities.getMaxAnisotropy();
     model.traverse(o => {
       if (o.isMesh && o.material){
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        mats.forEach(m => {
-          m.side = THREE.DoubleSide;
-          ['map','normalMap','roughnessMap','metalnessMap','emissiveMap','aoMap'].forEach(k => {
-            if (m[k]){ m[k].anisotropy = maxAniso; m[k].needsUpdate = true; }
-          });
-        });
+        const mats = (Array.isArray(o.material) ? o.material : [o.material]).map(m => wetify(m, maxAniso));
+        o.material = Array.isArray(o.material) ? mats : mats[0];
+        o.castShadow = o.receiveShadow = false;
       }
     });
 
@@ -683,19 +753,23 @@ function animate(time, frame){
     if (frame) keepEyeAboveTongue(frame);   // VR safety: never sink into the tongue
 
     // ---- Living ambience ----
-    const breath = Math.sin(t * 0.7);            // slow, calm breathing cycle (~9s)
+    const breath = Math.sin(t * 0.55);           // slow, calm breathing cycle (~11s)
 
-    // The whole mouth gently swells and settles as if breathing.
-    if (loadedModel) loadedModel.scale.setScalar(modelBaseScale * (1 + breath * 0.006));
+    // The whole mouth clearly swells and settles as if breathing.
+    if (loadedModel) loadedModel.scale.setScalar(modelBaseScale * (1 + breath * 0.02));
 
     // Uvula sway + warm light pulsing with the breath.
     const uv = placeholder ? placeholder.getObjectByName('uvula') : null;
     if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
-    if (warmLight)  warmLight.intensity  = 0.65 + breath * 0.12;
-    if (moistLight) moistLight.intensity = 0.55 + (Math.sin(t*0.9)*0.5+0.5) * 0.35;  // throat glow throbs
-    if (scene.fog)  scene.fog.density    = 0.018 + breath * 0.002;                    // moist air pulses
+    if (warmLight)  warmLight.intensity  = 0.6 + breath * 0.12;
+    if (scene.fog)  scene.fog.density    = 0.02 + breath * 0.004;                     // moist air pulses
 
-    updateSalivaMotes(dt);                        // floating specks drift in the air
+    // Throat glow throbs like a slow heartbeat (two quick beats, then a rest).
+    const hb = Math.pow(Math.sin(t*1.1)*0.5+0.5, 3);
+    if (moistLight)  moistLight.intensity = 0.7 + hb * 0.6;
+    if (throatGlow){ throatGlow.material.opacity = 0.18 + hb*0.22; const s2 = 4.5*(1 + hb*0.1); throatGlow.scale.set(s2, s2, 1); }
+
+    updateSalivaMotes(dt, breath);               // motes drift, and flow toward the throat on the breath
 
     // Ambient sound breathes with the light.
     if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;

@@ -136,11 +136,12 @@
 const CONFIG = {
   MODEL_URL:   'mouth.glb',  // your Meshy export (optional; placeholder used if absent)
   INTERIOR_M:  16,           // how big the mouth interior feels, in metres (bigger = more cavernous)
-  EYE_HEIGHT:  1.6,          // standing eye height on desktop (metres)
+  EYE_HEIGHT:  1.6,          // standing eye height above the tongue surface (metres)
   MOVE_SPEED:  2.6,          // walking speed (m/s)
   RUN_MULT:    2.2,          // Shift / run multiplier
-  START:       new THREE.Vector3(0, 0, 3.5), // where you spawn on the tongue
-  FACE:        new THREE.Vector3(0, 0, -1),  // looking toward the throat
+  START:       new THREE.Vector3(0, 1.6, 2.5), // spawn XZ inside the cavity (Y auto-set to the tongue)
+  FACE:        new THREE.Vector3(0, 0, -1),    // looking toward the throat
+  AUTO_FLOOR:  true,         // raycast down at spawn to find the tongue surface automatically
 };
 
 let scene, camera, renderer, playerRig, clock, envRT;
@@ -205,14 +206,15 @@ function init(){
 // ---- Lighting ----------------------------------------------------------------
 let warmLight, moistLight;
 function setupLights(){
-  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.55));
-  // Warm "throat glow" that travels with the player for a subsurface feel.
-  warmLight = new THREE.PointLight(0xffb38f, 2.2, 40, 2);
-  warmLight.position.set(0, 2.2, 0);
+  scene.add(new THREE.HemisphereLight(0xff9aa8, 0x2a0008, 0.5));
+  // Gentle warm fill just behind/above the head, so it lights what's ahead
+  // without a hotspot on the wet surface right in front of you.
+  warmLight = new THREE.PointLight(0xffb38f, 0.8, 30, 2);
+  warmLight.position.set(0, 1.2, 1.4);   // +Z is behind you (you look toward -Z)
   playerRig.add(warmLight);
-  // Cool rim from the "opening" ahead so the throat reads as depth.
-  moistLight = new THREE.PointLight(0xff6f8a, 1.4, 60, 2);
-  moistLight.position.set(0, 3, -CONFIG.INTERIOR_M*0.5);
+  // Deeper glow down the throat so it reads as receding depth.
+  moistLight = new THREE.PointLight(0xff6f8a, 0.6, 30, 2);
+  moistLight.position.set(0, 3, -3);
   scene.add(moistLight);
 }
 
@@ -364,8 +366,25 @@ function tryLoadModel(){
 }
 
 // ---- Spawn / reset the player standing on the tongue -------------------------
+const _rc = new THREE.Raycaster();
+// Drop a ray straight down from above the spawn to find whatever surface is
+// beneath (the tongue) so the player always stands on it, whatever the model.
+function findFloorY(x, z, fromY){
+  const target = loadedModel || placeholder;
+  if (!target) return null;
+  _rc.set(new THREE.Vector3(x, fromY, z), new THREE.Vector3(0, -1, 0));
+  _rc.far = fromY + 5;
+  const hits = _rc.intersectObject(target, true);
+  return hits.length ? hits[0].point.y : null;
+}
+
 function spawnOnTongue(){
-  playerRig.position.copy(CONFIG.START);
+  playerRig.position.set(CONFIG.START.x, CONFIG.START.y, CONFIG.START.z);
+  if (CONFIG.AUTO_FLOOR){
+    // Probe from a bit above the expected tongue height down onto its surface.
+    const y = findFloorY(CONFIG.START.x, CONFIG.START.z, CONFIG.START.y + 2.5);
+    if (y !== null) tongueY = y;
+  }
   playerRig.position.y = tongueY;
   yaw = Math.atan2(CONFIG.FACE.x, CONFIG.FACE.z) + Math.PI; // face the throat
   pitch = 0;
@@ -531,14 +550,15 @@ function setupUI(){
   };
 }
 
-// Auto walk-through: glide from the tip of the tongue back toward the throat.
+// Auto walk-through: glide forward across the tongue toward the throat and back.
 function updateTour(dt){
   if (!touring || renderer.xr.isPresenting) return;
-  tourT += dt * 0.06;
-  const R = CONFIG.INTERIOR_M * 0.5;
-  const t = (tourT % 1);
-  playerRig.position.set(0, tongueY, R*0.9 - t*R*1.9);  // roll toward the throat
-  yaw = Math.PI; pitch = -0.12 + Math.sin(tourT*3)*0.05;
+  tourT += dt * 0.05;
+  const startZ = CONFIG.START.z + 1.5;   // near the front of the tongue
+  const endZ   = CONFIG.START.z - 4.5;   // approaching the throat
+  const t = (Math.sin(tourT) * 0.5 + 0.5);            // ease back and forth
+  playerRig.position.set(0, tongueY, startZ + (endZ - startZ) * t);
+  yaw = 0; pitch = -0.1 + Math.sin(tourT*2)*0.05;      // face the throat (-Z)
   applyLook();
 }
 
@@ -590,7 +610,7 @@ function animate(){
   // Gentle life: uvula sway + breathing light.
   const uv = (loadedModel || placeholder) && (placeholder ? placeholder.getObjectByName('uvula') : null);
   if (uv) uv.rotation.z = Math.sin(t*1.6)*0.12;
-  if (warmLight) warmLight.intensity = 2.1 + Math.sin(t*0.8)*0.25;
+  if (warmLight) warmLight.intensity = 0.65 + Math.sin(t*0.8)*0.1;
 
   // Ambient sound breathes with the light.
   if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;

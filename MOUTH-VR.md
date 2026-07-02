@@ -18,16 +18,26 @@ mouth-vr.html
 (It loads the Three.js 3D engine from a CDN, so you need an internet connection
 the first time you open it.)
 
-## Adding your Meshy model
+## The model
 
-1. In Meshy, export your mouth model as **GLB** (glTF binary) — this bundles the
-   mesh and textures into one file.
-2. Save it next to `mouth-vr.html` with the name **`mouth.glb`**.
-3. Reload the page. The model is loaded automatically, **auto-scaled** so you're
-   tiny inside it, and you're placed standing on the floor of it.
+A Meshy-generated mouth (`mouth.glb`) is **already included**, and the spawn
+point is tuned so you start standing on the tongue, looking toward the throat.
+Just open `mouth-vr.html`.
 
-Until `mouth.glb` is present, a hand-built **placeholder mouth** (tongue, teeth,
-palate, uvula, throat) is shown so the experience works right away.
+### Using a different model
+
+1. In Meshy, export as **GLB** (glTF binary) — this bundles the mesh and textures
+   into one file.
+2. Save it next to `mouth-vr.html` as **`mouth.glb`** (replacing the included one).
+3. Reload. The model is loaded automatically, **auto-scaled** so you're tiny
+   inside it, and the app **raycasts down to find the surface** and stands you on
+   it.
+
+If a different model spawns you in the wrong spot, nudge `START` / `FACE` /
+`INTERIOR_M` in the `CONFIG` block at the top of `mouth-vr.html`.
+
+If `mouth.glb` is ever missing, a hand-built **placeholder mouth** (tongue,
+teeth, palate, uvula, throat) is shown so the experience still works.
 
 ### Tuning (optional)
 

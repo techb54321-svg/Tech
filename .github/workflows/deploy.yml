@@ -1,10 +1,14 @@
-name: Deploy Inside the Sip to GitHub Pages
+name: Deploy WebXR experiences to GitHub Pages
 
-# Builds the WebXR app and publishes it to GitHub Pages on every push to the
-# working branch, so the headset just opens a stable HTTPS link.
+# Publishes every experience in this repo to one GitHub Pages site:
+#   /                            → index.html (redirects to the blood-vessel sim)
+#   /blood-vessel-simulation.html → 🩸 Blood Vessel Explorer
+#   /mouth-vr.html               → 👄 Inside the Mouth (+ mouth.glb)
+#   /sip/                        → 🥤 Inside the Sip (built from source)
+# WebXR requires HTTPS, so this published site is what a headset opens.
 on:
   push:
-    branches: [claude/wizardly-noether-ji4obu]
+    branches: [claude/meshy-to-vr-i3igiv]
   workflow_dispatch:
 
 permissions:
@@ -19,23 +23,28 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: inside-the-sip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm run build
+      - name: Build Inside the Sip
+        working-directory: inside-the-sip
+        run: |
+          npm ci
+          npm run build
         env:
-          # Served from https://<user>.github.io/Tech/ — must match the repo name.
-          VITE_BASE: /Tech/
+          # Served from https://<user>.github.io/Tech/sip/ — must match the URL.
+          VITE_BASE: /Tech/sip/
+      - name: Assemble site
+        run: |
+          mkdir -p _site/sip
+          cp index.html blood-vessel-simulation.html mouth-vr.html mouth.glb _site/
+          cp -r inside-the-sip/dist/. _site/sip/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: inside-the-sip/dist
+          path: _site
 
   deploy:
     needs: build

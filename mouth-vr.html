@@ -186,6 +186,8 @@ function init(){
   setupLights();
   setupEnvironment();
   buildSalivaMotes();
+  buildDaylight();
+  buildSwallow();
 
   placeholder = buildPlaceholderMouth();
   scene.add(placeholder);
@@ -245,6 +247,55 @@ function setupLights(){
   throatGlow.position.set(0, 2.4, -6.8);
   throatGlow.scale.set(7, 7, 1);
   scene.add(throatGlow);
+}
+
+// ---- Daylight from the lips: the opening faces +Z (behind the spawn), so when
+// you turn around, warm light streams in and the teeth are backlit. ------------
+let daylight, daySprite;
+function buildDaylight(){
+  // warm sunlight coming in through the opening, from behind/above the spawn
+  daylight = new THREE.DirectionalLight(0xfff2dc, 0.75);
+  daylight.position.set(0, 6, 14);
+  daylight.target.position.set(0, 2, -2); scene.add(daylight.target);
+  scene.add(daylight);
+
+  // a bright glowing "doorway" just beyond the teeth that reads as daylight
+  const c = document.createElement('canvas'); c.width = c.height = 256;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(128,128,10, 128,128,128);
+  gr.addColorStop(0.0, 'rgba(255,253,248,0.95)');
+  gr.addColorStop(0.5, 'rgba(255,242,220,0.45)');
+  gr.addColorStop(1.0, 'rgba(255,242,220,0)');
+  g.fillStyle = gr; g.fillRect(0,0,256,256);
+  daySprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(c), transparent: true, opacity: 0.8,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  daySprite.position.set(0, 3.2, 10.5);   // beyond the front of the mouth (+Z)
+  daySprite.scale.set(22, 17, 1);
+  scene.add(daySprite);
+}
+
+// ---- Swallow: every so often a ring ripples down the throat with a soft gulp. -
+let swallowRing, nextSwallow = 6, swallowActive = false, swallowT = 0;
+const SWALLOW_DUR = 1.3;
+function buildSwallow(){
+  swallowRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.4, 0.22, 12, 36),
+    new THREE.MeshBasicMaterial({ color:0xff6076, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false }));
+  swallowRing.visible = false;
+  scene.add(swallowRing);
+}
+function updateSwallow(dt){
+  if (!swallowActive && t > nextSwallow){ swallowActive = true; swallowT = 0; swallowRing.visible = true; playGulp(); }
+  if (!swallowActive) return;
+  swallowT += dt;
+  const k = swallowT / SWALLOW_DUR;                 // 0..1 progress
+  if (k >= 1){ swallowActive = false; swallowRing.visible = false; nextSwallow = t + 9 + Math.random()*9; return; }
+  swallowRing.position.set(0, 2.4, -2.5 - k*5);     // travel deeper into the throat
+  const r = 1.5 * (1 - k*0.7);                       // and constrict
+  swallowRing.scale.set(r, r, r);
+  swallowRing.material.opacity = Math.sin(k*Math.PI) * 0.85;
 }
 
 // ---- Image-based lighting: a warm, contrasty environment so wet surfaces get
@@ -535,7 +586,7 @@ let pointerLocked = false;
 
 function setupDesktopControls(){
   const dom = renderer.domElement;
-  dom.addEventListener('click', () => { if (!renderer.xr.isPresenting) dom.requestPointerLock(); });
+  dom.addEventListener('click', () => { ensureAudio(); if (!renderer.xr.isPresenting) dom.requestPointerLock(); });
   document.addEventListener('pointerlockchange', () => {
     pointerLocked = document.pointerLockElement === dom;
     const intro = document.getElementById('intro');
@@ -628,6 +679,7 @@ function setupVR(){
     btn.textContent = 'EXIT VR';
     renderer.xr.setSession(session);
     try { renderer.xr.setFoveation(CONFIG.VR_FOVEATION); } catch(e){}  // sharp edges to the periphery
+    ensureAudio();   // the ENTER-VR tap is a user gesture, so swallow gulps can play
     document.getElementById('intro').classList.add('gone');
     camera.rotation.set(0,0,0); playerRig.rotation.y = yaw;
     playerRig.position.y = tongueY;
@@ -707,6 +759,39 @@ function updateTour(dt){
 // ---- Ambient sound (generated in-browser, no files) -------------------------
 let audioCtx, ambientNode, ambientGain, audioOn = false;
 function buildAmbientSound(){ /* created lazily on first enable */ }
+
+// Create/resume the audio context on a user gesture so the swallow gulp can
+// play even if the ambient-sound toggle is off.
+function ensureAudio(){
+  try{
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }catch(e){ /* audio optional */ }
+}
+
+// A soft "gulp": a low descending tone plus a short wet click.
+function playGulp(){
+  if (!audioCtx || audioCtx.state !== 'running') return;
+  try{
+    const now = audioCtx.currentTime;
+    const o = audioCtx.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(210, now);
+    o.frequency.exponentialRampToValueAtTime(70, now + 0.28);
+    const g = audioCtx.createGain(); g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.22, now + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0008, now + 0.36);
+    o.connect(g).connect(audioCtx.destination); o.start(now); o.stop(now + 0.4);
+    // wet click
+    const len = Math.floor(audioCtx.sampleRate * 0.12);
+    const b = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = b.getChannelData(0);
+    for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 3);
+    const src = audioCtx.createBufferSource(); src.buffer = b;
+    const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 650;
+    const g2 = audioCtx.createGain(); g2.gain.value = 0.16;
+    src.connect(bp).connect(g2).connect(audioCtx.destination); src.start(now + 0.14);
+  }catch(e){ /* non-fatal */ }
+}
 function setAmbient(on){
   try{
     if (on){
@@ -770,6 +855,7 @@ function animate(time, frame){
     if (throatGlow){ throatGlow.material.opacity = 0.18 + hb*0.22; const s2 = 4.5*(1 + hb*0.1); throatGlow.scale.set(s2, s2, 1); }
 
     updateSalivaMotes(dt, breath);               // motes drift, and flow toward the throat on the breath
+    updateSwallow(dt);                            // periodic swallow ripple + gulp
 
     // Ambient sound breathes with the light.
     if (audioOn && ambientGain) ambientGain.gain.value = 0.10 + (Math.sin(t*0.8)*0.5+0.5)*0.06;

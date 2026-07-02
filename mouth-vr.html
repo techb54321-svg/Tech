@@ -623,6 +623,7 @@ function animate(time, frame){
     updateDesktopMove(dt);
     updateVRMove(dt);
     updateTour(dt);
+    followGround();                          // stand on the tongue surface right beneath you
     if (frame) keepEyeAboveTongue(frame);   // VR safety: never sink into the tongue
 
     // Gentle life: uvula sway + breathing light.
@@ -635,6 +636,29 @@ function animate(time, frame){
   } catch (e) { /* never let a per-frame error kill the render loop (esp. in VR) */ }
 
   renderer.render(scene, camera);
+}
+
+// Terrain-following: the tongue is a mound, not a flat floor. Raycast straight
+// down beneath the viewer and set the foot height to the surface there, so you
+// always stand ON the tongue instead of wading through it as it rises.
+const _DOWN = new THREE.Vector3(0, -1, 0), _camW = new THREE.Vector3();
+let groundTick = 0, targetGroundY = null;
+function followGround(){
+  const target = loadedModel || placeholder;
+  if (!target) return;
+  // Recompute the surface only every few frames (a full-mesh raycast is costly
+  // on a headset); smooth toward it in between so it stays steady over bumps.
+  if (groundTick++ % 4 === 0 || targetGroundY === null){
+    camera.getWorldPosition(_camW);
+    _rc.set(new THREE.Vector3(_camW.x, _camW.y + 0.3, _camW.z), _DOWN);
+    _rc.far = 20;
+    const hits = _rc.intersectObject(target, true);
+    if (hits.length) targetGroundY = hits[0].point.y;
+  }
+  if (targetGroundY !== null){
+    tongueY += (targetGroundY - tongueY) * 0.25;
+    playerRig.position.y = tongueY;
+  }
 }
 
 // If the headset gives an eye-level (not floor) reference space, the real eye

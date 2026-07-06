@@ -19,8 +19,13 @@ dependencies. Progress is saved on the device with `localStorage`.
 - **Badges** — 8 unlockables tied to your habits.
 - **Rewards shop** — spend points on perks (swap these for real rewards).
 - **Barcode scanner** — scan any packaged product; it's looked up in
-  [Open Food Facts](https://world.openfoodfacts.org/) and rated by sugar with a
+  [Open Food Facts](https://world.openfoodfacts.org/) first and, if not found (or
+  missing sugar data), falls back to
+  [USDA FoodData Central](https://fdc.nal.usda.gov/), then rated by sugar with a
   traffic light: 🟢 low (≤5g/100g), 🟠 medium (≤22.5g/100g), 🔴 high (>22.5g/100g).
+  The result card shows which database it came from. USDA uses the public
+  `DEMO_KEY` (rate-limited) — for real use, drop a free key from
+  <https://fdc.nal.usda.gov/api-key-signup.html> into `USDA_KEY` in `index.html`.
   Green scans earn points, orange earn fewer, red earn none — so rewards steer
   people toward low-sugar food. A manual "type the barcode" box is the fallback
   if the camera is blocked.

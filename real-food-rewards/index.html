@@ -198,6 +198,7 @@
   .scan-result .sr-rating{font-weight:900;font-size:15px}
   .scan-result .sr-sugar{color:var(--muted);font-size:13px;margin-top:2px}
   .scan-result .sr-pts{margin-top:12px;font-weight:800}
+  .scan-result .sr-src{margin-top:6px;color:var(--muted);font-size:11px}
   .scan-result.green{border-color:rgba(56,209,122,.55)}
   .scan-result.orange{border-color:rgba(255,171,61,.55)}
   .scan-result.red{border-color:rgba(255,91,110,.55)}
@@ -713,18 +714,64 @@
     hint("Can't open the camera — please tap Allow when asked, or type the barcode number below.");
   }
 
+  // USDA FoodData Central demo key. Rate-limited — swap for a free key from
+  // https://fdc.nal.usda.gov/api-key-signup.html for real use.
+  var USDA_KEY="DEMO_KEY";
+
+  function round1(v){ return Math.round(v*10)/10; }
+  function titleCase(s){ return (""+s).toLowerCase().replace(/\b\w/g,function(c){return c.toUpperCase();}); }
+
+  // Source 1: Open Food Facts (global, no key). Returns {name,sugar,source} or null.
+  function lookupOFF(code){
+    var url="https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+
+            ".json?fields=product_name,brands,nutriments";
+    return fetch(url).then(function(r){return r.json();}).then(function(d){
+      if(!d || d.status===0 || !d.product) return null;
+      var p=d.product, nm=p.product_name || p.brands || "Unknown product";
+      var s=(p.nutriments && typeof p.nutriments.sugars_100g==="number") ? round1(p.nutriments.sugars_100g) : null;
+      return {name:nm, sugar:s, source:"Open Food Facts"};
+    }).catch(function(){ return null; });
+  }
+
+  // Source 2: USDA FoodData Central branded foods (US, demo key). Returns {name,sugar,source} or null.
+  function lookupUSDA(code){
+    var url="https://api.nal.usda.gov/fdc/v1/foods/search?dataType=Branded&pageSize=5&query="+
+            encodeURIComponent(code)+"&api_key="+USDA_KEY;
+    return fetch(url).then(function(r){return r.json();}).then(function(d){
+      if(!d || !d.foods || !d.foods.length) return null;
+      var norm=function(x){ return (""+(x||"")).replace(/^0+/,""); };
+      var want=norm(code), pick=null;
+      for(var i=0;i<d.foods.length;i++){ if(norm(d.foods[i].gtinUpc)===want){ pick=d.foods[i]; break; } }
+      if(!pick) pick=d.foods[0];
+      var nm=pick.description ? titleCase(pick.description) : (pick.brandName||pick.brandOwner||"Unknown product");
+      var s=null;
+      if(pick.foodNutrients){
+        for(var j=0;j<pick.foodNutrients.length;j++){
+          var n=pick.foodNutrients[j], num=""+(n.nutrientNumber||n.number||"");
+          if(num==="2000" || (n.nutrientName && n.nutrientName.indexOf("Sugars, total")===0)){
+            if(typeof n.value==="number"){ s=round1(n.value); break; }
+          }
+        }
+      }
+      return {name:nm, sugar:s, source:"USDA"};
+    }).catch(function(){ return null; });
+  }
+
   function onBarcode(code){
     code=(""+code).trim();
     if(lookupBusy || !code || code===lastCode) return;
     lastCode=code; lookupBusy=true; stopScan();
-    document.getElementById("scanHint").textContent="Looking up "+code+"…";
-    var url="https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+
-            ".json?fields=product_name,brands,nutriments";
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(!d || d.status===0 || !d.product){ showResult({found:false, code:code}); return; }
-      var p=d.product, nm=p.product_name || p.brands || "Unknown product";
-      var s=(p.nutriments && typeof p.nutriments.sugars_100g==="number") ? p.nutriments.sugars_100g : null;
-      showResult({found:true, code:code, name:nm, sugar:s});
+    hint("Looking up "+code+"…");
+    lookupOFF(code).then(function(off){
+      if(off && off.sugar!=null) return off;              // Open Food Facts has full data
+      hint("Checking USDA database…");
+      return lookupUSDA(code).then(function(usda){
+        if(usda && usda.sugar!=null) return usda;          // USDA has the sugar value
+        return off || usda || null;                        // otherwise use whatever we found
+      });
+    }).then(function(res){
+      if(res) showResult({found:true, code:code, name:res.name, sugar:res.sugar, source:res.source});
+      else showResult({found:false, code:code});
     }).catch(function(){ showResult({found:false, code:code, error:true}); });
   }
 
@@ -738,7 +785,7 @@
     if(!r.found){
       box.className="card scan-result miss";
       box.innerHTML='<div class="sr-emoji">🔍</div><h3>Not found</h3>'+
-        '<p class="muted" style="margin:6px 0 0">Barcode '+r.code+" isn't in Open Food Facts"+
+        '<p class="muted" style="margin:6px 0 0">Barcode '+r.code+" isn't in our food databases"+
         (r.error?" (check your connection)":"")+'.</p>'+resultBtns();
       wireResultBtns(); return;
     }
@@ -751,6 +798,7 @@
       '<div class="sr-rating" style="color:'+rt.color+'">'+rt.label+'</div>'+
       '<div class="sr-sugar">'+(r.sugar!=null ? r.sugar+" g sugar per 100g" : "Sugar info not available")+'</div>'+
       '<div class="sr-pts">'+(rt.pts>0 ? "+"+rt.pts+" pts earned 🎉" : "No points — too much sugar")+'</div>'+
+      (r.source ? '<div class="sr-src">via '+r.source+'</div>' : '')+
       resultBtns();
     wireResultBtns();
   }

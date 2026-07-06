@@ -1,0 +1,62 @@
+name: Deploy site (Inside the Sip + Real Food Rewards) to GitHub Pages
+
+# Publishes the whole site to GitHub Pages on every push to this branch:
+#  - "Inside the Sip" (built) stays at the site root, e.g. /Tech/
+#  - "Real Food Rewards" is added at /Tech/real-food-rewards/
+# Requires the repo's Pages source to be set to "GitHub Actions".
+on:
+  push:
+    branches: [claude/real-food-rewards-cogniss-awrv8p]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Build the existing Inside the Sip app so the site root keeps working.
+      - name: Build Inside the Sip
+        working-directory: inside-the-sip
+        run: |
+          npm ci
+          npm run build
+        env:
+          # Served from https://<user>.github.io/Tech/ — must match the repo name.
+          VITE_BASE: /Tech/
+
+      # Assemble the published site: built app at root + rewards app in a subfolder.
+      - name: Assemble site
+        run: |
+          rm -rf site
+          mkdir -p site
+          cp -r inside-the-sip/dist/. site/
+          mkdir -p site/real-food-rewards
+          cp -r real-food-rewards/. site/real-food-rewards/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

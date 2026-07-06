@@ -304,6 +304,7 @@
 <div id="scanner" class="scan-overlay">
   <div class="scan-head"><span>📷 Scan a barcode</span><button id="scanClose" aria-label="Close">✕</button></div>
   <div id="reader"></div>
+  <video id="nativeVideo" playsinline muted style="display:none;width:100%;max-width:520px;margin:0 auto"></video>
   <div class="scan-hint" id="scanHint">Point your camera at a product barcode…</div>
   <div class="scan-manual">
     <input id="scanInput" inputmode="numeric" autocomplete="off" placeholder="…or type the barcode number" />
@@ -314,7 +315,25 @@
 
 <div id="toast"></div>
 
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+/* Load the barcode library with a backup CDN so a single blocked host
+   doesn't kill scanning. Sets window.__scanLibReady / __scanLibFailed. */
+(function(){
+  var srcs=[
+    "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js",
+    "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"
+  ];
+  function load(i){
+    if(i>=srcs.length){ window.__scanLibFailed=true; return; }
+    var s=document.createElement("script");
+    s.src=srcs[i]; s.async=false;
+    s.onload=function(){ if(window.Html5Qrcode){ window.__scanLibReady=true; } else { load(i+1); } };
+    s.onerror=function(){ load(i+1); };
+    document.head.appendChild(s);
+  }
+  load(0);
+})();
+</script>
 <script>
 (function(){
   "use strict";
@@ -609,19 +628,37 @@
   }
 
   function openScanner(){
-    lastCode=null; lookupBusy=false;
+    lastCode=null; lookupBusy=false; waitTries=0;
     var box=document.getElementById("scanResult"); box.style.display="none"; box.innerHTML="";
     document.getElementById("scanner").classList.add("show");
     startScan();
   }
   function closeScanner(){ stopScan(); document.getElementById("scanner").classList.remove("show"); }
 
+  var nativeStream=null, nativeOn=false, waitTries=0;
+  function hint(t){ document.getElementById("scanHint").textContent=t; }
+
   function startScan(){
-    document.getElementById("scanHint").textContent="Point your camera at a product barcode…";
-    if(!window.Html5Qrcode){
-      document.getElementById("scanHint").textContent="Scanner couldn't load — type the barcode number below instead.";
+    hint("Starting camera…");
+    // Basic capability check: camera needs a secure context + getUserMedia.
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      hint("This browser can't open the camera here. Please type the barcode number below.");
       return;
     }
+    if(window.Html5Qrcode){ startLib(); return; }
+    // Library not loaded yet — if it's still downloading, wait briefly and retry.
+    if(!window.__scanLibFailed && waitTries<20){
+      waitTries++; hint("Loading scanner…");
+      setTimeout(startScan, 250); return;
+    }
+    // Library failed to load — fall back to the browser's built-in detector.
+    waitTries=0;
+    if("BarcodeDetector" in window){ startNative(); return; }
+    hint("Scanner couldn't load on this device. Please type the barcode number below.");
+  }
+
+  function startLib(){
+    hint("Point your camera at a product barcode…");
     try{
       var opt={verbose:false};
       if(window.Html5QrcodeSupportedFormats){
@@ -634,16 +671,46 @@
       h5=new Html5Qrcode("reader", opt);
       h5.start({facingMode:{ideal:"environment"}}, {fps:10, qrbox:{width:260,height:160}},
         function(txt){ onBarcode(txt); }, function(){}
-      ).catch(cameraError);
-    }catch(e){ cameraError(e); }
+      ).catch(function(e){
+        // If the library's camera start fails, try the native detector before giving up.
+        if("BarcodeDetector" in window){ startNative(); } else { cameraError(e); }
+      });
+    }catch(e){
+      if("BarcodeDetector" in window){ startNative(); } else { cameraError(e); }
+    }
   }
+
+  // Fallback path: getUserMedia video + the browser's built-in BarcodeDetector.
+  function startNative(){
+    hint("Point your camera at a product barcode…");
+    var video=document.getElementById("nativeVideo");
+    video.style.display="block";
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}}).then(function(stream){
+      nativeStream=stream; nativeOn=true;
+      video.srcObject=stream; video.setAttribute("playsinline","");
+      var play=video.play(); if(play&&play.catch) play.catch(function(){});
+      var det;
+      try{ det=new BarcodeDetector({formats:["ean_13","ean_8","upc_a","upc_e","code_128","code_39"]}); }
+      catch(e){ det=new BarcodeDetector(); }
+      (function loop(){
+        if(!nativeOn) return;
+        det.detect(video).then(function(codes){
+          if(codes && codes.length){ onBarcode(codes[0].rawValue); }
+          else if(nativeOn){ requestAnimationFrame(loop); }
+        }).catch(function(){ if(nativeOn) requestAnimationFrame(loop); });
+      })();
+    }).catch(cameraError);
+  }
+
   function stopScan(){
     if(h5){ var inst=h5; h5=null;
       try{ inst.stop().then(function(){ try{inst.clear();}catch(e){} }).catch(function(){}); }catch(e){} }
+    nativeOn=false;
+    if(nativeStream){ try{ nativeStream.getTracks().forEach(function(t){t.stop();}); }catch(e){} nativeStream=null; }
+    var v=document.getElementById("nativeVideo"); if(v){ try{v.srcObject=null;}catch(e){} v.style.display="none"; }
   }
   function cameraError(){
-    document.getElementById("scanHint").textContent=
-      "Can't open the camera. Allow camera access, or type the barcode number below.";
+    hint("Can't open the camera — please tap Allow when asked, or type the barcode number below.");
   }
 
   function onBarcode(code){

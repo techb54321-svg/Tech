@@ -18,6 +18,17 @@ dependencies. Progress is saved on the device with `localStorage`.
 - **Daily challenges** — hit them all for a bonus.
 - **Badges** — 8 unlockables tied to your habits.
 - **Rewards shop** — spend points on perks (swap these for real rewards).
+- **Barcode scanner** — scan any packaged product; it's looked up in
+  [Open Food Facts](https://world.openfoodfacts.org/) and rated by sugar with a
+  traffic light: 🟢 low (≤5g/100g), 🟠 medium (≤22.5g/100g), 🔴 high (>22.5g/100g).
+  Green scans earn points, orange earn fewer, red earn none — so rewards steer
+  people toward low-sugar food. A manual "type the barcode" box is the fallback
+  if the camera is blocked.
+
+> **Camera note:** scanning needs camera access over HTTPS (GitHub Pages provides
+> this). Inside a Cogniss WebView, the host app must allow camera permission for
+> the embedded page — if the camera won't open, use the manual barcode entry, or
+> check your Cogniss WebView's camera settings.
 
 ## Run it locally
 

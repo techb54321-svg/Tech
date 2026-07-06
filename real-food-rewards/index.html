@@ -162,6 +162,49 @@
   .stat b{font-size:22px;display:block;font-weight:900}
   .stat small{color:var(--muted);font-size:11px}
   .footer-note{text-align:center;color:var(--muted);font-size:11px;padding:22px 8px 6px;line-height:1.5}
+
+  /* scan call-to-action buttons */
+  .scan-cta{width:100%;margin-top:14px;padding:16px;display:flex;align-items:center;gap:14px;text-align:left}
+  .scan-cta .scan-cta-ic{font-size:26px;flex:none}
+  .scan-cta b{font-size:15px;display:block}
+  .scan-cta small{color:var(--muted);font-size:12px}
+  .scan-cta .scan-cta-arrow{margin-left:auto;font-size:24px;color:var(--muted)}
+  .scan-cta:active{background:var(--card-2)}
+
+  /* today rating dots + sugar subtext */
+  .today-item .dot{width:11px;height:11px;border-radius:50%;flex:none}
+  .today-item .t .sub{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:1px}
+  .dot.green{background:var(--green)}
+  .dot.orange{background:#ffab3d}
+  .dot.red{background:#ff5b6e}
+  .dot.unknown{background:#7d9488}
+
+  /* scanner overlay */
+  .scan-overlay{position:fixed;inset:0;z-index:100;background:#06110b;display:none;flex-direction:column;overflow-y:auto}
+  .scan-overlay.show{display:flex}
+  .scan-head{display:flex;align-items:center;justify-content:space-between;
+    padding:calc(14px + env(safe-area-inset-top)) 18px 12px;font-size:16px;font-weight:800}
+  .scan-head button{font-size:20px;color:var(--muted);padding:6px}
+  #reader{width:100%;max-width:520px;margin:0 auto}
+  #reader video{width:100%!important;height:auto!important;display:block}
+  .scan-hint{text-align:center;color:var(--muted);font-size:13px;padding:12px 22px;max-width:520px;margin:0 auto}
+  .scan-manual{display:flex;gap:8px;padding:4px 18px 8px;max-width:520px;margin:0 auto;width:100%}
+  .scan-manual input{flex:1;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--card);color:var(--text);font-size:15px;min-width:0}
+  .scan-manual button{padding:12px 16px;border-radius:12px;font-weight:800;background:var(--card-2);color:var(--text);white-space:nowrap}
+  .scan-result{margin:14px auto 26px;padding:22px 20px;text-align:center;max-width:520px;width:calc(100% - 36px)}
+  .scan-result .sr-emoji{font-size:46px;line-height:1}
+  .scan-result h3{margin:10px 0 4px;font-size:18px}
+  .scan-result .sr-rating{font-weight:900;font-size:15px}
+  .scan-result .sr-sugar{color:var(--muted);font-size:13px;margin-top:2px}
+  .scan-result .sr-pts{margin-top:12px;font-weight:800}
+  .scan-result.green{border-color:rgba(56,209,122,.55)}
+  .scan-result.orange{border-color:rgba(255,171,61,.55)}
+  .scan-result.red{border-color:rgba(255,91,110,.55)}
+  .sr-btns{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+  .sr-btns button{padding:11px 18px;border-radius:12px;font-weight:800;font-size:14px}
+  .btn-scan-again{background:linear-gradient(145deg,var(--green),var(--green-deep));box-shadow:0 6px 14px rgba(31,158,87,.4)}
+  .btn-scan-done{background:var(--card-2);color:var(--text)}
 </style>
 </head>
 <body>
@@ -196,6 +239,12 @@
       </div>
     </div>
 
+    <button class="card scan-cta" id="openScanHome">
+      <span class="scan-cta-ic">📷</span>
+      <span><b>Scan a barcode</b><small>Check a product's sugar &amp; earn points</small></span>
+      <span class="scan-cta-arrow">›</span>
+    </button>
+
     <div class="section-title"><h3>Log real food</h3><a id="toLogFull">See all →</a></div>
     <div class="grid" id="quickFoods"></div>
 
@@ -212,6 +261,11 @@
 
   <!-- LOG (full food list) -->
   <section class="screen" id="screen-log">
+    <button class="card scan-cta" id="openScanLog">
+      <span class="scan-cta-ic">📷</span>
+      <span><b>Scan a barcode</b><small>Rates a product 🟢 🟠 🔴 by sugar</small></span>
+      <span class="scan-cta-arrow">›</span>
+    </button>
     <div class="section-title"><h3>Whole foods</h3><span class="muted" style="font-size:12px">tap to log</span></div>
     <div class="grid" id="allFoods"></div>
     <div class="footer-note">Real, minimally-processed foods earn the most. Ultra-processed snacks aren't on the menu here. 😉</div>
@@ -247,8 +301,20 @@
   </nav>
 </div>
 
+<div id="scanner" class="scan-overlay">
+  <div class="scan-head"><span>📷 Scan a barcode</span><button id="scanClose" aria-label="Close">✕</button></div>
+  <div id="reader"></div>
+  <div class="scan-hint" id="scanHint">Point your camera at a product barcode…</div>
+  <div class="scan-manual">
+    <input id="scanInput" inputmode="numeric" autocomplete="off" placeholder="…or type the barcode number" />
+    <button id="scanLookup">Look up</button>
+  </div>
+  <div class="card scan-result" id="scanResult" style="display:none"></div>
+</div>
+
 <div id="toast"></div>
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function(){
   "use strict";
@@ -363,7 +429,8 @@
   }
 
   /* ---------- actions ---------- */
-  function logFood(food, el){
+  // Shared logging core used by both tap-to-log and barcode scanning.
+  function commitLog(entry){
     // streak bookkeeping: first log of the day advances the streak
     if(S.lastDay!==todayStr){
       if(S.lastDay && dayDiff(S.lastDay,todayStr)===1) S.streak+=1;
@@ -371,25 +438,26 @@
       S.lastDay=todayStr;
       if(S.streak>S.bestStreak) S.bestStreak=S.streak;
     }
-    S.points+=food.p;
+    S.points+=entry.p;
     S.totalLogs+=1;
-    if(VEG[food.n]) S.vegLogs+=1;
-    if(food.n==="Water") S.waterLogs+=1;
-    S.day.points+=food.p;
-    S.day.logs.unshift({e:food.e,n:food.n,p:food.p});
-    S.day.counts[food.type||"logs"]=(S.day.counts[food.type]||0)+1;
+    if(entry.isVeg) S.vegLogs+=1;
+    if(entry.isWater) S.waterLogs+=1;
+    S.day.points+=entry.p;
+    var log={e:entry.e, n:entry.n, p:entry.p};
+    if(entry.rating) log.rating=entry.rating;   // "green" | "orange" | "red" | "unknown"
+    if(entry.sugar!=null) log.sugar=entry.sugar; // grams per 100g
+    S.day.logs.unshift(log);
 
-    // badge check before/after
     var before=earnedBadges().map(function(b){return b.id;});
-    checkGoals();
-    save();
-    render();
+    checkGoals(); save(); render();
+    return earnedBadges().filter(function(b){return before.indexOf(b.id)<0;});
+  }
 
+  function logFood(food, el){
+    var gained=commitLog({e:food.e, n:food.n, p:food.p,
+      isVeg:!!VEG[food.n], isWater:food.n==="Water"});
     if(el){ el.classList.remove("popped"); void el.offsetWidth; el.classList.add("popped");
       el.querySelector(".pop").textContent="+"+food.p; }
-    // new badge?
-    var after=earnedBadges();
-    var gained=after.filter(function(b){return before.indexOf(b.id)<0;});
     if(gained.length){ toast(gained[0].e+" Badge unlocked: "+gained[0].n); }
     else toast("+"+food.p+" pts · "+food.n);
   }
@@ -457,8 +525,10 @@
     var tl=document.getElementById("todayList");
     if(S.day.logs.length){
       tl.innerHTML=S.day.logs.map(function(l){
-        return '<div class="today-item"><span class="e">'+l.e+'</span><span class="t">'+l.n+
-               '</span><span class="p">+'+l.p+'</span></div>';
+        var dot=l.rating? '<span class="dot '+l.rating+'"></span>' : '';
+        var sub=(l.sugar!=null)? '<span class="sub">'+l.sugar+'g sugar / 100g</span>' : '';
+        return '<div class="today-item">'+dot+'<span class="e">'+l.e+'</span>'+
+               '<span class="t">'+l.n+sub+'</span><span class="p">+'+l.p+'</span></div>';
       }).join("");
     }else{
       tl.innerHTML='<div class="empty">Nothing logged yet — tap a food above to start earning. 🌱</div>';
@@ -526,6 +596,113 @@
   FOODS.slice(0,9).forEach(function(f){document.getElementById("quickFoods").appendChild(foodCard(f));});
   FOODS.forEach(function(f){document.getElementById("allFoods").appendChild(foodCard(f));});
   render();
+
+  /* ---------- barcode scanner + Open Food Facts ---------- */
+  var h5=null, lastCode=null, lookupBusy=false;
+
+  // UK front-of-pack "traffic light" thresholds for total sugars per 100g.
+  function sugarRating(g){
+    if(g==null || isNaN(g)) return {key:"unknown", color:"#9fb0a6", label:"Sugar unknown", emoji:"❔", pts:0};
+    if(g<=5)    return {key:"green",  color:"#38d17a", label:"Low sugar",    emoji:"🟢", pts:15};
+    if(g<=22.5) return {key:"orange", color:"#ffab3d", label:"Medium sugar", emoji:"🟠", pts:5};
+    return               {key:"red",   color:"#ff5b6e", label:"High sugar",   emoji:"🔴", pts:0};
+  }
+
+  function openScanner(){
+    lastCode=null; lookupBusy=false;
+    var box=document.getElementById("scanResult"); box.style.display="none"; box.innerHTML="";
+    document.getElementById("scanner").classList.add("show");
+    startScan();
+  }
+  function closeScanner(){ stopScan(); document.getElementById("scanner").classList.remove("show"); }
+
+  function startScan(){
+    document.getElementById("scanHint").textContent="Point your camera at a product barcode…";
+    if(!window.Html5Qrcode){
+      document.getElementById("scanHint").textContent="Scanner couldn't load — type the barcode number below instead.";
+      return;
+    }
+    try{
+      var opt={verbose:false};
+      if(window.Html5QrcodeSupportedFormats){
+        opt.formatsToSupport=[
+          Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,  Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39
+        ];
+      }
+      h5=new Html5Qrcode("reader", opt);
+      h5.start({facingMode:{ideal:"environment"}}, {fps:10, qrbox:{width:260,height:160}},
+        function(txt){ onBarcode(txt); }, function(){}
+      ).catch(cameraError);
+    }catch(e){ cameraError(e); }
+  }
+  function stopScan(){
+    if(h5){ var inst=h5; h5=null;
+      try{ inst.stop().then(function(){ try{inst.clear();}catch(e){} }).catch(function(){}); }catch(e){} }
+  }
+  function cameraError(){
+    document.getElementById("scanHint").textContent=
+      "Can't open the camera. Allow camera access, or type the barcode number below.";
+  }
+
+  function onBarcode(code){
+    code=(""+code).trim();
+    if(lookupBusy || !code || code===lastCode) return;
+    lastCode=code; lookupBusy=true; stopScan();
+    document.getElementById("scanHint").textContent="Looking up "+code+"…";
+    var url="https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+
+            ".json?fields=product_name,brands,nutriments";
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+      if(!d || d.status===0 || !d.product){ showResult({found:false, code:code}); return; }
+      var p=d.product, nm=p.product_name || p.brands || "Unknown product";
+      var s=(p.nutriments && typeof p.nutriments.sugars_100g==="number") ? p.nutriments.sugars_100g : null;
+      showResult({found:true, code:code, name:nm, sugar:s});
+    }).catch(function(){ showResult({found:false, code:code, error:true}); });
+  }
+
+  function resultBtns(){
+    return '<div class="sr-btns"><button class="btn-scan-again">Scan another</button>'+
+           '<button class="btn-scan-done">Done</button></div>';
+  }
+  function showResult(r){
+    lookupBusy=false;
+    var box=document.getElementById("scanResult"); box.style.display="block";
+    if(!r.found){
+      box.className="card scan-result miss";
+      box.innerHTML='<div class="sr-emoji">🔍</div><h3>Not found</h3>'+
+        '<p class="muted" style="margin:6px 0 0">Barcode '+r.code+" isn't in Open Food Facts"+
+        (r.error?" (check your connection)":"")+'.</p>'+resultBtns();
+      wireResultBtns(); return;
+    }
+    var rt=sugarRating(r.sugar);
+    commitLog({e:rt.emoji, n:r.name, p:rt.pts, rating:rt.key, sugar:r.sugar});
+    box.className="card scan-result "+rt.key;
+    box.innerHTML=
+      '<div class="sr-emoji">'+rt.emoji+'</div>'+
+      '<h3>'+r.name+'</h3>'+
+      '<div class="sr-rating" style="color:'+rt.color+'">'+rt.label+'</div>'+
+      '<div class="sr-sugar">'+(r.sugar!=null ? r.sugar+" g sugar per 100g" : "Sugar info not available")+'</div>'+
+      '<div class="sr-pts">'+(rt.pts>0 ? "+"+rt.pts+" pts earned 🎉" : "No points — too much sugar")+'</div>'+
+      resultBtns();
+    wireResultBtns();
+  }
+  function wireResultBtns(){
+    var a=document.querySelector("#scanResult .btn-scan-again");
+    var d=document.querySelector("#scanResult .btn-scan-done");
+    if(a) a.onclick=function(){ lastCode=null;
+      var b=document.getElementById("scanResult"); b.style.display="none"; b.innerHTML="";
+      startScan(); };
+    if(d) d.onclick=closeScanner;
+  }
+
+  document.getElementById("openScanHome").onclick=openScanner;
+  document.getElementById("openScanLog").onclick=openScanner;
+  document.getElementById("scanClose").onclick=closeScanner;
+  document.getElementById("scanLookup").onclick=function(){
+    var v=document.getElementById("scanInput").value.trim();
+    if(v){ lastCode=null; onBarcode(v); }
+  };
 
   // Let a Cogniss parent request the current state, or reset.
   window.addEventListener("message",function(ev){

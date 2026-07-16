@@ -85,6 +85,24 @@ If your exact Cogniss plan doesn't expose a WebView block, the fallbacks are:
 - a **button/link** that opens the hosted app in the in-app browser, or
 - ask Cogniss support which component embeds external HTML on your plan.
 
+### Deep links — multiple entry points from Cogniss
+
+The app is a single page, but you can open it directly to a specific screen by
+adding `?view=` to the URL. This lets each Cogniss button/menu item jump straight
+to its own entry point (it's still one app, so points/streaks stay shared):
+
+| Opens on | URL |
+|---|---|
+| Barcode scanner | `…/real-food-rewards/?view=scan` |
+| Rewards shop | `…/real-food-rewards/?view=rewards` |
+| Log food | `…/real-food-rewards/?view=log` |
+| Daily goals | `…/real-food-rewards/?view=goals` |
+| Home (default) | `…/real-food-rewards/` or `?view=home` |
+
+When opened via `?view=scan`, the scanner shows a **Start camera** button first —
+browsers require a tap before a camera can start when the page is opened from a
+link (rather than tapping the in-app scan button), so this keeps it reliable.
+
 ### Passing points back into Cogniss (optional)
 
 The app already broadcasts progress so a Cogniss (or any) host can read it —

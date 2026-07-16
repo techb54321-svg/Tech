@@ -206,6 +206,8 @@
   .sr-btns button{padding:11px 18px;border-radius:12px;font-weight:800;font-size:14px}
   .btn-scan-again{background:linear-gradient(145deg,var(--green),var(--green-deep));box-shadow:0 6px 14px rgba(31,158,87,.4)}
   .btn-scan-done{background:var(--card-2);color:var(--text)}
+  .btn-scan-start{padding:10px 20px;border-radius:12px;font-weight:800;font-size:14px;
+    background:linear-gradient(145deg,var(--green),var(--green-deep));box-shadow:0 6px 14px rgba(31,158,87,.4)}
 </style>
 </head>
 <body>
@@ -307,6 +309,7 @@
   <div id="reader"></div>
   <video id="nativeVideo" playsinline muted style="display:none;width:100%;max-width:520px;margin:0 auto"></video>
   <div class="scan-hint" id="scanHint">Point your camera at a product barcode…</div>
+  <div style="text-align:center;padding:2px 18px 8px"><button id="scanStart" class="btn-scan-start">Start camera</button></div>
   <div class="scan-manual">
     <input id="scanInput" inputmode="numeric" autocomplete="off" placeholder="…or type the barcode number" />
     <button id="scanLookup">Look up</button>
@@ -628,11 +631,14 @@
     return               {key:"red",   color:"#ff5b6e", label:"High sugar",   emoji:"🔴", pts:0};
   }
 
-  function openScanner(){
+  function openScanner(autostart){
     lastCode=null; lookupBusy=false; waitTries=0;
     var box=document.getElementById("scanResult"); box.style.display="none"; box.innerHTML="";
     document.getElementById("scanner").classList.add("show");
-    startScan();
+    // autostart===false (e.g. arriving via a deep link with no user gesture):
+    // wait for the user to tap "Start camera" so the browser allows the camera.
+    if(autostart===false){ hint("Tap “Start camera” to begin, or type the barcode below."); }
+    else { startScan(); }
   }
   function closeScanner(){ stopScan(); document.getElementById("scanner").classList.remove("show"); }
 
@@ -811,13 +817,26 @@
     if(d) d.onclick=closeScanner;
   }
 
-  document.getElementById("openScanHome").onclick=openScanner;
-  document.getElementById("openScanLog").onclick=openScanner;
+  document.getElementById("openScanHome").onclick=function(){ openScanner(true); };
+  document.getElementById("openScanLog").onclick=function(){ openScanner(true); };
   document.getElementById("scanClose").onclick=closeScanner;
+  document.getElementById("scanStart").onclick=function(){ startScan(); };
   document.getElementById("scanLookup").onclick=function(){
     var v=document.getElementById("scanInput").value.trim();
     if(v){ lastCode=null; onBarcode(v); }
   };
+
+  // Deep links: ?view=scan | rewards | log | goals | home opens directly to a
+  // screen, so each Cogniss button can point at its own entry point.
+  (function(){
+    var v=(params.get("view") || location.hash.replace(/^#/,"") || "").toLowerCase();
+    if(!v) return;
+    if(v==="scan"){ go("log"); openScanner(false); }
+    else if(v==="rewards"){ go("rewards"); }
+    else if(v==="log"){ go("log"); }
+    else if(v==="goals" || v==="challenges"){ go("challenges"); }
+    else if(v==="home"){ go("home"); }
+  })();
 
   // Let a Cogniss parent request the current state, or reset.
   window.addEventListener("message",function(ev){

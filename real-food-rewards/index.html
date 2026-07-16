@@ -208,6 +208,17 @@
   .btn-scan-done{background:var(--card-2);color:var(--text)}
   .btn-scan-start{padding:10px 20px;border-radius:12px;font-weight:800;font-size:14px;
     background:linear-gradient(145deg,var(--green),var(--green-deep));box-shadow:0 6px 14px rgba(31,158,87,.4)}
+
+  /* front-of-pack 4-light nutrition panel */
+  .lights{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+  .light{background:var(--card-2);border-radius:12px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .light .lname{font-size:10px;color:var(--muted);font-weight:700}
+  .light .ldot{width:18px;height:18px;border-radius:50%;background:#7d9488}
+  .light.green .ldot{background:var(--green)}
+  .light.orange .ldot{background:#ffab3d}
+  .light.red .ldot{background:#ff5b6e}
+  .light .lval{font-size:12px;font-weight:800}
+  .light .llabel{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -631,6 +642,26 @@
     return               {key:"red",   color:"#ff5b6e", label:"High sugar",   emoji:"🔴", pts:0};
   }
 
+  // UK front-of-pack thresholds per 100g for the 4-nutrient traffic-light panel.
+  var LIGHT_DEFS={ sugar:{g:5,a:22.5}, fat:{g:3,a:17.5}, satfat:{g:1.5,a:5}, salt:{g:0.3,a:1.5} };
+  function lightFor(key,val){
+    var def=LIGHT_DEFS[key];
+    if(val==null||isNaN(val)) return {key:"unknown", label:"—"};
+    if(val<=def.g) return {key:"green",  label:"Low"};
+    if(val<=def.a) return {key:"orange", label:"Med"};
+    return               {key:"red",    label:"High"};
+  }
+  function lightsPanel(d){
+    var rows=[["sugar","Sugar"],["fat","Fat"],["satfat","Saturates"],["salt","Salt"]];
+    return '<div class="lights">'+rows.map(function(r){
+      var val=d[r[0]], lt=lightFor(r[0],val);
+      return '<div class="light '+lt.key+'"><span class="lname">'+r[1]+'</span>'+
+             '<span class="ldot"></span>'+
+             '<span class="lval">'+(val==null?"?":val+"g")+'</span>'+
+             '<span class="llabel">'+lt.label+'</span></div>';
+    }).join("")+'</div>';
+  }
+
   function openScanner(autostart){
     lastCode=null; lookupBusy=false; waitTries=0;
     var box=document.getElementById("scanResult"); box.style.display="none"; box.innerHTML="";
@@ -727,19 +758,33 @@
   function round1(v){ return Math.round(v*10)/10; }
   function titleCase(s){ return (""+s).toLowerCase().replace(/\b\w/g,function(c){return c.toUpperCase();}); }
 
-  // Source 1: Open Food Facts (global, no key). Returns {name,sugar,source} or null.
+  function r1(v){ return (v==null || isNaN(v)) ? null : round1(v); }
+
+  // Source 1: Open Food Facts (global, no key). Full per-100g nutrients or null.
   function lookupOFF(code){
     var url="https://world.openfoodfacts.org/api/v2/product/"+encodeURIComponent(code)+
             ".json?fields=product_name,brands,nutriments";
     return fetch(url).then(function(r){return r.json();}).then(function(d){
       if(!d || d.status===0 || !d.product) return null;
-      var p=d.product, nm=p.product_name || p.brands || "Unknown product";
-      var s=(p.nutriments && typeof p.nutriments.sugars_100g==="number") ? round1(p.nutriments.sugars_100g) : null;
-      return {name:nm, sugar:s, source:"Open Food Facts"};
+      var p=d.product, n=p.nutriments||{}, nm=p.product_name || p.brands || "Unknown product";
+      var salt = (typeof n.salt_100g==="number") ? n.salt_100g
+               : (typeof n.sodium_100g==="number") ? n.sodium_100g*2.5 : null; // salt = sodium × 2.5
+      return {name:nm, source:"Open Food Facts",
+        sugar:r1(n.sugars_100g), fat:r1(n.fat_100g),
+        satfat:r1(n["saturated-fat_100g"]), salt:r1(salt)};
     }).catch(function(){ return null; });
   }
 
-  // Source 2: USDA FoodData Central branded foods (US, demo key). Returns {name,sugar,source} or null.
+  // Source 2: USDA FoodData Central branded foods (US, demo key).
+  function usdaNutrient(list, number, namePrefix){
+    for(var i=0;i<list.length;i++){
+      var n=list[i], num=""+(n.nutrientNumber||n.number||"");
+      if(num===number || (namePrefix && n.nutrientName && n.nutrientName.indexOf(namePrefix)===0)){
+        if(typeof n.value==="number") return n.value;
+      }
+    }
+    return null;
+  }
   function lookupUSDA(code){
     var url="https://api.nal.usda.gov/fdc/v1/foods/search?dataType=Branded&pageSize=5&query="+
             encodeURIComponent(code)+"&api_key="+USDA_KEY;
@@ -750,16 +795,13 @@
       for(var i=0;i<d.foods.length;i++){ if(norm(d.foods[i].gtinUpc)===want){ pick=d.foods[i]; break; } }
       if(!pick) pick=d.foods[0];
       var nm=pick.description ? titleCase(pick.description) : (pick.brandName||pick.brandOwner||"Unknown product");
-      var s=null;
-      if(pick.foodNutrients){
-        for(var j=0;j<pick.foodNutrients.length;j++){
-          var n=pick.foodNutrients[j], num=""+(n.nutrientNumber||n.number||"");
-          if(num==="2000" || (n.nutrientName && n.nutrientName.indexOf("Sugars, total")===0)){
-            if(typeof n.value==="number"){ s=round1(n.value); break; }
-          }
-        }
-      }
-      return {name:nm, sugar:s, source:"USDA"};
+      var fn=pick.foodNutrients||[];
+      var sodiumMg=usdaNutrient(fn,"1093","Sodium");
+      return {name:nm, source:"USDA",
+        sugar:r1(usdaNutrient(fn,"2000","Sugars, total")),
+        fat:r1(usdaNutrient(fn,"1004","Total lipid")),
+        satfat:r1(usdaNutrient(fn,"1258","Fatty acids, total saturated")),
+        salt:r1(sodiumMg!=null ? sodiumMg/1000*2.5 : null)}; // sodium(mg)→salt(g): /1000 ×2.5
     }).catch(function(){ return null; });
   }
 
@@ -769,14 +811,14 @@
     lastCode=code; lookupBusy=true; stopScan();
     hint("Looking up "+code+"…");
     lookupOFF(code).then(function(off){
-      if(off && off.sugar!=null) return off;              // Open Food Facts has full data
+      if(off && off.sugar!=null) return off;              // Open Food Facts has the data
       hint("Checking USDA database…");
       return lookupUSDA(code).then(function(usda){
         if(usda && usda.sugar!=null) return usda;          // USDA has the sugar value
         return off || usda || null;                        // otherwise use whatever we found
       });
     }).then(function(res){
-      if(res) showResult({found:true, code:code, name:res.name, sugar:res.sugar, source:res.source});
+      if(res){ res.found=true; res.code=code; showResult(res); }
       else showResult({found:false, code:code});
     }).catch(function(){ showResult({found:false, code:code, error:true}); });
   }
@@ -802,9 +844,9 @@
       '<div class="sr-emoji">'+rt.emoji+'</div>'+
       '<h3>'+r.name+'</h3>'+
       '<div class="sr-rating" style="color:'+rt.color+'">'+rt.label+'</div>'+
-      '<div class="sr-sugar">'+(r.sugar!=null ? r.sugar+" g sugar per 100g" : "Sugar info not available")+'</div>'+
+      lightsPanel(r)+
       '<div class="sr-pts">'+(rt.pts>0 ? "+"+rt.pts+" pts earned 🎉" : "No points — too much sugar")+'</div>'+
-      (r.source ? '<div class="sr-src">via '+r.source+'</div>' : '')+
+      (r.source ? '<div class="sr-src">via '+r.source+' · per 100g</div>' : '')+
       resultBtns();
     wireResultBtns();
   }

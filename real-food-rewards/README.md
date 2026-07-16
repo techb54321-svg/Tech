@@ -23,9 +23,15 @@ dependencies. Progress is saved on the device with `localStorage`.
   missing sugar data), falls back to
   [USDA FoodData Central](https://fdc.nal.usda.gov/), then rated by sugar with a
   traffic light: 🟢 low (≤5g/100g), 🟠 medium (≤22.5g/100g), 🔴 high (>22.5g/100g).
-  The result card shows which database it came from. USDA uses the public
-  `DEMO_KEY` (rate-limited) — for real use, drop a free key from
-  <https://fdc.nal.usda.gov/api-key-signup.html> into `USDA_KEY` in `index.html`.
+  The result card shows a full **front-of-pack traffic-light panel** — Sugar,
+  Fat, Saturates and Salt, each 🟢/🟠/🔴 per 100g (UK FSA thresholds) — plus which
+  database it came from. **Points are driven by the sugar rating** (green 15,
+  orange 5, red 0). USDA uses the public `DEMO_KEY` (rate-limited) — for real use,
+  drop a free key from <https://fdc.nal.usda.gov/api-key-signup.html> into
+  `USDA_KEY` in `index.html`.
+
+  Traffic-light thresholds per 100g: **Sugar** 🟢≤5 🟠≤22.5 🔴>22.5 · **Fat**
+  🟢≤3 🟠≤17.5 🔴>17.5 · **Saturates** 🟢≤1.5 🟠≤5 🔴>5 · **Salt** 🟢≤0.3 🟠≤1.5 🔴>1.5.
   Green scans earn points, orange earn fewer, red earn none — so rewards steer
   people toward low-sugar food. A manual "type the barcode" box is the fallback
   if the camera is blocked.

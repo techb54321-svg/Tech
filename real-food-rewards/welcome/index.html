@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#f6f2ea" />
+<title>Welcome — Real Food Rewards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f6f2ea; --card:#ffffff; --ink:#1f2d24; --muted:#6b7d70;
+    --green:#2f9e44; --green-d:#2b8a3e; --lime:#82c91e; --gold:#f5b100;
+    --line:#e7e0d3; --shadow:0 16px 38px -18px rgba(31,45,36,.34);
+    --accent:#2f9e44;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  #app{max-width:520px;margin:0 auto;min-height:100%;padding:0 20px calc(30px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
+  .top{padding:calc(30px + env(safe-area-inset-top)) 4px 6px;text-align:center}
+  .globe{font-size:44px}
+  .top h1{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:26px;margin:8px 0 4px;letter-spacing:-.4px}
+  .top .sub{color:var(--muted);font-size:14px;font-weight:600;line-height:1.5}
+  .top .subs{color:var(--muted);font-size:12.5px;margin-top:6px;opacity:.9}
+
+  .pick{margin-top:20px;display:flex;flex-direction:column;gap:12px}
+  .lang{display:flex;align-items:center;gap:16px;padding:16px 18px;background:#fff;border:1.5px solid var(--line);
+    border-radius:20px;box-shadow:var(--shadow);transition:transform .14s, border-color .2s;width:100%;text-align:left}
+  .lang:active{transform:scale(.98)}
+  .lang .flag{font-size:34px;flex:none;width:44px;text-align:center}
+  .lang .n{flex:1;min-width:0}
+  .lang .native{display:block;font-size:20px;font-weight:800;letter-spacing:-.2px}
+  .lang .native.rtl{direction:rtl;text-align:right}
+  .lang .en{display:block;font-size:13px;color:var(--muted);font-weight:700;margin-top:3px}
+  .lang .go{font-size:22px;color:var(--muted)}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:26px;line-height:1.6}
+
+  /* personalized panel */
+  .panel{display:none;flex-direction:column;min-height:70vh;animation:fade .4s ease}
+  .panel.show{display:flex}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .hero{margin-top:14px;padding:30px 22px;border-radius:26px;text-align:center;color:#fff;position:relative;overflow:hidden;
+    background:linear-gradient(150deg,var(--accent),#146c3a);box-shadow:var(--shadow)}
+  .hero .flag{font-size:40px}
+  .hero .greet{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:30px;margin:8px 0 2px;line-height:1.2}
+  .hero .greet.rtl{direction:rtl}
+  .hero .translit{font-size:13px;opacity:.85;font-weight:600}
+  .hero .msg{margin-top:14px;font-size:14.5px;line-height:1.55;font-weight:500;opacity:.96}
+  .foods-lbl{margin:22px 2px 10px;font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  .foods{display:flex;flex-wrap:wrap;gap:8px}
+  .food{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13.5px;display:flex;gap:6px;align-items:center}
+  .start{margin-top:24px;width:100%;padding:16px;border-radius:16px;font-weight:800;font-size:17px;color:#fff;text-align:center;
+    background:linear-gradient(150deg,var(--lime),var(--accent) 60%,#146c3a);box-shadow:0 12px 26px -8px rgba(47,158,68,.55)}
+  .start:active{transform:scale(.98)}
+  .change{margin-top:14px;text-align:center;color:var(--muted);font-weight:800;font-size:13px}
+  .note{margin-top:18px;background:#fff8e6;border:1px solid #ffe8a3;border-radius:14px;padding:12px 14px;color:#7a5c00;font-size:12px;line-height:1.5;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- picker -->
+  <div id="picker">
+    <div class="top">
+      <div class="globe">🌍</div>
+      <h1>Choose your language</h1>
+      <div class="sub">اپنی زبان چنیں · ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ · Choose your language</div>
+      <div class="subs">We'll tailor the food, tips and rewards to your culture.</div>
+    </div>
+    <div class="pick" id="pick"></div>
+    <div class="foot">You can change this any time.</div>
+  </div>
+
+  <!-- personalized welcome -->
+  <div class="panel" id="panel">
+    <div class="hero" id="hero"></div>
+    <div class="foods-lbl">Foods we'll include for you</div>
+    <div class="foods" id="foods"></div>
+    <button class="start" id="startBtn">Let's start →</button>
+    <div class="change" id="changeBtn">← Choose a different language</div>
+    <div class="note">These starter foods &amp; greetings are a demo. Final in-language text, audio and cultural content should be confirmed with each community.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---- content packs (starter scaffold — validate with each community) ----
+     dir: "rtl" or "ltr" · greet: native script · translit + en: helpers  */
+  var PACKS={
+    af:{ label:"Afghan", flag:"🇦🇫", native:"دری · پښتو", nativeRtl:true, dir:"rtl", lang:"fa",
+      accent:"#2f7a3a",
+      greet:"السلام علیکم", greetRtl:true, translit:"As-salamu alaykum · Khosh âmadid",
+      msg:"Your food, your way — with gentle tips for healthier chai, bread and rice.",
+      foods:[["🫓","Naan"],["🍚","Qabili palaw"],["🥟","Bolani"],["🫖","Chai"],["🌴","Dates (Khurma)"],["🥛","Mast (yogurt)"],["🥬","Sabzi"],["🍖","Kabab"]] },
+    kar:{ label:"Karen (S'gaw)", flag:"🇲🇲", native:"S'gaw Karen", nativeRtl:false, dir:"ltr", lang:"ksw",
+      accent:"#1f6f8b",
+      greet:"Welcome", greetRtl:false, translit:"S'gaw Karen",
+      msg:"Celebrating fresh greens, fish and rice — with easy ideas as you settle in.",
+      foods:[["🍚","Rice"],["🐟","Fish paste (Nga pi)"],["🥬","Boiled greens"],["🎋","Bamboo shoots"],["🌶️","Chili"],["🍵","Tea-leaf salad"],["🥭","Papaya"],["🥒","Mustard leaf"]] },
+    pa:{ label:"Punjabi", flag:"🇮🇳", native:"ਪੰਜਾਬੀ", nativeRtl:false, dir:"ltr", lang:"pa",
+      accent:"#d9822b",
+      greet:"ਸਤ ਸ੍ਰੀ ਅਕਾਲ", greetRtl:false, translit:"Sat Sri Akal · Jee aayaan nu",
+      msg:"Roti, dal and saag at the centre — with lighter takes on chai, ghee and mithai.",
+      foods:[["🫓","Roti"],["🍲","Dal"],["🥬","Saag"],["🧀","Paneer"],["🥛","Lassi"],["🫖","Chai"],["🍯","Ghee"],["🍬","Mithai"]] },
+    en:{ label:"English / Other", flag:"🌐", native:"English", nativeRtl:false, dir:"ltr", lang:"en",
+      accent:"#2f9e44",
+      greet:"Welcome", greetRtl:false, translit:"",
+      msg:"A healthy-eating companion — scan foods, earn rewards and learn as you go.",
+      foods:[["🥦","Vegetables"],["🍎","Fruit"],["🐟","Fish"],["🫘","Beans"],["🌾","Wholegrains"],["🥛","Yogurt"],["🥚","Eggs"],["💧","Water"]] }
+  };
+  var ORDER=["af","kar","pa","en"];
+
+  /* remember the choice so returning users skip this (shared with the app) */
+  function saveChoice(code){ try{
+    localStorage.setItem("rfr_culture", code);
+    localStorage.setItem("rfr_lang", PACKS[code].lang);
+    localStorage.setItem("rfr_dir", PACKS[code].dir);
+  }catch(e){} }
+
+  var pick=document.getElementById("pick");
+  ORDER.forEach(function(code){
+    var p=PACKS[code];
+    var b=document.createElement("button"); b.className="lang";
+    b.innerHTML='<span class="flag">'+p.flag+'</span>'+
+      '<span class="n"><span class="native'+(p.nativeRtl?' rtl':'')+'">'+p.native+'</span>'+
+      '<span class="en">'+p.label+'</span></span><span class="go">›</span>';
+    b.onclick=function(){ choose(code); };
+    pick.appendChild(b);
+  });
+
+  function choose(code){
+    var p=PACKS[code];
+    saveChoice(code);
+    document.documentElement.style.setProperty("--accent", p.accent);
+    var hero=document.getElementById("hero");
+    hero.innerHTML='<div class="flag">'+p.flag+'</div>'+
+      '<div class="greet'+(p.greetRtl?' rtl':'')+'">'+p.greet+'</div>'+
+      (p.translit?'<div class="translit">'+p.translit+'</div>':'')+
+      '<div class="msg">'+p.msg+'</div>';
+    var foods=document.getElementById("foods");
+    foods.innerHTML=p.foods.map(function(f){ return '<span class="food">'+f[0]+' '+f[1]+'</span>'; }).join("");
+    document.getElementById("picker").style.display="none";
+    document.getElementById("panel").classList.add("show");
+    window.scrollTo(0,0);
+  }
+
+  document.getElementById("changeBtn").onclick=function(){
+    document.getElementById("panel").classList.remove("show");
+    document.getElementById("picker").style.display="block";
+    window.scrollTo(0,0);
+  };
+  document.getElementById("startBtn").onclick=function(){
+    // Into the app. In Cogniss this can instead hand back to the dashboard.
+    location.href="../?view=home";
+  };
+
+  /* If a choice already exists, you could auto-skip — left visible here so
+     you can demo the picker. Uncomment to auto-route returning users:
+  // var existing=localStorage.getItem("rfr_culture"); if(existing && PACKS[existing]) choose(existing);
+  */
+})();
+</script>
+</body>
+</html>

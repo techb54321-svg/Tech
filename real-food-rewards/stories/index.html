@@ -32,52 +32,47 @@
   .collect .ctxt{font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
   .sec{font-family:"Fraunces",Georgia,serif;font-weight:600;color:var(--ink);font-size:17px;margin:20px 2px 12px}
 
-  /* cover (photo-ready). No photo -> warm textured block with a serif quote mark + motif stamp */
-  .cover{position:relative;height:150px;overflow:hidden;background-size:cover;background-position:center}
-  .cover .qmark{position:absolute;top:-26px;left:8px;font-family:"Fraunces",Georgia,serif;font-size:150px;line-height:1;color:rgba(255,255,255,.5)}
-  .cover .stamp{position:absolute;right:14px;bottom:12px;width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.85);
-    display:grid;place-items:center;font-size:27px;box-shadow:0 8px 18px rgba(0,0,0,.14)}
-  .cover .ph-note{position:absolute;left:12px;bottom:10px;font-size:10px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:rgba(255,255,255,.85)}
+  .cover{position:relative;height:158px;overflow:hidden;border-radius:0}
+  .cover .cimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .cover .cscrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(0,0,0,.42),rgba(0,0,0,.05) 60%)}
+  .cover .stamp{position:absolute;right:14px;bottom:12px;width:52px;height:52px;border-radius:16px;background:rgba(255,255,255,.9);display:grid;place-items:center;font-size:27px;box-shadow:0 8px 18px rgba(0,0,0,.16);z-index:2}
+  .cover .ptag{position:absolute;left:14px;bottom:14px;z-index:2;color:#fff;font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:20px;letter-spacing:-.2px;line-height:1.15;text-shadow:0 2px 10px rgba(0,0,0,.4);max-width:74%}
+  .cover .kind{position:absolute;left:14px;top:13px;z-index:2;background:rgba(255,255,255,.9);color:var(--green-d);font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px}
 
-  .scard{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;width:100%;transition:transform .15s}
+  .scard{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;width:100%;transition:transform .15s;display:block}
   .scard:active{transform:scale(.99)}
-  .scard .body{padding:16px 18px 15px}
-  .scard .quote{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:19px;line-height:1.32;letter-spacing:-.2px;margin:0}
-  .scard .by{margin-top:10px;font-size:13px;font-weight:800;color:var(--green-d)}
-  .scard .th{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:19px;margin:0 0 5px;letter-spacing:-.2px}
-  .scard .tl{margin:0;font-size:14px;line-height:1.55;color:#4a5b50;font-weight:500}
+  .scard .body{padding:15px 18px 15px}
+  .scard .dek{font-size:14.5px;line-height:1.5;color:#46564b;font-weight:600;margin:0}
   .scard .cue{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .scard .cue .go{font-size:13px;font-weight:800;color:var(--muted)}
+  .scard .cue .go{font-size:13px;font-weight:800;color:var(--green-d)}
   .rew{background:#eafaef;color:var(--green-d);border:1px solid #cdeacc;padding:5px 11px;border-radius:999px;font-weight:800;font-size:11.5px;white-space:nowrap}
   .rew.done{background:#eef7ee}
 
-  /* featured */
-  .feature{margin-bottom:6px}
-  .feature .cover{height:196px}
-  .feature .kick{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.9);color:var(--green-d);font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px}
-  .feature .fbody{padding:16px 18px}
+  .feature .cover{height:190px}
+  .feature .fbody{padding:15px 18px}
   .feature .claimrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
   .feature .txt{font-size:12.5px;color:var(--muted);font-weight:700}
   .claim{padding:11px 17px;border-radius:13px;font-weight:800;font-size:14px;color:#fff;white-space:nowrap;background:linear-gradient(150deg,#8fd06a,var(--green) 60%,var(--green-d));box-shadow:0 8px 18px -7px rgba(47,158,68,.5)}
   .claim.done{background:#eef7ee;color:var(--green-d);box-shadow:none;border:1px solid #cdeacc}
-
   .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:24px;line-height:1.5}
 
   /* reader */
   .reader{position:fixed;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;overflow:hidden}
   .reader.show{display:flex}
-  .reader .rcover{position:relative;height:38%;min-height:220px;flex:none;overflow:hidden;background-size:cover;background-position:center}
-  .reader .rcover .qmark{position:absolute;top:-34px;left:12px;font-family:"Fraunces",Georgia,serif;font-size:200px;line-height:1;color:rgba(255,255,255,.5)}
-  .reader .rcover .stamp{position:absolute;right:16px;bottom:16px;width:60px;height:60px;border-radius:18px;background:rgba(255,255,255,.9);display:grid;place-items:center;font-size:31px;box-shadow:0 10px 22px rgba(0,0,0,.16)}
-  .reader .rcover .rscrim{position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(to top,var(--bg),transparent)}
-  .rclose{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow);font-size:17px;display:grid;place-items:center;z-index:3}
-  .rchip{position:absolute;top:calc(15px + env(safe-area-inset-top));left:16px;background:rgba(255,255,255,.9);color:var(--green-d);font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;z-index:3}
-  .rcontent{flex:1;overflow-y:auto;padding:4px 24px 24px;position:relative;z-index:2}
-  .rcontent .rquote{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:26px;line-height:1.28;letter-spacing:-.4px;margin:6px 0 0}
-  .rcontent .rby{margin-top:12px;font-size:14px;font-weight:800;color:var(--green-d)}
-  .rcontent .rbody{margin-top:16px;font-size:16.5px;line-height:1.75;color:#3f4f45;font-weight:500}
-  .rcontent .rbody p{margin:0 0 14px}
-  .rreward{margin-top:8px;display:inline-block;background:#eafaef;color:var(--green-d);border:1px solid #cdeacc;padding:9px 16px;border-radius:999px;font-weight:800;font-size:13px}
+  .reader .rcover{position:relative;height:34%;min-height:200px;flex:none;overflow:hidden}
+  .reader .rcover .cimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+  .reader .rcover .cscrim{position:absolute;inset:0;z-index:1;background:linear-gradient(to top,var(--bg) 2%,rgba(0,0,0,.18) 45%,rgba(0,0,0,.30))}
+  .reader .rcover .stamp{position:absolute;right:16px;bottom:26px;width:56px;height:56px;border-radius:17px;background:rgba(255,255,255,.92);display:grid;place-items:center;font-size:29px;box-shadow:0 10px 22px rgba(0,0,0,.18);z-index:2}
+  .rclose{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:var(--shadow);font-size:17px;display:grid;place-items:center;z-index:4}
+  .rkind{position:absolute;top:calc(15px + env(safe-area-inset-top));left:16px;background:rgba(255,255,255,.9);color:var(--green-d);font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;z-index:4}
+  .rcontent{flex:1;overflow-y:auto;padding:2px 24px 26px;position:relative;z-index:2}
+  .rcontent .rtitle{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:29px;line-height:1.12;letter-spacing:-.5px;margin:2px 0 0}
+  .rcontent .rby{margin-top:8px;font-size:13px;font-weight:800;color:var(--green-d);text-transform:uppercase;letter-spacing:.4px}
+  .rcontent .rtext{margin-top:16px;font-size:17px;line-height:1.75;color:#3a4a40;font-weight:500}
+  .rcontent .rtext p{margin:0 0 15px}
+  .rcontent .pull{margin:20px 0;padding:2px 0 2px 18px;border-left:4px solid var(--green);
+    font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:500;font-size:21px;line-height:1.35;color:var(--ink)}
+  .rreward{margin-top:6px;display:inline-block;background:#eafaef;color:var(--green-d);border:1px solid #cdeacc;padding:9px 16px;border-radius:999px;font-weight:800;font-size:13px}
   .rswap{animation:rswap .4s cubic-bezier(.2,.8,.2,1)}
   @keyframes rswap{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .rnav{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff}
@@ -88,7 +83,6 @@
   .dots{display:flex;gap:6px;align-items:center}
   .dots i{width:7px;height:7px;border-radius:50%;background:#d8cdb8;transition:.3s}
   .dots i.on{background:var(--green);width:20px;border-radius:4px}
-
   #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:200}
 </style>
 </head>
@@ -101,16 +95,16 @@
   <div class="collect"><div class="pbar"><i id="pbar"></i></div><div class="ctxt" id="ctxt">0 / 0 read</div></div>
 
   <div id="feature"></div>
-  <div class="sec">In their words</div>
+  <div class="sec">Stories</div>
   <div id="stories"></div>
   <div class="sec">Little tips</div>
   <div id="tips"></div>
-  <div class="foot">Real voices from the community. Come back tomorrow for a new one. 🌱</div>
+  <div class="foot">Warm stories from home. A new one to find each day. 🌱</div>
 </div>
 
 <div class="reader" id="reader">
   <div class="rcover" id="rcover"></div>
-  <span class="rchip" id="rchip"></span>
+  <span class="rkind" id="rkind"></span>
   <button class="rclose" id="rclose" aria-label="Close">✕</button>
   <div class="rcontent" id="rcontent"></div>
   <div class="rnav"><button id="rprev">‹ Back</button><div class="dots" id="rdots"></div><button class="next" id="rnext">Next ›</button></div>
@@ -121,7 +115,6 @@
 <script>
 (function(){
   "use strict";
-
   var KEY="rfr_state_v1";
   function today(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
   function fresh(){return {points:0,totalLogs:0,vegLogs:0,waterLogs:0,bestStreak:0,streak:0,lastDay:null,goalsHit:0,owned:[],day:{date:today(),logs:[],points:0,counts:{}}};}
@@ -133,31 +126,43 @@
   function seenSet(){try{return JSON.parse(localStorage.getItem(SEEN_KEY))||{};}catch(e){return {};}}
   function saveSeen(o){try{localStorage.setItem(SEEN_KEY,JSON.stringify(o));}catch(e){}}
 
-  /* warm cover palettes (no illustrations; photo-ready) */
-  var HUES={
-    peach:["#ffdcb0","#ff9e6b"], rose:["#ffd0d8","#f492a6"], green:["#c7ecc0","#7cc27a"],
-    amber:["#ffe6a6","#f0b24a"], blue:["#cfe6ff","#8bb9ee"], plum:["#e6d3f2","#b98fd6"]
-  };
-  function hueCss(h){ var c=HUES[h]||HUES.green; return "linear-gradient(150deg,"+c[0]+","+c[1]+")"; }
-  function firstName(n){ return (n||"").split(",")[0].split(" ")[0]; }
+  var HUES={peach:["#ffdcb0","#ef8f52"],rose:["#ffcdd6","#e98aa0"],green:["#bfe7b8","#5cab6a"],amber:["#ffe2a0","#e0a53c"],blue:["#c6e2ff","#7aa9e0"]};
+  function hueCss(h){var c=HUES[h]||HUES.green;return "linear-gradient(150deg,"+c[0]+","+c[1]+")";}
 
-  /* default (English) content, quote-led and human. Add photo:"file.jpg" any time. */
+  /* ---- default (English) content ---- actual stories, multi-paragraph ---- */
   var STORIES=[
-    {id:"s1",motif:"🎒",hue:"amber",photo:"",h:"Ayesha's lunchbox",quote:"My daughter stopped fading in the afternoons once the juice box went.",name:"Sana, mum of two",b:"Ayesha had a juice box every day and would droop by the afternoon. We swapped it for a water bottle and a little box of grapes. Within a week her teacher said she seemed brighter. She still gets her sweet taste, just from the fruit now."},
-    {id:"s2",motif:"🌴",hue:"peach",photo:"",h:"Grandma's dates",quote:"Nobody missed the sweets, and we all slept a little softer.",name:"Marta, grandmother",b:"After dinner everyone reached for sweets. I started setting out a bowl of dates and orange slices instead. Nobody missed the sweets, and we all slept a little softer."},
-    {id:"s3",motif:"🚶",hue:"rose",photo:"",h:"The evening walk",quote:"Fifteen minutes after dinner turned into the best part of our day.",name:"Daniel, dad of three",b:"We began a short walk together after dinner, just fifteen minutes. It helped everything settle, and it became the part of the day we all look forward to, side by side and talking."},
-    {id:"s4",motif:"🍲",hue:"green",photo:"",h:"Cook once, eat twice",quote:"One big pot on Sunday, and the takeaways almost disappeared.",name:"Priya, mum of four",b:"I started making one big pot of stew on Sundays. With something healthy already in the fridge, we reached for takeaway far less all week."}
+    {id:"s1",motif:"🍇",hue:"amber",photo:"https://loremflickr.com/640/400/grapes,fruit?lock=101",
+     h:"Ayesha's afternoons", by:"A story from the community",
+     dek:"A juice box, a sleepy classroom, and one small change.",
+     b:["Every morning, Ayesha's mother tucked a juice box into her school bag. It was the easy thing, the sweet thing, and Ayesha loved it. But by the middle of each afternoon her head would grow heavy, and the words on the board began to swim.",
+        "Her teacher mentioned it kindly at pick-up one day. That evening, Ayesha's mother stood at the counter, thinking, and remembered the little boxes of grapes her own mother used to pack, cold and sweet from the fridge.",
+        "The next morning, in went a bottle of water and a small box of grapes. Ayesha was unsure at first. But the grapes were sweet, the water was cold, and something about the afternoon felt clearer.",
+        "A week later her teacher smiled and said Ayesha seemed brighter. She still gets her sweet taste, her mother thought. It just comes from the fruit now."],
+     pull:"She still gets her sweet taste. It just comes from the fruit now."},
+    {id:"s2",motif:"🌇",hue:"rose",photo:"https://loremflickr.com/640/400/park,sunset?lock=102",
+     h:"Fifteen minutes", by:"A story from the community",
+     dek:"He was too tired to move after dinner. Then came a small idea.",
+     b:["By the time dinner was finished, Daniel wanted only to sink into the sofa and not move until morning. The day sat heavy on him, and the meal sat heavy too.",
+        "His wife watched him one evening and said simply, 'Come. Just to the end of the street and back.' He grumbled, but he went. The children, hearing there was a walk, came running.",
+        "The air was cool. They passed the shop closing up and the neighbour watering her plants. The children raced ahead and circled back, breathless and laughing, and Daniel felt his chest open, just a little.",
+        "They walk most evenings now, the whole family, fifteen minutes into the dusk. He sleeps deeper for it. But that is not why they go. They go because it has become the part of the day that belongs to them."],
+     pull:"It has become the part of the day that belongs to them."},
+    {id:"s3",motif:"🍲",hue:"green",photo:"https://loremflickr.com/640/400/stew,pot?lock=103",
+     h:"The Sunday pot", by:"A story from the community",
+     dek:"One big pot on the weekend, and the whole week changed.",
+     b:["The week had a way of getting away from Priya. Between the children, the errands and the long days, dinner often arrived as whatever was fastest: a call to the takeaway, a bag of something fried.",
+        "One Sunday, with the kitchen quiet and the morning open, she set a great pot on the stove and cooked a stew the way her mother taught her, thick with beans and vegetables and slow, patient time.",
+        "It filled the house with a smell that drew the children in one by one. There was enough for Sunday, and plenty left besides. On Monday, tired and late, she opened the fridge and there it was, waiting.",
+        "That one pot carried them halfway through the week. The takeaways grew rare. 'One big pot on the weekend,' she says, 'and somehow the whole week feels easier.'"],
+     pull:"One big pot on the weekend, and the whole week feels easier."}
   ];
   var TIPS=[
-    {id:"t1",motif:"🥗",hue:"green",h:"Fill half your plate",b:"At each meal, aim to make half your plate vegetables or fruit. Colour first, and the rest tends to fall into place."},
-    {id:"t2",motif:"💧",hue:"blue",h:"Water before meals",b:"Have a glass of water before you eat. It keeps you hydrated, and thirst can feel a lot like hunger."},
-    {id:"t3",motif:"🏷️",hue:"amber",h:"Check the label",b:"Look at sugars per 100g. Around 5g is low, over 22.5g is high. Your scanner does this for you, and it is a handy habit at the shelf too."},
-    {id:"t4",motif:"🛒",hue:"peach",h:"Shop the edges",b:"Fresh food usually lines the outer walls of the shop. Shopping the edges quietly fills your basket with real food."},
-    {id:"t5",motif:"🍽️",hue:"rose",h:"Slow down",b:"It takes about twenty minutes to feel full. Put the fork down between bites, and let your body catch up."}
+    {id:"t1",motif:"🥗",hue:"green",photo:"https://loremflickr.com/640/400/salad,vegetables?lock=111",h:"Fill half your plate",b:"At each meal, aim to make half your plate vegetables or fruit. Colour first, and the rest tends to fall into place."},
+    {id:"t2",motif:"💧",hue:"blue",photo:"https://loremflickr.com/640/400/water,glass?lock=112",h:"Water before meals",b:"Have a glass of water before you eat. It keeps you hydrated, and thirst can feel a lot like hunger."},
+    {id:"t3",motif:"🏷️",hue:"amber",photo:"https://loremflickr.com/640/400/groceries,shopping?lock=113",h:"Check the label",b:"Look at sugars per 100g. Around 5g is low, over 22.5g is high. Your scanner does this for you, and it is a handy habit at the shelf too."}
   ];
   var PER=2, DAILY=5;
 
-  // Personalise to the chosen community from the shared pack.
   try{
     var _p = window.RFR_pack && RFR_pack();
     if(_p){
@@ -167,8 +172,7 @@
     }
   }catch(e){}
 
-  // normalise: give tips a hue/motif fallback, tag types
-  STORIES.forEach(function(s){ s._type="story"; s.hue=s.hue||"green"; s.motif=s.motif||"🍽️"; });
+  STORIES.forEach(function(s){ s._type="story"; s.hue=s.hue||"green"; s.motif=s.motif||"📖"; });
   TIPS.forEach(function(t){ t._type="tip"; t.hue=t.hue||"amber"; t.motif=t.motif||"💡"; });
   var ITEMS=STORIES.concat(TIPS);
   var indexOf={}; ITEMS.forEach(function(it,i){ indexOf[it.id]=i; });
@@ -177,46 +181,40 @@
   setPts(totalPoints());
   function seenCount(){ var c=0; ITEMS.forEach(function(it){ if(seen[it.id]) c++; }); return c; }
   function updateProgress(){ var c=seenCount(),t=ITEMS.length; document.getElementById("pbar").style.width=(c/t*100)+"%"; document.getElementById("ctxt").textContent=c+" / "+t+" read"; }
+  function bodyText(it){ return Array.isArray(it.b) ? it.b : [it.b]; }
+  function dekOf(it){ return it.dek || (Array.isArray(it.b)? it.b[0] : it.b); }
 
-  function coverInner(it, big){
-    return (it.photo?'':'<span class="qmark">“</span>')+
-           '<span class="stamp">'+it.motif+'</span>'+
-           ((!it.photo && !big && it._type==="story")?'<span class="ph-note">Photo coming soon</span>':'');
-  }
-  function coverStyle(it){
-    return it.photo ? 'background-image:linear-gradient(rgba(0,0,0,.12),rgba(0,0,0,.12)),url('+it.photo+')'
-                    : 'background:'+hueCss(it.hue);
+  function coverEl(it, extra){
+    var img = it.photo ? '<img class="cimg" src="'+it.photo+'" alt="" loading="lazy" onerror="this.remove()">' : '';
+    var scrim = it.photo ? '<span class="cscrim"></span>' : '';
+    return '<div class="cover" style="background:'+hueCss(it.hue)+'">'+img+scrim+
+      (extra||'')+
+      '<span class="ptag">'+it.h+'</span><span class="stamp">'+it.motif+'</span></div>';
   }
 
   var cardEls={};
   function makeCard(it){
     var el=document.createElement("button"); el.className="scard";
-    var body = (it._type==="story" && it.quote)
-      ? '<p class="quote">“'+it.quote+'”</p><div class="by">'+it.name+'</div>'+
-        '<div class="cue"><span class="go">Read '+firstName(it.name)+'’s story ›</span>'+
-        '<span class="rew'+(seen[it.id]?' done':'')+'" data-rt="'+it.id+'">'+(seen[it.id]?'✓ +'+PER:'+'+PER+' ⭐')+'</span></div>'
-      : '<h3 class="th">'+it.h+'</h3><p class="tl">'+it.b+'</p>'+
-        '<div class="cue"><span class="go">Read tip ›</span>'+
-        '<span class="rew'+(seen[it.id]?' done':'')+'" data-rt="'+it.id+'">'+(seen[it.id]?'✓ +'+PER:'+'+PER+' ⭐')+'</span></div>';
-    el.innerHTML='<div class="cover" style="'+coverStyle(it)+'">'+coverInner(it)+'</div><div class="body">'+body+'</div>';
+    el.innerHTML=coverEl(it)+
+      '<div class="body"><p class="dek">'+dekOf(it)+'</p>'+
+      '<div class="cue"><span class="go">'+(it._type==="story"?"Read the story ›":"Read tip ›")+'</span>'+
+      '<span class="rew'+(seen[it.id]?' done':'')+'" data-rt="'+it.id+'">'+(seen[it.id]?'✓ +'+PER:'+'+PER+' ⭐')+'</span></div></div>';
     el.onclick=function(){ openReader(indexOf[it.id]); };
     cardEls[it.id]=el; return el;
   }
   function refreshCard(id){ var el=cardEls[id]; if(!el)return; var rt=el.querySelector('[data-rt="'+id+'"]'); if(rt){ rt.textContent="✓ +"+PER; rt.className="rew done"; } }
 
-  /* featured tip/story of the day */
+  /* featured story of the day */
   function dayIndex(){ var d=new Date(); return (d.getFullYear()*372 + d.getMonth()*31 + d.getDate()); }
-  var totd=ITEMS[dayIndex()%ITEMS.length];
+  var pool=STORIES.length?STORIES:ITEMS;
+  var totd=pool[dayIndex()%pool.length];
   var DAY_KEY="rfr_tip_claimed";
   function claimedToday(){ try{return localStorage.getItem(DAY_KEY)===today();}catch(e){return false;} }
   (function(){
     var claimed=claimedToday();
     var f=document.createElement("div"); f.className="scard feature";
-    var lead = (totd._type==="story" && totd.quote)
-      ? '<p class="quote">“'+totd.quote+'”</p><div class="by">'+totd.name+'</div>'
-      : '<h3 class="th">'+totd.h+'</h3><p class="tl">'+totd.b+'</p>';
-    f.innerHTML='<div class="cover" style="'+coverStyle(totd)+'"><span class="kick">☀️ Today’s story</span>'+coverInner(totd)+'</div>'+
-      '<div class="fbody">'+lead+
+    f.innerHTML=coverEl(totd,'<span class="kind">☀️ Story of the day</span>')+
+      '<div class="fbody"><p class="dek">'+dekOf(totd)+'</p>'+
       '<div class="claimrow"><span class="txt">Read today’s story to collect your bonus</span>'+
       '<button class="claim'+(claimed?' done':'')+'" id="claimBtn">'+(claimed?'✓ +'+DAILY+' claimed':'Claim +'+DAILY+' ⭐')+'</button></div></div>';
     document.getElementById("feature").appendChild(f);
@@ -231,22 +229,20 @@
   var th=document.getElementById("tips"); TIPS.forEach(function(t){ th.appendChild(makeCard(t)); });
   updateProgress();
 
-  /* immersive reader */
+  /* reader */
   var reader=document.getElementById("reader"), cur=-1;
   function renderReader(i){
     cur=i; var it=ITEMS[i];
-    document.getElementById("rcover").style.cssText=coverStyle(it);
-    document.getElementById("rcover").innerHTML=coverInner(it,true)+'<div class="rscrim"></div>';
-    document.getElementById("rchip").textContent = it._type==="story" ? "In their words" : "Little tip";
+    var img = it.photo ? '<img class="cimg" src="'+it.photo+'" alt="" loading="lazy" onerror="this.remove()">' : '';
+    document.getElementById("rcover").style.cssText="background:"+hueCss(it.hue);
+    document.getElementById("rcover").innerHTML=img+'<span class="cscrim"></span><span class="stamp">'+it.motif+'</span>';
+    document.getElementById("rkind").textContent = it._type==="story" ? "Story" : "Little tip";
     var earned=false;
-    if(!seen[it.id]){ seen[it.id]=1; saveSeen(seen); var nt=award(PER,"📖",it.h||it.name); setPts(nt); refreshCard(it.id); updateProgress(); earned=true; confetti(28); }
-    var c=document.getElementById("rcontent");
-    c.classList.remove("rswap"); void c.offsetWidth; c.classList.add("rswap");
-    var main = (it._type==="story" && it.quote)
-      ? '<p class="rquote">“'+it.quote+'”</p><div class="rby">'+it.name+'</div>'+
-        '<div class="rbody"><p>'+it.b+'</p></div>'
-      : '<p class="rquote">'+it.h+'</p><div class="rbody"><p>'+it.b+'</p></div>';
-    c.innerHTML=main+'<div class="rreward">'+(earned?'+'+PER+' points earned ⭐':'✓ Read · +'+PER+' collected')+'</div>';
+    if(!seen[it.id]){ seen[it.id]=1; saveSeen(seen); var nt=award(PER,"📖",it.h); setPts(nt); refreshCard(it.id); updateProgress(); earned=true; confetti(28); }
+    var paras=bodyText(it), html='<h1 class="rtitle">'+it.h+'</h1>'+(it.by?'<div class="rby">'+it.by+'</div>':'')+'<div class="rtext">';
+    paras.forEach(function(p,idx){ html+='<p>'+p+'</p>'; if(it.pull && idx===0 && paras.length>1){ html+='<blockquote class="pull">“'+it.pull+'”</blockquote>'; } });
+    html+='</div><div class="rreward">'+(earned?'+'+PER+' points earned ⭐':'✓ Read · +'+PER+' collected')+'</div>';
+    var c=document.getElementById("rcontent"); c.classList.remove("rswap"); void c.offsetWidth; c.classList.add("rswap"); c.innerHTML=html;
     document.getElementById("rdots").innerHTML=ITEMS.map(function(_,k){return '<i class="'+(k===i?'on':'')+'"></i>';}).join("");
     document.getElementById("rprev").disabled=i===0;
     document.getElementById("rnext").textContent=i===ITEMS.length-1?"Done ✓":"Next ›";

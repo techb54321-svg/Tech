@@ -55,20 +55,35 @@ window.RFR_PACKS = {
     ],
 
     stories:[
-      {id:"af_s1", motif:"🌴", hue:"peach", photo:"", h:"Grandmother's dates",
-       quote:"Now the little ones ask for dates before they ask for sweets.", name:"Fariba, grandmother of six",
-       b:"For years, the moment dinner ended, everyone reached for sweets. One evening I set out a bowl of dates and orange slices instead, the way my own mother used to. Nobody complained. Now the little ones ask for dates before they ask for sweets, and I rest easier for it."},
-      {id:"af_s2", motif:"🚶", hue:"rose", photo:"", h:"The evening walk",
-       quote:"Our walk after dinner became the part of the day we all wait for.", name:"Ahmad, father of four",
-       b:"After dinner I used to sit heavy and tired. My wife said, let us just walk around the block, fifteen minutes. The children come too. We talk, we breathe, and the chai sits lighter. Our walk after dinner became the part of the day we all wait for."},
-      {id:"af_s3", motif:"🍲", hue:"green", photo:"", h:"Sunday's big palaw",
-       quote:"One big pot on the weekend, and the whole week feels easier.", name:"Nadia, mother of three",
-       b:"The week gets busy, and it is easy to reach for takeaway. So on the weekend I cook one big pot of vegetable palaw. When something warm and home made is waiting, we hardly order out. One big pot on the weekend, and the whole week feels easier."}
+      {id:"af_s1", motif:"🌴", hue:"peach", photo:"https://loremflickr.com/640/400/dates,fruit?lock=201",
+       h:"The bowl of dates", by:"Bibi Fariba's story",
+       dek:"After every dinner, the same little ritual. Until Bibi quietly changed it.",
+       b:["In Bibi Fariba's house, dinner never truly ended. The plates were cleared, the chai was poured, and then, as sure as the evening itself, the children would drift toward the cupboard where the sweets were kept.",
+          "She had done the same as a girl. But lately she watched her grandchildren, sticky fingered and restless long past bedtime, and something tugged at her. She thought of her own mother, who always kept a bowl of dates on the sofreh, plump and dark and sweet as honey.",
+          "So one evening, without a word, Bibi set out a bowl of dates and a plate of orange slices where the sweets used to sit. Little Zohal eyed them with suspicion. Then she took one, and then another, and soon the whole bowl had disappeared.",
+          "Now the children ask for dates before they ask for sweets. They settle sooner, and Bibi rests easier, knowing she has passed something down. 'It is a small thing,' she says, 'but small things, repeated, become who we are.'"],
+       pull:"Small things, repeated, become who we are."},
+      {id:"af_s2", motif:"🌇", hue:"rose", photo:"https://loremflickr.com/640/400/park,sunset?lock=202",
+       h:"Rahim's fifteen minutes", by:"Rahim's story",
+       dek:"He was too tired to move after dinner. His wife had an idea.",
+       b:["By the time dinner was finished, Rahim wanted only to sink onto the toshak and not move until morning. The day sat heavy on him, and the food sat heavy too.",
+          "His wife, Soraya, watched him one evening and said simply, 'Come. Just to the end of the street and back. Fifteen minutes.' He grumbled, but he went. The children, hearing there was a walk, came running.",
+          "The air was cool and kind. They passed the baker pulling down his shutter and the neighbour watering her herbs on the step. The little ones raced ahead and circled back, breathless and laughing, and Rahim felt his chest open, just a little.",
+          "They walk most evenings now, the whole family together, fifteen minutes into the blue of the dusk. His chai sits lighter afterward, and his sleep runs deeper. But that is not the reason they go. They go because it has become the part of the day that belongs to them."],
+       pull:"It has become the part of the day that belongs to them."},
+      {id:"af_s3", motif:"🍲", hue:"green", photo:"https://loremflickr.com/640/400/pilaf,rice?lock=203",
+       h:"The Sunday pot", by:"Nadia's story",
+       dek:"One big pot on the weekend, and the whole week felt lighter.",
+       b:["The week had a way of getting away from Nadia. Between the children, the errands and the long tired days, dinner often arrived as whatever was quickest, a call to the takeaway, a bag of something fried.",
+          "One Sunday, with the kitchen quiet and the morning wide open, she set a great pot on the stove and made vegetable palaw the way her mother had taught her, the rice fragrant with cumin, sweet with carrot and raisin.",
+          "The smell wandered through the house and drew the children in one by one. There was enough for Sunday, and plenty left over besides. On Monday, tired and late, she opened the fridge and there it was, waiting for her.",
+          "That single pot carried them halfway through the week, and slowly the takeaways grew rare. 'One big pot on the weekend,' Nadia says, laughing, 'and somehow the whole week feels easier.'"],
+       pull:"One big pot on the weekend, and somehow the whole week feels easier."}
     ],
     tips:[
-      {id:"af_t1", motif:"🫖", hue:"peach", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
-      {id:"af_t2", motif:"🥗", hue:"green", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
-      {id:"af_t3", motif:"🫓", hue:"amber", h:"Warm naan", b:"Naan is the heart of the table. When you can, choose the wholemeal kind, and enjoy it fresh and warm with your meal."}
+      {id:"af_t1", motif:"🫖", hue:"peach", photo:"https://loremflickr.com/640/400/tea,cup?lock=204", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
+      {id:"af_t2", motif:"🥗", hue:"green", photo:"https://loremflickr.com/640/400/spinach,greens?lock=205", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
+      {id:"af_t3", motif:"🫓", hue:"amber", photo:"https://loremflickr.com/640/400/flatbread,bread?lock=206", h:"Warm naan", b:"Naan is the heart of the table. When you can, choose the wholemeal kind, and enjoy it fresh and warm with your meal."}
     ],
 
     quiz:[

@@ -7,7 +7,7 @@
 <title>Real Food Rewards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root{
     --bg:#0b1a12;
@@ -421,6 +421,97 @@
   body.focus nav{display:none}
   body.focus #app{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
   body.focus #scanClose{display:none}
+
+  /* ============================================================
+     Warm & cosy light theme (final override) - homey, not techy
+     ============================================================ */
+  :root{
+    --green:#2f9e44; --green-deep:#2b8a3e; --lime:#82c91e; --gold:#e0a100;
+    --text:#26332b; --muted:#6b7d70; --line:#e7ded0;
+    --glass:#ffffff;
+    --shadow:0 14px 30px -16px rgba(70,52,28,.26);
+  }
+  body{
+    background:radial-gradient(120% 90% at 50% -8%, #fbf5e7 0%, #f4ecdc 55%, #efe5d3 100%) fixed;
+    color:var(--text);
+  }
+  body::before, body::after{ display:none !important; content:none !important; }
+
+  .card{ background:#fff; border:1px solid var(--line);
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.7);
+    -webkit-backdrop-filter:none; backdrop-filter:none; }
+
+  .brand{ color:var(--text); font-family:"Fraunces",Georgia,serif; font-weight:700; letter-spacing:-.2px; }
+  .brand small{ color:var(--muted); font-family:"Manrope",sans-serif; font-weight:600; }
+  .streak-chip{ background:#fff; color:var(--text); border:1px solid var(--line); box-shadow:var(--shadow); }
+
+  .hero::after{ display:none; }
+  .hero-info h2{ color:var(--muted); }
+  .hero-info .pts{ background:none; -webkit-text-fill-color:currentColor; color:var(--text); }
+  .hero-info .pts small{ -webkit-text-fill-color:var(--gold); color:var(--gold); }
+  .ring::before{ display:none; }
+  .ring .label b{ color:var(--text); }
+  .ring .label span{ color:var(--muted); }
+  .levelbar{ background:#ece1cf; box-shadow:inset 0 1px 2px rgba(0,0,0,.06); }
+  .level-meta{ color:var(--muted); }
+
+  .section-title h3{ color:var(--text); font-family:"Fraunces",Georgia,serif; font-weight:700; }
+  .section-title a{ color:var(--green); }
+
+  .scan-cta{ background:linear-gradient(135deg,#eafbef,#f4fae1);
+    border:1px solid #cfe9cd; color:var(--text);
+    box-shadow:0 14px 30px -16px rgba(47,158,68,.4), inset 0 1px 0 #fff; }
+  .scan-cta small{ color:var(--muted); }
+  .scan-cta .scan-cta-arrow{ color:var(--green); }
+
+  .food{ background:#fff; border:1px solid var(--line); box-shadow:var(--shadow);
+    -webkit-backdrop-filter:none; backdrop-filter:none; }
+  .food:active{ background:#fbf6ec; border-color:#cfe9cd; box-shadow:0 12px 24px -14px rgba(47,158,68,.35); }
+  .food .name{ color:var(--text); }
+  .food .fa{ color:var(--muted); }
+  .food .pv{ color:var(--gold); }
+
+  .today-item{ border-color:var(--line); }
+  .today-item .t{ color:var(--text); }
+  .today-item .t .sub{ color:var(--muted); }
+  .today-item .p{ color:var(--gold); }
+  .stat b{ background:none; -webkit-text-fill-color:currentColor; color:var(--text); }
+  .stat small{ color:var(--muted); }
+  .empty, .footer-note{ color:var(--muted); }
+
+  .challenge .ic{ background:#f4ede1; border:1px solid var(--line); box-shadow:none; }
+  .challenge .body h4{ color:var(--text); }
+  .challenge .body .bar{ background:#ece1cf; }
+  .challenge .badge{ color:var(--gold); }
+  .reward .ic{ background:linear-gradient(150deg,#eafbef,#dff3e2); border:1px solid #cfe9cd; box-shadow:none; }
+  .reward .body h4{ color:var(--text); }
+  .btn-redeem{ color:#fff; }
+  .bdg{ background:#fff; border:1px solid var(--line); }
+  .bdg small{ color:var(--muted); }
+  .bdg.on small{ color:var(--text); }
+
+  nav{ background:rgba(255,251,244,.94); border:1px solid var(--line);
+    -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:var(--shadow); }
+  nav button{ color:var(--muted); }
+  nav button.active{ color:#fff; background:linear-gradient(150deg,var(--lime),var(--green));
+    box-shadow:0 10px 20px -8px rgba(47,158,68,.5); }
+
+  #toast{ background:#fff; color:var(--text); border:1px solid var(--line); box-shadow:var(--shadow);
+    -webkit-backdrop-filter:none; backdrop-filter:none; }
+
+  .scan-overlay{ background:radial-gradient(120% 80% at 50% 0%, #fbf5e7, #f0e6d4 70%); }
+  .scan-head{ color:var(--text); }
+  .scan-head button{ color:var(--muted); }
+  .scan-hint{ color:var(--muted); }
+  .scan-manual input{ background:#fff; border:1px solid var(--line); color:var(--text); }
+  .scan-manual button{ background:#f4ede1; color:var(--text); }
+  .scan-result{ background:#fff; }
+  .scan-result h3{ color:var(--text); }
+  .scan-result .sr-sugar, .scan-result .sr-src{ color:var(--muted); }
+  .btn-scan-done{ background:#f4ede1; color:var(--text); }
+  .light{ background:#f7f1e6; border:1px solid var(--line); }
+  .light .lname, .light .llabel{ color:var(--muted); }
+  .light .lval{ color:var(--text); }
 </style>
 </head>
 <body>
@@ -438,7 +529,7 @@
     <div class="card hero">
       <div class="ring">
         <svg width="104" height="104">
-          <circle cx="52" cy="52" r="46" stroke="rgba(255,255,255,.09)" stroke-width="9" fill="none"/>
+          <circle cx="52" cy="52" r="46" stroke="#ece1cf" stroke-width="9" fill="none"/>
           <circle id="ringProg" cx="52" cy="52" r="46" stroke="url(#g)" stroke-width="9" fill="none"
                   stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="289"/>
           <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">

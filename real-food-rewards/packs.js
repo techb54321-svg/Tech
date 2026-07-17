@@ -81,9 +81,12 @@ window.RFR_PACKS = {
        pull:"One big pot on the weekend, and somehow the whole week feels easier."}
     ],
     tips:[
-      {id:"af_t1", motif:"🫖", hue:"peach", photo:"https://loremflickr.com/640/400/tea,cup?lock=204", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
-      {id:"af_t2", motif:"🥗", hue:"green", photo:"https://loremflickr.com/640/400/spinach,greens?lock=205", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
-      {id:"af_t3", motif:"🫓", hue:"amber", photo:"https://loremflickr.com/640/400/flatbread,bread?lock=206", h:"Warm naan", b:"Naan is the heart of the table. When you can, choose the wholemeal kind, and enjoy it fresh and warm with your meal."}
+      {id:"af_t1", illo:"chai", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
+      {id:"af_t2", illo:"dates", h:"Dates after dinner", b:"When the sweets are calling after dinner, set out a bowl of dates and orange slices instead. Sweet and satisfying, and gentle on you."},
+      {id:"af_t3", illo:"walk", h:"A short evening walk", b:"A fifteen minute walk after dinner helps the meal settle, and it is a warm moment for the whole family. Your chai will sit lighter for it."},
+      {id:"af_t4", illo:"plate", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
+      {id:"af_t5", illo:"naan", h:"Warm wholemeal naan", b:"Naan is the heart of the table. When you can, choose the wholemeal kind, and enjoy it fresh and warm with your meal."},
+      {id:"af_t6", illo:"water", h:"Dogh or water", b:"Instead of a sugary fizzy drink, pour a glass of dogh or cool water. Refreshing, traditional, and none of the sugar."}
     ],
 
     quiz:[

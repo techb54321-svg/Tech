@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#f6f2ea" />
-<title>Quick Quiz — Real Food Rewards</title>
+<title>Quick Quiz · Real Food Rewards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -80,6 +80,7 @@
 </div>
 <canvas id="fx"></canvas>
 
+<script src="../packs.js"></script>
 <script>
 (function(){
   "use strict";
@@ -108,6 +109,17 @@
     {q:"Best everyday way to stay hydrated?",a:["Water","Sugary juice","Energy drink","Soda"],c:0}
   ];
   var PER=5; // points per correct answer
+
+  // Personalise the quiz to the chosen community from the shared pack.
+  try{
+    var _p = window.RFR_pack && RFR_pack();
+    if(_p){
+      if(_p.quiz && _p.quiz.length) Q = _p.quiz;
+      if(_p.accent){ document.documentElement.style.setProperty("--green",_p.accent);
+        document.documentElement.style.setProperty("--green-d",_p.accent); }
+    }
+  }catch(e){}
+
   var idx=0, correct=0, answered=false;
 
   var stage=document.getElementById("stage"), prog=document.getElementById("prog");
@@ -139,7 +151,7 @@
       else b.classList.add("dim");
     });
     if(i===item.c){ correct++; fb.textContent="Correct! +"+PER+" ⭐"; fb.className="feedback ok"; }
-    else { fb.textContent="Not quite — the answer is "+item.a[item.c]+"."; fb.className="feedback no"; }
+    else { fb.textContent="Not quite. The answer is "+item.a[item.c]+"."; fb.className="feedback no"; }
     document.getElementById("next").disabled=false;
   }
   function nextQ(){

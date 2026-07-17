@@ -224,7 +224,7 @@
   .light .llabel{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
 
   /* ============================================================
-     ✨ 10× VISUAL REDESIGN — premium glass / aurora / motion
+     ✨ 10× VISUAL REDESIGN - premium glass / aurora / motion
      (overrides the rules above; all class names & IDs preserved)
      ============================================================ */
   :root{
@@ -317,7 +317,7 @@
   .section-title h3{font-size:17px;font-weight:800;letter-spacing:-.3px}
   .section-title a{color:var(--lime)}
 
-  /* scan CTA — hero button */
+  /* scan CTA - hero button */
   .scan-cta{
     background:linear-gradient(135deg,rgba(52,224,127,.22),rgba(198,255,94,.09));
     border:1px solid rgba(52,224,127,.38);
@@ -417,7 +417,7 @@
   /* confetti canvas */
   #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:200}
 
-  /* focus mode — a single-screen embed for each Cogniss dashboard tile */
+  /* focus mode - a single-screen embed for each Cogniss dashboard tile */
   body.focus nav{display:none}
   body.focus #app{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
   body.focus #scanClose{display:none}
@@ -465,7 +465,7 @@
     <div class="grid" id="quickFoods"></div>
 
     <div class="section-title"><h3>Today</h3><a id="clearToday">reset day</a></div>
-    <div class="card today-list" id="todayList"><div class="empty">Nothing logged yet — tap a food above to start earning. 🌱</div></div>
+    <div class="card today-list" id="todayList"><div class="empty">Nothing logged yet. Tap a food above to start earning. 🌱</div></div>
 
     <div class="stat-row">
       <div class="card stat"><b id="statLogs">0</b><small>foods today</small></div>
@@ -506,7 +506,7 @@
     </div>
     <div class="section-title"><h3>Rewards shop</h3></div>
     <div id="rewardList"></div>
-    <div class="footer-note">Rewards are examples — swap them for real perks in your Cogniss app.</div>
+    <div class="footer-note">Rewards are examples. Swap them for real perks in your Cogniss app.</div>
   </section>
 
   <nav>
@@ -783,7 +783,7 @@
                '<span class="t">'+l.n+sub+'</span><span class="p">+'+l.p+'</span></div>';
       }).join("");
     }else{
-      tl.innerHTML='<div class="empty">Nothing logged yet — tap a food above to start earning. 🌱</div>';
+      tl.innerHTML='<div class="empty">Nothing logged yet. Tap a food above to start earning. 🌱</div>';
     }
 
     // rewards
@@ -864,7 +864,7 @@
   var LIGHT_DEFS={ sugar:{g:5,a:22.5}, fat:{g:3,a:17.5}, satfat:{g:1.5,a:5}, salt:{g:0.3,a:1.5} };
   function lightFor(key,val){
     var def=LIGHT_DEFS[key];
-    if(val==null||isNaN(val)) return {key:"unknown", label:"—"};
+    if(val==null||isNaN(val)) return {key:"unknown", label:"n/a"};
     if(val<=def.g) return {key:"green",  label:"Low"};
     if(val<=def.a) return {key:"orange", label:"Med"};
     return               {key:"red",    label:"High"};
@@ -902,12 +902,12 @@
       return;
     }
     if(window.Html5Qrcode){ startLib(); return; }
-    // Library not loaded yet — if it's still downloading, wait briefly and retry.
+    // Library not loaded yet - if it's still downloading, wait briefly and retry.
     if(!window.__scanLibFailed && waitTries<20){
       waitTries++; hint("Loading scanner…");
       setTimeout(startScan, 250); return;
     }
-    // Library failed to load — fall back to the browser's built-in detector.
+    // Library failed to load - fall back to the browser's built-in detector.
     waitTries=0;
     if("BarcodeDetector" in window){ startNative(); return; }
     hint("Scanner couldn't load on this device. Please type the barcode number below.");
@@ -966,10 +966,10 @@
     var v=document.getElementById("nativeVideo"); if(v){ try{v.srcObject=null;}catch(e){} v.style.display="none"; }
   }
   function cameraError(){
-    hint("Can't open the camera — please tap Allow when asked, or type the barcode number below.");
+    hint("Can't open the camera. Please tap Allow when asked, or type the barcode number below.");
   }
 
-  // USDA FoodData Central demo key. Rate-limited — swap for a free key from
+  // USDA FoodData Central demo key. Rate-limited - swap for a free key from
   // https://fdc.nal.usda.gov/api-key-signup.html for real use.
   var USDA_KEY="DEMO_KEY";
 
@@ -1043,7 +1043,7 @@
 
   function resultBtns(){
     // In focus mode (a Cogniss tile) there's no app to return to, so drop "Done"
-    // — the user exits via Cogniss's own back button. Keep it in the full app.
+    // - the user exits via Cogniss's own back button. Keep it in the full app.
     var focus=document.body.classList.contains("focus");
     return '<div class="sr-btns"><button class="btn-scan-again">Scan another</button>'+
            (focus?'':'<button class="btn-scan-done">Done</button>')+'</div>';
@@ -1067,7 +1067,7 @@
       '<h3>'+r.name+'</h3>'+
       '<div class="sr-rating" style="color:'+rt.color+'">'+rt.label+'</div>'+
       lightsPanel(r)+
-      '<div class="sr-pts">'+(rt.pts>0 ? "+"+rt.pts+" pts earned 🎉" : "No points — too much sugar")+'</div>'+
+      '<div class="sr-pts">'+(rt.pts>0 ? "+"+rt.pts+" pts earned 🎉" : "No points, too much sugar")+'</div>'+
       (r.source ? '<div class="sr-src">via '+r.source+' · per 100g</div>' : '')+
       resultBtns();
     wireResultBtns();

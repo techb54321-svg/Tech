@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#f6f2ea" />
-<title>Smart Swaps — Real Food Rewards</title>
+<title>Smart Swaps · Real Food Rewards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -59,7 +59,7 @@
     <div class="title"><span class="ic">🔁</span> Smart Swaps</div>
     <div class="pts-chip">⭐ <b id="ptsTop">0</b></div>
   </header>
-  <div class="sub">Tap a card to see a healthier swap — explore each one to earn ⭐.</div>
+  <div class="sub">Tap a card to see a healthier swap, and explore each one to earn ⭐.</div>
   <div class="banner" id="banner">🔎 <span><b id="seenN">0</b> of <b id="totalN">0</b> explored</span></div>
   <div id="list"></div>
   <div class="foot">Small swaps add up. Every healthier choice counts. 🌱</div>
@@ -93,13 +93,13 @@
     {id:"cola",fe:"🥤",te:"💧",from:"Fizzy cola / soda",to:"Sparkling water with lemon",
      why:"One can of cola can hold around 9 teaspoons of sugar. Fizzy water with a squeeze of lemon gives the fizz with none of it."},
     {id:"bread",fe:"🍞",te:"🌾",from:"White bread",to:"Wholegrain / brown bread",
-     why:"Wholegrain keeps the fibre that white bread loses — steadier energy and better digestion."},
+     why:"Wholegrain keeps the fibre that white bread loses, for steadier energy and better digestion."},
     {id:"juice",fe:"🧃",te:"🍎",from:"Fruit juice",to:"Whole fresh fruit",
      why:"Juice concentrates the sugar and drops the fibre. A whole apple or orange fills you up for fewer calories."},
     {id:"crisps",fe:"🍟",te:"🌰",from:"Crisps",to:"A handful of nuts or roasted chickpeas",
      why:"Nuts and chickpeas bring protein and good fats with far less salt than a bag of crisps."},
     {id:"fried",fe:"🥟",te:"♨️",from:"Deep-fried snacks daily",to:"Baked or air-fried versions",
-     why:"Enjoy your favourites — just bake or air-fry instead of deep-frying to cut a lot of the oil."},
+     why:"Enjoy your favourites. Just bake or air-fry instead of deep-frying to cut a lot of the oil."},
     {id:"rice",fe:"🍚",te:"🌾",from:"White rice every meal",to:"Brown rice (or half-and-half)",
      why:"Brown rice keeps more fibre and nutrients. Mixing half white, half brown is an easy first step."},
     {id:"sweets",fe:"🍬",te:"🌴",from:"Sweets & chocolate",to:"Fresh dates or fruit",
@@ -129,7 +129,7 @@
   function refreshSeenCount(){
     var c=0; SWAPS.forEach(function(s){ if(seen[s.id]) c++; });
     document.getElementById("seenN").textContent=c;
-    if(c===SWAPS.length){ document.getElementById("banner").innerHTML="🎉 <span>All explored — nice work!</span>"; }
+    if(c===SWAPS.length){ document.getElementById("banner").innerHTML="🎉 <span>All explored. Nice work!</span>"; }
   }
 
   SWAPS.forEach(function(s){

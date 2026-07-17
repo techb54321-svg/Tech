@@ -7,7 +7,7 @@
 <title>Stories &amp; Tips — Real Food Rewards</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root{
     --bg:#f6f2ea; --card:#ffffff; --ink:#1f2d24; --muted:#6b7d70;
@@ -19,7 +19,7 @@
   body{background:var(--bg);color:var(--ink);
     font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
   #app{max-width:520px;margin:0 auto;min-height:100%;padding:0 18px calc(30px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
-  header{padding:calc(18px + env(safe-area-inset-top)) 2px 10px;display:flex;align-items:center;justify-content:space-between}
+  header{padding:calc(18px + env(safe-area-inset-top)) 2px 6px;display:flex;align-items:center;justify-content:space-between}
   .title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.3px}
   .title .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;
     background:linear-gradient(150deg,#ffe8cc,#ffd8a8)}
@@ -28,41 +28,92 @@
   .pts-chip b{color:var(--green)}
   button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:none;text-align:left}
 
-  .sec{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:16px 2px 12px}
+  /* collection progress */
+  .collect{margin:8px 2px 4px;display:flex;align-items:center;gap:12px}
+  .collect .pbar{flex:1;height:10px;border-radius:999px;background:#e9e2d5;overflow:hidden}
+  .collect .pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--lime),var(--green));border-radius:999px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+  .collect .ctxt{font-size:12px;font-weight:800;color:var(--muted);white-space:nowrap}
 
-  /* illustrated card */
+  .sec{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:18px 2px 12px}
+
+  /* illustrated cover cards */
   .ic2{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:16px;
-    transition:transform .15s}
-  .ic2:active{transform:scale(.99)}
-  .banner{position:relative;width:100%;height:172px;display:block}
+    width:100%;transition:transform .15s}
+  .ic2:active{transform:scale(.985)}
+  .banner{position:relative;width:100%;height:176px;display:block}
   .banner .illo{position:absolute;inset:0;width:100%;height:100%}
-  .banner .scrim{position:absolute;left:0;right:0;bottom:0;height:70%;
-    background:linear-gradient(to top,rgba(9,28,17,.86),rgba(9,28,17,.15) 60%,transparent)}
-  .banner .cap{position:absolute;left:16px;right:16px;bottom:13px;color:#fff}
+  .banner .scrim{position:absolute;left:0;right:0;bottom:0;height:72%;
+    background:linear-gradient(to top,rgba(9,28,17,.86),rgba(9,28,17,.12) 62%,transparent)}
+  .banner .cap{position:absolute;left:16px;right:16px;bottom:14px;color:#fff}
   .banner .kow{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;opacity:.92}
-  .banner .cap h3{margin:3px 0 0;font-size:20px;letter-spacing:-.3px;line-height:1.18;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .banner .cap h3{margin:3px 0 0;font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:22px;letter-spacing:-.2px;line-height:1.15;text-shadow:0 2px 10px rgba(0,0,0,.4)}
   .chip{position:absolute;top:13px;left:13px;background:rgba(255,255,255,.94);color:var(--green-d);
     font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.12)}
   .rtag{position:absolute;top:13px;right:13px;background:rgba(255,255,255,.94);color:var(--green);
     font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,.12)}
   .rtag.done{color:var(--green-d)}
-  .body{max-height:0;overflow:hidden;transition:max-height .45s ease}
-  .ic2.open .body{max-height:340px}
-  .body p{margin:0;padding:16px 18px 6px;font-size:14.5px;line-height:1.6;color:#37473c;font-weight:500}
-  .cue{padding:11px 18px 14px;color:var(--muted);font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px}
-  .ic2.open .cue{display:none}
+  .cue{padding:12px 18px;color:var(--muted);font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:7px}
 
-  /* featured hero */
-  .feature .banner{height:210px}
-  .feature .banner .cap h3{font-size:23px}
-  .feature .claimrow{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  /* featured */
+  .feature .banner{height:220px}
+  .feature .banner .cap h3{font-size:25px}
+  .feature .claimrow{padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px}
   .feature .claimrow .txt{font-size:13px;color:var(--muted);font-weight:700}
   .claim{padding:11px 18px;border-radius:13px;font-weight:800;font-size:14px;color:#fff;white-space:nowrap;
     background:linear-gradient(150deg,var(--lime),var(--green) 60%,var(--green-d));box-shadow:0 8px 18px -7px rgba(47,158,68,.55)}
   .claim.done{background:#ebfbee;color:var(--green-d);box-shadow:none;border:1px solid #b2f2bb}
 
   .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:24px;line-height:1.5}
-  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+
+  /* ===== immersive reader ===== */
+  .reader{position:fixed;inset:0;z-index:120;background:var(--bg);display:none;flex-direction:column;overflow:hidden}
+  .reader.show{display:flex}
+  .reader .rhero{position:relative;height:46%;min-height:250px;flex:none;overflow:hidden}
+  .reader .rhero .illo{position:absolute;inset:0;width:100%;height:100%}
+  .reader .rhero .rscrim{position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to top,var(--bg),transparent)}
+  .rclose{position:absolute;top:calc(12px + env(safe-area-inset-top));right:14px;width:38px;height:38px;border-radius:50%;
+    background:rgba(255,255,255,.92);box-shadow:var(--shadow);font-size:17px;display:grid;place-items:center;z-index:3}
+  .rchip{position:absolute;top:calc(15px + env(safe-area-inset-top));left:16px;background:rgba(255,255,255,.92);
+    color:var(--green-d);font-size:11px;font-weight:800;padding:6px 11px;border-radius:999px;z-index:3}
+  .rcontent{flex:1;overflow-y:auto;padding:2px 24px 24px;margin-top:-34px;position:relative;z-index:2}
+  .rcontent .kow{font-size:12px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.5px}
+  .rcontent h1{margin:6px 0 16px;font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:30px;letter-spacing:-.5px;line-height:1.12}
+  .rcontent p{font-size:17px;line-height:1.75;color:#37473c;font-weight:500;margin:0}
+  .rreward{margin-top:20px;display:inline-block;background:#ebfbee;color:var(--green);border:1px solid #b2f2bb;
+    padding:9px 16px;border-radius:999px;font-weight:800;font-size:13px}
+  .rnav{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#fff}
+  .rnav button{padding:12px 18px;border-radius:13px;font-weight:800;font-size:14px;background:#f0ece2;color:var(--ink);transition:transform .12s}
+  .rnav button:active{transform:scale(.95)}
+  .rnav button.next{background:linear-gradient(150deg,var(--lime),var(--green) 60%,var(--green-d));color:#fff;box-shadow:0 8px 18px -7px rgba(47,158,68,.5)}
+  .rnav button:disabled{opacity:.35}
+  .dots{display:flex;gap:6px;align-items:center}
+  .dots i{width:7px;height:7px;border-radius:50%;background:#cfd8cf;transition:.3s}
+  .dots i.on{background:var(--green);width:20px;border-radius:4px}
+  .rswap{animation:rswap .4s cubic-bezier(.2,.8,.2,1)}
+  @keyframes rswap{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* ===== illustration motion ===== */
+  .illo .anim-sun,.illo .anim-spin,.illo .anim-bob,.illo .anim-steam,.illo .anim-bub,.illo .anim-sway,.illo .anim-pulse,.illo .anim-twinkle{transform-box:fill-box;transform-origin:center}
+  .anim-sun{animation:aSun 4s ease-in-out infinite}
+  @keyframes aSun{0%,100%{transform:scale(1);opacity:.95}50%{transform:scale(1.09);opacity:1}}
+  .anim-spin{animation:aSpin 16s linear infinite}
+  @keyframes aSpin{to{transform:rotate(360deg)}}
+  .anim-bob{animation:aBob 3.4s ease-in-out infinite}
+  @keyframes aBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+  .anim-steam{animation:aSteam 3s ease-in-out infinite}
+  @keyframes aSteam{0%{transform:translateY(3px);opacity:0}30%{opacity:.85}100%{transform:translateY(-14px);opacity:0}}
+  .anim-bub{animation:aBub 3s ease-in infinite}
+  @keyframes aBub{0%{transform:translateY(8px);opacity:0}20%{opacity:1}100%{transform:translateY(-36px);opacity:0}}
+  .anim-sway{animation:aSway 5s ease-in-out infinite;transform-origin:center top}
+  @keyframes aSway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+  .anim-pulse{animation:aPulse 2.4s ease-in-out infinite}
+  @keyframes aPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
+  .anim-twinkle{animation:aTwinkle 2.6s ease-in-out infinite}
+  @keyframes aTwinkle{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+  @media (prefers-reduced-motion:reduce){.illo *{animation:none!important}}
+
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:200}
 </style>
 </head>
 <body>
@@ -72,6 +123,11 @@
     <div class="pts-chip">⭐ <b id="ptsTop">0</b></div>
   </header>
 
+  <div class="collect">
+    <div class="pbar"><i id="pbar"></i></div>
+    <div class="ctxt" id="ctxt">0 / 0 read</div>
+  </div>
+
   <div id="feature"></div>
   <div class="sec">Real-life stories</div>
   <div id="stories"></div>
@@ -80,6 +136,20 @@
 
   <div class="foot">Fresh inspiration every day — come back tomorrow for a new tip. 🌞</div>
 </div>
+
+<!-- immersive reader -->
+<div class="reader" id="reader">
+  <div class="rhero" id="rhero"><div class="rscrim"></div></div>
+  <span class="rchip" id="rchip"></span>
+  <button class="rclose" id="rclose" aria-label="Close">✕</button>
+  <div class="rcontent" id="rcontent"></div>
+  <div class="rnav">
+    <button id="rprev">‹ Back</button>
+    <div class="dots" id="rdots"></div>
+    <button class="next" id="rnext">Next ›</button>
+  </div>
+</div>
+
 <canvas id="fx"></canvas>
 
 <script>
@@ -102,186 +172,191 @@
   function seenSet(){try{return JSON.parse(localStorage.getItem(SEEN_KEY))||{};}catch(e){return {};}}
   function saveSeen(o){try{localStorage.setItem(SEEN_KEY,JSON.stringify(o));}catch(e){}}
 
-  /* ---- hand-built SVG illustrations (self-contained, no external images) ---- */
+  /* ---- animated inline-SVG illustrations (self-contained) ---- */
   var ILLO={
     lunchbox:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_lb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9c7"/><stop offset="1" stop-color="#ffd8a8"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_lb)"/>'+
-      '<circle cx="342" cy="40" r="26" fill="#ffd43b"/>'+
+      '<rect width="400" height="176" fill="url(#g_lb)"/>'+
+      '<circle class="anim-sun" cx="342" cy="40" r="26" fill="#ffd43b"/>'+
       '<circle cx="70" cy="34" r="16" fill="#fff" opacity=".7"/><circle cx="92" cy="34" r="20" fill="#fff" opacity=".7"/>'+
-      '<rect x="0" y="132" width="400" height="40" fill="#e8b17a"/>'+
-      '<rect x="112" y="70" width="176" height="72" rx="16" fill="#63c97b"/>'+
-      '<rect x="124" y="82" width="70" height="48" rx="9" fill="#fff6d6"/>'+
-      '<rect x="202" y="82" width="74" height="22" rx="6" fill="#ffc9c9"/>'+
-      '<rect x="202" y="108" width="74" height="22" rx="6" fill="#a5d8ff"/>'+
-      '<circle cx="159" cy="106" r="15" fill="#ff6b6b"/><rect x="157" y="88" width="4" height="8" rx="2" fill="#2b8a3e"/>'+
-      '<path d="M150 96 q10 -8 18 0" stroke="#2b8a3e" stroke-width="4" fill="none" stroke-linecap="round"/>'+
-      '<circle cx="212" cy="118" r="6" fill="#845ef7"/><circle cx="224" cy="118" r="6" fill="#845ef7"/><circle cx="218" cy="126" r="6" fill="#7048e8"/>'+
-      '<rect x="300" y="86" width="26" height="52" rx="12" fill="#4dabf7"/><rect x="306" y="78" width="14" height="12" rx="4" fill="#1c7ed6"/>'+
+      '<rect x="0" y="136" width="400" height="40" fill="#e8b17a"/>'+
+      '<rect x="112" y="72" width="176" height="72" rx="16" fill="#63c97b"/>'+
+      '<rect x="124" y="84" width="70" height="48" rx="9" fill="#fff6d6"/>'+
+      '<rect x="202" y="84" width="74" height="22" rx="6" fill="#ffc9c9"/>'+
+      '<rect x="202" y="110" width="74" height="22" rx="6" fill="#a5d8ff"/>'+
+      '<circle cx="159" cy="108" r="15" fill="#ff6b6b"/><rect x="157" y="90" width="4" height="8" rx="2" fill="#2b8a3e"/>'+
+      '<circle cx="212" cy="120" r="6" fill="#845ef7"/><circle cx="224" cy="120" r="6" fill="#845ef7"/><circle cx="218" cy="128" r="6" fill="#7048e8"/>'+
+      '<rect x="300" y="88" width="26" height="52" rx="12" fill="#4dabf7"/><rect x="306" y="80" width="14" height="12" rx="4" fill="#1c7ed6"/>'+
       '</svg>',
     dates:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_dt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe3bf"/><stop offset="1" stop-color="#f6c185"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_dt)"/>'+
-      '<path d="M60 20 q40 6 60 40 q-44 -8 -60 -40Z" fill="#51cf66"/>'+
-      '<path d="M40 30 q46 20 44 62 q-40 -22 -44 -62Z" fill="#40c057"/>'+
-      '<rect x="0" y="140" width="400" height="32" fill="#dda15e"/>'+
-      '<path d="M120 128 q80 40 160 0 q-6 22 -80 22 q-74 0 -80 -22Z" fill="#e9ecef"/>'+
-      '<ellipse cx="200" cy="126" rx="80" ry="20" fill="#f1f3f5"/>'+
-      '<ellipse cx="168" cy="118" rx="14" ry="10" fill="#8a5a3b"/><ellipse cx="196" cy="122" rx="14" ry="10" fill="#7a4c30"/>'+
-      '<ellipse cx="224" cy="118" rx="14" ry="10" fill="#8a5a3b"/><ellipse cx="182" cy="110" rx="13" ry="9" fill="#9c6b47"/><ellipse cx="212" cy="110" rx="13" ry="9" fill="#7a4c30"/>'+
+      '<rect width="400" height="176" fill="url(#g_dt)"/>'+
+      '<g class="anim-sway"><path d="M60 20 q40 6 60 40 q-44 -8 -60 -40Z" fill="#51cf66"/>'+
+      '<path d="M40 30 q46 20 44 62 q-40 -22 -44 -62Z" fill="#40c057"/></g>'+
+      '<rect x="0" y="144" width="400" height="32" fill="#dda15e"/>'+
+      '<ellipse cx="200" cy="130" rx="80" ry="20" fill="#f1f3f5"/>'+
+      '<ellipse cx="168" cy="122" rx="14" ry="10" fill="#8a5a3b"/><ellipse cx="196" cy="126" rx="14" ry="10" fill="#7a4c30"/>'+
+      '<ellipse cx="224" cy="122" rx="14" ry="10" fill="#8a5a3b"/><ellipse cx="182" cy="114" rx="13" ry="9" fill="#9c6b47"/><ellipse cx="212" cy="114" rx="13" ry="9" fill="#7a4c30"/>'+
       '<circle cx="300" cy="70" r="26" fill="#ff922b"/><path d="M300 44 a26 26 0 0 1 0 52Z" fill="#fd7e14"/><circle cx="300" cy="70" r="7" fill="#ffd8a8"/>'+
-      '<text x="330" y="46" font-size="20" fill="#fff" opacity=".85">✦</text>'+
+      '<text class="anim-twinkle" x="330" y="46" font-size="20" fill="#fff">✦</text>'+
       '</svg>',
     walk:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_wk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd6a5"/><stop offset=".55" stop-color="#ffa8a8"/><stop offset="1" stop-color="#b197fc"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_wk)"/>'+
-      '<circle cx="200" cy="96" r="40" fill="#ffe066" opacity=".9"/>'+
-      '<path d="M0 128 q100 -30 200 0 q100 30 200 0 v44 H0Z" fill="#2f9e44"/>'+
-      '<path d="M0 150 q120 -20 200 0 q120 20 200 0 v22 H0Z" fill="#2b8a3e"/>'+
-      '<path d="M300 150 l-8 -34 8 -4 8 4 -8 34Z" fill="#1e6b32"/><circle cx="300" cy="104" r="16" fill="#37b24d"/>'+
-      '<g fill="#3b2b40"><rect x="150" y="98" width="12" height="30" rx="5"/><circle cx="156" cy="90" r="9"/><rect x="150" y="122" width="5" height="20" rx="2"/><rect x="159" y="122" width="5" height="20" rx="2"/></g>'+
-      '<g fill="#4a2f4d"><rect x="172" y="104" width="10" height="26" rx="5"/><circle cx="177" cy="97" r="8"/><rect x="172" y="126" width="4" height="16" rx="2"/><rect x="179" y="126" width="4" height="16" rx="2"/></g>'+
+      '<rect width="400" height="176" fill="url(#g_wk)"/>'+
+      '<circle class="anim-sun" cx="200" cy="98" r="40" fill="#ffe066" opacity=".9"/>'+
+      '<path d="M0 132 q100 -30 200 0 q100 30 200 0 v44 H0Z" fill="#2f9e44"/>'+
+      '<path d="M0 154 q120 -20 200 0 q120 20 200 0 v22 H0Z" fill="#2b8a3e"/>'+
+      '<path d="M300 154 l-8 -34 8 -4 8 4 -8 34Z" fill="#1e6b32"/><circle cx="300" cy="108" r="16" fill="#37b24d"/>'+
+      '<g class="anim-bob" fill="#3b2b40"><rect x="150" y="100" width="12" height="30" rx="5"/><circle cx="156" cy="92" r="9"/><rect x="150" y="124" width="5" height="20" rx="2"/><rect x="159" y="124" width="5" height="20" rx="2"/></g>'+
+      '<g class="anim-bob" style="animation-delay:.4s" fill="#4a2f4d"><rect x="172" y="106" width="10" height="26" rx="5"/><circle cx="177" cy="99" r="8"/><rect x="172" y="128" width="4" height="16" rx="2"/><rect x="179" y="128" width="4" height="16" rx="2"/></g>'+
       '</svg>',
     pot:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_pt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c3fae8"/><stop offset="1" stop-color="#96f2d7"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_pt)"/>'+
-      '<rect x="0" y="132" width="400" height="40" fill="#b08968"/>'+
-      '<path d="M170 58 q6 -18 14 0" stroke="#dee2e6" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>'+
-      '<path d="M198 52 q6 -20 14 0" stroke="#dee2e6" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>'+
-      '<path d="M226 58 q6 -18 14 0" stroke="#dee2e6" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>'+
-      '<rect x="150" y="86" width="110" height="52" rx="12" fill="#495057"/>'+
-      '<rect x="140" y="78" width="130" height="16" rx="8" fill="#343a40"/><rect x="198" y="66" width="14" height="14" rx="4" fill="#868e96"/>'+
-      '<rect x="132" y="96" width="14" height="10" rx="4" fill="#343a40"/><rect x="264" y="96" width="14" height="10" rx="4" fill="#343a40"/>'+
-      '<circle cx="315" cy="120" r="16" fill="#ff6b6b"/><path d="M305 108 l6 -8" stroke="#2f9e44" stroke-width="4" stroke-linecap="round"/>'+
-      '<rect x="70" y="110" width="46" height="16" rx="8" fill="#ff922b" transform="rotate(-20 90 118)"/><path d="M62 100 l6 -8" stroke="#2f9e44" stroke-width="4" stroke-linecap="round"/>'+
+      '<rect width="400" height="176" fill="url(#g_pt)"/>'+
+      '<rect x="0" y="136" width="400" height="40" fill="#b08968"/>'+
+      '<path class="anim-steam" d="M170 60 q6 -18 14 0" stroke="#f1f3f5" stroke-width="6" fill="none" stroke-linecap="round"/>'+
+      '<path class="anim-steam" style="animation-delay:1s" d="M198 54 q6 -20 14 0" stroke="#f1f3f5" stroke-width="6" fill="none" stroke-linecap="round"/>'+
+      '<path class="anim-steam" style="animation-delay:1.9s" d="M226 60 q6 -18 14 0" stroke="#f1f3f5" stroke-width="6" fill="none" stroke-linecap="round"/>'+
+      '<rect x="150" y="88" width="110" height="52" rx="12" fill="#495057"/>'+
+      '<rect x="140" y="80" width="130" height="16" rx="8" fill="#343a40"/><rect x="198" y="68" width="14" height="14" rx="4" fill="#868e96"/>'+
+      '<rect x="132" y="98" width="14" height="10" rx="4" fill="#343a40"/><rect x="264" y="98" width="14" height="10" rx="4" fill="#343a40"/>'+
+      '<circle cx="315" cy="122" r="16" fill="#ff6b6b"/>'+
+      '<rect x="70" y="112" width="46" height="16" rx="8" fill="#ff922b" transform="rotate(-20 90 120)"/>'+
       '</svg>',
     plate:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
-      '<rect width="400" height="172" fill="#dbf5e0"/>'+
-      '<circle cx="200" cy="86" r="74" fill="#fff"/><circle cx="200" cy="86" r="74" fill="none" stroke="#e7e0d3" stroke-width="3"/>'+
-      '<path d="M200 86 m0 -62 a62 62 0 0 0 0 124 Z" fill="#51cf66"/>'+
-      '<path d="M200 86 L200 24 a62 62 0 0 1 62 62 Z" fill="#ffd43b"/>'+
-      '<path d="M200 86 L262 86 a62 62 0 0 1 -62 62 Z" fill="#ff8787"/>'+
-      '<circle cx="170" cy="70" r="9" fill="#40c057"/><circle cx="160" cy="96" r="8" fill="#37b24d"/><circle cx="184" cy="104" r="8" fill="#2f9e44"/>'+
-      '<g stroke="#adb5bd" stroke-width="5" stroke-linecap="round"><path d="M92 54 v64"/><path d="M308 54 v64"/></g>'+
-      '<path d="M300 54 v22" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/><path d="M316 54 v22" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/>'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
+      '<rect width="400" height="176" fill="#dbf5e0"/>'+
+      '<g class="anim-bob">'+
+      '<circle cx="200" cy="88" r="74" fill="#fff"/><circle cx="200" cy="88" r="74" fill="none" stroke="#e7e0d3" stroke-width="3"/>'+
+      '<path d="M200 88 m0 -62 a62 62 0 0 0 0 124 Z" fill="#51cf66"/>'+
+      '<path d="M200 88 L200 26 a62 62 0 0 1 62 62 Z" fill="#ffd43b"/>'+
+      '<path d="M200 88 L262 88 a62 62 0 0 1 -62 62 Z" fill="#ff8787"/>'+
+      '<circle cx="170" cy="72" r="9" fill="#40c057"/><circle cx="160" cy="98" r="8" fill="#37b24d"/><circle cx="184" cy="106" r="8" fill="#2f9e44"/></g>'+
+      '<g stroke="#adb5bd" stroke-width="5" stroke-linecap="round"><path d="M92 56 v64"/><path d="M308 56 v64"/></g>'+
+      '<path d="M300 56 v22 M316 56 v22" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/>'+
       '</svg>',
     water:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_wt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d0ebff"/><stop offset="1" stop-color="#a5d8ff"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_wt)"/>'+
-      '<path d="M168 46 h64 l-8 96 a24 24 0 0 1 -48 0 Z" fill="#e7f5ff" opacity=".65"/>'+
-      '<path d="M172 84 h56 l-5 58 a24 24 0 0 1 -46 0 Z" fill="#4dabf7"/>'+
-      '<ellipse cx="200" cy="84" rx="28" ry="7" fill="#74c0fc"/>'+
-      '<circle cx="190" cy="110" r="4" fill="#e7f5ff"/><circle cx="210" cy="124" r="3" fill="#e7f5ff"/><circle cx="200" cy="100" r="3" fill="#e7f5ff"/>'+
-      '<circle cx="224" cy="70" r="15" fill="#ffe066"/><path d="M224 55 a15 15 0 0 1 0 30Z" fill="#ffd43b"/><path d="M224 70 L214 60 M224 70 L234 60 M224 70 L212 70 M224 70 L236 70 M224 70 L216 80 M224 70 L232 80" stroke="#fab005" stroke-width="1.5"/>'+
-      '<path d="M300 60 q10 16 0 24 a12 12 0 0 1 0 -24Z" fill="#4dabf7"/><path d="M96 96 q9 14 0 21 a11 11 0 0 1 0 -21Z" fill="#74c0fc"/>'+
+      '<rect width="400" height="176" fill="url(#g_wt)"/>'+
+      '<path d="M168 48 h64 l-8 96 a24 24 0 0 1 -48 0 Z" fill="#e7f5ff" opacity=".6"/>'+
+      '<path d="M172 86 h56 l-5 58 a24 24 0 0 1 -46 0 Z" fill="#4dabf7"/>'+
+      '<ellipse cx="200" cy="86" rx="28" ry="7" fill="#74c0fc"/>'+
+      '<circle class="anim-bub" cx="190" cy="126" r="4" fill="#e7f5ff"/><circle class="anim-bub" style="animation-delay:1s" cx="210" cy="126" r="3" fill="#e7f5ff"/><circle class="anim-bub" style="animation-delay:1.9s" cx="200" cy="126" r="3.5" fill="#e7f5ff"/>'+
+      '<circle cx="224" cy="70" r="15" fill="#ffe066"/><path d="M224 55 a15 15 0 0 1 0 30Z" fill="#ffd43b"/>'+
+      '<g class="anim-spin"><path d="M224 70 L212 58 M224 70 L236 58 M224 70 L208 70 M224 70 L240 70 M224 70 L212 82 M224 70 L236 82" stroke="#fab005" stroke-width="2" stroke-linecap="round"/></g>'+
+      '<path d="M300 60 q10 16 0 24 a12 12 0 0 1 0 -24Z" fill="#4dabf7"/>'+
       '</svg>',
     label:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_la" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3bf"/><stop offset="1" stop-color="#ffec99"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_la)"/>'+
-      '<rect x="130" y="36" width="140" height="120" rx="12" fill="#f8f0dc"/><rect x="130" y="36" width="140" height="26" rx="12" fill="#ffa94d"/>'+
-      '<rect x="146" y="74" width="108" height="10" rx="5" fill="#dee2e6"/>'+
-      '<circle cx="162" cy="106" r="13" fill="#40c057"/><circle cx="200" cy="106" r="13" fill="#ffd43b"/><circle cx="238" cy="106" r="13" fill="#ff6b6b"/>'+
-      '<rect x="146" y="128" width="80" height="8" rx="4" fill="#dee2e6"/>'+
-      '<circle cx="286" cy="118" r="26" fill="none" stroke="#495057" stroke-width="7"/><rect x="300" y="132" width="30" height="10" rx="5" fill="#495057" transform="rotate(45 300 132)"/>'+
+      '<rect width="400" height="176" fill="url(#g_la)"/>'+
+      '<rect x="130" y="38" width="140" height="120" rx="12" fill="#f8f0dc"/><rect x="130" y="38" width="140" height="26" rx="12" fill="#ffa94d"/>'+
+      '<rect x="146" y="76" width="108" height="10" rx="5" fill="#dee2e6"/>'+
+      '<circle class="anim-pulse" cx="162" cy="108" r="13" fill="#40c057"/><circle class="anim-pulse" style="animation-delay:.5s" cx="200" cy="108" r="13" fill="#ffd43b"/><circle class="anim-pulse" style="animation-delay:1s" cx="238" cy="108" r="13" fill="#ff6b6b"/>'+
+      '<rect x="146" y="130" width="80" height="8" rx="4" fill="#dee2e6"/>'+
+      '<g class="anim-bob"><circle cx="286" cy="120" r="26" fill="none" stroke="#495057" stroke-width="7"/><rect x="300" y="134" width="30" height="10" rx="5" fill="#495057" transform="rotate(45 300 134)"/></g>'+
       '</svg>',
     market:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_mk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe8cc"/><stop offset="1" stop-color="#ffd8a8"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_mk)"/>'+
-      '<rect x="24" y="60" width="96" height="14" rx="4" fill="#b08968"/><rect x="24" y="104" width="96" height="14" rx="4" fill="#b08968"/>'+
-      '<rect x="280" y="60" width="96" height="14" rx="4" fill="#b08968"/><rect x="280" y="104" width="96" height="14" rx="4" fill="#b08968"/>'+
-      '<circle cx="44" cy="50" r="12" fill="#ff6b6b"/><circle cx="72" cy="50" r="12" fill="#ff8787"/><circle cx="100" cy="50" r="12" fill="#fa5252"/>'+
-      '<circle cx="300" cy="50" r="12" fill="#ffa94d"/><circle cx="328" cy="50" r="12" fill="#ffc078"/><circle cx="356" cy="50" r="12" fill="#ff922b"/>'+
-      '<path d="M40 96 q10 -18 20 0 q10 -18 20 0 q6 12 -10 12 h-20 q-16 0 -10 -12Z" fill="#51cf66"/>'+
-      '<path d="M300 96 q10 -18 20 0 q10 -18 20 0 q6 12 -10 12 h-20 q-16 0 -10 -12Z" fill="#40c057"/>'+
-      '<path d="M150 108 h100 l-12 44 h-76 Z" fill="#e8590c" opacity=".85"/><path d="M150 108 h100 l-3 12 h-94Z" fill="#ff922b"/>'+
-      '<circle cx="176" cy="128" r="10" fill="#ff6b6b"/><circle cx="200" cy="128" r="10" fill="#ffd43b"/><circle cx="224" cy="128" r="10" fill="#51cf66"/>'+
-      '<path d="M164 108 q36 -22 72 0" stroke="#c44d09" stroke-width="4" fill="none"/>'+
+      '<rect width="400" height="176" fill="url(#g_mk)"/>'+
+      '<rect x="24" y="62" width="96" height="14" rx="4" fill="#b08968"/><rect x="24" y="106" width="96" height="14" rx="4" fill="#b08968"/>'+
+      '<rect x="280" y="62" width="96" height="14" rx="4" fill="#b08968"/><rect x="280" y="106" width="96" height="14" rx="4" fill="#b08968"/>'+
+      '<circle cx="44" cy="52" r="12" fill="#ff6b6b"/><circle cx="72" cy="52" r="12" fill="#ff8787"/><circle cx="100" cy="52" r="12" fill="#fa5252"/>'+
+      '<circle cx="300" cy="52" r="12" fill="#ffa94d"/><circle cx="328" cy="52" r="12" fill="#ffc078"/><circle cx="356" cy="52" r="12" fill="#ff922b"/>'+
+      '<path d="M40 98 q10 -18 20 0 q10 -18 20 0 q6 12 -10 12 h-20 q-16 0 -10 -12Z" fill="#51cf66"/>'+
+      '<path d="M300 98 q10 -18 20 0 q10 -18 20 0 q6 12 -10 12 h-20 q-16 0 -10 -12Z" fill="#40c057"/>'+
+      '<g class="anim-bob"><path d="M150 112 h100 l-12 44 h-76 Z" fill="#e8590c" opacity=".85"/><path d="M150 112 h100 l-3 12 h-94Z" fill="#ff922b"/>'+
+      '<circle cx="176" cy="132" r="10" fill="#ff6b6b"/><circle cx="200" cy="132" r="10" fill="#ffd43b"/><circle cx="224" cy="132" r="10" fill="#51cf66"/>'+
+      '<path d="M164 112 q36 -22 72 0" stroke="#c44d09" stroke-width="4" fill="none"/></g>'+
       '</svg>',
     slow:
-      '<svg class="illo" viewBox="0 0 400 172" preserveAspectRatio="xMidYMid slice">'+
+      '<svg class="illo" viewBox="0 0 400 176" preserveAspectRatio="xMidYMid slice">'+
       '<defs><linearGradient id="g_sl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e3fafc"/><stop offset="1" stop-color="#c5f6fa"/></linearGradient></defs>'+
-      '<rect width="400" height="172" fill="url(#g_sl)"/>'+
-      '<circle cx="200" cy="90" r="66" fill="#fff"/><circle cx="200" cy="90" r="66" fill="none" stroke="#e7e0d3" stroke-width="3"/>'+
-      '<circle cx="200" cy="90" r="42" fill="#f1f3f5"/><circle cx="200" cy="90" r="42" fill="none" stroke="#adb5bd" stroke-width="3"/>'+
-      '<path d="M200 90 L200 60" stroke="#495057" stroke-width="5" stroke-linecap="round"/><path d="M200 90 L222 100" stroke="#495057" stroke-width="5" stroke-linecap="round"/>'+
-      '<circle cx="200" cy="90" r="5" fill="#495057"/>'+
-      '<g stroke="#adb5bd" stroke-width="5" stroke-linecap="round"><path d="M96 56 v60"/><path d="M304 56 v60"/></g>'+
-      '<path d="M300 56 v22 M316 56 v22" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/>'+
-      '<path d="M150 44 q8 -10 16 0 q8 -10 16 0 q0 12 -16 20 q-16 -8 -16 -20Z" fill="#ff8787"/>'+
+      '<rect width="400" height="176" fill="url(#g_sl)"/>'+
+      '<circle cx="200" cy="92" r="66" fill="#fff"/><circle cx="200" cy="92" r="66" fill="none" stroke="#e7e0d3" stroke-width="3"/>'+
+      '<circle cx="200" cy="92" r="42" fill="#f1f3f5"/><circle cx="200" cy="92" r="42" fill="none" stroke="#adb5bd" stroke-width="3"/>'+
+      '<path d="M200 92 L200 62" stroke="#495057" stroke-width="5" stroke-linecap="round"/><path d="M200 92 L222 102" stroke="#495057" stroke-width="5" stroke-linecap="round"/>'+
+      '<circle cx="200" cy="92" r="5" fill="#495057"/>'+
+      '<g stroke="#adb5bd" stroke-width="5" stroke-linecap="round"><path d="M96 58 v60"/><path d="M304 58 v60"/></g>'+
+      '<path d="M300 58 v22 M316 58 v22" stroke="#adb5bd" stroke-width="5" stroke-linecap="round"/>'+
+      '<path class="anim-pulse" d="M150 46 q8 -10 16 0 q8 -10 16 0 q0 12 -16 20 q-16 -8 -16 -20Z" fill="#ff8787"/>'+
       '</svg>'
   };
 
   var STORIES=[
-    {id:"s1",illo:"lunchbox",h:"Ayesha's lunchbox",b:"Ayesha used to have a juice box every day at school and felt sleepy by the afternoon. Her mum swapped it for a bottle of water and a small box of grapes. Within a week Ayesha said she felt more awake in class — and she still got her sweet taste from the fruit."},
-    {id:"s2",illo:"dates",h:"Grandma's dates",b:"After dinner, the family always reached for sweets. Grandma started putting out a bowl of dates and orange slices instead. Nobody missed the sweets — and everyone slept a little better."},
-    {id:"s3",illo:"walk",h:"The after-dinner walk",b:"Omar's family began taking a short 15-minute walk together after dinner. It started as a way to help digestion, but it became the best part of their day — time to talk, with no screens."},
-    {id:"s4",illo:"pot",h:"Cook once, eat twice",b:"Fatima started making a big pot of lentil stew on Sundays. With healthy food ready in the fridge, the family reached for takeaways far less during the busy week."}
+    {id:"s1",illo:"lunchbox",cat:"Real-life story",h:"Ayesha's lunchbox",b:"Ayesha used to have a juice box every day at school and felt sleepy by the afternoon. Her mum swapped it for a bottle of water and a small box of grapes. Within a week Ayesha said she felt more awake in class — and she still got her sweet taste from the fruit."},
+    {id:"s2",illo:"dates",cat:"Real-life story",h:"Grandma's dates",b:"After dinner, the family always reached for sweets. Grandma started putting out a bowl of dates and orange slices instead. Nobody missed the sweets — and everyone slept a little better."},
+    {id:"s3",illo:"walk",cat:"Real-life story",h:"The after-dinner walk",b:"Omar's family began taking a short 15-minute walk together after dinner. It started as a way to help digestion, but it became the best part of their day — time to talk, with no screens."},
+    {id:"s4",illo:"pot",cat:"Real-life story",h:"Cook once, eat twice",b:"Fatima started making a big pot of lentil stew on Sundays. With healthy food ready in the fridge, the family reached for takeaways far less during the busy week."}
   ];
   var TIPS=[
-    {id:"t1",illo:"plate",h:"Fill half your plate",b:"At each meal, aim to make half your plate vegetables or fruit. It's the simplest way to eat better without counting anything."},
-    {id:"t2",illo:"water",h:"Water before meals",b:"Drink a glass of water before you eat. It helps you stay hydrated and often stops you from over-eating."},
-    {id:"t3",illo:"label",h:"Check sugar on the label",b:"Look at 'sugars per 100g'. Around 5g or less is low (green), over 22.5g is high (red). Your scanner does this for you automatically!"},
-    {id:"t4",illo:"market",h:"Shop the edges",b:"Fresh foods — vegetables, fruit, dairy — usually line the outer walls of the shop. The processed snacks live in the middle aisles."},
-    {id:"t5",illo:"slow",h:"Slow down",b:"It takes about 20 minutes for your body to feel full. Eating slowly gives it time to catch up, so you naturally eat less."}
+    {id:"t1",illo:"plate",cat:"Quick tip",h:"Fill half your plate",b:"At each meal, aim to make half your plate vegetables or fruit. It's the simplest way to eat better without counting anything — colour first, and the rest tends to fall into place."},
+    {id:"t2",illo:"water",cat:"Quick tip",h:"Water before meals",b:"Drink a glass of water before you eat. It helps you stay hydrated and often stops you from over-eating, because thirst can feel a lot like hunger."},
+    {id:"t3",illo:"label",cat:"Quick tip",h:"Check sugar on the label",b:"Look at 'sugars per 100g'. Around 5g or less is low (green), over 22.5g is high (red). Your scanner does this for you automatically — but it's a handy habit at the shelf too!"},
+    {id:"t4",illo:"market",cat:"Quick tip",h:"Shop the edges",b:"Fresh foods — vegetables, fruit, dairy — usually line the outer walls of the shop. The processed snacks live in the middle aisles, so shopping the edges quietly stacks your basket with real food."},
+    {id:"t5",illo:"slow",cat:"Quick tip",h:"Slow down",b:"It takes about 20 minutes for your body to feel full. Eating slowly gives it time to catch up, so you naturally eat less. Put the fork down between bites and let your body do the maths."}
   ];
   var PER=2, DAILY=5;
+  var ITEMS=STORIES.concat(TIPS);
+  var indexOf={}; ITEMS.forEach(function(it,i){ indexOf[it.id]=i; });
 
   var seen=seenSet();
   setPts(totalPoints());
 
-  /* card builder */
-  function card(item, kicker){
-    var el=document.createElement("div"); el.className="ic2";
-    var rewarded=!!seen[item.id];
-    el.innerHTML=
-      '<button class="banner">'+ILLO[item.illo]+
-        '<div class="scrim"></div>'+
-        '<span class="chip">'+kicker+'</span>'+
-        '<span class="rtag'+(rewarded?' done':'')+'" id="rt-'+item.id+'">'+(rewarded?'✓ +'+PER:'+'+PER+' ⭐')+'</span>'+
-        '<div class="cap"><div class="kow">'+kicker+'</div><h3>'+item.h+'</h3></div>'+
-      '</button>'+
-      '<div class="body"><p>'+item.b+'</p></div>'+
-      '<div class="cue">▾ Tap to read'+(rewarded?'':' &amp; earn +'+PER+' ⭐')+'</div>';
-    var banner=el.querySelector(".banner");
-    banner.onclick=function(){
-      var opening=!el.classList.contains("open");
-      el.classList.toggle("open");
-      if(opening && !seen[item.id]){
-        seen[item.id]=1; saveSeen(seen);
-        var nt=award(PER,"📖",item.h); setPts(nt);
-        var rt=document.getElementById("rt-"+item.id); rt.textContent="✓ +"+PER; rt.className="rtag done";
-        confetti(34);
-      }
-    };
-    return el;
+  function seenCount(){ var c=0; ITEMS.forEach(function(it){ if(seen[it.id]) c++; }); return c; }
+  function updateProgress(){
+    var c=seenCount(), t=ITEMS.length;
+    document.getElementById("pbar").style.width=(c/t*100)+"%";
+    document.getElementById("ctxt").textContent=c+" / "+t+" read";
   }
 
-  /* featured "tip of the day" — deterministic by date */
+  /* ---- cover cards ---- */
+  var cardEls={};
+  function tagFor(id){ return seen[id] ? '✓ +'+PER : '+'+PER+' ⭐'; }
+  function makeCover(item, cls){
+    var el=document.createElement("button"); el.className="ic2"+(cls?" "+cls:"");
+    el.innerHTML=
+      '<div class="banner">'+ILLO[item.illo]+
+        '<div class="scrim"></div>'+
+        '<span class="chip">'+item.cat+'</span>'+
+        '<span class="rtag'+(seen[item.id]?' done':'')+'" data-rt="'+item.id+'">'+tagFor(item.id)+'</span>'+
+        '<div class="cap"><div class="kow">'+item.cat+'</div><h3>'+item.h+'</h3></div>'+
+      '</div>'+
+      '<div class="cue">▸ Tap to read'+(seen[item.id]?'':' &amp; earn +'+PER+' ⭐')+'</div>';
+    el.onclick=function(){ openReader(indexOf[item.id]); };
+    cardEls[item.id]=el;
+    return el;
+  }
+  function refreshCover(id){
+    var el=cardEls[id]; if(!el) return;
+    var rt=el.querySelector('[data-rt="'+id+'"]');
+    if(rt){ rt.textContent="✓ +"+PER; rt.className="rtag done"; }
+    var cue=el.querySelector(".cue"); if(cue) cue.innerHTML="▸ Tap to read again";
+  }
+
+  /* ---- featured tip of the day ---- */
   function dayIndex(){ var d=new Date(); return (d.getFullYear()*372 + d.getMonth()*31 + d.getDate()); }
-  var pool=STORIES.concat(TIPS);
-  var totd=pool[dayIndex()%pool.length];
+  var totd=ITEMS[dayIndex()%ITEMS.length];
   var DAY_KEY="rfr_tip_claimed";
   function claimedToday(){ try{return localStorage.getItem(DAY_KEY)===today();}catch(e){return false;} }
-  function renderFeature(){
+  (function renderFeature(){
     var claimed=claimedToday();
     var f=document.createElement("div"); f.className="ic2 feature";
     f.innerHTML=
-      '<div class="banner">'+ILLO[totd.illo]+'<div class="scrim"></div>'+
+      '<button class="banner" id="featOpen">'+ILLO[totd.illo]+'<div class="scrim"></div>'+
         '<span class="chip">☀️ Tip of the day</span>'+
         '<div class="cap"><div class="kow">Today’s inspiration</div><h3>'+totd.h+'</h3></div>'+
-      '</div>'+
-      '<div class="body" style="max-height:340px"><p>'+totd.b+'</p></div>'+
+      '</button>'+
       '<div class="claimrow"><span class="txt">Read today’s tip to collect your bonus</span>'+
         '<button class="claim'+(claimed?' done':'')+'" id="claimBtn">'+(claimed?'✓ +'+DAILY+' claimed':'Claim +'+DAILY+' ⭐')+'</button></div>';
     document.getElementById("feature").appendChild(f);
+    document.getElementById("featOpen").onclick=function(){ openReader(indexOf[totd.id]); };
     if(!claimed){
       document.getElementById("claimBtn").onclick=function(){
         try{localStorage.setItem(DAY_KEY,today());}catch(e){}
@@ -290,13 +365,50 @@
         confetti(70);
       };
     }
+  })();
+
+  var sh=document.getElementById("stories"); STORIES.forEach(function(s){ sh.appendChild(makeCover(s)); });
+  var th=document.getElementById("tips"); TIPS.forEach(function(t){ th.appendChild(makeCover(t)); });
+  updateProgress();
+
+  /* ---- immersive reader ---- */
+  var reader=document.getElementById("reader"), cur=-1;
+  function renderReader(i){
+    cur=i; var it=ITEMS[i];
+    document.getElementById("rhero").innerHTML=ILLO[it.illo]+'<div class="rscrim"></div>';
+    document.getElementById("rchip").textContent=it.cat;
+    var justEarned=false;
+    if(!seen[it.id]){ seen[it.id]=1; saveSeen(seen); var nt=award(PER,"📖",it.h); setPts(nt);
+      refreshCover(it.id); updateProgress(); justEarned=true; confetti(30); }
+    var c=document.getElementById("rcontent");
+    c.classList.remove("rswap"); void c.offsetWidth; c.classList.add("rswap");
+    c.innerHTML='<div class="kow">'+it.cat+'</div><h1>'+it.h+'</h1><p>'+it.b+'</p>'+
+      '<div class="rreward">'+(justEarned?'+'+PER+' points earned ⭐':'✓ Read · +'+PER+' collected')+'</div>';
+    // dots
+    var dots=ITEMS.map(function(_,k){ return '<i class="'+(k===i?'on':'')+'"></i>'; }).join("");
+    document.getElementById("rdots").innerHTML=dots;
+    document.getElementById("rprev").disabled = i===0;
+    var nextBtn=document.getElementById("rnext");
+    nextBtn.textContent = i===ITEMS.length-1 ? "Done ✓" : "Next ›";
+    document.getElementById("rcontent").scrollTop=0;
   }
-  renderFeature();
+  function openReader(i){ reader.classList.add("show"); renderReader(i); }
+  function closeReader(){ reader.classList.remove("show"); }
+  document.getElementById("rclose").onclick=closeReader;
+  document.getElementById("rprev").onclick=function(){ if(cur>0) renderReader(cur-1); };
+  document.getElementById("rnext").onclick=function(){ if(cur<ITEMS.length-1) renderReader(cur+1); else closeReader(); };
+  // swipe
+  var sx=0, sy=0;
+  reader.addEventListener("touchstart",function(e){ sx=e.touches[0].clientX; sy=e.touches[0].clientY; },{passive:true});
+  reader.addEventListener("touchend",function(e){
+    var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)){
+      if(dx<0 && cur<ITEMS.length-1) renderReader(cur+1);
+      else if(dx>0 && cur>0) renderReader(cur-1);
+    }
+  },{passive:true});
 
-  var sh=document.getElementById("stories"); STORIES.forEach(function(s){ sh.appendChild(card(s,"Real-life story")); });
-  var th=document.getElementById("tips"); TIPS.forEach(function(t){ th.appendChild(card(t,"Quick tip")); });
-
-  /* confetti */
+  /* ---- confetti ---- */
   var fxC=document.getElementById("fx"), fxX=(fxC&&fxC.getContext)?fxC.getContext("2d"):null, Pt=[], raf=null;
   var COL=["#2f9e44","#82c91e","#f5b100","#e8590c","#4dabf7"];
   function rs(){ if(!fxX)return; fxC.width=window.innerWidth; fxC.height=window.innerHeight; }

@@ -415,6 +415,11 @@
 
   /* confetti canvas */
   #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:200}
+
+  /* focus mode — a single-screen embed for each Cogniss dashboard tile */
+  body.focus nav{display:none}
+  body.focus #app{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  body.focus #scanClose{display:none}
 </style>
 </head>
 <body>
@@ -1021,8 +1026,11 @@
   }
 
   function resultBtns(){
+    // In focus mode (a Cogniss tile) there's no app to return to, so drop "Done"
+    // — the user exits via Cogniss's own back button. Keep it in the full app.
+    var focus=document.body.classList.contains("focus");
     return '<div class="sr-btns"><button class="btn-scan-again">Scan another</button>'+
-           '<button class="btn-scan-done">Done</button></div>';
+           (focus?'':'<button class="btn-scan-done">Done</button>')+'</div>';
   }
   function showResult(r){
     lookupBusy=false;
@@ -1071,6 +1079,8 @@
   (function(){
     var v=(params.get("view") || location.hash.replace(/^#/,"") || "").toLowerCase();
     if(!v) return;
+    // A tile opens a single focused thing: hide the bottom nav so it isn't the whole app.
+    document.body.classList.add("focus");
     if(v==="scan"){ go("log"); openScanner(false); }
     else if(v==="rewards"){ go("rewards"); }
     else if(v==="log"){ go("log"); }

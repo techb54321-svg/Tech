@@ -12,8 +12,7 @@
   :root{
     --bg:#f6f2ea; --card:#ffffff; --ink:#1f2d24; --muted:#6b7d70;
     --green:#2f9e44; --green-d:#2b8a3e; --lime:#82c91e; --gold:#f5b100;
-    --line:#e7e0d3; --shadow:0 16px 38px -18px rgba(31,45,36,.34);
-    --accent:#2f9e44;
+    --line:#e7e0d3; --shadow:0 16px 38px -18px rgba(31,45,36,.34); --accent:#2f9e44;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
@@ -25,7 +24,6 @@
   .top h1{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:26px;margin:8px 0 4px;letter-spacing:-.4px}
   .top .sub{color:var(--muted);font-size:14px;font-weight:600;line-height:1.5}
   .top .subs{color:var(--muted);font-size:12.5px;margin-top:6px;opacity:.9}
-
   .pick{margin-top:20px;display:flex;flex-direction:column;gap:12px}
   .lang{display:flex;align-items:center;gap:16px;padding:16px 18px;background:#fff;border:1.5px solid var(--line);
     border-radius:20px;box-shadow:var(--shadow);transition:transform .14s, border-color .2s;width:100%;text-align:left}
@@ -37,13 +35,11 @@
   .lang .en{display:block;font-size:13px;color:var(--muted);font-weight:700;margin-top:3px}
   .lang .go{font-size:22px;color:var(--muted)}
   .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:26px;line-height:1.6}
-
-  /* personalized panel */
   .panel{display:none;flex-direction:column;min-height:70vh;animation:fade .4s ease}
   .panel.show{display:flex}
   @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .hero{margin-top:14px;padding:30px 22px;border-radius:26px;text-align:center;color:#fff;position:relative;overflow:hidden;
-    background:linear-gradient(150deg,var(--accent),#146c3a);box-shadow:var(--shadow)}
+    background:linear-gradient(150deg,var(--accent),#134a2a);box-shadow:var(--shadow)}
   .hero .flag{font-size:40px}
   .hero .greet{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:30px;margin:8px 0 2px;line-height:1.2}
   .hero .greet.rtl{direction:rtl}
@@ -53,7 +49,7 @@
   .foods{display:flex;flex-wrap:wrap;gap:8px}
   .food{background:#fff;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13.5px;display:flex;gap:6px;align-items:center}
   .start{margin-top:24px;width:100%;padding:16px;border-radius:16px;font-weight:800;font-size:17px;color:#fff;text-align:center;
-    background:linear-gradient(150deg,var(--lime),var(--accent) 60%,#146c3a);box-shadow:0 12px 26px -8px rgba(47,158,68,.55)}
+    background:linear-gradient(150deg,var(--lime),var(--accent) 60%,#134a2a);box-shadow:0 12px 26px -8px rgba(47,158,68,.5)}
   .start:active{transform:scale(.98)}
   .change{margin-top:14px;text-align:center;color:var(--muted);font-weight:800;font-size:13px}
   .note{margin-top:18px;background:#fff8e6;border:1px solid #ffe8a3;border-radius:14px;padding:12px 14px;color:#7a5c00;font-size:12px;line-height:1.5;font-weight:600}
@@ -61,19 +57,17 @@
 </head>
 <body>
 <div id="app">
-  <!-- picker -->
   <div id="picker">
     <div class="top">
       <div class="globe">🌍</div>
       <h1>Choose your language</h1>
-      <div class="sub">اپنی زبان چنیں · ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ · Choose your language</div>
+      <div class="sub">دری · ਪੰਜਾਬੀ · S'gaw Karen · English</div>
       <div class="subs">We'll tailor the food, tips and rewards to your culture.</div>
     </div>
     <div class="pick" id="pick"></div>
     <div class="foot">You can change this any time.</div>
   </div>
 
-  <!-- personalized welcome -->
   <div class="panel" id="panel">
     <div class="hero" id="hero"></div>
     <div class="foods-lbl">Foods we'll include for you</div>
@@ -84,37 +78,14 @@
   </div>
 </div>
 
+<script src="../packs.js"></script>
 <script>
 (function(){
   "use strict";
-
-  /* ---- content packs (starter scaffold — validate with each community) ----
-     dir: "rtl" or "ltr" · greet: native script · translit + en: helpers  */
-  var PACKS={
-    af:{ label:"Afghan", flag:"🇦🇫", native:"دری · پښتو", nativeRtl:true, dir:"rtl", lang:"fa",
-      accent:"#2f7a3a",
-      greet:"السلام علیکم", greetRtl:true, translit:"As-salamu alaykum · Khosh âmadid",
-      msg:"Your food, your way — with gentle tips for healthier chai, bread and rice.",
-      foods:[["🫓","Naan"],["🍚","Qabili palaw"],["🥟","Bolani"],["🫖","Chai"],["🌴","Dates (Khurma)"],["🥛","Mast (yogurt)"],["🥬","Sabzi"],["🍖","Kabab"]] },
-    kar:{ label:"Karen (S'gaw)", flag:"🇲🇲", native:"S'gaw Karen", nativeRtl:false, dir:"ltr", lang:"ksw",
-      accent:"#1f6f8b",
-      greet:"Welcome", greetRtl:false, translit:"S'gaw Karen",
-      msg:"Celebrating fresh greens, fish and rice — with easy ideas as you settle in.",
-      foods:[["🍚","Rice"],["🐟","Fish paste (Nga pi)"],["🥬","Boiled greens"],["🎋","Bamboo shoots"],["🌶️","Chili"],["🍵","Tea-leaf salad"],["🥭","Papaya"],["🥒","Mustard leaf"]] },
-    pa:{ label:"Punjabi", flag:"🇮🇳", native:"ਪੰਜਾਬੀ", nativeRtl:false, dir:"ltr", lang:"pa",
-      accent:"#d9822b",
-      greet:"ਸਤ ਸ੍ਰੀ ਅਕਾਲ", greetRtl:false, translit:"Sat Sri Akal · Jee aayaan nu",
-      msg:"Roti, dal and saag at the centre — with lighter takes on chai, ghee and mithai.",
-      foods:[["🫓","Roti"],["🍲","Dal"],["🥬","Saag"],["🧀","Paneer"],["🥛","Lassi"],["🫖","Chai"],["🍯","Ghee"],["🍬","Mithai"]] },
-    en:{ label:"English / Other", flag:"🌐", native:"English", nativeRtl:false, dir:"ltr", lang:"en",
-      accent:"#2f9e44",
-      greet:"Welcome", greetRtl:false, translit:"",
-      msg:"A healthy-eating companion — scan foods, earn rewards and learn as you go.",
-      foods:[["🥦","Vegetables"],["🍎","Fruit"],["🐟","Fish"],["🫘","Beans"],["🌾","Wholegrains"],["🥛","Yogurt"],["🥚","Eggs"],["💧","Water"]] }
-  };
+  var PACKS=window.RFR_PACKS||{};
   var ORDER=["af","kar","pa","en"];
+  var DEFAULT_FOODS=[["🥦","Vegetables"],["🍎","Fruit"],["🐟","Fish"],["🫘","Beans"],["🌾","Wholegrains"],["🥛","Yogurt"],["🥚","Eggs"],["💧","Water"]];
 
-  /* remember the choice so returning users skip this (shared with the app) */
   function saveChoice(code){ try{
     localStorage.setItem("rfr_culture", code);
     localStorage.setItem("rfr_lang", PACKS[code].lang);
@@ -123,7 +94,7 @@
 
   var pick=document.getElementById("pick");
   ORDER.forEach(function(code){
-    var p=PACKS[code];
+    var p=PACKS[code]; if(!p) return;
     var b=document.createElement("button"); b.className="lang";
     b.innerHTML='<span class="flag">'+p.flag+'</span>'+
       '<span class="n"><span class="native'+(p.nativeRtl?' rtl':'')+'">'+p.native+'</span>'+
@@ -133,16 +104,18 @@
   });
 
   function choose(code){
-    var p=PACKS[code];
+    var p=PACKS[code]; if(!p) return;
     saveChoice(code);
-    document.documentElement.style.setProperty("--accent", p.accent);
-    var hero=document.getElementById("hero");
-    hero.innerHTML='<div class="flag">'+p.flag+'</div>'+
-      '<div class="greet'+(p.greetRtl?' rtl':'')+'">'+p.greet+'</div>'+
-      (p.translit?'<div class="translit">'+p.translit+'</div>':'')+
-      '<div class="msg">'+p.msg+'</div>';
-    var foods=document.getElementById("foods");
-    foods.innerHTML=p.foods.map(function(f){ return '<span class="food">'+f[0]+' '+f[1]+'</span>'; }).join("");
+    document.documentElement.style.setProperty("--accent", p.accent||"#2f9e44");
+    var g=p.greet||{text:"Welcome"};
+    document.getElementById("hero").innerHTML='<div class="flag">'+p.flag+'</div>'+
+      '<div class="greet'+(g.rtl?' rtl':'')+'">'+g.text+'</div>'+
+      (g.translit?'<div class="translit">'+g.translit+'</div>':'')+
+      '<div class="msg">'+(p.msg||"")+'</div>';
+    var chips = (p.foods&&p.foods.length)
+      ? p.foods.map(function(f){ return '<span class="food">'+f.e+' '+f.n+'</span>'; })
+      : DEFAULT_FOODS.map(function(f){ return '<span class="food">'+f[0]+' '+f[1]+'</span>'; });
+    document.getElementById("foods").innerHTML=chips.join("");
     document.getElementById("picker").style.display="none";
     document.getElementById("panel").classList.add("show");
     window.scrollTo(0,0);
@@ -153,15 +126,7 @@
     document.getElementById("picker").style.display="block";
     window.scrollTo(0,0);
   };
-  document.getElementById("startBtn").onclick=function(){
-    // Into the app. In Cogniss this can instead hand back to the dashboard.
-    location.href="../?view=home";
-  };
-
-  /* If a choice already exists, you could auto-skip — left visible here so
-     you can demo the picker. Uncomment to auto-route returning users:
-  // var existing=localStorage.getItem("rfr_culture"); if(existing && PACKS[existing]) choose(existing);
-  */
+  document.getElementById("startBtn").onclick=function(){ location.href="../?view=home"; };
 })();
 </script>
 </body>

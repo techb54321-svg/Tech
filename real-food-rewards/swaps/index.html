@@ -66,6 +66,7 @@
 </div>
 <canvas id="fx"></canvas>
 
+<script src="../packs.js"></script>
 <script>
 (function(){
   "use strict";
@@ -107,6 +108,18 @@
      why:"Flavoured yogurts hide a lot of sugar. Start with plain and sweeten it yourself with fruit."}
   ];
   var PER=3;
+
+  // Personalise to the chosen community (Afghan, etc.) from the shared pack.
+  try{
+    var _p = window.RFR_pack && RFR_pack();
+    if(_p){
+      if(_p.swaps && _p.swaps.length){
+        SWAPS = _p.swaps.map(function(s,i){ return {id:s.id||("sw"+i), fe:s.fe, te:s.te, from:s.from, to:s.to, why:s.why}; });
+      }
+      if(_p.accent){ document.documentElement.style.setProperty("--green",_p.accent);
+        document.documentElement.style.setProperty("--green-d",_p.accent); }
+    }
+  }catch(e){}
 
   var seen=seenSet();
   var list=document.getElementById("list");

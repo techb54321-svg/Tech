@@ -152,6 +152,7 @@
 
 <canvas id="fx"></canvas>
 
+<script src="../packs.js"></script>
 <script>
 (function(){
   "use strict";
@@ -303,6 +304,22 @@
     {id:"t5",illo:"slow",cat:"Quick tip",h:"Slow down",b:"It takes about 20 minutes for your body to feel full. Eating slowly gives it time to catch up, so you naturally eat less. Put the fork down between bites and let your body do the maths."}
   ];
   var PER=2, DAILY=5;
+
+  // Personalise to the chosen community from the shared pack.
+  try{
+    var _p = window.RFR_pack && RFR_pack();
+    if(_p){
+      if(_p.stories && _p.stories.length){
+        STORIES = _p.stories.map(function(s){ return {id:s.id, illo:s.illo, cat:"Real-life story", h:s.h, b:s.b}; });
+      }
+      if(_p.tips && _p.tips.length){
+        TIPS = _p.tips.map(function(t){ return {id:t.id, illo:t.illo, cat:"Quick tip", h:t.h, b:t.b}; });
+      }
+      if(_p.accent){ document.documentElement.style.setProperty("--green",_p.accent);
+        document.documentElement.style.setProperty("--green-d",_p.accent); }
+    }
+  }catch(e){}
+
   var ITEMS=STORIES.concat(TIPS);
   var indexOf={}; ITEMS.forEach(function(it,i){ indexOf[it.id]=i; });
 

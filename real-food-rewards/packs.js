@@ -55,14 +55,20 @@ window.RFR_PACKS = {
     ],
 
     stories:[
-      {id:"af_s1", illo:"dates", h:"Grandmother's dates", b:"After dinner, everyone used to reach for sweets. Grandmother quietly set out a bowl of dates and orange slices instead. Nobody minded, and the whole family slept a little softer."},
-      {id:"af_s2", illo:"walk", h:"The evening walk", b:"After dinner the family began a slow walk around the block together. It helped everyone settle, and it turned into the cosiest part of the day, side by side and talking."},
-      {id:"af_s3", illo:"palaw", h:"Sunday's big palaw", b:"On the weekend, Mother cooks one big pot of vegetable palaw. With something warm and home made waiting in the kitchen, the family hardly reaches for takeaway all week."}
+      {id:"af_s1", motif:"🌴", hue:"peach", photo:"", h:"Grandmother's dates",
+       quote:"Now the little ones ask for dates before they ask for sweets.", name:"Fariba, grandmother of six",
+       b:"For years, the moment dinner ended, everyone reached for sweets. One evening I set out a bowl of dates and orange slices instead, the way my own mother used to. Nobody complained. Now the little ones ask for dates before they ask for sweets, and I rest easier for it."},
+      {id:"af_s2", motif:"🚶", hue:"rose", photo:"", h:"The evening walk",
+       quote:"Our walk after dinner became the part of the day we all wait for.", name:"Ahmad, father of four",
+       b:"After dinner I used to sit heavy and tired. My wife said, let us just walk around the block, fifteen minutes. The children come too. We talk, we breathe, and the chai sits lighter. Our walk after dinner became the part of the day we all wait for."},
+      {id:"af_s3", motif:"🍲", hue:"green", photo:"", h:"Sunday's big palaw",
+       quote:"One big pot on the weekend, and the whole week feels easier.", name:"Nadia, mother of three",
+       b:"The week gets busy, and it is easy to reach for takeaway. So on the weekend I cook one big pot of vegetable palaw. When something warm and home made is waiting, we hardly order out. One big pot on the weekend, and the whole week feels easier."}
     ],
     tips:[
-      {id:"af_t1", illo:"chai", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
-      {id:"af_t2", illo:"plate", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
-      {id:"af_t3", illo:"naan", h:"Warm naan", b:"Naan is the heart of the table. When you can, reach for the wholemeal kind, and enjoy it fresh and warm with your meal."}
+      {id:"af_t1", motif:"🫖", hue:"peach", h:"Lighter chai", b:"Try a little less sugar in your chai, with a pinch of cardamom instead. In a week your taste settles, and the chai still feels like home."},
+      {id:"af_t2", motif:"🥗", hue:"green", h:"Half a plate of sabzi", b:"Let vegetables or salad fill half your plate at dinner, with rice and meat sharing the rest. Simple, and it does you good."},
+      {id:"af_t3", motif:"🫓", hue:"amber", h:"Warm naan", b:"Naan is the heart of the table. When you can, choose the wholemeal kind, and enjoy it fresh and warm with your meal."}
     ],
 
     quiz:[

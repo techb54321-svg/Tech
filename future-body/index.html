@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Inside My Future Body — health prototype</title>
+<meta name="description" content="A short guided journey inside your body, showing how everyday habits shape your future health. Educational prototype." />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- 3D canvas is injected here by main.js -->
+<div id="canvas-holder"></div>
+
+<!-- Fade layer used for smooth transitions between body zones -->
+<div id="fade" class="fade"></div>
+
+<!-- All 2D interface layers (landing, journey HUD, reflection) are built by ui.js -->
+<div id="ui-root"></div>
+
+<div id="load-error" class="load-error" hidden>
+  <h2>Couldn't load the 3D engine</h2>
+  <p>This prototype loads Three.js from a CDN, so it needs an internet
+     connection the first time it opens. Please check your connection and reload.</p>
+</div>
+
+<!-- Three.js r128 (same version as the other experiences in this repo) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+        onerror="document.getElementById('load-error').hidden=false"></script>
+
+<!-- Prototype modules (plain scripts, shared FB namespace — no build step needed) -->
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/scenes/vessel.js"></script>
+<script src="js/scenes/liver.js"></script>
+<script src="js/scenes/pancreas.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

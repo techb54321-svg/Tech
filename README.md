@@ -1,3 +1,7 @@
+> This repo hosts three experiences: the **3D Blood Vessel Explorer** (below),
+> **Inside the Sip** (`sip/`), and **Inside My Future Body** (`future-body/` —
+> a guided health prototype for adolescents, see `future-body/README.md`).
+
 # 🩸 3D Blood Vessel Explorer
 
 An interactive, fully 3D simulation of the inside of a blood vessel. Fly through

@@ -1,0 +1,243 @@
+/* ============================================================
+   Inside My Future Body — interface styles
+   Calm, modern "health innovation" look. Dark, high-contrast,
+   deliberately not game-like or childish.
+   ============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep:   #0b1220;
+  --panel:     rgba(13, 22, 38, 0.88);
+  --panel-line:rgba(122, 190, 255, 0.22);
+  --text:      #eaf2fb;
+  --text-dim:  #a8bdd4;
+  --accent:    #4fd1c5;   /* calm teal          */
+  --accent-2:  #7abfff;   /* soft blue          */
+  --warn:      #f6ad55;   /* used sparingly     */
+  --good:      #68d391;
+  --radius:    14px;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  background: var(--bg-deep);
+  color: var(--text);
+}
+
+#canvas-holder, #canvas-holder canvas {
+  position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+}
+
+/* ---------- fade layer for zone transitions ---------- */
+.fade {
+  position: fixed; inset: 0; background: #04070d;
+  opacity: 0; pointer-events: none; transition: opacity 0.6s ease;
+  z-index: 40;
+}
+.fade.on { opacity: 1; }
+
+/* ---------- generic panel ---------- */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+
+/* ============================================================
+   Landing screen
+   ============================================================ */
+.landing {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 32px 20px; text-align: center;
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(79, 209, 197, 0.10), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(122, 191, 255, 0.10), transparent 60%),
+    linear-gradient(#0b1220, #070d18);
+  transition: opacity 0.6s ease;
+}
+.landing.hidden { opacity: 0; pointer-events: none; }
+
+.landing .kicker {
+  font-size: 13px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--accent); font-weight: 600;
+}
+.landing h1 {
+  font-size: clamp(30px, 6vw, 52px); font-weight: 800; line-height: 1.1;
+  max-width: 640px;
+}
+.landing .tagline {
+  color: var(--text-dim); font-size: clamp(15px, 2.2vw, 18px);
+  max-width: 560px; line-height: 1.6;
+}
+.landing .meta {
+  display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+  color: var(--text-dim); font-size: 13px;
+}
+.landing .meta span { border: 1px solid var(--panel-line); padding: 6px 14px; border-radius: 999px; }
+
+.btn {
+  font: inherit; cursor: pointer; border: none; border-radius: 12px;
+  padding: 14px 34px; font-size: 17px; font-weight: 700;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  color: #06121c; transition: transform 0.15s, box-shadow 0.15s;
+}
+.btn:hover, .btn:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(79,209,197,0.35); }
+.btn:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+
+.btn.ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--panel-line); font-weight: 600;
+}
+.btn.small { padding: 9px 18px; font-size: 14px; }
+
+.disclaimer {
+  position: fixed; bottom: 10px; left: 0; right: 0; text-align: center;
+  font-size: 12px; color: #6f849c; z-index: 51; padding: 0 16px;
+}
+
+/* ============================================================
+   Journey HUD
+   ============================================================ */
+.hud { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.hud.hidden { display: none; }
+
+/* progress dots */
+.progress {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; padding: 9px 14px;
+}
+.progress .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(168, 189, 212, 0.35); transition: background 0.3s, transform 0.3s;
+}
+.progress .dot.active { background: var(--accent); transform: scale(1.35); }
+.progress .dot.done   { background: rgba(79, 209, 197, 0.55); }
+
+/* zone label, top-left */
+.zone-label {
+  position: absolute; top: 16px; left: 16px; padding: 9px 16px;
+  font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--accent-2); font-weight: 700;
+}
+
+/* narration card, bottom-centre */
+.story {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  width: min(680px, calc(100% - 24px));
+  padding: 20px 22px 16px;
+  transition: opacity 0.35s ease;
+}
+.story.swap { opacity: 0; }
+.story h2 { font-size: 20px; margin-bottom: 8px; }
+.story p.body { color: var(--text); font-size: 15.5px; line-height: 1.65; }
+
+.story .vo {
+  margin-top: 12px; padding: 10px 12px; border-left: 3px solid var(--accent);
+  background: rgba(79, 209, 197, 0.07); border-radius: 0 8px 8px 0;
+  font-size: 13.5px; color: var(--text-dim); font-style: italic; line-height: 1.55;
+}
+.story .vo b { color: var(--accent); font-style: normal; font-size: 12px; letter-spacing: 0.08em; }
+
+.story .nav {
+  margin-top: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px;
+}
+.story .step-count { color: var(--text-dim); font-size: 12.5px; }
+
+/* choice buttons inside a choice step */
+.choices { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+.choice {
+  flex: 1 1 150px; cursor: pointer; font: inherit; text-align: left;
+  border: 1px solid var(--panel-line); border-radius: 12px;
+  background: rgba(122, 191, 255, 0.06); color: var(--text);
+  padding: 12px 14px; transition: border-color 0.2s, background 0.2s;
+}
+.choice:hover { border-color: var(--accent-2); }
+.choice.selected { border-color: var(--accent); background: rgba(79, 209, 197, 0.14); }
+.choice .c-title { font-weight: 700; font-size: 14.5px; display: block; margin-bottom: 3px; }
+.choice .c-sub { font-size: 12.5px; color: var(--text-dim); line-height: 1.4; }
+.choice:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+
+/* future trajectory chips */
+.traj-row { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+.traj {
+  flex: 1 1 140px; cursor: pointer; font: inherit;
+  border: 1px solid var(--panel-line); border-radius: 12px;
+  background: rgba(122, 191, 255, 0.06); color: var(--text);
+  padding: 11px 13px; text-align: left; transition: border-color 0.2s, background 0.2s;
+}
+.traj.selected { border-color: var(--accent); background: rgba(79, 209, 197, 0.14); }
+.traj .t-title { font-weight: 700; font-size: 14px; display: block; }
+.traj .t-sub { font-size: 12px; color: var(--text-dim); }
+.traj:focus-visible { outline: 3px solid var(--accent-2); outline-offset: 2px; }
+
+.zone-tabs { margin-top: 10px; display: flex; gap: 8px; }
+.zone-tab {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--panel-line); border-radius: 999px;
+  background: transparent; color: var(--text-dim); padding: 7px 15px;
+}
+.zone-tab.selected { color: #06121c; background: var(--accent-2); border-color: var(--accent-2); }
+
+/* habits side panel (desktop) */
+.habits {
+  position: absolute; right: 16px; top: 60px; width: 240px; padding: 16px;
+}
+.habits h3 { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+.habits .h-group { margin-bottom: 13px; }
+.habits .h-name { font-size: 13.5px; font-weight: 700; margin-bottom: 6px; }
+.seg { display: flex; border: 1px solid var(--panel-line); border-radius: 9px; overflow: hidden; }
+.seg button {
+  flex: 1; cursor: pointer; font: inherit; font-size: 11.5px; padding: 7px 4px;
+  background: transparent; border: none; color: var(--text-dim);
+}
+.seg button.selected { background: var(--accent); color: #06121c; font-weight: 700; }
+.seg button:focus-visible { outline: 2px solid var(--accent-2); outline-offset: -2px; }
+
+.habits .risk-line { font-size: 12.5px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+.habits .risk-word { font-weight: 700; }
+
+/* VR button (only shown when WebXR is available) */
+.vr-btn {
+  position: absolute; bottom: 18px; right: 16px; z-index: 31;
+}
+
+@media (max-width: 760px) {
+  .habits { display: none; }               /* choices still work via choice steps */
+  .story { bottom: 10px; padding: 15px 15px 12px; }
+  .story p.body { font-size: 14px; }
+  .vr-btn { display: none; }
+}
+
+/* ============================================================
+   Reflection screen
+   ============================================================ */
+.reflect {
+  position: fixed; inset: 0; z-index: 50; overflow-y: auto;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 40px 16px 60px;
+  background: linear-gradient(rgba(7, 13, 24, 0.94), rgba(7, 13, 24, 0.97));
+}
+.reflect.hidden { display: none; }
+.reflect .card { width: min(620px, 100%); padding: 30px 28px; }
+.reflect h2 { font-size: 24px; margin-bottom: 6px; }
+.reflect .sub { color: var(--text-dim); font-size: 14.5px; margin-bottom: 22px; line-height: 1.5; }
+.reflect label { display: block; font-weight: 700; font-size: 15px; margin: 18px 0 8px; line-height: 1.45; }
+.reflect textarea {
+  width: 100%; min-height: 74px; resize: vertical; font: inherit; font-size: 14.5px;
+  color: var(--text); background: rgba(122, 191, 255, 0.06);
+  border: 1px solid var(--panel-line); border-radius: 10px; padding: 10px 12px;
+}
+.reflect textarea:focus-visible { outline: 2px solid var(--accent); }
+.reflect .actions { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+.reflect .summary { margin-top: 22px; }
+.reflect .summary h3 { font-size: 16px; color: var(--accent); margin-bottom: 10px; }
+.reflect .summary .qa { margin-bottom: 12px; }
+.reflect .summary .q { font-size: 13px; color: var(--text-dim); }
+.reflect .summary .a { font-size: 15px; margin-top: 2px; white-space: pre-wrap; }

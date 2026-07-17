@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#f6f2ea" />
+<title>Smart Swaps — Real Food Rewards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f6f2ea; --card:#ffffff; --ink:#1f2d24; --muted:#6b7d70;
+    --green:#2f9e44; --green-d:#2b8a3e; --lime:#82c91e; --gold:#f5b100; --red:#e8590c;
+    --line:#e7e0d3; --r:20px; --shadow:0 12px 30px -14px rgba(31,45,36,.28);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  #app{max-width:520px;margin:0 auto;min-height:100%;padding:0 18px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
+  header{padding:calc(18px + env(safe-area-inset-top)) 2px 6px;display:flex;align-items:center;justify-content:space-between}
+  .title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.3px}
+  .title .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(150deg,#d3f9d8,#b2f2bb)}
+  .pts-chip{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+    padding:8px 12px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:var(--shadow)}
+  .pts-chip b{color:var(--green)}
+  .sub{color:var(--muted);font-size:13px;margin:2px 2px 12px;font-weight:600}
+  button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:none}
+
+  .swap{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+    margin-bottom:12px;overflow:hidden;transition:transform .12s}
+  .swap:active{transform:scale(.995)}
+  .swap .top{display:flex;align-items:center;gap:12px;padding:15px 16px;text-align:left;width:100%}
+  .swap .from-em{font-size:30px;flex:none;filter:grayscale(.15)}
+  .swap .arrow{color:var(--muted);font-weight:800;font-size:18px}
+  .swap .to-em{font-size:30px;flex:none}
+  .swap .lead{flex:1;min-width:0}
+  .swap .lead .f{display:block;font-size:12px;color:var(--muted);font-weight:700}
+  .swap .lead .t{display:block;font-size:15px;font-weight:800;color:var(--green);margin-top:2px}
+  .swap .chev{color:var(--muted);font-size:20px;transition:transform .3s;flex:none}
+  .swap.open .chev{transform:rotate(90deg)}
+  .swap .why{max-height:0;overflow:hidden;transition:max-height .35s ease;background:#faf7f0;border-top:0 solid var(--line)}
+  .swap.open .why{max-height:200px;border-top:1px solid var(--line)}
+  .swap .why p{margin:0;padding:14px 16px;font-size:14px;color:#37473c;line-height:1.5;font-weight:500}
+  .swap .why .plus{display:inline-block;margin:0 16px 14px;background:#ebfbee;color:var(--green);
+    border:1px solid #b2f2bb;padding:5px 12px;border-radius:999px;font-weight:800;font-size:12px}
+
+  .banner{margin:14px 0 6px;padding:14px 16px;border-radius:16px;background:linear-gradient(135deg,#ebfbee,#e6fcf5);
+    border:1px solid #b2f2bb;font-weight:700;font-size:14px;color:var(--green-d);display:flex;align-items:center;gap:10px}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:22px;line-height:1.5}
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title"><span class="ic">🔁</span> Smart Swaps</div>
+    <div class="pts-chip">⭐ <b id="ptsTop">0</b></div>
+  </header>
+  <div class="sub">Tap a card to see a healthier swap — explore each one to earn ⭐.</div>
+  <div class="banner" id="banner">🔎 <span><b id="seenN">0</b> of <b id="totalN">0</b> explored</span></div>
+  <div id="list"></div>
+  <div class="foot">Small swaps add up. Every healthier choice counts. 🌱</div>
+</div>
+<canvas id="fx"></canvas>
+
+<script>
+(function(){
+  "use strict";
+
+  /* shared points wallet */
+  var KEY="rfr_state_v1";
+  function today(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+  function fresh(){return {points:0,totalLogs:0,vegLogs:0,waterLogs:0,bestStreak:0,streak:0,
+    lastDay:null,goalsHit:0,owned:[],day:{date:today(),logs:[],points:0,counts:{}}};}
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(!s)return fresh();
+    if(!s.day||s.day.date!==today())s.day={date:today(),logs:[],points:0,counts:{}};return s;}catch(e){return fresh();}}
+  function award(pts,emoji,name){try{var S=load();S.points+=pts;S.day.points+=pts;
+    S.day.logs.unshift({e:emoji,n:name,p:pts});localStorage.setItem(KEY,JSON.stringify(S));return S.points;}catch(e){return pts;}}
+  function totalPoints(){return load().points;}
+
+  /* which swaps have already been rewarded (persisted so you can't farm it) */
+  var SEEN_KEY="rfr_swaps_seen";
+  function seenSet(){try{return JSON.parse(localStorage.getItem(SEEN_KEY))||{};}catch(e){return {};}}
+  function saveSeen(o){try{localStorage.setItem(SEEN_KEY,JSON.stringify(o));}catch(e){}}
+
+  var SWAPS=[
+    {id:"cereal",fe:"🥣",te:"🌾",from:"Sugary cereal",to:"Wholegrain oats / porridge",
+     why:"Many boxed cereals are up to a third sugar. Oats have far less, more fibre, and keep you full till lunch."},
+    {id:"cola",fe:"🥤",te:"💧",from:"Fizzy cola / soda",to:"Sparkling water with lemon",
+     why:"One can of cola can hold around 9 teaspoons of sugar. Fizzy water with a squeeze of lemon gives the fizz with none of it."},
+    {id:"bread",fe:"🍞",te:"🌾",from:"White bread",to:"Wholegrain / brown bread",
+     why:"Wholegrain keeps the fibre that white bread loses — steadier energy and better digestion."},
+    {id:"juice",fe:"🧃",te:"🍎",from:"Fruit juice",to:"Whole fresh fruit",
+     why:"Juice concentrates the sugar and drops the fibre. A whole apple or orange fills you up for fewer calories."},
+    {id:"crisps",fe:"🍟",te:"🌰",from:"Crisps",to:"A handful of nuts or roasted chickpeas",
+     why:"Nuts and chickpeas bring protein and good fats with far less salt than a bag of crisps."},
+    {id:"fried",fe:"🥟",te:"♨️",from:"Deep-fried snacks daily",to:"Baked or air-fried versions",
+     why:"Enjoy your favourites — just bake or air-fry instead of deep-frying to cut a lot of the oil."},
+    {id:"rice",fe:"🍚",te:"🌾",from:"White rice every meal",to:"Brown rice (or half-and-half)",
+     why:"Brown rice keeps more fibre and nutrients. Mixing half white, half brown is an easy first step."},
+    {id:"sweets",fe:"🍬",te:"🌴",from:"Sweets & chocolate",to:"Fresh dates or fruit",
+     why:"Dates and fruit satisfy a sweet craving naturally, and add fibre and minerals along the way."},
+    {id:"yogurt",fe:"🍨",te:"🥛",from:"Sweetened yogurt",to:"Plain yogurt + fresh fruit",
+     why:"Flavoured yogurts hide a lot of sugar. Start with plain and sweeten it yourself with fruit."}
+  ];
+  var PER=3;
+
+  var seen=seenSet();
+  var list=document.getElementById("list");
+  document.getElementById("totalN").textContent=SWAPS.length;
+  document.getElementById("ptsTop").textContent=totalPoints();
+
+  function refreshSeenCount(){
+    var c=0; SWAPS.forEach(function(s){ if(seen[s.id]) c++; });
+    document.getElementById("seenN").textContent=c;
+    if(c===SWAPS.length){ document.getElementById("banner").innerHTML="🎉 <span>All explored — nice work!</span>"; }
+  }
+
+  SWAPS.forEach(function(s){
+    var el=document.createElement("div");
+    el.className="swap";
+    el.innerHTML=
+      '<button class="top"><span class="from-em">'+s.fe+'</span><span class="arrow">→</span>'+
+      '<span class="to-em">'+s.te+'</span>'+
+      '<span class="lead"><span class="f">Instead of '+s.from+'</span>'+
+      '<span class="t">'+s.to+'</span></span><span class="chev">›</span></button>'+
+      '<div class="why"><p>'+s.why+'</p><span class="plus" id="plus-'+s.id+'"></span></div>';
+    list.appendChild(el);
+    var btn=el.querySelector(".top"), plus=el.querySelector("#plus-"+s.id);
+    plus.textContent = seen[s.id] ? "✓ +"+PER+" earned" : "Explore to earn +"+PER+" ⭐";
+    btn.onclick=function(){
+      var opening=!el.classList.contains("open");
+      el.classList.toggle("open");
+      if(opening && !seen[s.id]){
+        seen[s.id]=1; saveSeen(seen);
+        var nt=award(PER,"🔁","Smart Swap: "+s.to);
+        document.getElementById("ptsTop").textContent=nt;
+        plus.textContent="✓ +"+PER+" earned";
+        refreshSeenCount();
+        confetti(40);
+      }
+    };
+  });
+  refreshSeenCount();
+
+  /* confetti */
+  var fxC=document.getElementById("fx"), fxX=(fxC&&fxC.getContext)?fxC.getContext("2d"):null, P=[], raf=null;
+  var COL=["#2f9e44","#82c91e","#f5b100","#e8590c","#4dabf7"];
+  function rs(){ if(!fxX)return; fxC.width=window.innerWidth; fxC.height=window.innerHeight; }
+  if(fxX){ rs(); window.addEventListener("resize",rs); }
+  function confetti(n){ if(!fxX)return; for(var i=0;i<n;i++){P.push({x:window.innerWidth/2+(Math.random()*2-1)*80,
+    y:window.innerHeight*0.35,vx:(Math.random()*2-1)*6,vy:-(5+Math.random()*7),g:0.24+Math.random()*0.12,
+    s:5+Math.random()*5,c:COL[(i*7)%COL.length],r:Math.random()*6,vr:(Math.random()*2-1)*0.4,life:1});}
+    if(!raf)raf=requestAnimationFrame(tick); }
+  function tick(){ fxX.clearRect(0,0,fxC.width,fxC.height);
+    for(var i=P.length-1;i>=0;i--){var p=P[i];p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.life-=0.009;
+      if(p.y>fxC.height+24||p.life<=0){P.splice(i,1);continue;}
+      fxX.save();fxX.globalAlpha=Math.max(0,p.life);fxX.translate(p.x,p.y);fxX.rotate(p.r);
+      fxX.fillStyle=p.c;fxX.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.62);fxX.restore();}
+    if(P.length)raf=requestAnimationFrame(tick);else{raf=null;fxX.clearRect(0,0,fxC.width,fxC.height);} }
+})();
+</script>
+</body>
+</html>

@@ -109,6 +109,23 @@ When opened via `?view=scan`, the scanner shows a **Start camera** button first 
 browsers require a tap before a camera can start when the page is opened from a
 link (rather than tapping the in-app scan button), so this keeps it reliable.
 
+### Dashboard pages (for the Cogniss home screen)
+
+Three light-themed learning pages live alongside the main app and **share the same
+points wallet** (same origin = same `localStorage`), so points earned here show up
+in the Rewards shop and progress ring:
+
+| Dashboard tile | URL | Earns |
+|---|---|---|
+| Quick Quiz | `…/real-food-rewards/quiz/` | +5 per correct answer |
+| Smart Swaps | `…/real-food-rewards/swaps/` | +3 per swap explored |
+| Stories & Tips | `…/real-food-rewards/stories/` | +2 per item, +5 daily tip |
+
+Suggested dashboard layout: **Scan a Product** (`?view=scan`) as the primary tile;
+the three learning cards above; then quick tiles for **Rewards** (`?view=rewards`),
+**Today's Goals** (`?view=goals`) and **My Progress** (`?view=home`); plus your
+existing weekly streak.
+
 ### Passing points back into Cogniss (optional)
 
 The app already broadcasts progress so a Cogniss (or any) host can read it —

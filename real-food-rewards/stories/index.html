@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#f6f2ea" />
+<title>Stories &amp; Tips — Real Food Rewards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#f6f2ea; --card:#ffffff; --ink:#1f2d24; --muted:#6b7d70;
+    --green:#2f9e44; --green-d:#2b8a3e; --lime:#82c91e; --gold:#f5b100; --red:#e8590c;
+    --line:#e7e0d3; --r:20px; --shadow:0 12px 30px -14px rgba(31,45,36,.28);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  #app{max-width:520px;margin:0 auto;min-height:100%;padding:0 18px calc(28px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
+  header{padding:calc(18px + env(safe-area-inset-top)) 2px 8px;display:flex;align-items:center;justify-content:space-between}
+  .title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:-.3px}
+  .title .ic{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:20px;
+    background:linear-gradient(150deg,#ffe8cc,#ffd8a8)}
+  .pts-chip{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+    padding:8px 12px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:var(--shadow)}
+  .pts-chip b{color:var(--green)}
+  button{font-family:inherit;cursor:pointer;border:none;color:inherit;background:none}
+
+  .totd{margin:6px 0 16px;padding:20px;border-radius:22px;color:#173a20;position:relative;overflow:hidden;
+    background:linear-gradient(140deg,#d3f9d8,#e6fcf5 60%,#fff3bf);box-shadow:var(--shadow)}
+  .totd .kick{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--green-d);opacity:.85}
+  .totd h2{margin:6px 0 6px;font-size:20px;letter-spacing:-.3px;line-height:1.25}
+  .totd p{margin:0;font-size:14px;line-height:1.5;font-weight:500;color:#2a4a33}
+  .totd .claim{margin-top:14px;display:inline-block;background:#fff;color:var(--green);border:1px solid #b2f2bb;
+    padding:7px 14px;border-radius:999px;font-weight:800;font-size:13px}
+
+  .sec{font-size:13px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin:8px 2px 10px}
+  .item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+  .item .top{display:flex;align-items:center;gap:12px;padding:15px 16px;text-align:left;width:100%}
+  .item .em{font-size:26px;flex:none}
+  .item .lead{flex:1;min-width:0}
+  .item .lead .k{display:block;font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+  .item .lead .h{display:block;font-size:15px;font-weight:800;margin-top:2px}
+  .item .chev{color:var(--muted);font-size:20px;transition:transform .3s;flex:none}
+  .item.open .chev{transform:rotate(90deg)}
+  .item .body{max-height:0;overflow:hidden;transition:max-height .4s ease;background:#faf7f0}
+  .item.open .body{max-height:320px;border-top:1px solid var(--line)}
+  .item .body p{margin:0;padding:14px 16px;font-size:14px;line-height:1.55;color:#37473c;font-weight:500}
+  .item .body .plus{display:inline-block;margin:0 16px 14px;background:#ebfbee;color:var(--green);
+    border:1px solid #b2f2bb;padding:5px 12px;border-radius:999px;font-weight:800;font-size:12px}
+  .foot{text-align:center;color:var(--muted);font-size:12px;margin-top:auto;padding-top:22px;line-height:1.5}
+  #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="title"><span class="ic">📖</span> Stories &amp; Tips</div>
+    <div class="pts-chip">⭐ <b id="ptsTop">0</b></div>
+  </header>
+
+  <div class="totd" id="totd"></div>
+
+  <div class="sec">Real-life stories</div>
+  <div id="stories"></div>
+  <div class="sec">Quick tips</div>
+  <div id="tips"></div>
+
+  <div class="foot">A little inspiration every day. Come back tomorrow for a fresh tip. 🌞</div>
+</div>
+<canvas id="fx"></canvas>
+
+<script>
+(function(){
+  "use strict";
+
+  /* shared points wallet */
+  var KEY="rfr_state_v1";
+  function today(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+  function fresh(){return {points:0,totalLogs:0,vegLogs:0,waterLogs:0,bestStreak:0,streak:0,
+    lastDay:null,goalsHit:0,owned:[],day:{date:today(),logs:[],points:0,counts:{}}};}
+  function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(!s)return fresh();
+    if(!s.day||s.day.date!==today())s.day={date:today(),logs:[],points:0,counts:{}};return s;}catch(e){return fresh();}}
+  function award(pts,emoji,name){try{var S=load();S.points+=pts;S.day.points+=pts;
+    S.day.logs.unshift({e:emoji,n:name,p:pts});localStorage.setItem(KEY,JSON.stringify(S));return S.points;}catch(e){return pts;}}
+  function totalPoints(){return load().points;}
+  function setPts(v){document.getElementById("ptsTop").textContent=v;}
+
+  var SEEN_KEY="rfr_stories_seen";
+  function seenSet(){try{return JSON.parse(localStorage.getItem(SEEN_KEY))||{};}catch(e){return {};}}
+  function saveSeen(o){try{localStorage.setItem(SEEN_KEY,JSON.stringify(o));}catch(e){}}
+
+  var STORIES=[
+    {id:"s1",em:"🎒",h:"Ayesha's lunchbox",b:"Ayesha used to have a juice box every day at school and felt sleepy by the afternoon. Her mum swapped it for a bottle of water and a small box of grapes. Within a week Ayesha said she felt more awake in class — and she still got her sweet taste from the fruit."},
+    {id:"s2",em:"🌴",h:"Grandma's dates",b:"After dinner, the family always reached for sweets. Grandma started putting out a bowl of dates and orange slices instead. Nobody missed the sweets — and everyone slept a little better."},
+    {id:"s3",em:"🚶",h:"The after-dinner walk",b:"Omar's family began taking a short 15-minute walk together after dinner. It started as a way to help digestion, but it became the best part of their day — time to talk, with no screens."},
+    {id:"s4",em:"🍲",h:"Cook once, eat twice",b:"Fatima started making a big pot of lentil stew on Sundays. With healthy food ready in the fridge, the family reached for takeaways far less during the busy week."}
+  ];
+  var TIPS=[
+    {id:"t1",em:"🥗",h:"Fill half your plate",b:"At each meal, aim to make half your plate vegetables or fruit. It's the simplest way to eat better without counting anything."},
+    {id:"t2",em:"💧",h:"Water before meals",b:"Drink a glass of water before you eat. It helps you stay hydrated and often stops you from over-eating."},
+    {id:"t3",em:"🏷️",h:"Check sugar on the label",b:"Look at 'sugars per 100g'. Around 5g or less is low (green), over 22.5g is high (red). Your scanner does this for you automatically!"},
+    {id:"t4",em:"🛒",h:"Shop the edges",b:"Fresh foods — vegetables, fruit, dairy — usually line the outer walls of the shop. The processed snacks live in the middle aisles."},
+    {id:"t5",em:"🍽️",h:"Slow down",b:"It takes about 20 minutes for your body to feel full. Eating slowly gives it time to catch up, so you naturally eat less."}
+  ];
+  var PER=2, DAILY=5;
+
+  var seen=seenSet();
+  setPts(totalPoints());
+
+  /* Tip of the day — deterministic by date so everyone sees the same one each day */
+  function dayIndex(){ var d=new Date(); return (d.getFullYear()*372 + d.getMonth()*31 + d.getDate()); }
+  var pool=TIPS.concat(STORIES);
+  var totd=pool[dayIndex()%pool.length];
+  var DAY_KEY="rfr_tip_claimed";
+  function claimedToday(){ try{return localStorage.getItem(DAY_KEY)===today();}catch(e){return false;} }
+  function renderTotd(){
+    var claimed=claimedToday();
+    document.getElementById("totd").innerHTML=
+      '<div class="kick">☀️ Tip of the day</div><h2>'+totd.em+' '+totd.h+'</h2><p>'+totd.b+'</p>'+
+      '<span class="claim" id="claimBtn">'+(claimed?"✓ +"+DAILY+" claimed today":"Read it — claim +"+DAILY+" ⭐")+'</span>';
+    if(!claimed){
+      document.getElementById("claimBtn").onclick=function(){
+        try{localStorage.setItem(DAY_KEY,today());}catch(e){}
+        var nt=award(DAILY,"📖","Tip of the day"); setPts(nt);
+        document.getElementById("claimBtn").textContent="✓ +"+DAILY+" claimed today";
+        confetti(60);
+      };
+    }
+  }
+  renderTotd();
+
+  function buildList(arr, host, kick, emojiPts){
+    arr.forEach(function(it){
+      var el=document.createElement("div"); el.className="item";
+      el.innerHTML='<button class="top"><span class="em">'+it.em+'</span>'+
+        '<span class="lead"><span class="k">'+kick+'</span><span class="h">'+it.h+'</span></span>'+
+        '<span class="chev">›</span></button>'+
+        '<div class="body"><p>'+it.b+'</p><span class="plus" id="plus-'+it.id+'"></span></div>';
+      host.appendChild(el);
+      var btn=el.querySelector(".top"), plus=el.querySelector("#plus-"+it.id);
+      plus.textContent = seen[it.id] ? "✓ +"+PER+" earned" : "Read to earn +"+PER+" ⭐";
+      btn.onclick=function(){
+        var opening=!el.classList.contains("open");
+        el.classList.toggle("open");
+        if(opening && !seen[it.id]){
+          seen[it.id]=1; saveSeen(seen);
+          var nt=award(PER, it.em, it.h); setPts(nt);
+          plus.textContent="✓ +"+PER+" earned";
+          confetti(30);
+        }
+      };
+    });
+  }
+  buildList(STORIES, document.getElementById("stories"), "Real-life story");
+  buildList(TIPS, document.getElementById("tips"), "Quick tip");
+
+  /* confetti */
+  var fxC=document.getElementById("fx"), fxX=(fxC&&fxC.getContext)?fxC.getContext("2d"):null, Pt=[], raf=null;
+  var COL=["#2f9e44","#82c91e","#f5b100","#e8590c","#4dabf7"];
+  function rs(){ if(!fxX)return; fxC.width=window.innerWidth; fxC.height=window.innerHeight; }
+  if(fxX){ rs(); window.addEventListener("resize",rs); }
+  function confetti(n){ if(!fxX)return; for(var i=0;i<n;i++){Pt.push({x:window.innerWidth/2+(Math.random()*2-1)*80,
+    y:window.innerHeight*0.32,vx:(Math.random()*2-1)*6,vy:-(5+Math.random()*7),g:0.24+Math.random()*0.12,
+    s:5+Math.random()*5,c:COL[(i*7)%COL.length],r:Math.random()*6,vr:(Math.random()*2-1)*0.4,life:1});}
+    if(!raf)raf=requestAnimationFrame(tick); }
+  function tick(){ fxX.clearRect(0,0,fxC.width,fxC.height);
+    for(var i=Pt.length-1;i>=0;i--){var p=Pt[i];p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;p.life-=0.009;
+      if(p.y>fxC.height+24||p.life<=0){Pt.splice(i,1);continue;}
+      fxX.save();fxX.globalAlpha=Math.max(0,p.life);fxX.translate(p.x,p.y);fxX.rotate(p.r);
+      fxX.fillStyle=p.c;fxX.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.62);fxX.restore();}
+    if(Pt.length)raf=requestAnimationFrame(tick);else{raf=null;fxX.clearRect(0,0,fxC.width,fxC.height);} }
+})();
+</script>
+</body>
+</html>

@@ -220,16 +220,6 @@
     </div>
   </section>
 
-  <!-- ===== TRUST STRIP ===== -->
-  <section aria-label="At a glance" class="border-y border-sagetint bg-cream/60">
-    <div class="max-w-5xl mx-auto px-5 py-5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-      <div class="reveal"><p class="font-display text-lg text-ink">No sedatives</p><p class="text-xs text-ink/55">Gentle, not sleepy</p></div>
-      <div class="reveal"><p class="font-display text-lg text-ink">Real ingredients</p><p class="text-xs text-ink/55">Nothing you can't pronounce</p></div>
-      <div class="reveal"><p class="font-display text-lg text-ink">Made in Australia</p><p class="text-xs text-ink/55">Small founding batch</p></div>
-      <div class="reveal"><p class="font-display text-lg text-ink">Vet-friendly</p><p class="text-xs text-ink/55">Honest about what it is</p></div>
-    </div>
-  </section>
-
   <!-- ===== PROBLEM ===== -->
   <section class="bg-sagetint">
     <div class="max-w-3xl mx-auto px-5 py-16 md:py-20 text-center reveal">
@@ -242,8 +232,8 @@
   </section>
 
   <!-- ===== ROSIE'S STORY (centrepiece) ===== -->
-  <section class="max-w-5xl mx-auto px-5 py-20 md:py-28">
-    <div class="grid md:grid-cols-5 gap-12 items-start">
+  <section class="max-w-5xl mx-auto px-5 py-24 md:py-40">
+    <div class="grid md:grid-cols-5 gap-14 md:gap-16 items-start">
       <div class="md:col-span-2 reveal">
         <!-- STORY IMAGE SLOT -->
         <div class="aspect-square rounded-[2rem] bg-gradient-to-br from-rosesoft via-cream to-sagetint flex items-end justify-center overflow-hidden md:sticky md:top-24">
@@ -252,21 +242,23 @@
       </div>
 
       <div class="md:col-span-3 reveal">
-        <p class="text-sagedeep font-semibold tracking-wide uppercase text-xs mb-4">Our story</p>
-        <h2 class="font-display text-3xl md:text-4xl text-ink mb-8 leading-tight">It started with a rescue named Rosie.</h2>
+        <p class="text-sagedeep font-semibold tracking-wide uppercase text-xs mb-5">Our story</p>
+        <h2 class="font-display text-3xl md:text-5xl text-ink mb-10 leading-tight">It started with a rescue named Rosie.</h2>
 
-        <div class="space-y-5 text-ink/80 leading-relaxed text-[1.05rem]">
+        <div class="space-y-7 text-ink/85 leading-[1.85] text-lg md:text-[1.35rem]">
           <p>Before she was two years old, Rosie had already lived in six homes. She came to us from a shelter — matted, sore, covered in skin infections, and shut down. She'd been left in a front yard like an ornament: no walks, no warmth, no one to belong to. And when no one wanted her anymore, she was dumped.</p>
           <p>The day I brought her home, I made her a promise: <em class="text-ink not-italic font-medium">from here on, your life is going to be wonderful.</em></p>
           <p>Rosie holds onto that promise tight. She sticks to me like glue — as if she's making up for all the love she went without. But when I leave the house, the old fear finds her again. She howls at the door, sure she's been left behind for good. It isn't bad behaviour. It's a dog who is only just learning that love can stay.</p>
           <p>So I went looking for something to help her feel calmer in those moments — and I couldn't find it. Everything was either medication, or a tub of preservatives and fillers dressed up as "calming." I didn't want to sedate her. I just wanted something gentle and honest: real, healthy, minimal ingredients that could take the edge off and help her feel safe.</p>
-          <p class="font-display text-xl text-ink">When I couldn't find it, I made it. For Rosie first — and now for every dog like her.</p>
         </div>
 
+        <!-- closing line, set apart as the emotional beat -->
+        <p class="font-display text-[1.65rem] md:text-[2.15rem] leading-[1.25] text-ink mt-12 pt-10 border-t border-rosesoft/70">When I couldn't find it, I made it. For Rosie first — and now for every dog like her.</p>
+
         <!-- SIGNATURE MOTIF: six homes -->
-        <div class="mt-12 p-6 rounded-2xl bg-cream border border-sagetint">
-          <div class="flex items-end gap-3 sm:gap-4 mb-4" id="homes" aria-hidden="true"></div>
-          <p class="text-ink/70 text-sm"><span class="font-semibold text-ink">Six homes before she was two.</span> This is the one that stayed.</p>
+        <div class="mt-16 p-8 sm:p-10 rounded-[1.75rem] bg-cream border border-sagetint text-center">
+          <div class="flex items-end justify-center gap-4 sm:gap-6 md:gap-7 mb-7" id="homes" aria-hidden="true"></div>
+          <p class="text-ink/70 text-base sm:text-lg"><span class="font-semibold text-ink">Six homes before she was two.</span> This is the one that stayed.</p>
         </div>
       </div>
     </div>
@@ -432,16 +424,19 @@
   (function () {
     const wrap = document.getElementById('homes');
     if (!wrap) return;
-    const house = (filled) => `
-      <div class="home" style="opacity:${filled ? 1 : 0.4}">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-             stroke="${filled ? '#C0857E' : '#5C6C50'}" stroke-width="1.8"
+    const house = (filled) => {
+      const size = filled ? 78 : 58;
+      return `
+      <div class="home" style="opacity:${filled ? 1 : 0.45}">
+        <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+             stroke="${filled ? '#C0857E' : '#5C6C50'}" stroke-width="1.7"
              stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 11 L12 4 L20 11"/>
           <path d="M6 11 V20 H18 V11"/>
           ${filled ? '<path d="M12 17 c-1.6-1.6-3-2.4-3-3.8 a1.5 1.5 0 0 1 3-.4 a1.5 1.5 0 0 1 3 .4 c0 1.4-1.4 2.2-3 3.8 z" fill="#C0857E" stroke="none"/>' : ''}
         </svg>
       </div>`;
+    };
     let html = '';
     for (let i = 0; i < 5; i++) html += house(false);
     html += house(true);

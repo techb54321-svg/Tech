@@ -12,6 +12,10 @@
 <meta name="theme-color" content="#F1EBDD" />
 <meta name="color-scheme" content="light" />
 
+<!-- Mark JS as ready before first paint. Fade-ins are gated on this class, so
+     without JS (and for scrapers) all content is visible immediately. -->
+<script>document.documentElement.className += ' js';</script>
+
 <!-- Open Graph / social sharing -->
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Rosie Bear" />
@@ -19,9 +23,18 @@
 <meta property="og:description" content="A gentle calming treat for dogs, made with real, minimal ingredients. No medication, no fillers, no preservatives. Made to help your dog settle when you leave." />
 <meta property="og:url" content="https://techb54321-svg.github.io/Tech/rosie-bear/" />
 <meta property="og:locale" content="en_AU" />
+<!-- Share image. Swap og-image.png for a warm 1200×630 photo of Rosie when you have one. -->
+<meta property="og:image" content="https://techb54321-svg.github.io/Tech/rosie-bear/og-image.png" />
+<meta property="og:image:secure_url" content="https://techb54321-svg.github.io/Tech/rosie-bear/og-image.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Rosie Bear — gentle calm for dogs who feel everything, especially when you leave." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Rosie Bear — Gentle calm for dogs who feel everything" />
 <meta name="twitter:description" content="A gentle calming treat for dogs, made with real, minimal ingredients. Made to help your dog settle when you leave." />
+<meta name="twitter:image" content="https://techb54321-svg.github.io/Tech/rosie-bear/og-image.png" />
+<meta name="twitter:image:alt" content="Rosie Bear — gentle calm for dogs who feel everything." />
 
 <!-- Favicon: a small rose-coloured paw (inline SVG, no external request) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23C0857E'/%3E%3Cg fill='%23FAF6EC'%3E%3Ccircle cx='11' cy='11' r='2.6'/%3E%3Ccircle cx='16' cy='9.4' r='2.6'/%3E%3Ccircle cx='21' cy='11' r='2.6'/%3E%3Cpath d='M16 14c-3.4 0-6 2.3-6 5.1 0 2.2 2.7 3.2 6 3.2s6-1 6-3.2C22 16.3 19.4 14 16 14z'/%3E%3C/g%3E%3C/svg%3E" />
@@ -127,9 +140,11 @@
   }
   .skip-link:focus { top: 12px; }
 
-  /* soft entrance reveals */
-  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
-  .reveal.in { opacity: 1; transform: none; }
+  /* soft entrance reveals — only ever hide content once JS is confirmed ready,
+     so search engines, social scrapers, and no-JS visitors see everything
+     immediately and the hero never waits on JavaScript. */
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
 
   /* six-homes signature motif */
   .home { transition: transform .5s ease; }
@@ -149,7 +164,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
-    .reveal { opacity: 1; transform: none; transition: none; }
+    .js .reveal, .reveal { opacity: 1; transform: none; transition: none; }
     .home { transition: none; }
   }
 </style>
@@ -175,7 +190,7 @@
 
   <!-- ===== HERO ===== -->
   <section class="max-w-5xl mx-auto px-5 pt-14 pb-16 md:pt-20 md:pb-24 grid md:grid-cols-2 gap-10 md:gap-8 items-center">
-    <div class="reveal">
+    <div>
       <p class="text-sagedeep font-semibold tracking-wide uppercase text-xs mb-5">Gentle calm for dogs who feel everything</p>
       <h1 class="font-display text-[2.5rem] leading-[1.05] md:text-[3.4rem] md:leading-[1.03] text-ink mb-5">
         For dogs who feel everything&nbsp;— especially when you <em class="text-rose not-italic">leave.</em>
@@ -204,7 +219,7 @@
     </div>
 
     <!-- HERO IMAGE SLOT (replace with a warm photo of Rosie / a relaxed dog) -->
-    <div class="reveal">
+    <div>
       <div class="relative aspect-[4/5] rounded-[2rem] overflow-hidden bg-gradient-to-br from-sagetint via-cream to-rosesoft flex items-center justify-center">
         <!-- Placeholder illustration: a curled, resting dog. Swap this whole div for an <img>. -->
         <svg viewBox="0 0 200 200" class="w-3/4 h-3/4" fill="none" stroke="#5C6C50" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

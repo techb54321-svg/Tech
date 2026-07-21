@@ -155,8 +155,8 @@ scene.add(rig);
 camera.position.set(0,0,0);
 
 // ---- lighting -------------------------------------------------------------
-scene.add(new THREE.AmbientLight(0x3a1420, 0.9));
-const travelLight = new THREE.PointLight(0xffb27a, 2.2, 22, 2);
+scene.add(new THREE.AmbientLight(0x2a0e18, 0.45));
+const travelLight = new THREE.PointLight(0xffb27a, 1.5, 16, 2);
 rig.add(travelLight);
 const keyLight = new THREE.DirectionalLight(0xffd9c0, 0.5);
 keyLight.position.set(3,6,4);
@@ -167,7 +167,7 @@ scene.add(keyLight);
 // =========================================================================
 function fleshMat(color, emissive, rough){
   return new THREE.MeshStandardMaterial({
-    color, emissive: emissive||0x1a0206, emissiveIntensity:0.6,
+    color, emissive: emissive||0x1a0206, emissiveIntensity:0.3,
     roughness: rough==null?0.55:rough, metalness:0.0, side:THREE.DoubleSide,
     flatShading:false
   });
@@ -230,8 +230,8 @@ const mouth = makeWorld('mouth');
   tongue.scale.set(1.5,0.5,2.2); tongue.position.set(0,-3.2,2); mouth.add(tongue);
 
   // Ring of teeth around the viewer (upper + lower arch).
-  const toothMat = new THREE.MeshStandardMaterial({ color:0xfdf6ec, emissive:0x5a4a3a,
-    emissiveIntensity:0.15, roughness:0.25, metalness:0.05 });
+  const toothMat = new THREE.MeshStandardMaterial({ color:0xe6dcc8, emissive:0x2e281c,
+    emissiveIntensity:0.12, roughness:0.35, metalness:0.05 });
   const enamelMats = [];   // track so we can dull them as enamel weakens
   function arch(radius, y, tilt){
     for(let i=0;i<16;i++){
@@ -461,7 +461,7 @@ const BEATS = [
       const dull = 1-(state.enamel-78)/22;
       w.enamelMats.forEach(mm=>{ mm.roughness = 0.25+dull*0.4; mm.emissiveIntensity=0.15-dull*0.1; });
       // gentle look-around drift
-      rig.position.set(0,0,0);
+      rig.position.set(0,0,0); rig.rotation.set(0,0,0);
       camera.position.set(Math.sin(p*3)*0.3, 0, 0);
       animateCloud(w.acid, dt, 0.6);
     }
@@ -529,7 +529,8 @@ const BEATS = [
       w.nucleus.rotation.y += dt*0.6;
       w.dopa.material.opacity = clamp(state.dopamine/150,0,1)*0.8;
       animateCloud(w.dopa, dt, 1.6);
-      rig.position.set(0,0,0); camera.position.set(Math.sin(p*4)*0.4,0,0);
+      rig.position.set(0,0,0); rig.rotation.set(0,0,0);
+      camera.position.set(Math.sin(p*4)*0.4,0,0);
     }
   },
   {
@@ -545,6 +546,7 @@ const BEATS = [
         d.rotation.y += dt*0.2;
       });
       state.glucose = lerp(72, 100, p);
+      rig.rotation.set(0,0,0);
       rig.position.set(0,0, lerp(2,-6,smooth(p)));   // drift through the fat field
       camera.position.set(Math.sin(p*2)*0.5,0,0);
     }
@@ -646,7 +648,7 @@ function setupBloom(){
   if(window.__noBloom || !THREE.EffectComposer || !THREE.UnrealBloomPass) return;
   composer=new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene,camera));
-  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.9,0.7,0.2);
+  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.55,0.4,0.8);
   composer.addPass(bloom);
 }
 setupBloom();
@@ -665,7 +667,7 @@ renderer.setAnimationLoop(()=>{
     camera.quaternion.setFromEuler(e);
   }
 
-  travelLight.intensity = 2.0 + Math.sin(now*0.004)*0.3;   // subtle flicker
+  travelLight.intensity = 1.35 + Math.sin(now*0.004)*0.2;   // subtle flicker
 
   if(composer && !inVR) composer.render();
   else renderer.render(scene,camera);

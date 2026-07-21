@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Inside the Sip — a VR journey through one sugary drink</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; overflow:hidden; background:#0a0406;
+    font-family:system-ui,"Segoe UI",Roboto,sans-serif; color:#fff; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; }
+
+  /* ---- Intro / title card ---- */
+  #intro { position:fixed; inset:0; z-index:40; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; padding:28px;
+    background:radial-gradient(circle at 50% 35%, #2a0d18, #08040a 72%); transition:opacity .6s; }
+  #intro h1 { font-size:clamp(30px,6vw,60px); font-weight:800; line-height:1.05;
+    background:linear-gradient(90deg,#ffd166,#ff5a78,#3ddc97); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; }
+  #intro p { color:#d6b9c4; max-width:640px; margin-top:16px; font-size:clamp(14px,2.4vw,17px); line-height:1.55; }
+  .btnrow { margin-top:30px; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  button.big { border:0; cursor:pointer; font-weight:700; font-size:16px; padding:15px 28px;
+    border-radius:12px; color:#160006; background:linear-gradient(90deg,#ff5a78,#ffd166);
+    box-shadow:0 10px 30px rgba(255,90,120,.35); transition:transform .15s; }
+  button.big:hover { transform:translateY(-2px); }
+  button.ghost { background:rgba(255,255,255,.08); color:#fff; box-shadow:none;
+    border:1px solid rgba(255,255,255,.25); }
+  #intro small { color:#8b727e; margin-top:22px; font-size:12px; max-width:560px; line-height:1.5; }
+
+  /* ---- Enter VR button (only on headsets) ---- */
+  #vrbtn { position:fixed; top:16px; right:16px; z-index:30; display:none;
+    border:0; cursor:pointer; font-weight:800; font-size:15px; padding:12px 20px; border-radius:11px;
+    color:#04121a; background:linear-gradient(90deg,#3ddc97,#1fb6ff); box-shadow:0 8px 24px rgba(31,182,255,.4); }
+
+  /* ---- HUD (desktop / phone) ---- */
+  #hud { position:fixed; inset:0; z-index:20; pointer-events:none; display:none; }
+  #caption { position:absolute; left:50%; bottom:118px; transform:translateX(-50%);
+    width:min(760px,90vw); text-align:center; font-size:clamp(15px,2.6vw,20px); line-height:1.5;
+    text-shadow:0 2px 14px #000; padding:0 14px; }
+  #caption b { color:#ffd166; }
+  #beatname { position:absolute; left:50%; top:18px; transform:translateX(-50%);
+    font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#ff90a6; text-shadow:0 2px 10px #000; }
+  #progress { position:absolute; left:50%; top:40px; transform:translateX(-50%);
+    width:min(420px,70vw); height:4px; background:rgba(255,255,255,.16); border-radius:3px; overflow:hidden; }
+  #progress > i { display:block; height:100%; width:0; background:linear-gradient(90deg,#ffd166,#ff5a78); }
+
+  /* meters */
+  #meters { position:absolute; left:16px; bottom:16px; display:flex; flex-direction:column; gap:9px; }
+  .meter { width:210px; }
+  .meter .lbl { display:flex; justify-content:space-between; font-size:11px; color:#e7cdd6;
+    text-shadow:0 1px 6px #000; margin-bottom:3px; letter-spacing:.4px; }
+  .meter .lbl span:last-child { font-variant-numeric:tabular-nums; font-weight:700; }
+  .meter .bar { height:8px; border-radius:5px; background:rgba(255,255,255,.14); overflow:hidden; }
+  .meter .bar > i { display:block; height:100%; width:0; border-radius:5px; transition:width .25s; }
+
+  /* transport controls */
+  #controls { position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    display:flex; gap:10px; pointer-events:auto; }
+  #controls button { pointer-events:auto; border:0; cursor:pointer; width:44px; height:44px;
+    border-radius:50%; font-size:17px; color:#fff; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.22); backdrop-filter:blur(6px); }
+  #controls button:hover { background:rgba(255,255,255,.22); }
+  #controls .wide { width:auto; padding:0 18px; border-radius:22px; font-weight:700; font-size:14px; }
+
+  #fade { position:fixed; inset:0; z-index:25; background:#000; opacity:0; pointer-events:none; transition:opacity .5s; }
+  #err { position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:50;
+    background:#2a0810; border:1px solid #ff5a78; padding:20px 24px; border-radius:12px; max-width:80vw;
+    display:none; font-size:14px; line-height:1.5; }
+  @media (max-width:560px){ #meters{ transform:scale(.86); transform-origin:left bottom; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<button id="vrbtn">🥽 Enter VR</button>
+
+<div id="hud">
+  <div id="beatname">The Sip</div>
+  <div id="progress"><i></i></div>
+  <div id="caption"></div>
+  <div id="meters"></div>
+  <div id="controls">
+    <button id="prev" title="Previous">⏮</button>
+    <button id="play" class="wide" title="Play / Pause">⏸ Pause</button>
+    <button id="next" title="Next">⏭</button>
+    <button id="restart" title="Restart">↺</button>
+  </div>
+</div>
+
+<div id="fade"></div>
+
+<div id="intro">
+  <h1>Inside the Sip</h1>
+  <p>Take one sip of a sugary drink — then travel inside your own body to watch what it does.
+     Feel the enamel weaken, the blood sugar spike, insulin scramble to respond, the dopamine rush and crash,
+     and see how doing this again and again drives fat storage and heart risk.</p>
+  <div class="btnrow">
+    <button id="start" class="big">▶ Begin the journey</button>
+    <button id="skipvr" class="ghost">Jump straight into a beat…</button>
+  </div>
+  <small>Best in the <b>Meta Quest browser</b> — tap “Begin”, then the green <b>Enter VR</b> button.
+     Works on a computer or phone too (drag to look around). ~90 seconds. An educational visualisation, not medical advice.</small>
+</div>
+
+<div id="err"></div>
+
+<!-- Three.js core (same proven CDN as the blood-vessel experience) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
+  onerror="document.getElementById('err').style.display='block';document.getElementById('err').textContent='Could not load the 3D engine (Three.js). Check your internet connection and reload.';"></script>
+<!-- Optional post-processing for desktop bloom; degrades gracefully if blocked -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js" onerror="window.__noBloom=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js" onerror="window.__noBloom=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js" onerror="window.__noBloom=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js" onerror="window.__noBloom=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js" onerror="window.__noBloom=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js" onerror="window.__noBloom=1"></script>
+
+<script>
+"use strict";
+if (!window.THREE) { throw new Error("Three.js failed to load"); }
+
+/* =========================================================================
+   INSIDE THE SIP  — a guided WebXR journey through one sugary drink.
+   Self-contained: procedural geometry only, Three.js from CDN.
+   Runs on desktop, phone, and Meta Quest (WebXR) — one file, no build step.
+   ========================================================================= */
+
+const THREE = window.THREE;
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const smooth = t => t*t*(3-2*t);
+const rand  = (a,b)=>a+Math.random()*(b-a);
+
+// ---- renderer / scene / camera -------------------------------------------
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.xr.enabled = true;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0406);
+scene.fog = new THREE.FogExp2(0x120306, 0.03);
+
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.05, 200);
+
+// A "rig" holds the camera so we can move the player while WebXR head-tracking
+// still works relative to the rig.
+const rig = new THREE.Group();
+rig.add(camera);
+scene.add(rig);
+camera.position.set(0,0,0);
+
+// ---- lighting -------------------------------------------------------------
+scene.add(new THREE.AmbientLight(0x3a1420, 0.9));
+const travelLight = new THREE.PointLight(0xffb27a, 2.2, 22, 2);
+rig.add(travelLight);
+const keyLight = new THREE.DirectionalLight(0xffd9c0, 0.5);
+keyLight.position.set(3,6,4);
+scene.add(keyLight);
+
+// =========================================================================
+//  MATERIAL HELPERS  — warm, wet, "subsurface-ish" flesh via emissive+rough
+// =========================================================================
+function fleshMat(color, emissive, rough){
+  return new THREE.MeshStandardMaterial({
+    color, emissive: emissive||0x1a0206, emissiveIntensity:0.6,
+    roughness: rough==null?0.55:rough, metalness:0.0, side:THREE.DoubleSide,
+    flatShading:false
+  });
+}
+function glowMat(color){
+  return new THREE.MeshBasicMaterial({ color });
+}
+
+// A soft radial sprite texture reused by every particle system.
+function makeDotTexture(){
+  const c = document.createElement('canvas'); c.width=c.height=64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32,32,0,32,32,32);
+  grd.addColorStop(0,'rgba(255,255,255,1)');
+  grd.addColorStop(0.35,'rgba(255,255,255,0.85)');
+  grd.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=grd; g.fillRect(0,0,64,64);
+  const t = new THREE.Texture(c); t.needsUpdate=true; return t;
+}
+const DOT = makeDotTexture();
+
+// Reusable particle cloud. Points get positions in a local group we can move.
+function particleCloud(count, size, color, spread){
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count*3);
+  const seed = new Float32Array(count);
+  for(let i=0;i<count;i++){
+    pos[i*3]   = rand(-spread.x,spread.x);
+    pos[i*3+1] = rand(-spread.y,spread.y);
+    pos[i*3+2] = rand(-spread.z,spread.z);
+    seed[i]=Math.random();
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const mat = new THREE.PointsMaterial({
+    size, map:DOT, color, transparent:true, opacity:0.95,
+    depthWrite:false, blending:THREE.AdditiveBlending, sizeAttenuation:true
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.userData.seed = seed;
+  pts.userData.base = pos.slice();
+  return pts;
+}
+
+// =========================================================================
+//  ENVIRONMENTS  — each beat lives in its own group, hidden until active.
+// =========================================================================
+const worlds = {};
+function makeWorld(name){ const g=new THREE.Group(); g.visible=false; scene.add(g); worlds[name]=g; return g; }
+
+// ---------- 1. THE MOUTH ----------
+const mouth = makeWorld('mouth');
+(function buildMouth(){
+  // Palate dome overhead + tongue floor: two big warm shells.
+  const palate = new THREE.Mesh(new THREE.SphereGeometry(9, 40, 30, 0, Math.PI*2, 0, Math.PI/2),
+                                fleshMat(0xc65b6e, 0x3a0a12, 0.6));
+  palate.position.y = 1.2; palate.rotation.x = Math.PI; mouth.add(palate);
+
+  const tongue = new THREE.Mesh(new THREE.SphereGeometry(6, 40, 24),
+                                fleshMat(0xd98090, 0x40101a, 0.5));
+  tongue.scale.set(1.5,0.5,2.2); tongue.position.set(0,-3.2,2); mouth.add(tongue);
+
+  // Ring of teeth around the viewer (upper + lower arch).
+  const toothMat = new THREE.MeshStandardMaterial({ color:0xfdf6ec, emissive:0x5a4a3a,
+    emissiveIntensity:0.15, roughness:0.25, metalness:0.05 });
+  const enamelMats = [];   // track so we can dull them as enamel weakens
+  function arch(radius, y, tilt){
+    for(let i=0;i<16;i++){
+      const a = (i/16)*Math.PI*1.4 - Math.PI*0.7;   // front arch only
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.8,1.4,0.7), toothMat.clone());
+      t.position.set(Math.sin(a)*radius, y, -Math.cos(a)*radius + 1);
+      t.lookAt(0,y,1); t.rotation.x += tilt;
+      enamelMats.push(t.material);
+      mouth.add(t);
+    }
+  }
+  arch(5.2, 0.4, 0.15);      // upper teeth
+  arch(4.6, -1.6, -0.15);    // lower teeth
+  mouth.userData.enamelMats = enamelMats;
+
+  // The incoming soda: a translucent amber flood plane that rises.
+  const soda = new THREE.Mesh(new THREE.SphereGeometry(7,32,16),
+    new THREE.MeshStandardMaterial({ color:0x6b3a12, emissive:0x2a1400, emissiveIntensity:0.4,
+      transparent:true, opacity:0.55, roughness:0.15, metalness:0.1, side:THREE.DoubleSide }));
+  soda.scale.set(1.4,0.05,1.4); soda.position.y=-4; mouth.add(soda);
+  mouth.userData.soda = soda;
+
+  // Acid particles that attack the teeth.
+  const acid = particleCloud(340, 0.09, 0xffe08a, {x:6,y:4,z:6});
+  mouth.add(acid); mouth.userData.acid = acid;
+})();
+
+// ---------- 2. DESCENT (esophagus → gut) ----------
+const gut = makeWorld('gut');
+(function buildGut(){
+  // A curved fleshy tube we travel down.
+  const pts=[]; for(let i=0;i<=10;i++){ pts.push(new THREE.Vector3(Math.sin(i*0.6)*2, -i*4, Math.cos(i*0.5)*2)); }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, 3.2, 20, false),
+                              fleshMat(0xb0505f, 0x330810, 0.7));
+  tube.material.side = THREE.BackSide;   // we're inside it
+  gut.add(tube); gut.userData.curve = curve;
+
+  // Peristaltic rings.
+  for(let i=1;i<10;i++){
+    const p = curve.getPoint(i/10);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.0,0.35,10,26), fleshMat(0x8f3c49,0x2a0610,0.6));
+    ring.position.copy(p);
+    const tan = curve.getTangent(i/10); ring.lookAt(p.clone().add(tan));
+    gut.add(ring);
+  }
+  // Sugar being absorbed = golden crystals drifting toward the walls.
+  const sugar = particleCloud(260, 0.14, 0xffce54, {x:2.6,y:20,z:2.6});
+  sugar.position.y=-2; gut.add(sugar); gut.userData.sugar = sugar;
+})();
+
+// ---------- 3 & 4. BLOODSTREAM (glucose rise + insulin) ----------
+const blood = makeWorld('blood');
+(function buildBlood(){
+  const pts=[]; for(let i=0;i<=12;i++){ pts.push(new THREE.Vector3(Math.sin(i*0.5)*4, Math.cos(i*0.7)*2, -i*5)); }
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const vessel = new THREE.Mesh(new THREE.TubeGeometry(curve,160,3.6,24,false),
+    new THREE.MeshStandardMaterial({ color:0x9c1f2e, emissive:0x3a0308, emissiveIntensity:0.5,
+      roughness:0.6, side:THREE.BackSide }));
+  blood.add(vessel); blood.userData.curve = curve;
+
+  // Red blood cells (biconcave discs) flowing.
+  const rbcGeo = new THREE.SphereGeometry(0.5,14,10); rbcGeo.scale(1,0.42,1);
+  const rbcMat = new THREE.MeshStandardMaterial({ color:0xd23b3b, emissive:0x400505, emissiveIntensity:0.4, roughness:0.4 });
+  const rbc = new THREE.InstancedMesh(rbcGeo, rbcMat, 90);
+  const dummy = new THREE.Object3D();
+  blood.userData.rbc = [];
+  for(let i=0;i<90;i++){
+    const t=Math.random(); const p=curve.getPoint(t);
+    p.x+=rand(-2.2,2.2); p.y+=rand(-2.2,2.2);
+    dummy.position.copy(p); dummy.rotation.set(rand(0,6),rand(0,6),rand(0,6));
+    dummy.updateMatrix(); rbc.setMatrixAt(i,dummy.matrix);
+    blood.userData.rbc.push({t, off:new THREE.Vector3(rand(-2.2,2.2),rand(-2.2,2.2),0)});
+  }
+  blood.add(rbc); blood.userData.rbcMesh = rbc; blood.userData.rbcDummy = dummy;
+
+  // Glucose flood (gold) and insulin (cyan) clouds — opacity animated per beat.
+  const glucose = particleCloud(420, 0.13, 0xffcf4a, {x:3.2,y:3.2,z:30});
+  glucose.material.opacity = 0; blood.add(glucose); blood.userData.glucose = glucose;
+
+  const insulin = particleCloud(260, 0.16, 0x3fe0ff, {x:3.2,y:3.2,z:30});
+  insulin.material.opacity = 0; blood.add(insulin); blood.userData.insulin = insulin;
+})();
+
+// ---------- 5. BRAIN (dopamine spike & crash) ----------
+const brain = makeWorld('brain');
+(function buildBrain(){
+  // A dark neural space with a glowing reward nucleus.
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(14,32,24),
+    new THREE.MeshStandardMaterial({ color:0x241033, emissive:0x0a0416, emissiveIntensity:0.5,
+      roughness:0.9, side:THREE.BackSide }));
+  brain.add(shell);
+
+  const nucleus = new THREE.Mesh(new THREE.IcosahedronGeometry(1.6,2), glowMat(0xff4fd8));
+  nucleus.position.set(0,0,-6); brain.add(nucleus); brain.userData.nucleus = nucleus;
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(2.4,20,16),
+    new THREE.MeshBasicMaterial({ color:0xff4fd8, transparent:true, opacity:0.25, blending:THREE.AdditiveBlending }));
+  halo.position.copy(nucleus.position); brain.add(halo); brain.userData.halo = halo;
+
+  // Neurons: a scatter of glowing nodes with faint links.
+  const nodes=[]; const ng=new THREE.SphereGeometry(0.14,8,8); const nm=glowMat(0xb98cff);
+  for(let i=0;i<70;i++){
+    const n=new THREE.Mesh(ng,nm);
+    n.position.set(rand(-10,10),rand(-8,8),rand(-11,3));
+    brain.add(n); nodes.push(n);
+  }
+  // Dopamine burst particles.
+  const dopa = particleCloud(400, 0.12, 0xff77e0, {x:8,y:8,z:8});
+  dopa.position.set(0,0,-6); dopa.material.opacity=0; brain.add(dopa); brain.userData.dopa = dopa;
+})();
+
+// ---------- 6. FAT STORAGE & CARDIOMETABOLIC RISK ----------
+const fat = makeWorld('fat');
+(function buildFat(){
+  // Adipose: clusters of golden fat droplets that will grow.
+  const dropGeo = new THREE.SphereGeometry(1,16,14);
+  const dropMat = new THREE.MeshStandardMaterial({ color:0xf6c445, emissive:0x4a2f00, emissiveIntensity:0.4, roughness:0.35 });
+  const drops=[];
+  for(let i=0;i<40;i++){
+    const d=new THREE.Mesh(dropGeo, dropMat.clone());
+    d.position.set(rand(-9,9),rand(-6,6),rand(-16,-2));
+    const s=rand(0.3,0.9); d.scale.setScalar(s); d.userData.base=s;
+    fat.add(d); drops.push(d);
+  }
+  fat.userData.drops = drops;
+
+  // A narrowing artery with plaque in the background.
+  const pts=[]; for(let i=0;i<=8;i++) pts.push(new THREE.Vector3(0,0,-i*4-2));
+  const curve=new THREE.CatmullRomCurve3(pts);
+  const artery=new THREE.Mesh(new THREE.TubeGeometry(curve,80,2.4,20,false),
+    new THREE.MeshStandardMaterial({ color:0xb03a44, emissive:0x300308, emissiveIntensity:0.4, roughness:0.6, side:THREE.BackSide }));
+  artery.visible=false; fat.add(artery);
+})();
+
+// =========================================================================
+//  IN-WORLD HUD PANEL  — for VR, where DOM overlays aren't visible.
+//  A canvas texture on a plane that floats and faces the viewer.
+// =========================================================================
+const hudCanvas = document.createElement('canvas'); hudCanvas.width=1024; hudCanvas.height=512;
+const hudCtx = hudCanvas.getContext('2d');
+const hudTex = new THREE.CanvasTexture(hudCanvas);
+const hudPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.8),
+  new THREE.MeshBasicMaterial({ map:hudTex, transparent:true, opacity:0.94 }));
+hudPanel.position.set(0,-0.55,-1.7); hudPanel.visible=false; camera.add(hudPanel);
+
+function drawHudPanel(){
+  const c=hudCtx; c.clearRect(0,0,1024,512);
+  c.fillStyle='rgba(12,4,8,0.82)'; roundRect(c,0,0,1024,512,28); c.fill();
+  c.fillStyle='#ff90a6'; c.font='bold 30px system-ui'; c.textAlign='left';
+  c.fillText(BEATS[cur].name.toUpperCase(), 44, 64);
+  // caption (wrapped)
+  c.fillStyle='#ffffff'; c.font='30px system-ui';
+  wrapText(c, stripTags(BEATS[cur].caption), 44, 120, 936, 40);
+  // meters
+  const my=300, defs=meterDefs();
+  defs.forEach((mdef,i)=>{
+    const y=my+i*46;
+    c.fillStyle='#e7cdd6'; c.font='22px system-ui'; c.textAlign='left';
+    c.fillText(mdef.label, 44, y+16);
+    c.fillStyle='rgba(255,255,255,0.16)'; roundRect(c,300,y,600,18,9); c.fill();
+    c.fillStyle=mdef.color; roundRect(c,300,y,600*mdef.frac,18,9); c.fill();
+    c.fillStyle='#fff'; c.textAlign='right'; c.fillText(mdef.val, 980, y+16);
+  });
+  hudTex.needsUpdate=true;
+}
+function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y);
+  c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+function wrapText(c,text,x,y,maxW,lh){ const words=text.split(' '); let line=''; let yy=y;
+  for(const w of words){ const test=line+w+' '; if(c.measureText(test).width>maxW && line){ c.fillText(line,x,yy); line=w+' '; yy+=lh; } else line=test; }
+  c.fillText(line,x,yy); }
+function stripTags(s){ return s.replace(/<[^>]+>/g,''); }
+
+// =========================================================================
+//  STATE  — the physiological meters we animate through the story.
+// =========================================================================
+const state = {
+  glucose: 90,    // mg/dL   (normal fasting ~90; we push it high)
+  insulin: 8,     // arbitrary units
+  dopamine: 40,   // % of baseline reward
+  enamel: 100     // % integrity
+};
+function meterDefs(){
+  return [
+    { label:'Blood glucose', val:Math.round(state.glucose)+' mg/dL',
+      frac:clamp((state.glucose-70)/(200-70),0,1), color:'#ffcf4a' },
+    { label:'Insulin',       val:Math.round(state.insulin)+' µU',
+      frac:clamp(state.insulin/60,0,1), color:'#3fe0ff' },
+    { label:'Dopamine',      val:Math.round(state.dopamine)+'%',
+      frac:clamp(state.dopamine/160,0,1), color:'#ff77e0' },
+    { label:'Enamel',        val:Math.round(state.enamel)+'%',
+      frac:clamp(state.enamel/100,0,1), color:'#bfe9ff' },
+  ];
+}
+
+// Build DOM meters once.
+const metersEl = document.getElementById('meters');
+meterDefs().forEach((m,i)=>{
+  const d=document.createElement('div'); d.className='meter';
+  d.innerHTML=`<div class="lbl"><span>${m.label}</span><span data-v></span></div>
+               <div class="bar"><i style="background:${m.color}"></i></div>`;
+  metersEl.appendChild(d);
+});
+function refreshMeters(){
+  const defs=meterDefs(); const rows=metersEl.querySelectorAll('.meter');
+  defs.forEach((m,i)=>{
+    rows[i].querySelector('[data-v]').textContent=m.val;
+    rows[i].querySelector('.bar > i').style.width=(m.frac*100).toFixed(1)+'%';
+  });
+}
+
+// =========================================================================
+//  THE STORY  — six beats. Each: world, duration, camera path, updater.
+// =========================================================================
+let travelT = 0;   // 0..1 progress along a beat's motion
+
+const BEATS = [
+  {
+    name:'The Sip', world:'mouth', dur:14,
+    caption:'You’re inside the mouth. A wave of <b>sugary soda</b> washes over the teeth — and its acid begins pulling minerals out of the <b>enamel</b>.',
+    enter(){ scene.fog.color.set(0x2a0a10); scene.fog.density=0.02; travelLight.color.set(0xffb27a); },
+    update(dt,p){
+      const w=mouth.userData;
+      w.soda.position.y = lerp(-4, -1.2, smooth(clamp(p*1.6,0,1)));   // soda rises
+      w.soda.material.opacity = 0.55;
+      state.enamel = lerp(100, 78, smooth(p));                        // enamel erodes
+      // dull the teeth as enamel drops
+      const dull = 1-(state.enamel-78)/22;
+      w.enamelMats.forEach(mm=>{ mm.roughness = 0.25+dull*0.4; mm.emissiveIntensity=0.15-dull*0.1; });
+      // gentle look-around drift
+      rig.position.set(0,0,0);
+      camera.position.set(Math.sin(p*3)*0.3, 0, 0);
+      animateCloud(w.acid, dt, 0.6);
+    }
+  },
+  {
+    name:'The Descent', world:'gut', dur:12,
+    caption:'Down it goes. Through the throat to the gut, where <b>sugar (glucose)</b> is broken out and absorbed straight through the wall into your blood.',
+    enter(){ scene.fog.color.set(0x1a0308); scene.fog.density=0.05; travelLight.color.set(0xff8a6a); },
+    update(dt,p){
+      const w=gut.userData;
+      // fly down the tube
+      const t = clamp(p,0,0.999);
+      const pos = w.curve.getPoint(t);
+      const look = w.curve.getPoint(clamp(t+0.03,0,1));
+      rig.position.copy(pos);
+      camera.lookAt ? camera.lookAt(look) : null;   // desktop look handled below
+      rig.lookAt(look);
+      animateCloud(w.sugar, dt, 1.2);
+      state.glucose = lerp(90, 110, smooth(p));
+    }
+  },
+  {
+    name:'Glucose Spike', world:'blood', dur:14,
+    caption:'In the bloodstream, <b>glucose floods in</b>. Blood sugar shoots up far faster than the body wants — the spike.',
+    enter(){ scene.fog.color.set(0x2a0206); scene.fog.density=0.035; travelLight.color.set(0xff6a6a);
+             blood.userData.glucose.material.opacity=0; blood.userData.insulin.material.opacity=0; },
+    update(dt,p){
+      const w=blood.userData;
+      flowVessel(w, p, dt);
+      w.glucose.material.opacity = smooth(clamp(p*1.5,0,1))*0.9;
+      state.glucose = lerp(110, 190, smooth(p));      // big spike
+      state.insulin = lerp(8, 14, p);
+      animateCloud(w.glucose, dt, 2.0);
+    }
+  },
+  {
+    name:'Insulin Responds', world:'blood', dur:13,
+    caption:'The pancreas floods the blood with <b>insulin</b> (cyan). It unlocks your cells so they pull the glucose out — and blood sugar starts falling.',
+    enter(){ travelLight.color.set(0x8ad6ff); },
+    update(dt,p){
+      const w=blood.userData;
+      flowVessel(w, p, dt);
+      w.insulin.material.opacity = smooth(clamp(p*1.4,0,1))*0.9;
+      w.glucose.material.opacity = lerp(0.9, 0.15, smooth(p));   // glucose taken up
+      state.insulin = lerp(14, 55, smooth(p));
+      state.glucose = lerp(190, 120, smooth(p));
+      animateCloud(w.glucose, dt, 2.0);
+      animateCloud(w.insulin, dt, 2.4);
+    }
+  },
+  {
+    name:'Rush & Crash', world:'brain', dur:14,
+    caption:'The sugar hit lights up the brain’s <b>reward centre</b> — a dopamine <b>rush</b>. But as insulin overshoots, glucose dips low… and the rush <b>crashes</b> into a slump.',
+    enter(){ scene.fog.color.set(0x0a0416); scene.fog.density=0.02; travelLight.color.set(0xff77e0); },
+    update(dt,p){
+      const w=brain.userData;
+      // spike up then crash down
+      const rush = p<0.45 ? smooth(p/0.45) : 1-smooth((p-0.45)/0.55)*1.15;
+      state.dopamine = lerp(40, 150, clamp(rush,0,1));
+      if(p>=0.45) state.dopamine = lerp(150, 28, smooth((p-0.45)/0.55));
+      state.glucose = p<0.5 ? lerp(120,105,p*2) : lerp(105,72,(p-0.5)*2); // reactive dip
+      const s = 1 + (state.dopamine/150)*0.8;
+      w.nucleus.scale.setScalar(s); w.halo.scale.setScalar(s*1.1);
+      w.halo.material.opacity = 0.15 + (state.dopamine/150)*0.35;
+      w.nucleus.rotation.y += dt*0.6;
+      w.dopa.material.opacity = clamp(state.dopamine/150,0,1)*0.8;
+      animateCloud(w.dopa, dt, 1.6);
+      rig.position.set(0,0,0); camera.position.set(Math.sin(p*4)*0.4,0,0);
+    }
+  },
+  {
+    name:'Every Sip Adds Up', world:'fat', dur:16,
+    caption:'One sip passes. But <b>repeat it daily</b> and the leftover energy is stored as <b>fat</b>, arteries stiffen and narrow, and the risk of <b>type-2 diabetes and heart disease</b> climbs. The choice is yours.',
+    enter(){ scene.fog.color.set(0x1a0a02); scene.fog.density=0.025; travelLight.color.set(0xf6c445); },
+    update(dt,p){
+      const w=fat.userData;
+      // fat droplets grow with "repeated intake"
+      w.drops.forEach((d,i)=>{
+        const grow = 1 + smooth(p)*1.6*(0.6+0.4*Math.sin(i));
+        d.scale.setScalar(d.userData.base*grow);
+        d.rotation.y += dt*0.2;
+      });
+      state.glucose = lerp(72, 100, p);
+      rig.position.set(0,0, lerp(2,-6,smooth(p)));   // drift through the fat field
+      camera.position.set(Math.sin(p*2)*0.5,0,0);
+    }
+  }
+];
+
+// shared helpers used by beats
+function animateCloud(pts, dt, speed){
+  const arr = pts.geometry.attributes.position.array;
+  const base = pts.userData.base, seed = pts.userData.seed;
+  const t = performance.now()*0.001;
+  for(let i=0;i<seed.length;i++){
+    arr[i*3]   = base[i*3]   + Math.sin(t*speed + seed[i]*6.28)*0.25;
+    arr[i*3+1] = base[i*3+1] + Math.cos(t*speed*0.8 + seed[i]*6.28)*0.25;
+  }
+  pts.geometry.attributes.position.needsUpdate=true;
+}
+function flowVessel(w, p, dt){
+  // fly along the vessel
+  const t=clamp(p,0,0.999);
+  const pos=w.curve.getPoint(t), look=w.curve.getPoint(clamp(t+0.03,0,1));
+  rig.position.copy(pos); rig.lookAt(look);
+  // stream the red cells
+  const d=w.rbcDummy; const cells=w.rbc; const mesh=w.rbcMesh;
+  for(let i=0;i<cells.length;i++){
+    cells[i].t = (cells[i].t + dt*0.02) % 1;
+    const cp=w.curve.getPoint(cells[i].t);
+    d.position.copy(cp).add(cells[i].off);
+    d.rotation.x += dt*0.5; d.rotation.z += dt*0.3;
+    d.updateMatrix(); mesh.setMatrixAt(i,d.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate=true;
+}
+
+// =========================================================================
+//  BEAT SEQUENCER
+// =========================================================================
+let cur = 0, beatTime = 0, playing = false, started = false;
+const fadeEl = document.getElementById('fade');
+const beatnameEl = document.getElementById('beatname');
+const captionEl = document.getElementById('caption');
+const progEl = document.querySelector('#progress > i');
+
+function showWorld(name){ for(const k in worlds) worlds[k].visible=(k===name); }
+
+function enterBeat(i, instant){
+  cur = clamp(i,0,BEATS.length-1);
+  beatTime = 0; travelT = 0;
+  const b = BEATS[cur];
+  const doIt = ()=>{
+    showWorld(b.world);
+    if(b.enter) b.enter();
+    b.update(0.001, 0);
+    beatnameEl.textContent = b.name;
+    captionEl.innerHTML = b.caption;
+    refreshMeters(); drawHudPanel();
+  };
+  if(instant){ doIt(); }
+  else {
+    fadeEl.style.opacity = 1;
+    setTimeout(()=>{ doIt(); fadeEl.style.opacity = 0; }, 480);
+  }
+}
+
+function tick(dt){
+  if(!started) return;
+  const b = BEATS[cur];
+  if(playing){
+    beatTime += dt;
+    travelT = clamp(beatTime / b.dur, 0, 1);
+  }
+  b.update(dt, travelT);
+  progEl.style.width = (travelT*100).toFixed(1)+'%';
+  refreshMeters(); drawHudPanel();
+  if(playing && beatTime >= b.dur){
+    if(cur < BEATS.length-1) enterBeat(cur+1);
+    else { playing=false; setPlayBtn(); }   // finished
+  }
+}
+
+// =========================================================================
+//  DESKTOP / PHONE LOOK CONTROLS  (drag to look; ignored in VR)
+// =========================================================================
+let yaw=0, pitch=0, dragging=false, lx=0, ly=0;
+renderer.domElement.addEventListener('pointerdown',e=>{ dragging=true; lx=e.clientX; ly=e.clientY; });
+window.addEventListener('pointerup',()=>dragging=false);
+window.addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  yaw   -= (e.clientX-lx)*0.005; pitch -= (e.clientY-ly)*0.005;
+  pitch = clamp(pitch,-1.2,1.2); lx=e.clientX; ly=e.clientY;
+});
+
+// =========================================================================
+//  RENDER LOOP  (setAnimationLoop drives both desktop and WebXR)
+// =========================================================================
+let last=performance.now();
+let composer=null, bloom=null;
+function setupBloom(){
+  if(window.__noBloom || !THREE.EffectComposer || !THREE.UnrealBloomPass) return;
+  composer=new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene,camera));
+  bloom=new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.9,0.7,0.2);
+  composer.addPass(bloom);
+}
+setupBloom();
+
+renderer.setAnimationLoop(()=>{
+  const now=performance.now(); let dt=(now-last)/1000; last=now; dt=Math.min(dt,0.05);
+  tick(dt);
+
+  const inVR = renderer.xr.isPresenting;
+  hudPanel.visible = inVR && started;
+
+  if(!inVR){
+    // apply drag-look on top of the beat's base orientation
+    const e=new THREE.Euler(pitch,yaw,0,'YXZ');
+    // beats set rig.lookAt for travel; add user look as a small offset via camera quaternion
+    camera.quaternion.setFromEuler(e);
+  }
+
+  travelLight.intensity = 2.0 + Math.sin(now*0.004)*0.3;   // subtle flicker
+
+  if(composer && !inVR) composer.render();
+  else renderer.render(scene,camera);
+});
+
+// =========================================================================
+//  UI WIRING
+// =========================================================================
+const introEl=document.getElementById('intro');
+const hudRoot=document.getElementById('hud');
+const playBtn=document.getElementById('play');
+function setPlayBtn(){ playBtn.textContent = playing ? '⏸ Pause' : '▶ Play'; }
+
+function begin(){
+  started=true; introEl.style.opacity=0; setTimeout(()=>introEl.style.display='none',600);
+  hudRoot.style.display='block';
+  playing=true; setPlayBtn();
+  enterBeat(0, true);
+}
+document.getElementById('start').onclick=begin;
+document.getElementById('skipvr').onclick=()=>{ begin(); playing=false; setPlayBtn(); };
+playBtn.onclick=()=>{ playing=!playing; setPlayBtn(); };
+document.getElementById('next').onclick=()=>enterBeat(cur+1);
+document.getElementById('prev').onclick=()=>enterBeat(cur-1);
+document.getElementById('restart').onclick=()=>{
+  state.glucose=90; state.insulin=8; state.dopamine=40; state.enamel=100;
+  playing=true; setPlayBtn(); enterBeat(0);
+};
+
+// =========================================================================
+//  WEBXR  — custom Enter-VR button (no external VRButton dependency)
+// =========================================================================
+const vrbtn=document.getElementById('vrbtn');
+let xrSession=null;
+if(navigator.xr && navigator.xr.isSessionSupported){
+  navigator.xr.isSessionSupported('immersive-vr').then(ok=>{ if(ok) vrbtn.style.display='block'; });
+}
+vrbtn.onclick=async ()=>{
+  if(xrSession){ xrSession.end(); return; }
+  if(!started) begin();
+  try{
+    xrSession=await navigator.xr.requestSession('immersive-vr',{ optionalFeatures:['local-floor','bounded-floor'] });
+    renderer.xr.setReferenceSpaceType('local');
+    await renderer.xr.setSession(xrSession);
+    vrbtn.textContent='🚪 Exit VR';
+    xrSession.addEventListener('end',()=>{ xrSession=null; vrbtn.textContent='🥽 Enter VR'; });
+  }catch(err){
+    const e=document.getElementById('err'); e.style.display='block';
+    e.textContent='Could not start VR: '+err.message+'. Open this page in the Meta Quest browser and try again.';
+  }
+};
+
+// left thumbstick → nudge beat scrubbing (optional interactivity in VR)
+function readThumbstick(){
+  if(!renderer.xr.isPresenting) return;
+  const s=renderer.xr.getSession(); if(!s) return;
+  for(const src of s.inputSources){
+    if(src.gamepad && src.gamepad.axes.length>=4){
+      const x=src.gamepad.axes[2]||src.gamepad.axes[0];
+      if(Math.abs(x)>0.7 && !readThumbstick._cool){
+        enterBeat(cur + (x>0?1:-1)); readThumbstick._cool=true;
+        setTimeout(()=>readThumbstick._cool=false,600);
+      }
+    }
+  }
+}
+const _origTick=tick;   // hook thumbstick into loop cheaply
+setInterval(readThumbstick, 120);
+
+// =========================================================================
+//  RESIZE
+// =========================================================================
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  if(composer) composer.setSize(innerWidth,innerHeight);
+});
+
+// preload first world so the intro→begin transition is instant
+showWorld('mouth'); BEATS[0].update(0.001,0); refreshMeters();
+</script>
+</body>
+</html>

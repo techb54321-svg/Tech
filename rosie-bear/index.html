@@ -116,17 +116,16 @@
 
 <style>
   html { scroll-behavior: smooth; }
-  body { background: #F1EBDD; color: #2B3226; font-family: 'Figtree', system-ui, sans-serif; }
-  .font-display { font-family: 'Fraunces', serif; }
-
-  /* subtle paper grain over the whole page (pure CSS, no image request) */
-  body::before {
-    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-    opacity: .5; mix-blend-mode: multiply;
+  /* Subtle paper grain painted straight onto the page background so it scrolls
+     with the content (cheap) instead of a fixed blend layer that forced a
+     full-screen repaint on every scroll frame. */
+  body {
+    background-color: #F1EBDD;
     background-image: radial-gradient(rgba(92,108,80,.05) 1px, transparent 1px);
     background-size: 4px 4px;
+    color: #2B3226; font-family: 'Figtree', system-ui, sans-serif;
   }
-  main, header, footer { position: relative; z-index: 1; }
+  .font-display { font-family: 'Fraunces', serif; }
 
   /* screen-reader-only helper */
   .sr-only {
@@ -175,7 +174,7 @@
 <a href="#main" class="skip-link">Skip to content</a>
 
 <!-- ===== NAV ===== -->
-<header class="sticky top-0 z-30 bg-oat/85 backdrop-blur-sm border-b border-sagetint">
+<header class="sticky top-0 z-30 bg-oat/95 border-b border-sagetint">
   <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
     <a href="#top" class="flex items-center gap-2 font-display text-xl text-ink" aria-label="Rosie Bear — home">
       <span class="inline-block w-6 h-6 rounded-full bg-rose" aria-hidden="true"></span>

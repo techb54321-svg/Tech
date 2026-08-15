@@ -7,7 +7,7 @@
  * which rules are still the engine author's guesses rather than yours.
  */
 
-import { loadMethod, MethodError } from "../src/method/loader.js";
+import { loadMethod, MethodError } from "../src/method/loader";
 
 function main() {
   let method;

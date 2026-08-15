@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-stone-50 text-stone-900 antialiased;
+}
+
+/* The governance record is printed and taken into meetings. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    @apply bg-white text-black;
+  }
+  .print-break {
+    break-inside: avoid;
+  }
+  a[href]:after {
+    content: "";
+  }
+}

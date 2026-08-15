@@ -11,7 +11,7 @@ import {
   Rule,
   RuleFileSchema,
   RuleStatus,
-} from "./types.js";
+} from "./types";
 
 export const DEFAULT_METHOD_ROOT = join(process.cwd(), "method");
 
@@ -59,27 +59,85 @@ function readYaml(root: string, relPath: string): { raw: string; parsed: unknown
  */
 export function loadMethod(root: string = DEFAULT_METHOD_ROOT): LoadedMethod {
   const files: Record<string, string> = {};
+  files["method.yaml"] = readYaml(root, "method.yaml").raw;
 
-  const manifestRead = readYaml(root, "method.yaml");
-  files["method.yaml"] = manifestRead.raw;
+  const method = parseMethod(files, root, (relPath) => {
+    const { raw } = readYaml(root, relPath);
+    return raw;
+  });
 
-  const manifestResult = ManifestSchema.safeParse(manifestRead.parsed);
+  const orphans = listYamlFiles(root).filter((f) => !(f in method.files));
+  if (orphans.length > 0) {
+    throw new MethodError(
+      `These method files exist on disk but are not listed in method.yaml, so no ` +
+        `adaptation would ever use them:\n  ${orphans.join("\n  ")}\n` +
+        `Add them under "dimensions:" or "data_files:", or delete them.`,
+    );
+  }
+
+  return method;
+}
+
+/**
+ * Re-load a method from a stored MethodSnapshot, so a pipeline stage re-run
+ * months later executes the rules that were in force at the time rather than
+ * whatever the files say today.
+ */
+export function loadMethodFromSnapshot(filesJson: string): LoadedMethod {
+  const files = JSON.parse(filesJson) as Record<string, string>;
+  return parseMethod({ "method.yaml": files["method.yaml"] }, "<snapshot>", (relPath) => {
+    const raw = files[relPath];
+    if (raw === undefined) {
+      throw new MethodError(`Method snapshot is missing ${relPath}`);
+    }
+    return raw;
+  });
+}
+
+/**
+ * Shared validation over a set of method files, however they were obtained.
+ * `readRelative` supplies file text on demand so this works identically
+ * against the disk and against a stored snapshot.
+ */
+function parseMethod(
+  seedFiles: Record<string, string>,
+  root: string,
+  readRelative: (relPath: string) => string,
+): LoadedMethod {
+  const files: Record<string, string> = { ...seedFiles };
+
+  const manifestRaw = files["method.yaml"];
+  if (manifestRaw === undefined) throw new MethodError("method.yaml is missing");
+
+  let manifestParsed: unknown;
+  try {
+    manifestParsed = parseYaml(manifestRaw);
+  } catch (err) {
+    throw new MethodError(`method.yaml is not valid YAML: ${(err as Error).message}`);
+  }
+
+  const manifestResult = ManifestSchema.safeParse(manifestParsed);
   if (!manifestResult.success) {
     throw new MethodError(`method.yaml is invalid:\n${formatIssues(manifestResult.error)}`);
   }
   const manifest = manifestResult.data;
 
-  const listed = new Set<string>(["method.yaml"]);
   const dimensions: LoadedDimension[] = [];
   const rules: Rule[] = [];
   const seenIds = new Map<string, string>();
 
-  for (const dim of manifest.dimensions) {
-    listed.add(dim.file);
-    const { raw, parsed } = readYaml(root, dim.file);
-    files[dim.file] = raw;
+  const take = (relPath: string): unknown => {
+    const raw = readRelative(relPath);
+    files[relPath] = raw;
+    try {
+      return parseYaml(raw);
+    } catch (err) {
+      throw new MethodError(`${relPath} is not valid YAML: ${(err as Error).message}`);
+    }
+  };
 
-    const parsedFile = RuleFileSchema.safeParse(parsed);
+  for (const dim of manifest.dimensions) {
+    const parsedFile = RuleFileSchema.safeParse(take(dim.file));
     if (!parsedFile.success) {
       throw new MethodError(`${dim.file} is invalid:\n${formatIssues(parsedFile.error)}`);
     }
@@ -119,19 +177,7 @@ export function loadMethod(root: string = DEFAULT_METHOD_ROOT): LoadedMethod {
 
   const data: Record<string, unknown> = {};
   for (const dataFile of manifest.data_files) {
-    listed.add(dataFile.file);
-    const { raw, parsed } = readYaml(root, dataFile.file);
-    files[dataFile.file] = raw;
-    data[dataFile.id] = parsed;
-  }
-
-  const orphans = listYamlFiles(root).filter((f) => !listed.has(f));
-  if (orphans.length > 0) {
-    throw new MethodError(
-      `These method files exist on disk but are not listed in method.yaml, so no ` +
-        `adaptation would ever use them:\n  ${orphans.join("\n  ")}\n` +
-        `Add them under "dimensions:" or "data_files:", or delete them.`,
-    );
+    data[dataFile.id] = take(dataFile.file);
   }
 
   const statusCounts = Object.fromEntries(

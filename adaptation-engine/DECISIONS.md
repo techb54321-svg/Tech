@@ -225,3 +225,54 @@ variables, both recorded per stage on the governance record.
 strongest model available. Keeping them separate makes it visible on the record
 whether verification ran on a weaker model than the rewrite, which is the kind
 of cost-saving that would otherwise be invisible to a committee.
+
+---
+
+## D-15b — Readability is computed in code, and hard-wrapped lines are rejoined
+first
+
+**Decided:** Flesch-Kincaid and SMOG are calculated in `src/readability.ts`, not
+asked of a model. Before counting, wrapped lines are rejoined into logical
+sentences; headings and list items stay separate.
+
+**Why:** a readability figure on a governance record has to be reproducible by
+anyone with the same text, and a model's estimate is not. The rejoining matters
+more than it sounds: source documents arrive wrapped at 70-80 columns, and
+counting each wrapped line as a sentence reported a 28-word sentence as three
+short ones — flattering every figure on exactly the documents this system
+exists to fix. The bug was visible only because the source and adapted figures
+were shown side by side.
+
+**Known limitation:** SMOG penalises unavoidable clinical vocabulary
+("cardiovascular", "ambulance", "medicine"), so a document can sit at Grade 3-4
+on Flesch-Kincaid and above 7 on SMOG. RL-02 currently takes the higher of the
+two, which means the ceiling can be unreachable for some documents. RL-02 is a
+strawman rule for exactly this reason, and the pipeline screen shows both
+metrics rather than a single number that hides the disagreement.
+
+---
+
+## D-16 — Reviewer decisions are applied to the text explicitly, not implicitly
+
+**Decided:** accepting a change does nothing to the stored text. Pressing
+"Apply decisions" composes a final text: edits replace the model's wording,
+rejections revert to the source wording, and anything that could not be located
+in the text is reported by change number rather than silently skipped.
+
+**Why:** silent partial application is the failure mode that would put an
+un-reviewed sentence into a handout. Naming the changes that could not be
+applied costs the reviewer a manual edit and keeps the final text honest.
+
+---
+
+## D-17 — The method is read-only in the app
+
+**Decided:** `/method` displays the rules, their provenance and the refinement
+queue, but does not edit them. Editing happens in the files.
+
+**Why:** the files are the product (D-01). An in-app editor would create a
+second source of truth and a migration problem the moment someone edits both.
+The refinement queue is the app's contribution: it collects what the rules got
+wrong, so the author edits the files knowing what to change.
+
+---

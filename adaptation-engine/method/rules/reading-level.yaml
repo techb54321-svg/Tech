@@ -96,8 +96,8 @@ rules:
       after: |
         Chest pain that does not go away after 10 minutes of rest is an
         emergency. So is chest pain with any of these: trouble breathing,
-        sweating, feeling sick. Call an ambulance on 000 straight away. Do
-        not wait to see if it settles.
+        sweating, feeling sick. Call an ambulance straight away. Do not wait
+        to see if it settles.
 
   - id: RL-05
     title: Conditional integrity overrides the length cap

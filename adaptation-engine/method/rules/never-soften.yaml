@@ -45,13 +45,19 @@ rules:
         Call an ambulance immediately if you have chest pain, pain spreading
         to your arm or jaw, shortness of breath, or you feel sick or sweaty.
       after: |
-        Call an ambulance on 000 straight away if you have any of these:
+        Call an ambulance straight away if you have any of these:
         - chest pain
         - pain spreading to your arm or jaw
         - trouble breathing
         - feeling sick or sweaty
       wrong: |
         See your doctor soon if you have chest pain or other symptoms.
+      note: |
+        The adaptation does not add "on 000", because the source did not
+        contain it and an added phone number is added content. Whether the
+        method should permit adding a national emergency number that the
+        source omits is a decision for the method author. It is not permitted
+        until they say so.
 
   - id: NS-02
     title: Dose, timing, units, route and frequency

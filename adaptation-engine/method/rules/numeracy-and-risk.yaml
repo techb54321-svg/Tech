@@ -1,0 +1,159 @@
+dimension: numeracy
+label: Numeracy and risk communication
+prefix: NUM
+version: 0.1.0
+
+description: |
+  How numbers reach the reader. For a cardiovascular risk and prevention
+  brochure this is the highest-risk dimension in the method: nearly every
+  clinically meaningful claim in the source is a number, and the two most
+  common source formats — percentages and relative risk — are the two the
+  method says fail.
+
+  Read NUM-01 and NUM-03 together. They deliberately produce a document with
+  two different risk formats in it. That is a known, accepted cost, recorded
+  on every affected document. See the note under NUM-03.
+
+rules:
+  - id: NUM-01
+    title: Absolute risk as a natural frequency out of 100, phrased as a picture
+    status: confirmed
+    source: Author interview, 2026-08-15.
+    statement: |
+      Express every absolute risk as a whole number out of one hundred, and
+      phrase it as a scene the reader can hold in mind:
+        "If 100 people like you stood in a room, about 15 of them would have
+         a heart attack in the next 10 years."
+      The denominator is always 100, in every risk statement in the document,
+      including in headings and captions. Never use a percentage sign. Never
+      use a decimal. Never use "one in X" phrasing, which forces the reader
+      to compare fractions with different denominators.
+    rationale: |
+      Natural frequencies are understood far more reliably than percentages by
+      low-numeracy readers, and a fixed denominator is what makes two risks in
+      the same document comparable — the reader can hold one room of 100
+      people in mind and watch the number in it change. The room-of-100
+      phrasing is the verbal form of an icon array; it survives being read
+      aloud, which a printed icon array does not.
+    example:
+      before: "Your 10-year cardiovascular risk is 15%."
+      after: |
+        If 100 people your age with your blood pressure and cholesterol stood
+        in a room, about 15 of them would have a heart attack or stroke in the
+        next 10 years. About 85 of them would not.
+
+  - id: NUM-02
+    title: Every frequency names its group and its time period
+    status: confirmed
+    source: Author interview, 2026-08-15.
+    statement: |
+      No frequency appears without stating (a) who the 100 people are and
+      (b) over what period. Where the source omits either, do not invent it:
+      raise a fidelity flag of type MISSING_DENOMINATOR_CONTEXT and leave the
+      number in the source's own words until it is resolved.
+    rationale: |
+      "15 out of 100" with no group and no timeframe is not a plainer number,
+      it is a meaningless one. Inventing the missing context to make the
+      sentence read well is the exact failure this whole system exists to
+      prevent.
+    example:
+      before: "Smokers have a 15 out of 100 risk."
+      after: |
+        (source does not say over what period — flagged, not adapted)
+
+  - id: NUM-03
+    title: Relative risk with no absolute numbers is carried through unchanged
+    status: confirmed
+    source: Author interview, 2026-08-15. Author chose this over blocking, converting, or adding a caveat.
+    statement: |
+      Where the source states a relative risk ("halves your risk", "twice as
+      likely", "a 30% reduction") and the document does not contain the
+      absolute numbers needed to convert it:
+        - Carry the claim through unchanged in meaning and unchanged in
+          strength. It may be reworded for reading level.
+        - Never convert it to a frequency.
+        - Never supply a baseline risk from any source outside the document.
+        - Never attach a number to it that the source did not contain.
+        - Never add a caveat that the source did not contain.
+      Record every instance as RELATIVE_RISK_CARRIED in the governance record,
+      with the source sentence and the adapted sentence side by side.
+    rationale: |
+      Converting requires a baseline the document does not have. Supplying one
+      means the engine is asserting a clinical number on its own authority,
+      which no clinical governance committee should accept from a language
+      model. Carrying it through unchanged keeps the engine inside the
+      source's own claims.
+    known_cost: |
+      This rule and NUM-01 together produce documents containing two risk
+      formats: a picturable frequency in one paragraph and an unconverted
+      relative claim in the next. This is a real comprehension cost and it is
+      accepted deliberately, in exchange for never inventing a number. The
+      RELATIVE_RISK_CARRIED count on each governance record exists so the
+      method author can see how often this bites across real documents and
+      revisit the decision with evidence in v0.2.
+    example:
+      before: "Quitting smoking halves your risk of a heart attack."
+      after: "If you stop smoking, your chance of a heart attack drops by half."
+
+  - id: NUM-04
+    title: Clinical thresholds are frozen
+    status: assumed
+    source: |
+      Proposed by the engine author and put to the method author on
+      2026-08-15 as a working default; not objected to. Confirm or correct.
+    statement: |
+      A number that functions as a clinical threshold, target, dose, strength
+      or measurement — 140/90, 5.5 mmol/L, 7%, 20 mg — is reproduced exactly.
+      Never round it. Never convert its units. Never soften it with "about",
+      "around" or "roughly". Never turn it into a frequency. The wording that
+      explains what the threshold means is adapted freely; the number and its
+      unit are not touched.
+    rationale: |
+      Thresholds are the numbers a reader will compare against their own
+      results and their own medicine label. A rounded threshold is a different
+      clinical instruction. This is the one place where the numeracy rules
+      stop, and it is why NUM-01 is written to cover risks rather than all
+      numbers.
+    example:
+      before: |
+        A target blood pressure of less than 140/90 mmHg is recommended.
+      after: |
+        Your blood pressure should stay under 140/90. Your nurse or doctor
+        will tell you your number at each visit.
+
+  - id: NUM-05
+    title: Rounding rules for frequencies
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Frequencies produced under NUM-01 are rounded to whole people. Where a
+      risk is below 1 in 100, write "fewer than 1 person out of 100" rather
+      than moving to a larger denominator. Where rounding two risks in the
+      same comparison would make them appear equal when the source
+      distinguishes them, do not round: raise a flag and leave the source
+      format.
+    rationale: |
+      Half a person is not a picture. But rounding that erases a distinction
+      the source drew is a fidelity failure, not a formatting choice.
+    example:
+      before: "Risk falls from 15.4% to 14.8%."
+      after: |
+        (rounding would show 15 and 15 — flagged, not adapted)
+
+  - id: NUM-06
+    title: Units and medicine strengths are reproduced verbatim
+    status: assumed
+    source: Proposed by the engine author, 2026-08-15; not objected to.
+    statement: |
+      Units (mmol/L, mmHg, mg, g, mL), medicine strengths and frequencies of
+      dosing are reproduced exactly as written in the source, including
+      spacing and case where clinically conventional. They may be moved within
+      a sentence. They may not be spelled out, converted, abbreviated further
+      or expanded.
+    rationale: |
+      These strings appear on labels and pathology reports. Any change breaks
+      the reader's ability to match the handout to the physical object in
+      their hand.
+    example:
+      before: "Take one 20 mg tablet each evening."
+      after: "Take one 20 mg tablet every evening."

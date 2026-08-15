@@ -1,0 +1,101 @@
+dimension: idiom
+label: Idiom and metaphor
+prefix: IDM
+version: 0.1.0
+
+description: |
+  Australian English health materials are dense with idiom that a reader with
+  English as a second language will read literally, and a reader with low
+  literacy will skip. This file is the one most in need of the method author's
+  own field examples — see the TODO under IDM-01. The seed list below is the
+  engine author's, not the method author's, and is marked accordingly.
+
+rules:
+  - id: IDM-01
+    title: Remove idioms that fail a literal reading
+    status: strawman
+    source: |
+      Engine author. NOT CONFIRMED. The method author was asked for 3-5 real
+      idioms observed to fail in Australian health materials, with the
+      replacements used. Until those arrive, this rule runs on the seed list
+      below, which is illustrative only.
+    statement: |
+      Remove any expression whose literal reading differs from its intended
+      reading. Replace with the plain action or state it stands for. Do not
+      replace one idiom with another. Where an idiom carries a clinical
+      instruction, the replacement must preserve the instruction exactly (see
+      NS-*).
+    rationale: |
+      A reader translating in their head gets the literal meaning, which is
+      either confusing or wrong. Idiom also makes text much harder to
+      translate later, so removing it in the English adaptation is what makes
+      the eventual translated versions cheaper and safer.
+    example:
+      before: "Keep an eye on your blood pressure."
+      after: "Check your blood pressure and write down the number."
+    seed_list:
+      # TODO(author): replace this list with your real observed examples.
+      # Each entry: the idiom, why it fails, and the replacement you use.
+      - idiom: keep an eye on
+        fails_because: Reads as a physical instruction about eyes; gives no action.
+        replace_with: check X and write down the number
+      - idiom: watch your weight
+        fails_because: Literal reading is passive observation; no action, no target.
+        replace_with: weigh yourself once a week, at the same time of day
+      - idiom: cut down
+        fails_because: Cutting is literal; the amount is unstated.
+        replace_with: have less X — state the amount if the source gives one
+      - idiom: down the track
+        fails_because: Australian idiom for "later"; no track exists.
+        replace_with: later, or in X years if the source gives a period
+      - idiom: in the long run
+        fails_because: Suggests running; period is unstated.
+        replace_with: over many years
+      - idiom: take it easy
+        fails_because: Ambiguous between rest, reduce effort, and do not worry.
+        replace_with: the specific instruction the source means
+      - idiom: give it a go
+        fails_because: Idiomatic; not an instruction.
+        replace_with: try this
+      - idiom: on the same page
+        fails_because: No page exists; means shared understanding.
+        replace_with: agree about X
+
+  - id: IDM-02
+    title: No war, sport or journey metaphors
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Remove metaphor frames rather than translating them: fighting or
+      battling a disease, being a survivor, staying on track, taking the first
+      step on a journey, getting back in the game, a ticking time bomb. State
+      the situation and the action instead.
+    rationale: |
+      These frames carry implications the clinical content does not support —
+      that effort determines outcome, that deterioration is a personal defeat
+      — and they are heavily culture-bound, especially the sporting ones.
+    example:
+      before: "High blood pressure is a ticking time bomb."
+      after: |
+        High blood pressure usually has no symptoms. It damages your blood
+        vessels quietly, over years. This is why it is checked even when you
+        feel well.
+
+  - id: IDM-03
+    title: One permitted picture
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      The room of 100 people used by NUM-01 is the one metaphorical device the
+      method permits, because it is a concrete, countable scene rather than a
+      figurative comparison. Do not introduce other explanatory analogies
+      (pipes, engines, fuel, rust) unless the source contains them.
+    rationale: |
+      Explanatory analogies for physiology are where invented clinical content
+      most often enters a plain-language rewrite, and they rarely survive
+      translation.
+    example:
+      before: "Your arteries are like pipes that get furred up."
+      after: |
+        Fat can build up inside your blood vessels. This makes them narrower,
+        so less blood gets through.

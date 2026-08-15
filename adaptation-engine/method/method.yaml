@@ -1,0 +1,122 @@
+# Method manifest.
+#
+# This file and everything under method/rules/ and method/data/ IS the product.
+# You can edit any of it in a text editor. No code changes are needed, and no
+# rule text is duplicated anywhere in the codebase.
+#
+# Every adaptation run records the method_version below AND a content hash of
+# every method file, so an edit made without bumping the version is still
+# detectable months later. See DECISIONS.md, D-04.
+
+method_version: 0.1.0
+
+# draft     — not yet usable for a document that will leave the building
+# active    — approved for production adaptations
+# superseded— a later version exists
+status: draft
+
+# Appears on every governance record. Set this.
+author: null # TODO: your name and affiliation
+adopted_on: null # ISO date, set when status becomes "active"
+
+summary: |
+  A specification of what makes an adaptation of clinical health content
+  correct: what may change, what may never change, and why. Written for
+  cardiometabolic patient materials aimed at culturally and linguistically
+  diverse and low-health-literacy audiences.
+
+  The first target is an English-language cardiovascular risk and prevention
+  brochure, adapted to Grade 5-6 reading level with CALD framing, no
+  translation. See profiles below.
+
+# ---------------------------------------------------------------------------
+# Rule status vocabulary. Every rule in every file carries one of these.
+# ---------------------------------------------------------------------------
+statuses:
+  confirmed: |
+    The method author stated this explicitly. Safe to execute.
+  assumed: |
+    Proposed as a working default and put to the author, who did not object.
+    Executes, but is marked as assumed in the governance record.
+  strawman: |
+    Written by the engine author as a starting point. The author has NOT
+    confirmed it. Rules with this status still execute, but every change they
+    produce is tagged "unconfirmed rule" in the review screen so you can see
+    how much of an adaptation rests on rules you never actually agreed to.
+
+# ---------------------------------------------------------------------------
+# Dimension files. The loader errors if a file exists on disk but is not
+# listed here, or is listed here but missing on disk. Order is display order.
+# ---------------------------------------------------------------------------
+dimensions:
+  - id: reading-level
+    label: Reading level and sentence structure
+    file: rules/reading-level.yaml
+    prefix: RL
+  - id: numeracy
+    label: Numeracy and risk communication
+    file: rules/numeracy-and-risk.yaml
+    prefix: NUM
+  - id: addressee
+    label: Addressee and decision-making unit
+    file: rules/addressee.yaml
+    prefix: ADR
+  - id: agency
+    label: Agency and fatalism framing
+    file: rules/agency-and-framing.yaml
+    prefix: AGY
+  - id: food
+    label: Food and mealtime examples
+    file: rules/food-and-mealtimes.yaml
+    prefix: FOOD
+  - id: calendar
+    label: Religious and calendar context
+    file: rules/religion-and-calendar.yaml
+    prefix: CAL
+  - id: idiom
+    label: Idiom and metaphor
+    file: rules/idiom-and-metaphor.yaml
+    prefix: IDM
+  - id: register
+    label: Register and formality
+    file: rules/register-and-formality.yaml
+    prefix: REG
+  - id: trust
+    label: Trust anchors and messenger
+    file: rules/trust-and-messenger.yaml
+    prefix: TRUST
+  - id: never-soften
+    label: Never-soften (safety spine)
+    file: rules/never-soften.yaml
+    prefix: NS
+
+# Supporting data the rules refer to by name. Same versioning, same hashing.
+data_files:
+  - id: food-substitutions
+    label: Food substitution list
+    file: data/food-substitutions.yaml
+  - id: rejection-taxonomy
+    label: Reviewer rejection taxonomy
+    file: data/rejection-taxonomy.yaml
+
+# ---------------------------------------------------------------------------
+# Target profiles. A run pairs one source document with one profile.
+# Profiles are seeded into the database from this file; the database copy is
+# what a run points at, so editing a profile here does not rewrite history.
+# ---------------------------------------------------------------------------
+profiles:
+  - id: cald-en-g5
+    label: CALD English, Grade 5-6
+    status: confirmed
+    language: en
+    translate: false
+    reading_level_target: "Grade 5-6"
+    reading_level_hard_ceiling: "Grade 7"
+    addressee_mode: FAMILY_INCLUSIVE # see ADR-01 for the vocabulary
+    community: null # TODO: name the community; food and messenger rules need it
+    messenger: null # TODO: see TRUST-01
+    notes: |
+      First-pass profile. English only: reading level, numeracy format,
+      addressee, framing and examples are adapted, but the text is not
+      translated. The back-translation stage of the pipeline is built but
+      does not run for this profile.

@@ -1,0 +1,79 @@
+dimension: trust
+label: Trust anchors and messenger
+prefix: TRUST
+version: 0.1.0
+
+description: |
+  Who the reader believes. A document that is perfectly clear and comes from
+  nowhere is discounted, and the right source of authority differs by
+  community. The v1 position: name the messenger the target profile specifies,
+  never invent one, and never manufacture endorsement.
+
+rules:
+  - id: TRUST-01
+    title: Messenger is a target-profile field
+    status: strawman
+    source: |
+      Engine author. NOT CONFIRMED — the method author was asked who the right
+      messenger is for the first community and has not answered. The
+      messenger field on the first profile is currently null, which means
+      TRUST-02 fires and this rule does not.
+    statement: |
+      Each target profile names a messenger: the role whose endorsement makes
+      the advice credible to that community (for example: your own GP, the
+      hospital heart nurse, a named community health service, a named
+      community organisation). Where a messenger is set, the adaptation names
+      that role at the point where the reader is asked to act. Where the
+      profile's messenger is null, no messenger is named and TRUST-02 governs
+      attribution.
+    rationale: |
+      Trust anchors are community-specific and cannot be inferred by the
+      engine. Making this a profile field means getting it wrong is a
+      one-field correction, visible on the governance record, rather than a
+      rewrite.
+    example:
+      before: "It is recommended that you have your cholesterol checked."
+      after: |
+        Ask your own doctor to check your cholesterol. The heart nurse at the
+        clinic can also do this.
+
+  - id: TRUST-02
+    title: Attribute to a checkable source, never to "studies"
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Where the source attributes advice, carry the attribution through and
+      name it plainly. Do not replace a named body with "studies show",
+      "research suggests", "experts recommend" or "doctors agree". Where the
+      source has no attribution, do not add one.
+    rationale: |
+      Vague appeals to research are both less persuasive and unverifiable,
+      and they are the phrasing readers have learned to associate with
+      marketing. A named organisation can be checked.
+    example:
+      before: "Research shows that quitting smoking improves heart health."
+      after: |
+        The Heart Foundation says that when you stop smoking, your heart
+        starts to get better.
+      wrong_if_source_names_nobody: |
+        Doctors agree that quitting smoking improves heart health.
+
+  - id: TRUST-03
+    title: Manufactured endorsement is a fidelity violation
+    status: assumed
+    blocking: true
+    source: Proposed by the engine author, 2026-08-15; not objected to. This rule blocks.
+    statement: |
+      Naming a clinician, organisation, community leader or authority that the
+      source does not name, or stating that any party agrees with, approves or
+      recommends the advice when the source does not say so, is an invented
+      clinical assertion. It blocks the document.
+    rationale: |
+      This is the highest-consequence invention available to the engine: it
+      puts words in the mouth of a real organisation, and it would be caught
+      by the health service rather than by the reader, at maximum cost to the
+      product's credibility.
+    example:
+      before: "Take your medicine every day."
+      after: "Take your medicine every day."
+      wrong: "Your doctor and the Heart Foundation agree: take your medicine every day."

@@ -1,0 +1,102 @@
+dimension: food
+label: Food and mealtime examples
+prefix: FOOD
+version: 0.1.0
+
+description: |
+  Food examples are the most visible cultural failure in cardiometabolic
+  materials and the easiest to get wrong in a new way. The method's answer is
+  that the engine does not invent substitutions: it applies a list a human has
+  signed off, and where the list has nothing to say, it flags rather than
+  guesses.
+
+rules:
+  - id: FOOD-01
+    title: Substitute only from the signed-off list
+    status: confirmed
+    source: Author interview, 2026-08-15. Author chose replacement from a signed-off list over adding alongside.
+    statement: |
+      Replace a food or mealtime example only where the substitution list at
+      method/data/food-substitutions.yaml contains an entry for that food and
+      the target profile's community. Replace, do not append: the source
+      example is removed and the community-appropriate one takes its place.
+      Every substitution cites the list entry ID in the change record.
+      The engine may never coin a substitution that is not on the list.
+    rationale: |
+      Substitution is a clinical and cultural claim — that these two foods are
+      equivalent for this purpose, for this community. That claim needs a
+      named human behind it, and a list makes it reviewable, versionable and
+      correctable in one place instead of drifting document by document.
+    example:
+      before: "Choose wholegrain bread instead of white bread."
+      after: "Choose wholemeal roti instead of white roti."
+      cites: FS-014
+
+  - id: FOOD-02
+    title: No signed-off entry means flag, not guess
+    status: confirmed
+    source: |
+      Direct consequence of the author's choice of a signed-off list,
+      2026-08-15.
+    statement: |
+      Where a food example has no entry for the target community, or the list
+      is not signed off for that community, the engine leaves the source
+      example unchanged and raises a change of type FOOD_SUBSTITUTION_NEEDED
+      showing the source example, the context, and the reason no substitution
+      was made. These appear in the review screen as work for the author, not
+      as failures of the document.
+      While food-substitutions.yaml has signed_off: false for a community, no
+      substitution fires for that community at all — every food example is
+      flagged instead.
+    rationale: |
+      The flags are how the list gets built. A first run against a real
+      brochure with an empty list produces exactly the worklist needed to fill
+      it, which is more useful than an engine quietly doing nothing.
+    example:
+      before: "Have a bowl of porridge for breakfast."
+      after: |
+        (no entry for this community — carried through unchanged, flagged
+        FOOD_SUBSTITUTION_NEEDED)
+
+  - id: FOOD-03
+    title: Portion and threshold equivalence must be explicit
+    status: assumed
+    source: Proposed by the engine author, 2026-08-15; not objected to.
+    statement: |
+      Where a food example is attached to a portion size, a quantity, a
+      frequency or a clinical threshold, the substitution fires only if the
+      list entry carries an explicit portion_equivalence field. If it does
+      not, the example is left unchanged and flagged
+      PORTION_EQUIVALENCE_MISSING.
+    rationale: |
+      "Two slices of bread" and "two rotis" are not the same carbohydrate
+      load. A substitution list built for cultural fit will silently break
+      quantitative advice unless equivalence is stated per entry, and the
+      person best placed to state it is the dietitian signing the list, not
+      the engine.
+    example:
+      before: "Limit yourself to two slices of bread at lunch."
+      after: |
+        (entry FS-014 has no portion_equivalence — carried through unchanged,
+        flagged PORTION_EQUIVALENCE_MISSING)
+
+  - id: FOOD-04
+    title: Check mealtime structure assumptions
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Flag source text that assumes a mealtime structure rather than a food:
+      three meals a day at fixed times, a cold breakfast, a main meal in the
+      evening, eating alone, snacking between meals, a lunchbox taken to work.
+      These are flagged as MEALTIME_ASSUMPTION rather than rewritten, unless
+      the substitution list carries an entry for the structure itself.
+    rationale: |
+      Swapping the food while keeping an alien meal structure produces text
+      that is superficially localised and still does not describe the reader's
+      day. Structure assumptions also interact with medication timing, which
+      is out of scope for v1 (see CAL-01).
+    example:
+      before: "Take this tablet with your evening meal."
+      after: |
+        (mealtime structure is also a medication-timing instruction —
+        flagged, not adapted; see CAL-01 and NS-02)

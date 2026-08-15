@@ -1,0 +1,246 @@
+dimension: never-soften
+label: Never-soften (safety spine)
+prefix: NS
+version: 0.1.0
+
+description: |
+  The safety spine. These rules define what may never change, and they
+  override every other rule in the method. A fidelity flag against any NS rule
+  blocks the document from reaching review-complete: there is no override, no
+  "accept anyway", and no reviewer role that can dismiss one. Resolution means
+  the text is corrected and the fidelity stage re-run, not that the flag is
+  waved through.
+
+  Two tiers:
+    TIER 1 (protected)  — may be reworded for reading level, but may never
+                          lose urgency, gain or lose a hedge, drop a
+                          condition, or change strength.
+    TIER 2 (verbatim)   — may be re-formatted, moved, or set out as a list,
+                          but the string itself may not be reworded at all.
+
+  TIER 2 membership is currently the engine author's proposal and is marked
+  strawman; the method author was asked whether they want this tier and what
+  belongs in it.
+
+rules:
+  - id: NS-01
+    title: Emergency symptoms and the instruction to seek care
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Red-flag and emergency symptoms, and the instruction to seek care, are
+      protected. Every listed symptom must survive. The urgency word must not
+      soften ("immediately" may not become "soon", "as soon as you can" may
+      not become "when convenient"). The care destination must not change
+      (ambulance may not become GP; emergency department may not become
+      pharmacy). No symptom may be added.
+    rationale: |
+      This is the content that determines whether someone lives, and it is the
+      content most vulnerable to sentence-shortening, because symptom lists
+      are long and urgency words look like intensifiers.
+    example:
+      before: |
+        Call an ambulance immediately if you have chest pain, pain spreading
+        to your arm or jaw, shortness of breath, or you feel sick or sweaty.
+      after: |
+        Call an ambulance on 000 straight away if you have any of these:
+        - chest pain
+        - pain spreading to your arm or jaw
+        - trouble breathing
+        - feeling sick or sweaty
+      wrong: |
+        See your doctor soon if you have chest pain or other symptoms.
+
+  - id: NS-02
+    title: Dose, timing, units, route and frequency
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Medicine names, doses, strengths, units, route, timing and frequency are
+      protected. They may be moved within a sentence or set out as a list.
+      They may not be rounded, converted, abbreviated, expanded, combined or
+      approximated. "One tablet twice a day" may not become "tablets twice a
+      day" or "a tablet in the morning and at night" unless the source says
+      morning and night.
+    rationale: |
+      Every element of a dosing instruction is load-bearing, and the reader
+      matches it against a physical label.
+    example:
+      before: "Take one 20 mg tablet at night."
+      after: "Take one 20 mg tablet every night."
+      wrong: "Take your cholesterol tablet at night."
+
+  - id: NS-03
+    title: Contraindications, interactions and warnings
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Contraindications, interactions, and warnings about who must not take
+      or do something are protected. Every condition attached to them survives
+      intact. A warning may not be moved into a position where it is separated
+      from the instruction it qualifies, and may not be demoted from body text
+      to a footnote.
+    rationale: |
+      Contraindications are conditional by nature, and conditionals are what
+      aggressive simplification breaks first (see RL-05).
+    example:
+      before: |
+        Do not take this medicine if you are pregnant, planning a pregnancy,
+        or breastfeeding.
+      after: |
+        Do not take this medicine if any of these are true for you:
+        - you are pregnant
+        - you are planning to become pregnant
+        - you are breastfeeding
+      wrong: "This medicine is not suitable during pregnancy."
+
+  - id: NS-04
+    title: Do not stop taking
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Instructions not to stop, skip, change or share a medicine without
+      advice are protected, including the named person whose advice is
+      required. The instruction may not be softened into a suggestion.
+    rationale: |
+      Self-cessation is a common and high-cost behaviour, and this instruction
+      is short enough that a rewrite can delete it without appearing to.
+    example:
+      before: |
+        Do not stop taking this medicine without speaking to your doctor,
+        even if you feel well.
+      after: |
+        Do not stop taking this medicine. Speak to your doctor first, even if
+        you feel well.
+      wrong: "It is best to keep taking this medicine."
+
+  - id: NS-05
+    title: Hypoglycaemia and acute-event response steps
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Step-by-step responses to an acute event — hypoglycaemia, chest pain,
+      severe allergic reaction — are protected as ordered sequences. Every
+      step survives, in order, with its quantities and its wait times. Steps
+      may not be merged. The repeat-and-recheck instruction, where present,
+      may not be dropped.
+    rationale: |
+      These are procedures, not advice. Order and quantity are the whole
+      content, and a merged step is an unusable procedure.
+    example:
+      before: |
+        Take 15 g of fast-acting carbohydrate, wait 15 minutes, then recheck
+        your blood glucose. If it is still below 4.0 mmol/L, repeat.
+      after: |
+        1. Take 15 g of fast-acting carbohydrate now.
+        2. Wait 15 minutes.
+        3. Check your blood glucose again.
+        4. If it is still under 4.0 mmol/L, do steps 1 to 3 again.
+      wrong: "Have something sugary and check your levels again shortly."
+
+  - id: NS-06
+    title: Anything with a hard number attached
+    tier: 1
+    blocking: true
+    status: confirmed
+    source: Author interview, 2026-08-15 (author's own list).
+    statement: |
+      Any clinical statement carrying a specific number — a threshold, a
+      target, a quantity, a duration, a wait time, a count — is protected. The
+      number and its unit survive exactly (see NUM-04, NUM-06). The
+      qualification attached to the number ("under", "at least", "no more
+      than", "within") survives exactly and may not flip direction or become
+      approximate.
+    rationale: |
+      Direction words on numbers are single short words doing enormous work,
+      and they are the easiest thing in the document to lose in a rewrite.
+    example:
+      before: "Wait at least 30 minutes before driving."
+      after: "Wait at least 30 minutes before you drive."
+      wrong: "Wait about half an hour before driving."
+
+  - id: NS-07
+    title: Modal strength is preserved exactly
+    tier: 1
+    blocking: true
+    status: assumed
+    source: Proposed by the engine author, 2026-08-15; not objected to.
+    statement: |
+      The strength of every clinical statement is preserved. "Must" may not
+      become "should"; "should" may not become "must", "may" or "can";
+      "may cause" may not become "causes"; "rarely" may not become
+      "sometimes". A hedge present in the source may not be removed, and a
+      hedge absent from the source may not be added.
+    rationale: |
+      Strength drift is the most common form of clinical drift in
+      plain-language rewriting and the hardest to see, because both versions
+      read as reasonable. Making it explicit is what lets the fidelity stage
+      hunt for it as a named category.
+    example:
+      before: "This medicine may cause muscle pain in a small number of people."
+      after: "A small number of people get muscle pain from this medicine."
+      wrong: "This medicine causes muscle pain."
+
+  - id: NS-08
+    title: No condition may be dropped from a conditional instruction
+    tier: 1
+    blocking: true
+    status: assumed
+    source: Proposed by the engine author, 2026-08-15; not objected to.
+    statement: |
+      Where an instruction is conditional, every condition survives, and the
+      instruction never appears in a form that is readable as unconditional.
+      Where a conditional is split for reading level, the condition must come
+      first. See RL-05, which exists to enforce this at the sentence level.
+    rationale: |
+      A dropped condition converts targeted advice into universal advice, and
+      the resulting sentence is usually shorter, cleaner and scores better on
+      every readability metric. Nothing except this rule catches it.
+    example:
+      before: "If you have kidney disease, do not take ibuprofen."
+      after: "If you have kidney disease, do not take ibuprofen."
+      wrong: "Do not take ibuprofen."
+
+  - id: NS-09
+    title: Tier 2 — re-format only, never reword
+    tier: 2
+    blocking: true
+    status: strawman
+    source: |
+      Engine author. NOT CONFIRMED — the method author was asked whether they
+      want a stricter tier that may be re-formatted but not reworded at all,
+      and which content belongs in it. The list below is a proposal.
+    statement: |
+      The following are reproduced as exact strings. They may be moved, set
+      out on their own line, bolded or listed, but not reworded, expanded,
+      abbreviated or punctuated differently:
+        - emergency telephone numbers and the words around them ("call 000")
+        - medicine brand and generic names, and their strengths
+        - threshold values with their units (140/90, 4.0 mmol/L, 7%)
+        - named organisations, services and their contact details
+        - anything the source presents in quotation marks as words to say
+    rationale: |
+      These are strings the reader will match against something physical: a
+      phone keypad, a box in a cupboard, a pathology report. Rewording them
+      breaks the match even when the meaning is preserved.
+    example:
+      before: "In an emergency, telephone 000 for an ambulance."
+      after: |
+        In an emergency, call 000 for an ambulance.
+      wrong: "In an emergency, call triple zero for an ambulance."
+      note: |
+        The "wrong" example above is genuinely arguable — "triple zero" is the
+        official spoken form in Australia and may be clearer for some readers.
+        It is listed as wrong under this strawman to make the question
+        concrete for the method author, not because the engine author is
+        confident. Decide it.

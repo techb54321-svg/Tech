@@ -1,0 +1,489 @@
+// Data model for the clinical content adaptation engine.
+//
+// Design intent: every row that could ever be part of the answer to "why does
+// this sentence say this?" is immutable once written. Reviewer decisions and
+// resolution fields are the only things that change after the fact, and they
+// are additive.
+//
+// SQLite via Prisma does not support enum or Json column types, so status-like
+// fields are String with their permitted values documented above each one, and
+// structured payloads are String holding JSON. See DECISIONS.md, D-06.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// People
+// ---------------------------------------------------------------------------
+
+model Reviewer {
+  id        String   @id @default(cuid())
+  name      String
+  /// AUTHOR | COMMUNITY_REVIEWER | CLINICIAN
+  role      String
+  email     String?
+  createdAt DateTime @default(now())
+
+  changeDecisions   Change[]
+  resolvedChecks    AssertionCheck[]
+  signoffs          Signoff[]
+  governanceRecords GovernanceRecord[]
+  sourceIssues      SourceIssue[]
+}
+
+// ---------------------------------------------------------------------------
+// Inputs
+// ---------------------------------------------------------------------------
+
+model SourceDocument {
+  id    String @id @default(cuid())
+  title String
+
+  /// The source text exactly as ingested. Never edited; a corrected source is
+  /// a new SourceDocument row.
+  sourceText   String
+  /// SHA-256 of sourceText. Printed on every governance record.
+  sourceSha256 String
+
+  condition          String
+  sourceOrganisation String
+  intendedAudience   String
+  sourceUrl          String?
+  sourceFilename     String?
+  notes              String?
+
+  ingestedAt DateTime @default(now())
+
+  runs AdaptationRun[]
+
+  @@index([sourceSha256])
+}
+
+/// A target profile is copied into the database from method.yaml at seed time.
+/// Runs point at this row, not at the file, so later edits to method.yaml do
+/// not rewrite the history of a completed adaptation.
+model TargetProfile {
+  key   String @id
+  label String
+
+  language               String
+  translate              Boolean
+  readingLevelTarget     String
+  readingLevelCeiling    String
+  /// INDIVIDUAL | FAMILY_INCLUSIVE | HOUSEHOLD_DECISION_MAKER  (ADR-01)
+  addresseeMode          String
+  community              String?
+  messenger              String?
+  notes                  String?
+  /// method_version of the file this profile was copied from.
+  fromMethodVersion      String
+  createdAt              DateTime @default(now())
+
+  runs AdaptationRun[]
+}
+
+/// The full text of every method file, captured at the moment a run started.
+/// This is what makes the audit trail survive later edits to the rule files.
+model MethodSnapshot {
+  id            String   @id @default(cuid())
+  methodVersion String
+  /// SHA-256 over every method file's content, in path order.
+  methodSha256  String   @unique
+  /// JSON: { "rules/reading-level.yaml": "<full file text>", ... }
+  filesJson     String
+  fileCount     Int
+  ruleCount     Int
+  /// JSON: { "confirmed": 12, "assumed": 7, "strawman": 21 }
+  ruleStatusCountsJson String
+  capturedAt    DateTime @default(now())
+
+  runs AdaptationRun[]
+}
+
+// ---------------------------------------------------------------------------
+// A run
+// ---------------------------------------------------------------------------
+
+model AdaptationRun {
+  id String @id @default(cuid())
+
+  sourceDocumentId String
+  sourceDocument   SourceDocument @relation(fields: [sourceDocumentId], references: [id])
+
+  targetProfileKey String
+  targetProfile    TargetProfile @relation(fields: [targetProfileKey], references: [key])
+
+  methodSnapshotId String
+  methodSnapshot   MethodSnapshot @relation(fields: [methodSnapshotId], references: [id])
+
+  /// CREATED | EXTRACTING | ANALYSING | PLANNING | PLAN_REVIEW | REWRITING |
+  /// VERIFYING | BACKTRANSLATING | BLOCKED | IN_REVIEW | REVIEW_COMPLETE | FAILED
+  status String @default("CREATED")
+
+  /// Why the run is blocked. A run with open blocking AssertionChecks may not
+  /// leave BLOCKED. See DECISIONS.md, D-08.
+  blockedReason String?
+
+  /// Output of stage 4, before any reviewer edits.
+  adaptedText String?
+  /// adaptedText with accepted reviewer edits applied. Null until review.
+  finalText   String?
+  finalSha256 String?
+
+  /// Version numbering within a source document, starting at 1.
+  versionNumber Int @default(1)
+  /// Set when this run is a re-run of an earlier one.
+  parentRunId   String?
+  parentRun     AdaptationRun?  @relation("RunLineage", fields: [parentRunId], references: [id])
+  childRuns     AdaptationRun[] @relation("RunLineage")
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  stages            StageRun[]
+  assertions        ClinicalAssertion[]
+  checks            AssertionCheck[]
+  planItems         ChangePlanItem[]
+  changes           Change[]
+  signoffs          Signoff[]
+  governanceRecords GovernanceRecord[]
+  sourceIssues      SourceIssue[]
+
+  @@index([sourceDocumentId])
+  @@index([status])
+}
+
+/// One execution of one pipeline stage. Stages are individually re-runnable;
+/// a re-run writes a new row with attempt + 1 rather than overwriting.
+model StageRun {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  /// EXTRACT | ANALYSE | PLAN | REWRITE | VERIFY | BACKTRANSLATE
+  stage   String
+  attempt Int @default(1)
+
+  /// RUNNING | OK | FAILED
+  status String @default("RUNNING")
+
+  /// Prompt provenance. promptText is the fully rendered prompt actually sent,
+  /// including the method rules interpolated into it.
+  promptTemplateId      String
+  promptTemplateVersion String
+  promptText            String
+  promptSha256          String
+  systemPromptText      String?
+
+  model       String
+  temperature Float?
+  maxTokens   Int?
+
+  /// JSON in, JSON out. rawResponse keeps the unparsed model output so a
+  /// parsing change later can be replayed against what was actually returned.
+  inputJson   String
+  outputJson  String?
+  rawResponse String?
+
+  inputTokens  Int?
+  outputTokens Int?
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  errorText  String?
+
+  @@unique([runId, stage, attempt])
+  @@index([runId])
+}
+
+// ---------------------------------------------------------------------------
+// The safety contract
+// ---------------------------------------------------------------------------
+
+/// An atomic clinical claim. Extracted from the source in stage 1, and
+/// independently re-extracted from the adaptation in stage 5 and from the
+/// back-translation in stage 6; origin says which.
+model ClinicalAssertion {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  /// SOURCE | ADAPTED | BACKTRANSLATION
+  origin String
+  /// Stable within (runId, origin): CA-001, CA-002, ...
+  stableId String
+
+  /// DOSE | THRESHOLD | WARNING_SIGN | ACTION | CONTRAINDICATION | TIMEFRAME |
+  /// RISK_STATEMENT | ELIGIBILITY | OTHER
+  category String
+
+  /// The claim restated atomically, and the exact span it came from.
+  text          String
+  verbatimQuote String
+  charStart     Int?
+  charEnd       Int?
+
+  /// MUST | SHOULD | MAY | STATEMENT  (NS-07 protects this)
+  strength String
+
+  /// JSON array of numbers with their units and direction words, so the
+  /// fidelity stage can compare them without re-parsing prose.
+  numbersJson String @default("[]")
+  /// JSON array of the conditions that govern this assertion (NS-08).
+  conditionsJson String @default("[]")
+
+  /// True where a never-soften rule applies. protectedRuleIds is a JSON array
+  /// of NS rule IDs, e.g. ["NS-02","NS-06"].
+  isProtected      Boolean @default(false)
+  protectedRuleIds String  @default("[]")
+
+  createdAt DateTime @default(now())
+
+  checksAsSource  AssertionCheck[] @relation("CheckSourceAssertion")
+  checksAsMatched AssertionCheck[] @relation("CheckMatchedAssertion")
+
+  @@unique([runId, origin, stableId])
+  @@index([runId, origin])
+}
+
+/// One fidelity verdict, produced by stage 5 or stage 6. A check with
+/// blocking = true and resolutionStatus = OPEN prevents the run from reaching
+/// review-complete, with no override.
+model AssertionCheck {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  /// VERIFY | BACKTRANSLATE | REVIEWER  (REVIEWER = raised by a CLINICAL_DRIFT rejection)
+  stage String
+
+  /// Null when verdict is INVENTED: there is no source assertion to point at.
+  sourceAssertionId String?
+  sourceAssertion   ClinicalAssertion? @relation("CheckSourceAssertion", fields: [sourceAssertionId], references: [id])
+
+  /// The assertion found in the adaptation, where one was found.
+  matchedAssertionId String?
+  matchedAssertion   ClinicalAssertion? @relation("CheckMatchedAssertion", fields: [matchedAssertionId], references: [id])
+
+  /// PRESENT_UNCHANGED | MISSING | WEAKENED | STRENGTHENED | MEANING_ALTERED |
+  /// CONDITION_DROPPED | NUMBER_CHANGED | UNIT_CHANGED | INVENTED
+  verdict String
+
+  blocking Boolean @default(false)
+
+  explanation   String
+  evidenceQuote String?
+  /// JSON array of method rule IDs implicated, e.g. ["NS-02"].
+  ruleIds       String  @default("[]")
+
+  /// OPEN | RESOLVED_BY_EDIT | RESOLVED_BY_RERUN | WITHDRAWN
+  resolutionStatus String    @default("OPEN")
+  resolutionNote   String?
+  resolvedById     String?
+  resolvedBy       Reviewer? @relation(fields: [resolvedById], references: [id])
+  resolvedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([runId, resolutionStatus])
+  @@index([runId, verdict])
+}
+
+// ---------------------------------------------------------------------------
+// The change plan and the changes
+// ---------------------------------------------------------------------------
+
+/// Stage 3 output: what will change and why, before anything is rewritten.
+/// The author can edit or remove items before stage 4 runs.
+model ChangePlanItem {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  ordinal Int
+
+  ruleId        String
+  ruleDimension String
+  /// confirmed | assumed | strawman, as at the method snapshot for this run.
+  ruleStatus    String
+
+  targetQuote String
+  intent      String
+  rationale   String
+
+  /// JSON array of ClinicalAssertion.stableId this item touches. Populated
+  /// from stage 1 so the author can see, before the rewrite, which planned
+  /// changes touch protected content.
+  touchesAssertionIds String @default("[]")
+  touchesProtected    Boolean @default(false)
+
+  /// PROPOSED | APPROVED | EDITED | REMOVED
+  status         String  @default("PROPOSED")
+  authorEditNote String?
+
+  createdAt DateTime @default(now())
+
+  changes Change[]
+
+  @@index([runId])
+}
+
+/// One discrete, individually addressable difference between source and
+/// adaptation, or one flag raised in place of a change.
+model Change {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  planItemId String?
+  planItem   ChangePlanItem? @relation(fields: [planItemId], references: [id])
+
+  ordinal Int
+
+  ruleId        String
+  ruleDimension String
+  /// confirmed | assumed | strawman. Changes from unconfirmed rules are
+  /// marked as such in the review screen.
+  ruleStatus    String
+
+  beforeText     String
+  afterText      String
+  /// Why, in language the reviewer reads rather than the rule's own wording.
+  rationalePlain String
+
+  anchorStart Int?
+  anchorEnd   Int?
+
+  /// Set where the engine raised a flag instead of changing text:
+  /// FOOD_SUBSTITUTION_NEEDED | PORTION_EQUIVALENCE_MISSING |
+  /// MEALTIME_ASSUMPTION | NEEDS_PRESCRIBER_INPUT | RELATIVE_RISK_CARRIED |
+  /// MISSING_DENOMINATOR_CONTEXT | REASON_ABSENT_IN_SOURCE |
+  /// CONSTRAINED_SECTION
+  flagType String?
+
+  /// Data-file entry cited by this change, e.g. a food substitution ID.
+  citesDataEntryId String?
+
+  /// JSON array of ClinicalAssertion.stableId.
+  touchesAssertionIds String @default("[]")
+
+  /// PENDING | ACCEPTED | REJECTED | EDITED
+  decision           String    @default("PENDING")
+  /// Code from method/data/rejection-taxonomy.yaml. Required when REJECTED.
+  decisionReasonCode String?
+  decisionReasonText String?
+  /// The reviewer's own wording, when decision is EDITED.
+  editedText         String?
+  decidedById        String?
+  decidedBy          Reviewer? @relation(fields: [decidedById], references: [id])
+  decidedAt          DateTime?
+
+  createdAt DateTime @default(now())
+
+  refinementCandidates MethodRefinementCandidate[]
+
+  @@index([runId, decision])
+  @@index([runId, ruleId])
+}
+
+// ---------------------------------------------------------------------------
+// Learning loop and sign-off
+// ---------------------------------------------------------------------------
+
+/// A rejected change with a reason becomes a candidate refinement to the
+/// method. This is the queue the author works through between documents.
+model MethodRefinementCandidate {
+  id String @id @default(cuid())
+
+  changeId String?
+  change   Change? @relation(fields: [changeId], references: [id])
+
+  ruleId    String
+  dimension String
+
+  reasonCode String
+  reasonText String
+  /// Optional concrete proposal for the rule file.
+  proposedRuleChange String?
+
+  /// NEW | TRIAGED | ACCEPTED | DISMISSED
+  status String @default("NEW")
+  /// The method version that resolved this, once it is resolved.
+  resolvedInMethodVersion String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([ruleId])
+}
+
+model Signoff {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  reviewerId String
+  reviewer   Reviewer @relation(fields: [reviewerId], references: [id])
+
+  /// AUTHOR | COMMUNITY_REVIEWER | CLINICIAN
+  role String
+  /// FULL_REVIEW | FINAL_SPOT_CHECK
+  scope String
+  /// APPROVED | APPROVED_WITH_EDITS | REJECTED
+  verdict String
+  note    String?
+
+  signedAt DateTime @default(now())
+
+  @@index([runId])
+}
+
+/// An immutable rendering of the governance record at a point in time. The
+/// payload is stored rather than regenerated so that a record printed for a
+/// committee can be reproduced exactly, byte for byte, later.
+model GovernanceRecord {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  methodVersion String
+  methodSha256  String
+  sourceSha256  String
+  adaptedSha256 String
+  /// JSON: every model and prompt version used, by stage.
+  modelsJson    String
+  /// JSON: the complete record payload.
+  payloadJson   String
+  /// SHA-256 of payloadJson.
+  payloadSha256 String
+
+  generatedById String?
+  generatedBy   Reviewer? @relation(fields: [generatedById], references: [id])
+  renderedAt    DateTime  @default(now())
+
+  @@index([runId])
+}
+
+/// Raised when a reviewer says the source itself is wrong (SOURCE_IS_WRONG).
+/// Out of scope for the engine, kept so it is not lost.
+model SourceIssue {
+  id    String        @id @default(cuid())
+  runId String
+  run   AdaptationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  description String
+  raisedById  String?
+  raisedBy    Reviewer? @relation(fields: [raisedById], references: [id])
+  /// OPEN | RAISED_WITH_PUBLISHER | CLOSED
+  status      String   @default("OPEN")
+  createdAt   DateTime @default(now())
+
+  @@index([runId])
+}

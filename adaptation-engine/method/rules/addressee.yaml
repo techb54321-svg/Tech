@@ -1,0 +1,108 @@
+dimension: addressee
+label: Addressee and decision-making unit
+prefix: ADR
+version: 0.1.0
+
+description: |
+  Who the document talks to. Western patient materials assume an autonomous
+  individual making a private decision. Where that assumption is wrong, the
+  advice can be perfectly clear and still fail, because the person who reads
+  it is not the person who decides what is cooked, what is bought, or when
+  someone sees a doctor.
+
+  This dimension is configured per target profile rather than fixed, because
+  the right answer differs by community and by document type.
+
+rules:
+  - id: ADR-01
+    title: Addressee mode is a target-profile field
+    status: confirmed
+    source: Author interview, 2026-08-15. Author chose a per-community switch over a fixed rule.
+    statement: |
+      Every target profile carries an addressee_mode with exactly one of these
+      values. The value is recorded on every adaptation run and printed on the
+      governance record.
+
+        INDIVIDUAL
+          Address the reader alone, as the source does. Adapt reading level,
+          numeracy, examples and framing only.
+
+        FAMILY_INCLUSIVE
+          Address the reader directly, and name the family members who are
+          affected by or needed for each action. The reader remains the
+          subject of every instruction.
+
+        HOUSEHOLD_DECISION_MAKER
+          Address the reader directly, and additionally state, for each action
+          that another person controls, who in the household needs to agree or
+          act. The instruction is still given to the reader; the document does
+          not transfer the decision away from them.
+    rationale: |
+      Making this a switch rather than a rule means the same source document
+      can be adapted for two communities without editing the method, and the
+      governance record shows which mode produced which text.
+    example:
+      before: "Reduce the amount of salt you add to your food."
+      after_INDIVIDUAL: "Add less salt to your food."
+      after_FAMILY_INCLUSIVE: |
+        Add less salt to your food. Everyone at home eats the same meals, so
+        this works best if the whole family eats less salt too.
+      after_HOUSEHOLD_DECISION_MAKER: |
+        Add less salt to your food. If someone else cooks for the household,
+        they need to know about this change. Show them this page.
+
+  - id: ADR-02
+    title: Addressee mode never moves a clinical action
+    status: assumed
+    blocking: true
+    source: Proposed by the engine author, 2026-08-15; not objected to.
+    statement: |
+      Changing addressee mode may add people who need to know. It may never
+      change who performs a clinical action. If an adaptation makes a family
+      member the subject of taking a medicine, attending an appointment,
+      monitoring a symptom or deciding to seek care, that is a fidelity
+      violation and blocks the document.
+    rationale: |
+      Family-inclusive framing that quietly reassigns responsibility for
+      medication or for seeking emergency care is a safety failure wearing the
+      costume of cultural competence.
+    example:
+      before: "Call an ambulance if you have chest pain."
+      after: |
+        If you have chest pain, call an ambulance on 000.
+      wrong: |
+        If you have chest pain, ask a family member to call an ambulance.
+
+  - id: ADR-03
+    title: Name the role, not the relationship
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Where a rule names another person, name them by household role — the
+      person who cooks, the person who does the shopping, the person who
+      drives you to appointments — not by assumed family relationship
+      (wife, mother, eldest son).
+    rationale: |
+      Role-based phrasing lands correctly across household structures without
+      the document guessing at who lives with the reader, and it avoids
+      encoding a gendered assumption about who cooks.
+    example:
+      before: "Ask your wife to prepare meals with less oil."
+      after: "Whoever cooks at home needs to know: use less oil."
+
+  - id: ADR-04
+    title: The reader is always addressed as "you"
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Regardless of mode, the reader is addressed in the second person
+      throughout. Do not switch to third person ("patients should"), to the
+      passive ("it is recommended that"), or to a collective ("families are
+      encouraged to") for any clinical instruction.
+    rationale: |
+      Third-person and passive phrasing is the main way English patient
+      materials become advice about someone else. It also raises reading
+      level.
+    example:
+      before: "Patients are advised to have their blood pressure checked annually."
+      after: "Get your blood pressure checked once a year."

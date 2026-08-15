@@ -1,0 +1,191 @@
+dimension: reading-level
+label: Reading level and sentence structure
+prefix: RL
+version: 0.1.0
+
+description: |
+  Controls how hard the text is to read. These rules fire on almost every
+  sentence, so they generate the bulk of the change list. They are also the
+  rules most likely to collide with the never-soften rules (NS-*): when a
+  reading-level rule and a never-soften rule disagree, the never-soften rule
+  wins and the collision is recorded as a change the reviewer must see.
+
+rules:
+  - id: RL-01
+    title: Reading level ceiling
+    status: confirmed
+    source: Author interview, 2026-08-15.
+    statement: |
+      The adapted document must read at Grade 5-6. No individual section may
+      exceed Grade 7, even where the document average is within target. A
+      document that cannot reach Grade 7 or below in any section without
+      breaking a never-soften rule is reported as a constrained section, not
+      silently left long.
+    rationale: |
+      Grade 5-6 is the standard plain-language target for patient materials
+      and is reachable without losing clinical specificity. The per-section
+      ceiling exists because document-level averages hide a single dense
+      paragraph, and the dense paragraph is usually the one carrying the
+      clinical instruction.
+    example:
+      before: |
+        Individuals with multiple concurrent cardiovascular risk factors may
+        derive substantial benefit from pharmacological intervention in
+        addition to lifestyle modification.
+      after: |
+        You may have more than one thing raising your heart risk. If you do,
+        medicine can help. Changing what you eat and how you move helps too.
+        Most people need both.
+
+  - id: RL-02
+    title: Which reading-level metric counts
+    status: strawman
+    source: Engine author. NOT CONFIRMED — the author was asked for a metric and has not answered.
+    statement: |
+      Reading level is measured with Flesch-Kincaid Grade Level and SMOG,
+      computed per section and for the whole document. Both must meet RL-01.
+      Where the two disagree by more than two grades, the higher is used and
+      the disagreement is noted in the governance record.
+    rationale: |
+      Readability formulas disagree, and a single formula is easy to game by
+      shortening sentences while keeping hard words. Requiring two makes that
+      harder. SMOG is the more conservative of the two for health materials.
+    example:
+      before: "(metric choice, not a text change)"
+      after: "(metric choice, not a text change)"
+
+  - id: RL-03
+    title: One idea per sentence
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Each sentence carries exactly one idea. Do not join two instructions,
+      two facts, or an instruction and its justification with "and", "but",
+      "which", "while" or a semicolon. Split them into separate sentences.
+      Exception: RL-05.
+    rationale: |
+      Low-literacy readers lose the second half of a compound sentence.
+      Splitting also makes each clinical assertion individually checkable in
+      the fidelity stage, which is what lets the audit trail work at the
+      sentence level.
+    example:
+      before: |
+        Reducing your salt intake will lower your blood pressure, which in
+        turn reduces your risk of stroke.
+      after: |
+        Eating less salt lowers your blood pressure. Lower blood pressure
+        means less chance of a stroke.
+
+  - id: RL-04
+    title: Sentence length cap
+    status: strawman
+    source: Engine author. NOT CONFIRMED — the author was asked for the actual cap and has not answered.
+    statement: |
+      Target sentence length is 15 words or fewer. The hard cap is 20 words.
+      A sentence over 20 words is a defect unless RL-05 applies. No sentence
+      may contain more than one subordinate clause.
+    rationale: |
+      Sentence length is the single strongest lever on readability scores and
+      the easiest for a reviewer to check by eye without a tool.
+    example:
+      before: |
+        If you experience chest pain that does not resolve within ten minutes
+        of rest, or that is accompanied by shortness of breath, sweating or
+        nausea, you should call an ambulance immediately rather than waiting
+        to see whether it settles.
+      after: |
+        Chest pain that does not go away after 10 minutes of rest is an
+        emergency. So is chest pain with any of these: trouble breathing,
+        sweating, feeling sick. Call an ambulance on 000 straight away. Do
+        not wait to see if it settles.
+
+  - id: RL-05
+    title: Conditional integrity overrides the length cap
+    status: strawman
+    source: |
+      Engine author, raised with the author as the exception that must be a
+      written rule rather than a judgement call. NOT CONFIRMED.
+    statement: |
+      A sentence may exceed the RL-04 cap where shortening it would separate
+      an instruction from the condition that governs it. Never split "do X if
+      Y" across two sentences, and never state an instruction before its
+      condition in a way that leaves the instruction readable on its own. If
+      the combined sentence exceeds 20 words, keep it and record the override
+      against this rule ID rather than breaking the pair.
+    rationale: |
+      A reader who stops after the first sentence of a split conditional
+      receives an unconditional instruction. This is the most dangerous
+      failure mode of aggressive sentence-shortening, and it is invisible to
+      readability metrics — the split version scores better.
+    example:
+      before: |
+        Stop taking this medicine and contact your doctor if you develop
+        muscle pain that you cannot explain.
+      after: |
+        If you get muscle pain you cannot explain, stop taking this medicine
+        and phone your doctor.
+      wrong: |
+        Stop taking this medicine. Contact your doctor. This is for muscle
+        pain you cannot explain.
+
+  - id: RL-06
+    title: Paragraph cap
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      No paragraph exceeds three sentences or 45 words. Every paragraph
+      carries one topic. A list of more than two parallel items becomes a
+      bulleted list, not a sentence.
+    rationale: |
+      Paragraph mass, not just sentence length, drives whether a low-literacy
+      reader attempts the text at all.
+    example:
+      before: |
+        There are many things you can do to lower your risk. Eating more
+        vegetables and less processed food is important, as is being active
+        most days, keeping your weight in a healthy range, not smoking, and
+        limiting alcohol, and you should also make sure you attend your
+        regular check-ups.
+      after: |
+        There are five things that lower your risk:
+        - Eat more vegetables. Eat less packaged food.
+        - Move your body most days.
+        - Do not smoke.
+        - Drink less alcohol, or none.
+        - Go to your check-ups.
+
+  - id: RL-07
+    title: Jargon — replace or keep-and-define, never drop
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Every clinical term is handled one of two ways, and the choice is
+      recorded:
+        (a) REPLACE with a plain equivalent, where the reader will never need
+            the technical word again.
+        (b) KEEP AND DEFINE at first use, where the reader will meet the word
+            elsewhere in the health system — on a pathology form, a
+            medicine label, or from a clinician.
+      Terms in class (b) are never replaced, because a reader who does not
+      recognise the word on their own blood test result has been made less
+      safe, not more. Never delete a term without doing (a) or (b).
+    rationale: |
+      Pure simplification breaks the reader's ability to navigate the rest of
+      the system. "Cholesterol", "blood pressure", the names of their own
+      medicines and their own numbers are vocabulary they need to keep.
+    example:
+      before: |
+        Your lipid profile indicates elevated LDL-C.
+      after: |
+        Your blood test shows your cholesterol is too high. The part that is
+        too high is called LDL. You may see "LDL" on your test results.
+    keep_and_define_seed_list:
+      # TODO(author): this list needs your review. Terms here are class (b).
+      - cholesterol
+      - LDL
+      - HDL
+      - blood pressure
+      - triglycerides
+      - statin
+      - blood glucose
+      - HbA1c

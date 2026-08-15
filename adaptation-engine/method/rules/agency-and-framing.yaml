@@ -1,0 +1,108 @@
+dimension: agency
+label: Agency and fatalism framing
+prefix: AGY
+version: 0.1.0
+
+description: |
+  Whether the reader finishes the document believing there is something they
+  can do. This dimension has a hard boundary on both sides: fatalism makes the
+  document useless, and over-promised control makes it clinically false. The
+  boundary between the two is a fidelity question, not a tone question, which
+  is why AGY-02 blocks.
+
+rules:
+  - id: AGY-01
+    title: Remove fatalistic framing
+    status: strawman
+    source: Engine author. NOT CONFIRMED — the author was asked where the line sits and has not answered.
+    statement: |
+      Remove phrasing that presents the reader's outcome as fixed, inevitable
+      or outside their influence, where the source's own clinical content does
+      not require it. Specifically: "unfortunately", "sadly", "there is not
+      much that can be done", "you will eventually need", "it is only a matter
+      of time", "this will get worse". Replace with the specific action the
+      source does contain. Where the source contains no action, say what
+      happens next and who decides it, rather than leaving the sentence bare.
+    rationale: |
+      Fatalistic phrasing is over-represented in materials written for
+      populations with worse outcomes, and it reliably reduces the chance a
+      reader attempts anything at all.
+    example:
+      before: |
+        Unfortunately, many people with type 2 diabetes will eventually need
+        insulin.
+      after: |
+        Over time, some people with type 2 diabetes need insulin as well as
+        tablets. Insulin is not a punishment and it is not a failure. Your
+        doctor will tell you if and when you need it.
+
+  - id: AGY-02
+    title: Never promise control the source did not claim
+    status: assumed
+    blocking: true
+    source: |
+      Proposed by the engine author on 2026-08-15 as the boundary on agency
+      framing and stated as a working default; not objected to. This rule
+      blocks.
+    statement: |
+      The adaptation may not state or imply that the reader can reverse, cure,
+      undo or guarantee an outcome unless the source states it in those terms.
+      Do not upgrade "may reduce" to "will reduce", "helps" to "prevents", or
+      "lowers your risk" to "keeps you safe". Over-promising control is
+      treated as a fidelity violation of the same class as changing a dose,
+      and it blocks the document until resolved.
+    rationale: |
+      Encouraging framing that shades into a promise is the most likely way
+      this whole method produces a clinically false document, precisely
+      because it feels like doing the reader a kindness. Classifying it as
+      fidelity rather than style is what stops it being argued away in review.
+    example:
+      before: "Lifestyle changes may reduce your risk of a heart attack."
+      after: "Changing what you eat and how you move can lower your risk."
+      wrong: "Changing what you eat and how you move will stop you having a heart attack."
+
+  - id: AGY-03
+    title: Replace exhortation with a specific action
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Where the source urges without specifying — "be more active", "eat
+      healthily", "manage your stress", "watch your weight" — replace with the
+      most specific action the source itself supports, including any number
+      and timeframe the source gives. Never invent a number or a target the
+      source does not contain; if the source gives none, name the action
+      without one and, where the source says so, name who can give the reader
+      a specific target.
+    rationale: |
+      Unspecified exhortation is where a document is doing the work of looking
+      helpful without being actionable. But specificity that the source does
+      not support is invented clinical advice, so the rule is bounded by what
+      the source actually says.
+    example:
+      before: "Try to be more active."
+      after: |
+        Walk for 30 minutes on most days. You can break it into three walks
+        of 10 minutes.
+      wrong_if_source_gives_no_number: |
+        Walk 10,000 steps a day. (Source did not say this.)
+
+  - id: AGY-04
+    title: No blame, no compliance language
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Remove language that positions the reader as failing or non-compliant:
+      "failure to comply", "you must lose weight", "poorly controlled",
+      "you have let your sugars go", "non-adherent". Describe the situation
+      and the next action instead. Clinical terms of art that appear on the
+      reader's own record ("poorly controlled diabetes") may be kept where
+      RL-07 class (b) applies, but are explained neutrally.
+    rationale: |
+      Blame framing predicts disengagement, and it is more common in materials
+      aimed at the exact populations this method targets.
+    example:
+      before: "Your diabetes is poorly controlled due to non-adherence to diet."
+      after: |
+        Your blood sugar has been higher than we want. Food is one of the
+        things that changes it. Let's look at what you eat and find one change
+        to start with.

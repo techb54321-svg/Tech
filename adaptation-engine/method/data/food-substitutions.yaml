@@ -1,0 +1,44 @@
+# Food substitution list.
+#
+# FOOD-01 permits a substitution only if it appears here for the target
+# profile's community AND that community is signed off below. While a
+# community is not signed off, no substitution fires for it — every food
+# example in the source is flagged FOOD_SUBSTITUTION_NEEDED instead, which is
+# how this list gets built from a real document.
+#
+# The engine may never coin a substitution that is not in this file.
+
+version: 0.1.0
+
+communities:
+  # Add one block per community. signed_off must be set by a named human who
+  # is accountable for the clinical and cultural claim each entry makes.
+  - id: TODO-community-id
+    label: "TODO: name the first community"
+    signed_off: false
+    signed_off_by: null
+    signed_off_on: null
+    reviewer_role: null # e.g. accredited practising dietitian, community health worker
+    notes: |
+      No community has been named yet. The first profile in method.yaml has
+      community: null, so the engine will flag every food example in the first
+      brochure rather than substituting. That flag list is the intended
+      starting point for filling in this file.
+
+entries: []
+# Entry format, for when the first community is named:
+#
+# - id: FS-001
+#   community: <community id from above>
+#   source_food: white bread
+#   substitute: white roti
+#   equivalence_basis: |
+#     Why these are treated as equivalent for the purpose of this advice.
+#   portion_equivalence: |
+#     Required by FOOD-03 wherever the source attaches a quantity, portion or
+#     frequency to the food. Omit only where the source example carries no
+#     quantity. Example: "2 slices of bread (60 g) ~ 2 small rotis (60 g)".
+#   applies_to_contexts: [general_example, portion_instruction]
+#   added_by: <name>
+#   added_on: <ISO date>
+#   status: draft | signed_off

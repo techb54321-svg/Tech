@@ -1,0 +1,99 @@
+dimension: calendar
+label: Religious and calendar context
+prefix: CAL
+version: 0.1.0
+
+description: |
+  Time, seasons, festivals and fasting. The v1 position is deliberately narrow:
+  the engine removes assumptions that do not hold, and refuses to generate
+  guidance about fasting, because fasting guidance for someone on cardiac or
+  glucose-lowering medicine is prescriber territory.
+
+rules:
+  - id: CAL-01
+    title: Fasting and medication timing are out of scope, and are flagged
+    status: assumed
+    source: |
+      Proposed by the engine author on 2026-08-15 as the v1 boundary and
+      stated as a working default; not objected to. Confirm or correct.
+    statement: |
+      The engine never generates, adapts, extends or localises guidance about
+      fasting — religious or otherwise — or about adjusting medication timing
+      around fasting, festivals or shift work. Where the source contains such
+      guidance, it is reproduced under the never-soften rules and not
+      reworded beyond reading level. Where the source contains none but the
+      target community is likely to need it, the engine raises a
+      NEEDS_PRESCRIBER_INPUT flag naming the gap. It does not fill the gap.
+    rationale: |
+      Adjusting a medicine around a fast is an individualised prescribing
+      decision. A document that offers general fasting advice to a person on
+      insulin or a diuretic can cause direct harm, and the failure would be
+      invisible in review because the text would read as thoughtful cultural
+      adaptation.
+    example:
+      before: "Take your tablet with breakfast."
+      after: |
+        Take your tablet with breakfast.
+        (flagged NEEDS_PRESCRIBER_INPUT: reader may fast during Ramadan;
+        timing advice must come from their prescriber, not this document)
+
+  - id: CAL-02
+    title: Replace seasonal and festival assumptions
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Flag and replace time markers that assume a shared calendar or climate:
+      "over the Christmas period", "summer holidays", "the festive season",
+      "in winter". Replace with the underlying situation the source means —
+      a period of large meals, a period of less activity, hot weather — so the
+      advice lands whichever calendar the reader keeps.
+    rationale: |
+      The clinical content of "be careful over Christmas" is "be careful
+      during a run of large celebratory meals". Naming the situation rather
+      than the festival keeps the advice true for every reader.
+    example:
+      before: "Be careful not to overeat during the Christmas period."
+      after: |
+        At festivals and family celebrations there is more food than usual.
+        These are the times it is easiest to eat much more than you planned.
+
+  - id: CAL-03
+    title: Do not assume alcohol
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Phrase alcohol content so it does not presume the reader drinks, and does
+      not presume they do not. "If you drink alcohol, ..." rather than "cut
+      down your drinking". Never delete alcohol content on the assumption that
+      a community does not drink; that assumption is both unreliable and a
+      loss of clinical information.
+    rationale: |
+      Both failure modes are common: materials that assume drinking, and
+      culturally-adapted materials that silently drop alcohol advice for
+      communities presumed abstinent, leaving the people in those communities
+      who do drink with no information.
+    example:
+      before: "Cut down on how much you drink."
+      after: |
+        If you drink alcohol, drinking less is one of the changes that lowers
+        your blood pressure.
+
+  - id: CAL-04
+    title: Religious content is never added
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      The engine does not add religious framing, scripture, blessings or
+      references to faith that the source does not contain, in any community,
+      for any reason. Where the source contains them, they are preserved and
+      adapted only for reading level.
+    rationale: |
+      Added religious framing is an authority claim the health service has not
+      made and cannot govern, and it is exactly the kind of thing a model will
+      produce enthusiastically and wrongly. If a community's materials should
+      carry it, that is a decision for the service and its community
+      reviewers, expressed by putting it in the source.
+    example:
+      before: "Taking your medicine every day protects your heart."
+      after: "Taking your medicine every day protects your heart."
+      wrong: "Taking your medicine every day protects the body God gave you."

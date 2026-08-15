@@ -1,0 +1,89 @@
+dimension: register
+label: Register and formality
+prefix: REG
+version: 0.1.0
+
+description: |
+  How the document sounds. Register is the dimension most likely to be
+  dismissed as taste, and it is the one where a mistake costs the document its
+  standing with the reader — text that reads as written for children is
+  rejected by adults regardless of how clear it is.
+
+rules:
+  - id: REG-01
+    title: Formal-respectful, no contractions
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Write in a plain but formal-respectful register. Do not use
+      contractions (don't, you'll, it's). Do not use slang or colloquialism.
+      Do not use exclamation marks. Plain vocabulary and short sentences carry
+      the readability; informality is not what makes text easy.
+    rationale: |
+      Contractions and informality are frequently mistaken for plain language.
+      They add little readability and, in many communities, cost the document
+      the authority it needs to be acted on. Uncontracted forms are also
+      clearer for readers with English as a second language.
+    example:
+      before: "You'll need to keep an eye on things, but don't stress!"
+      after: |
+        Check your blood pressure each week. Write down the number. Take it to
+        your next appointment.
+
+  - id: REG-02
+    title: No humour, no reassurance the source did not give
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Do not add jokes, lightness, or reassuring asides ("nothing to worry
+      about", "this is very common, so relax") that the source does not
+      contain. Reassurance is a clinical statement; if the source did not make
+      it, the adaptation may not.
+    rationale: |
+      Added reassurance is an invented clinical assertion and will be caught by
+      the fidelity stage, but it is better prevented here, because it is the
+      most natural thing for a model to add when asked to be warm.
+    example:
+      before: "Most people tolerate this medicine well."
+      after: "Most people take this medicine without problems."
+      wrong: "Most people take this medicine without problems, so there is nothing to worry about."
+
+  - id: REG-03
+    title: No bare imperative without a reason
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Every instruction is accompanied by the reason the source gives for it,
+      in the same paragraph. Where the source gives no reason, the instruction
+      stands alone rather than acquiring an invented one, and is flagged
+      REASON_ABSENT_IN_SOURCE.
+    rationale: |
+      Unexplained instruction is the register of a rule rather than of advice,
+      and it predicts non-adherence. But supplying the missing reason is
+      inventing clinical content, so the rule stops at flagging.
+    example:
+      before: "Do not add salt at the table."
+      after: |
+        Do not add salt at the table. Salt raises your blood pressure.
+      wrong_if_source_gives_no_reason: |
+        Do not add salt at the table. Salt causes heart failure.
+        (Source did not say this.)
+
+  - id: REG-04
+    title: Never infantilise
+    status: strawman
+    source: Engine author. NOT CONFIRMED.
+    statement: |
+      Do not use diminutives, baby talk, or over-simplified vocabulary for
+      things adults have adult words for. Do not address the reader as though
+      they are unintelligent; the reading level is about literacy and
+      language, not capability. Do not use emoji.
+    rationale: |
+      The most common way a plain-language rewrite fails culturally is by
+      reading as though it was written for a child. Adults notice immediately
+      and discount the content.
+    example:
+      before: "Your ticker needs a bit of TLC."
+      after: |
+        Your heart is under strain. There are three things that reduce it.
+      wrong: "Your heart is a bit poorly and needs looking after."

@@ -1,0 +1,86 @@
+# Reviewer rejection taxonomy.
+#
+# When a reviewer rejects a change they pick exactly one code from this list
+# and write free text. The code is what makes rejections aggregate into method
+# refinements instead of accumulating as a pile of unread notes; the free text
+# is what makes the aggregate meaningful.
+#
+# Adopted as a working default on 2026-08-15 (engine author proposed
+# taxonomy + free text; method author did not object).
+
+version: 0.1.0
+status: assumed
+
+codes:
+  - code: WRONG_RULE_FIRED
+    label: Wrong rule fired
+    description: |
+      The rule cited should not have applied to this text at all.
+    creates_refinement_candidate: true
+    refinement_question: |
+      Does the rule's scope or trigger condition need narrowing?
+
+  - code: RULE_RIGHT_EXECUTION_WRONG
+    label: Rule right, execution wrong
+    description: |
+      The right rule fired, but the rewrite it produced is not what the rule
+      asks for.
+    creates_refinement_candidate: true
+    refinement_question: |
+      Does the rule need a clearer statement or a better worked example? A
+      rule that is repeatedly executed wrongly is usually under-specified,
+      not badly obeyed.
+
+  - code: CLINICAL_DRIFT
+    label: Clinical drift
+    description: |
+      The change alters clinical meaning, strength, or a condition. Selecting
+      this code raises a fidelity flag against the document even if the
+      automated fidelity stage passed it, and the document returns to a
+      blocked state.
+    creates_refinement_candidate: true
+    escalates_to_fidelity_flag: true
+    refinement_question: |
+      Why did stage 5 miss this? Every instance is a gap in the fidelity
+      prompt, and is the highest-value refinement in the system.
+
+  - code: CULTURAL_MISS
+    label: Cultural miss
+    description: |
+      The change is clinically sound but wrong for this community — a
+      substitution that does not land, a framing that offends, an addressee
+      assumption that does not hold.
+    creates_refinement_candidate: true
+    refinement_question: |
+      Is this a missing or wrong entry in a data file (substitution list,
+      messenger, addressee mode), or a rule that needs a per-community switch?
+
+  - code: STYLE_PREFERENCE
+    label: Style preference
+    description: |
+      The change is correct under the method; the reviewer would have written
+      it differently. Recorded, but does not by itself indicate a method
+      problem.
+    creates_refinement_candidate: false
+    refinement_question: null
+
+  - code: UNNECESSARY_CHANGE
+    label: Unnecessary change
+    description: |
+      The source text was already acceptable under the method; the change
+      added churn without benefit.
+    creates_refinement_candidate: true
+    refinement_question: |
+      Is a rule firing too eagerly, or is the change plan proposing changes
+      that no rule actually requires?
+
+  - code: SOURCE_IS_WRONG
+    label: Source document is wrong
+    description: |
+      The adaptation is faithful, but the source itself is clinically out of
+      date or incorrect. Out of scope for the engine, in scope for the
+      author's conversation with the health service. Recorded on the
+      governance record so it is not lost.
+    creates_refinement_candidate: false
+    escalates_to_source_issue: true
+    refinement_question: null

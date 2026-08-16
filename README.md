@@ -122,10 +122,18 @@ single HTML file is completely self-contained apart from the Three.js library.
 
 # 👄 Inside the Mouth — VR
 
-A separate experience: `inside-the-mouth-vr.html` puts you *inside* a scanned
-human mouth. You stand on the tongue at about the size of a crumb, with the
-ridged roof of the palate overhead and both arches of teeth curving away either
-side, and you can walk from the incisors back to the throat.
+A separate experience: `inside-the-mouth-vr.html` opens with a mouth the size
+of a cathedral laid out in front of you, wearing a real photograph. You float
+at the spot the photograph was taken from — teeth arching away either side, the
+tongue below, the uvula hanging in the dark at the back — and you can drift in
+towards the throat.
+
+You start there rather than inside the cavity for a reason. Standing in the
+middle of a mouth at crumb scale puts a wall of flesh inches from your face in
+every direction and nothing reads as anatomy at all. From the camera's seat the
+whole thing is composed, and it is also the one viewpoint the photograph can
+dress. Push in and the picture falls away into darkness — which is what the
+back of a mouth looks like anyway.
 
 Live at **/Tech/inside-the-mouth-vr.html** (linked from the landing page).
 

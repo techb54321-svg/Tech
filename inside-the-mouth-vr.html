@@ -373,6 +373,9 @@ scene.add(world)
 
 let mouthMesh = null        // the single mesh in the GLB
 let modelRoot = null        // its parent, breathed on each frame
+// How far out of the model you may drift, in model units. Derived from the
+// mesh so a new scan does not need this retuned.
+let modelBounds = new THREE.Vector3(2, 2, 2)
 let cavity = null           // walkable height field (see buildCavity)
 let worldScale = DEFAULT_SCALE
 
@@ -402,6 +405,7 @@ async function onLoaded(gltf) {
   root.position.sub(box.getCenter(new THREE.Vector3()))   // centre on the origin
   world.add(root)
   modelRoot = root
+  modelBounds = box.getSize(new THREE.Vector3()).multiplyScalar(1.15)
 
   root.traverse((o) => {
     if (!o.isMesh) return
@@ -895,7 +899,9 @@ function makeFleshMaterial(mesh) {
     uProjDepth: { value: null },
     uProjStrength: { value: 0 },
     uMucosa: { value: new THREE.Color(0xb8555c) },
-    uFlatten: { value: 0.75 }
+    uFlatten: { value: 0.75 },
+    uUnseen: { value: 0.10 },
+    uPhotoFlat: { value: 0.8 }
   }
 
   mat.onBeforeCompile = (shader) => {
@@ -924,8 +930,12 @@ function makeFleshMaterial(mesh) {
         uniform float uProjStrength;
         uniform vec3 uMucosa;
         uniform float uFlatten;
+        uniform float uUnseen;
+        uniform float uPhotoFlat;
         varying vec3 vLocalPos;
         varying vec3 vLocalNormal;
+        vec3 gPhoto = vec3(0.0);
+        float gPhotoW = 0.0;
         void main() {`)
       // Blend the photograph in before lighting, so it behaves as albedo and
       // still picks up the lamp, the occlusion bake and everything else.
@@ -942,27 +952,32 @@ function makeFleshMaterial(mesh) {
           diffuseColor.rgb = mix(diffuseColor.rgb, flattened, uFlatten);
         }
         if (uProjStrength > 0.001) {
+          float photoWeight = 0.0;
           vec4 clip = uProjMatrix * vec4(vLocalPos, 1.0);
           if (clip.w > 0.0) {
             vec3 ndc = clip.xyz / clip.w;
             vec2 uv = ndc.xy * 0.5 + 0.5;
-            if (all(greaterThan(uv, vec2(0.0))) && all(lessThan(uv, vec2(1.0)))) {
+            {
               // Facing test: a surface angled away from the lens receives a
               // smeared, stretched slice of the image, so fade it out.
               vec3 toLens = normalize(uProjPos - vLocalPos);
-              float facing = smoothstep(0.15, 0.55, dot(normalize(vLocalNormal), toLens));
+              float facing = smoothstep(0.02, 0.32, dot(normalize(vLocalNormal), toLens));
               // Occlusion test against the projector's own depth map: without
               // it the uvula repaints itself on the wall behind it.
               float here = ndc.z * 0.5 + 0.5;
               float front = unpackRGBAToDepth(texture2D(uProjDepth, uv));
-              float unblocked = step(here - 0.0035, front);
+              float unblocked = smoothstep(here - 0.030, here - 0.008, front);
               // Soft frame edge, so the photo dissolves instead of ending.
-              vec2 edge = smoothstep(0.0, 0.08, uv) * smoothstep(0.0, 0.08, 1.0 - uv);
+              vec2 edge = smoothstep(0.0, 0.20, uv) * smoothstep(0.0, 0.20, 1.0 - uv);
               float w = uProjStrength * facing * unblocked * edge.x * edge.y;
               vec4 shot = texture2D(uProjMap, uv);
               diffuseColor.rgb = mix(diffuseColor.rgb, shot.rgb, w);
+              photoWeight = w;
+              gPhoto = shot.rgb;
+              gPhotoW = w;
             }
           }
+
         }`)
       .replace('#include <opaque_fragment>', `
         {
@@ -971,6 +986,11 @@ function makeFleshMaterial(mesh) {
           float rim = pow(1.0 - abs(dot(vN, vV)), 2.5);
           // Scale by the albedo so teeth stay bone-coloured while gums bleed red.
           outgoingLight += uSSSColor * rim * uSSS * diffuseColor.rgb;
+          outgoingLight = mix(outgoingLight, gPhoto, gPhotoW * uPhotoFlat);
+          // Anything the lens never saw sinks towards darkness — highlights
+          // included. Flat red reads as missing texture; darkness reads as
+          // depth, which is what the back of a real mouth looks like anyway.
+          if (uProjStrength > 0.001) outgoingLight *= mix(uUnseen, 1.0, gPhotoW);
         }
         #include <opaque_fragment>`)
   }
@@ -1182,7 +1202,11 @@ function standHeight(s) {
 // ═════════════════════════════ the tour stops ══════════════════════════════
 // Positions are in model units. Each is a place you can be *and* a thing worth
 // knowing about — the tour flies between them in order.
-const SPAWN = [0, -0.25, 0.74]
+// Where the photograph was taken from. Standing anywhere inside the cavity
+// puts a wall of flesh inches from your face and nothing reads as a mouth;
+// from here the whole thing is laid out in front of you exactly as the picture
+// framed it, and it is also the one viewpoint the photo can fully dress.
+const SPAWN = [0, 0.12, 1.40]
 
 // `at` is where you stand (model units). `probe` fires a ray from a point in
 // open air towards the feature; wherever it lands on the mesh is where the
@@ -1191,37 +1215,37 @@ const SPAWN = [0, -0.25, 0.74]
 // derives which way to face from the same hit.
 const STOPS = [
   {
-    id: 'incisors', at: [0, -0.25, 0.62], probe: [[0, 0.0, 0.70], [0, 0.22, 1]],
+    id: 'incisors', at: [0, 0.04, 1.12], probe: [[0, 0.02, 1.05], [0, 0.16, -1]],
     title: 'The incisors',
     body: 'The cutting edge. Their enamel is the hardest tissue your body makes — about 96% mineral — but unlike bone it holds no living cells, so it never heals. Below roughly pH 5.5 it simply dissolves.'
   },
   {
-    id: 'palate', at: [0, -0.25, 0.72], probe: [[0, 0.0, 0.52], [0, 1, 0]],
+    id: 'palate', at: [0, 0.10, 1.20], probe: [[0, 0.06, 0.95], [0, 0.55, -1]],
     title: 'The hard palate',
     body: 'The roof of the mouth, and part of why you can speak clearly. Those ridges are rugae: the tongue presses against them to shape "t", "d", "n" and "l", and they stop slippery food sliding straight back.'
   },
   {
-    id: 'tongue', at: [0, -0.25, 0.78], probe: [[0, -0.05, 0.55], [0, -1, 0]],
+    id: 'tongue', at: [0, -0.02, 1.12], probe: [[0, 0.0, 0.95], [0, -0.42, -1]],
     title: 'The tongue',
     body: 'Eight muscles braided together, anchored to bone at one end only. The surface is carpeted with papillae — taste buds line their walls rather than sitting on top. It repositions food roughly a thousand times in a single meal.'
   },
   {
-    id: 'saliva', at: [0, -0.25, 0.70], probe: [[-0.15, -0.15, 0.62], [-1, -0.4, 0]],
-    title: 'Saliva',
-    body: 'Ducts under the tongue deliver a litre or more a day. It is not just water: enzymes start breaking down starch before you swallow, and dissolved minerals buffer acid and put calcium back into enamel between meals.'
-  },
-  {
-    id: 'molars', at: [0, -0.25, 0.60], probe: [[0, 0.0, 0.52], [1, 0.45, 0]],
+    id: 'molars', at: [0.16, 0.08, 1.15], probe: [[0.10, 0.05, 1.0], [0.55, 0.10, -1]],
     title: 'The molars',
     body: 'The mill at the back. Bite force here reaches around 70 kg, several times what the front teeth manage. The pits and fissures on their crowns are where decay usually starts, because a toothbrush bristle is too fat to reach the bottom.'
   },
   {
-    id: 'softpalate', at: [0, -0.25, 0.45], probe: [[0, -0.02, 0.20], [0, 1, -0.5]],
+    id: 'saliva', at: [-0.12, -0.04, 1.10], probe: [[-0.08, -0.06, 0.98], [-0.45, -0.45, -1]],
+    title: 'Saliva',
+    body: 'Ducts under the tongue deliver a litre or more a day. It is not just water: enzymes start breaking down starch before you swallow, and dissolved minerals buffer acid and put calcium back into enamel between meals.'
+  },
+  {
+    id: 'softpalate', at: [0, 0.06, 1.00], probe: [[0, 0.05, 0.92], [0, 0.18, -1]],
     title: 'The soft palate',
     body: 'Where the roof stops being bone. On every swallow it lifts and seals off the passage to your nose — which is why laughing mid-drink sends a drink the wrong way.'
   },
   {
-    id: 'throat', at: [0, -0.25, 0.34], probe: [[0, -0.06, 0.18], [0, -0.02, -1]],
+    id: 'throat', at: [0, 0.0, 0.92], probe: [[0, 0.0, 0.88], [0, -0.02, -1]],
     title: 'The throat',
     body: 'The oropharynx: the shared doorway to both the food pipe and the windpipe. A flap called the epiglottis folds over the airway on every swallow — about six hundred times a day, without you ever deciding to.'
   }
@@ -1500,7 +1524,7 @@ const vignette = (() => {
 const player = {
   pos: new THREE.Vector3(),   // world-space feet position
   yaw: 0,                     // rig yaw, only changed by snap turns / mouse look
-  fly: false,
+  fly: true,
   speed: 0
 }
 
@@ -1538,10 +1562,10 @@ const _try = new THREE.Vector3()
 function moveBy(dx, dy, dz) {
   if (player.fly || !cavity) {
     player.pos.x += dx; player.pos.y += dy; player.pos.z += dz
-    const lim = 1.15 * worldScale
-    player.pos.x = THREE.MathUtils.clamp(player.pos.x, -lim, lim)
-    player.pos.y = THREE.MathUtils.clamp(player.pos.y, -0.62 * worldScale, 0.62 * worldScale)
-    player.pos.z = THREE.MathUtils.clamp(player.pos.z, -lim, lim)
+    const b = modelBounds
+    player.pos.x = THREE.MathUtils.clamp(player.pos.x, -b.x * worldScale, b.x * worldScale)
+    player.pos.y = THREE.MathUtils.clamp(player.pos.y, -b.y * worldScale, b.y * worldScale)
+    player.pos.z = THREE.MathUtils.clamp(player.pos.z, -b.z * worldScale, b.z * worldScale)
     rig.position.copy(player.pos)
     return
   }
@@ -1865,6 +1889,15 @@ renderer.setAnimationLoop(() => {
   // across the mouth is as readable as one at your feet.
   headWorld(_head)
   updateHover()
+  // With the stops all viewed from the same seat their markers bunch together,
+  // so only the nearest one is named — plus whatever you are pointing at, and
+  // wherever the tour has taken you.
+  let nearest = null, nearestDist = Infinity
+  for (const h of hotspots) {
+    const d = h.pin.position.distanceTo(_head)
+    if (d < nearestDist) { nearestDist = d; nearest = h }
+  }
+  const current = tourIndex >= 0 ? STOPS[tourIndex] : null
   for (const h of hotspots) {
     const dist = h.pin.position.distanceTo(_head)
     const pulse = 1 + Math.sin(t * 2 + h.pin.position.x) * 0.07
@@ -1879,7 +1912,8 @@ renderer.setAnimationLoop(() => {
     h.label.scale.set(ls * h.label.userData.aspect, ls, 1)
     h.label.position.y = s * 2.4 + ls * 0.8
     h.label.material.opacity = THREE.MathUtils.clamp(1.6 - dist / (worldScale * 0.5), 0, 1)
-    h.label.visible = h.label.material.opacity > 0.03
+    const named = h === nearest || h.hovered || h.stop === current
+    h.label.visible = named && h.label.material.opacity > 0.03
   }
 
   // Panel: hold it at a fixed distance in front of the viewer, facing them.
@@ -2107,7 +2141,7 @@ function applyLamp() {
   // whole trick: close in, inverse-square blows out whatever is nearest and
   // leaves the rest black; stood back, the same falloff spans the mouth as a
   // gentle three-to-one gradient from the incisors to the throat.
-  opening.position.set(0, 0.20 * worldScale, 1.65 * worldScale)
+  opening.position.copy(projector.from).multiplyScalar(worldScale)
 }
 function setLamp(on) { lampOn = on; applyLamp(); chip('cLamp', on) }
 

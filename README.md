@@ -117,3 +117,82 @@ automated narrated journey to each cell type.
 
 Everything is procedurally generated geometry (no external 3D model files), so the
 single HTML file is completely self-contained apart from the Three.js library.
+
+---
+
+# 👄 Inside the Mouth — VR
+
+A separate experience: `inside-the-mouth-vr.html` puts you *inside* a scanned
+human mouth. You stand on the tongue at about the size of a crumb, with the
+ridged roof of the palate overhead and both arches of teeth curving away either
+side, and you can walk from the incisors back to the throat.
+
+Live at **/Tech/inside-the-mouth-vr.html** (linked from the landing page).
+
+## How to run locally
+
+Unlike the blood-vessel page this one loads a 3D model file, so it has to be
+served over http rather than opened straight off disk:
+
+```
+python3 -m http.server 8000
+# then open http://localhost:8000/inside-the-mouth-vr.html
+```
+
+Everything it needs is committed in `assets/` — the model and a copy of Three.js
+— so there is no build step and no CDN to reach.
+
+## 🥽 In a headset
+
+Open the published page on any WebXR headset (Meta Quest, Pico, Vision Pro) and
+press **Enter VR**. WebXR only runs over HTTPS, which is why the GitHub Pages
+URL works and a plain `http://192.168.x.x` address on your own network does not.
+
+| Control | Action |
+| --- | --- |
+| Left thumbstick | Walk (or glide, in fly mode) in the direction you are looking |
+| Right thumbstick left/right | Snap-turn 30° at a time |
+| Right thumbstick up/down | Rise and sink, while flying |
+| Grip | Toggle walking / flying |
+| Trigger | Point at a glowing marker to read about it |
+
+Comfort is handled the way it should be: snap turning rather than smooth
+turning, and a vignette that closes in whenever you are moving and opens again
+the moment you stop.
+
+## On a desktop or phone
+
+| Control | Action |
+| --- | --- |
+| Drag | Look around |
+| W A S D | Walk |
+| F, then Space / Shift | Fly, and rise / sink |
+| T | Jump to the next tour stop |
+| Click a marker | Read about that part of the mouth |
+| Size slider | Grow or shrink, from a room-sized mouth to a cavernous one |
+
+On a phone the panel folds away behind ☰, dragging the left edge works as a
+walking stick, and dragging anywhere else looks around.
+
+## What you can visit
+
+Seven narrated stops, each anchored to the real geometry rather than to typed-in
+coordinates: the **incisors**, the **hard palate** and its rugae, the
+**tongue**, the **saliva** ducts beneath it, the **molars**, the **soft
+palate**, and the **throat**. Press **Tour** to be eased from one to the next,
+or just walk over and click.
+
+## How it stays on the ground
+
+At load the page maps the open air inside the mouth: it buckets the mesh's
+triangles into columns, finds every surface crossing along the vertical line
+through each cell of a 112 × 112 grid, then flood-fills outwards from a seed
+point inside the cavity, keeping only floor/ceiling pairs that line up with the
+cell it came from. What survives is the connected pocket of air that is the
+mouth — so walking follows the curve of the tongue, you cannot stroll out
+through a cheek, and shrinking the mouth below standing height lifts you into a
+hover instead of burying your head in the palate.
+
+The two dental markers are placed by sampling the model's own base-colour
+texture at each vertex and snapping to the nearest enamel-coloured point that
+borders the cavity, which puts them on a crown rather than on the gum beside it.

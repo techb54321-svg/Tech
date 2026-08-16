@@ -200,6 +200,33 @@ The two dental markers are placed by sampling the model's own base-colour
 texture at each vertex and snapping to the nearest enamel-coloured point that
 borders the cavity, which puts them on a crown rather than on the gum beside it.
 
+## The photograph
+
+The scan wears a real photograph rather than a generated texture. Meshy's
+automatic UV unwrap produces an atlas of thousands of tiny islands, each handed
+a roughly random tint — muddy patchwork up close, and teeth that read as black
+glass. So the photo the mesh was generated from is projected back onto it: a
+virtual camera stands where the photographer stood, and the image is blended
+over the base coat wherever the surface genuinely faces the lens.
+
+Three tests gate it. The fragment has to fall inside the frame, with a soft
+edge so there is no seam. Its surface has to turn toward the projector, since
+one angled away receives a smeared slice of the image. And nothing nearer to
+the projector may block it, which needs a depth map rendered from the
+projector's own point of view — without it the uvula repaints itself onto the
+throat wall behind. Geometry is static, so that pass runs once at load.
+
+The catch is inherent to a single photograph: it knows about one viewpoint.
+Standing on the tongue looking toward the throat is photoreal, because that is
+the shot. The underside of the tongue, the inner cheeks and the pharynx behind
+the isthmus were never photographed, so they fall back to the base coat — the
+atlas with its hue collapsed onto a single mucosa colour, keeping its light and
+shade but not its random tints. Press **P** (or the Photo chip) to see the
+difference.
+
+More photographs from more angles is the only thing that fixes the far
+surfaces; nothing in the renderer can invent detail that was never captured.
+
 ## Why it looks wet rather than moulded
 
 The scan arrives as albedo, normals and roughness, and nothing else — no

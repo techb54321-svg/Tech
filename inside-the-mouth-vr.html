@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="description" content="Walk around inside a human mouth in VR — a WebXR anatomy experience for Meta Quest and any WebXR headset." />
+<title>Inside the Mouth — VR</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%91%84%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --flesh: #ff6b7d;
+    --flesh-dim: #c9445a;
+    --enamel: #fdf6e8;
+    --ink: #12050a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden; background: #12050a;
+    color: var(--enamel);
+    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  canvas { display: block; touch-action: none; }
+
+  /* ---------- shared panel look ---------- */
+  .panel {
+    background: rgba(28, 8, 15, 0.82);
+    border: 1px solid rgba(255, 140, 160, 0.28);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  /* ---------- loading / title card ---------- */
+  #curtain {
+    position: fixed; inset: 0; z-index: 40;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 22px; padding: 24px;
+    background: radial-gradient(ellipse at 50% 55%, #3d0d1a 0%, #180509 55%, #0a0206 100%);
+    text-align: center;
+    transition: opacity 0.6s ease;
+  }
+  #curtain.gone { opacity: 0; pointer-events: none; }
+  #curtain h1 {
+    margin: 0; font-size: clamp(28px, 6vw, 54px); font-weight: 600; letter-spacing: 0.02em;
+    background: linear-gradient(180deg, #fff 0%, var(--flesh) 120%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  #curtain .sub { margin: -10px 0 0; color: #e5b9c3; font-size: clamp(13px, 2.6vw, 16px); max-width: 34em; line-height: 1.55; }
+  #bar { width: min(320px, 70vw); height: 4px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--flesh-dim), var(--flesh)); transition: width 0.25s ease; }
+  #status { font-size: 13px; color: #c99aa6; min-height: 1.2em; }
+
+  .btnrow { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  button.big {
+    font: inherit; font-size: 16px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 14px 26px; border-radius: 999px; cursor: pointer;
+    color: var(--ink); background: linear-gradient(180deg, #ffd7de, var(--flesh));
+    border: none; box-shadow: 0 6px 24px rgba(255, 107, 125, 0.35);
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  button.big:hover { transform: translateY(-1px); filter: brightness(1.06); }
+  button.big:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+  button.ghost {
+    font: inherit; font-size: 15px; padding: 13px 24px; border-radius: 999px; cursor: pointer;
+    color: var(--enamel); background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,180,195,0.35);
+  }
+  button.ghost:hover { background: rgba(255,255,255,0.12); }
+
+  /* ---------- in-experience HUD ---------- */
+  #hud {
+    position: fixed; left: 14px; top: 14px; z-index: 20; width: 260px; max-width: calc(100vw - 28px);
+    padding: 14px 16px; font-size: 13px; line-height: 1.5;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+  #hud.hidden { opacity: 0; transform: translateY(-8px); pointer-events: none; }
+  #hud h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--flesh); }
+  #hud dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0 0 12px; color: #e8cdd4; }
+  #hud dt { color: #ffb9c5; white-space: nowrap; }
+  #hud dd { margin: 0; }
+  #hud .ctl { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  #hud .ctl label { flex: 0 0 auto; color: #ffb9c5; }
+  #hud input[type=range] { flex: 1 1 auto; accent-color: var(--flesh); min-width: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    font: inherit; font-size: 12px; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+    color: #ffdde3; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,180,195,0.28);
+  }
+  .chip[aria-pressed="true"] { background: var(--flesh); color: var(--ink); border-color: transparent; font-weight: 600; }
+  .chip:hover { background: rgba(255,255,255,0.14); }
+  .chip[aria-pressed="true"]:hover { background: #ff8394; }
+
+  #toggleHud {
+    position: fixed; left: 14px; top: 14px; z-index: 21; display: none;
+    font: inherit; font-size: 18px; line-height: 1; width: 40px; height: 40px; border-radius: 12px;
+    cursor: pointer; color: var(--enamel); background: rgba(28,8,15,0.8);
+    border: 1px solid rgba(255,140,160,0.28);
+  }
+  #toggleHud.show { display: block; }
+
+  /* ---------- bottom caption ---------- */
+  #caption {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 20px; z-index: 20;
+    width: min(680px, calc(100vw - 28px)); padding: 14px 18px;
+    font-size: 14px; line-height: 1.6; color: #f6dfe4;
+    opacity: 0; transition: opacity 0.35s ease;
+  }
+  #caption.show { opacity: 1; }
+  #caption b { color: var(--flesh); display: block; font-size: 15px; margin-bottom: 4px; letter-spacing: 0.03em; }
+
+  /* ---------- VR entry ---------- */
+  #vrbar { position: fixed; right: 14px; top: 14px; z-index: 20; display: flex; gap: 8px; align-items: center; }
+  #note { position: fixed; right: 14px; top: 14px; z-index: 20; max-width: 260px; padding: 10px 13px; font-size: 12px; color: #d6aeb8; line-height: 1.5; }
+  #note.hidden { display: none; }
+  a { color: var(--flesh); }
+
+  @media (max-width: 640px) {
+    #hud { width: 210px; font-size: 12px; padding: 11px 12px; }
+    #note { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ Title / loading card ══════════ -->
+<div id="curtain">
+  <h1>Inside the Mouth</h1>
+  <p class="sub">
+    Shrink to the size of a crumb and stand on the tongue. Look up at the ridged
+    roof of the palate, walk the arch of the molars, and see the throat from the
+    inside — in your headset, on your phone, or right here in the browser.
+  </p>
+  <div id="bar"><i></i></div>
+  <div id="status">Loading the mouth…</div>
+  <div class="btnrow">
+    <button class="big" id="enterVR" disabled>🥽 Enter VR</button>
+    <button class="ghost" id="enterDesktop" disabled>Explore in browser</button>
+  </div>
+</div>
+
+<!-- ══════════ Heads-up display ══════════ -->
+<button id="toggleHud" title="Show controls">☰</button>
+<div id="hud" class="panel hidden">
+  <h2>Inside the Mouth</h2>
+  <dl id="keys"></dl>
+  <div class="ctl">
+    <label for="scale">Size</label>
+    <input type="range" id="scale" min="2" max="20" step="0.5" value="9" />
+  </div>
+  <div class="chips">
+    <button class="chip" id="cMode" aria-pressed="true">🚶 Walk</button>
+    <button class="chip" id="cLamp" aria-pressed="true">🔦 Lamp</button>
+    <button class="chip" id="cSound" aria-pressed="false">🔊 Sound</button>
+    <button class="chip" id="cTour">🧭 Tour</button>
+  </div>
+</div>
+
+<div id="caption" class="panel"></div>
+
+<div id="vrbar"><button class="big" id="enterVR2" style="display:none">🥽 Enter VR</button></div>
+<div id="note" class="panel hidden"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./assets/vendor/three/three.module.min.js",
+    "three/addons/": "./assets/vendor/three/addons/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Inside the Mouth — a WebXR anatomy experience
+//
+//  The scene is one scanned mouth (assets/inside-the-mouth.glb): an oral
+//  cavity open at the front, with a palate above, a tongue below, both dental
+//  arches, and the throat behind. The whole point is to be *in* it, so at load
+//  time we work out where the open air actually is — a floor/ceiling height
+//  field flood-filled from a seed point inside the cavity (see buildCavity).
+//  That single data structure drives everything afterwards: where you spawn,
+//  where you can walk, how high your feet sit, and where the tour flies you.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const MODEL_URL = './assets/inside-the-mouth.glb'
+
+// Model-space axes, established by inspecting the mesh:
+//   +X → your left/right,  +Y → up (palate),  +Z → out through the lips.
+// The model is ~1.9 × 0.98 × 1.76 units, so one model unit is roughly one
+// "mouth width". WORLD_SCALE turns that into metres for a shrunken visitor.
+const DEFAULT_SCALE = 9
+const EYE_HEIGHT = 1.6          // metres, used outside VR (in VR the headset knows)
+const WALK_SPEED = 2.6          // metres/second
+const FLY_SPEED = 3.4
+const SNAP_TURN = Math.PI / 6   // 30° per flick, the comfortable standard
+const MIN_HEADROOM = 1.7        // metres of clearance a cell needs to be walkable
+
+// ───────────────────────────── renderer & scene ────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+renderer.setSize(innerWidth, innerHeight)
+renderer.outputColorSpace = THREE.SRGBColorSpace
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.1
+renderer.xr.enabled = true
+renderer.xr.setReferenceSpaceType('local-floor')
+document.body.appendChild(renderer.domElement)
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x0a0206)
+// Warm haze: reads as moist air and hides the hard edge where the mesh ends.
+scene.fog = new THREE.FogExp2(0x35060f, 0.012)
+
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 400)
+camera.position.set(0, EYE_HEIGHT, 0)
+
+// The player rig. Everything that should move with the player (camera,
+// controllers, held UI) hangs off this; locomotion only ever moves the rig,
+// never the camera, so headset tracking stays untouched.
+const rig = new THREE.Group()
+rig.add(camera)
+scene.add(rig)
+
+// ───────────────────────────────── lighting ────────────────────────────────
+// The bake in the GLB is albedo-only (its emissive map is essentially black),
+// so the mouth needs real lights. Three sources: soft red bounce that fills
+// the cavity, daylight spilling in through the lips, and a lamp on your head.
+const ambient = new THREE.AmbientLight(0xffd2d8, 0.42)
+scene.add(ambient)
+
+const bounce = new THREE.HemisphereLight(0xff8f9e, 0x2c0810, 0.6)
+scene.add(bounce)
+
+// Daylight from the world outside the mouth, placed beyond the lips (+Z).
+const daylight = new THREE.DirectionalLight(0xfff0e2, 0.85)
+daylight.position.set(0, 6, 26)
+scene.add(daylight)
+
+// Head lamp — gives the normal map something to bite on and makes nearby
+// surfaces feel close. Attached to the camera so it always faces where you do.
+// Its reach is tied to world scale (see setScale) so shrinking does not leave
+// you in the dark, and it falls off fast enough that distance still reads.
+const LAMP_POWER = 11
+const lamp = new THREE.PointLight(0xffd8c8, LAMP_POWER, 0, 2)
+lamp.position.set(0, 0.05, 0.2)
+camera.add(lamp)
+
+// ─────────────────────────── surrounding void ──────────────────────────────
+// Looking out through the teeth would otherwise be a flat black hole. This is
+// a huge inside-out sphere with a soft vertical gradient plus a warm bloom in
+// the +Z direction, so "outside" reads as somewhere rather than nowhere.
+{
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(180, 32, 16),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: { uSun: { value: new THREE.Vector3(0, 0.1, 1).normalize() } },
+      vertexShader: `
+        varying vec3 vDir;
+        void main() {
+          vDir = normalize(position);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `
+        varying vec3 vDir;
+        uniform vec3 uSun;
+        void main() {
+          float up = vDir.y * 0.5 + 0.5;
+          vec3 col = mix(vec3(0.03, 0.005, 0.012), vec3(0.16, 0.03, 0.05), up);
+          float glow = pow(max(dot(normalize(vDir), uSun), 0.0), 3.0);
+          col += vec3(0.55, 0.34, 0.28) * glow * 0.5;
+          gl_FragColor = vec4(col, 1.0);
+        }`
+    })
+  )
+  sky.renderOrder = -1
+  scene.add(sky)
+}
+
+// ────────────────────────────── floating motes ─────────────────────────────
+// A few hundred drifting specks of saliva mist. Pure depth cue: without them
+// the big smooth flesh surfaces give your eyes nothing to judge distance by.
+const motes = (() => {
+  const N = 260
+  const pos = new Float32Array(N * 3)
+  const seed = new Float32Array(N)
+  for (let i = 0; i < N; i++) {
+    pos[i * 3] = (Math.random() - 0.5) * 22
+    pos[i * 3 + 1] = Math.random() * 7
+    pos[i * 3 + 2] = (Math.random() - 0.5) * 22
+    seed[i] = Math.random() * 6.283
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+  // Round, soft-edged dot — square points read as UI artefacts, not as mist.
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const ctx = c.getContext('2d')
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
+  grad.addColorStop(0, 'rgba(255,235,238,1)')
+  grad.addColorStop(0.35, 'rgba(255,190,200,0.45)')
+  grad.addColorStop(1, 'rgba(255,180,190,0)')
+  ctx.fillStyle = grad
+  ctx.fillRect(0, 0, 64, 64)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  const m = new THREE.PointsMaterial({
+    map: tex, color: 0xffd9de, size: 0.03, transparent: true, opacity: 0.32,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  })
+  const p = new THREE.Points(g, m)
+  p.frustumCulled = false
+  scene.add(p)
+  return { points: p, pos, seed, N }
+})()
+
+// ═══════════════════════════════ the mouth ═════════════════════════════════
+const world = new THREE.Group()   // holds the model; scaling this resizes you
+world.scale.setScalar(DEFAULT_SCALE)
+scene.add(world)
+
+let mouthMesh = null        // the single mesh in the GLB
+let cavity = null           // walkable height field (see buildCavity)
+let worldScale = DEFAULT_SCALE
+
+const loader = new GLTFLoader()
+loader.load(MODEL_URL, onLoaded, onProgress, onLoadError)
+
+function onProgress(e) {
+  if (!e.lengthComputable) return
+  const pct = Math.round((e.loaded / e.total) * 100)
+  document.querySelector('#bar i').style.width = pct + '%'
+  setStatus(`Loading the mouth… ${pct}%`)
+}
+
+function onLoadError(err) {
+  console.error(err)
+  setStatus('Could not load the model. Serve this page over http(s) rather than opening the file directly.')
+}
+
+function onLoaded(gltf) {
+  const root = gltf.scene
+  const box = new THREE.Box3().setFromObject(root)
+  root.position.sub(box.getCenter(new THREE.Vector3()))   // centre on the origin
+  world.add(root)
+
+  root.traverse((o) => {
+    if (!o.isMesh) return
+    mouthMesh = o
+    o.frustumCulled = false
+    const mat = o.material
+    // Sharpen the textures at grazing angles — you spend the whole experience
+    // looking along surfaces rather than at them.
+    const maxAniso = renderer.capabilities.getMaxAnisotropy()
+    for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap']) {
+      if (mat[key]) { mat[key].anisotropy = maxAniso; mat[key].needsUpdate = true }
+    }
+    mat.side = THREE.DoubleSide      // we are inside a single-shell scan
+    mat.emissiveIntensity = 0.45
+    mat.needsUpdate = true
+  })
+
+  setStatus('Mapping the cavity…')
+  cavity = buildCavity(mouthMesh)
+
+  buildHotspots()
+  setStatus('Ready.')
+  modelReady = true
+  document.querySelector('#bar i').style.width = '100%'
+  document.getElementById('enterDesktop').disabled = false
+  refreshVRButton()
+  placePlayer(SPAWN.slice())
+}
+
+// ═══════════════════════ mapping the open air inside ═══════════════════════
+//
+//  We need to know, for any (x, z), where the floor is, where the ceiling is,
+//  and whether there is room to stand. A general mesh raycast per frame would
+//  be wasteful, so this runs once at load:
+//
+//   1. Bucket every triangle into a coarse XZ grid (only triangles overlapping
+//      a column can be hit by a vertical ray through it).
+//   2. For each grid node, collect the y of every surface crossing above it.
+//   3. Flood-fill outwards from a seed known to sit in the oral cavity, at each
+//      step picking the floor/ceiling pair that overlaps the neighbour we came
+//      from. That confines the map to one connected pocket of air — the mouth —
+//      and naturally excludes the solid interior of the cheeks and jaw.
+//
+const GRID = 112                       // nodes per axis across the model bbox
+const SEED = [0, 0.20, 0.0]            // a point known to be in open air
+
+function buildCavity(mesh) {
+  const geo = mesh.geometry
+  const pos = geo.attributes.position
+  const index = geo.index
+  const triCount = index ? index.count / 3 : pos.count / 3
+  const offset = mesh.parent.position   // the centring shift applied above
+
+  // Triangle vertices in model space (flat array, 9 floats per triangle).
+  const tris = new Float32Array(triCount * 9)
+  for (let t = 0; t < triCount; t++) {
+    for (let c = 0; c < 3; c++) {
+      const vi = index ? index.getX(t * 3 + c) : t * 3 + c
+      tris[t * 9 + c * 3] = pos.getX(vi) + offset.x
+      tris[t * 9 + c * 3 + 1] = pos.getY(vi) + offset.y
+      tris[t * 9 + c * 3 + 2] = pos.getZ(vi) + offset.z
+    }
+  }
+
+  // Model bounds (after centring) with a hair of margin.
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+  let minY = Infinity, maxY = -Infinity
+  for (let i = 0; i < tris.length; i += 3) {
+    minX = Math.min(minX, tris[i]); maxX = Math.max(maxX, tris[i])
+    minY = Math.min(minY, tris[i + 1]); maxY = Math.max(maxY, tris[i + 1])
+    minZ = Math.min(minZ, tris[i + 2]); maxZ = Math.max(maxZ, tris[i + 2])
+  }
+
+  // ── 1. bucket triangles into columns ──
+  const BUCKETS = 48
+  const bw = (maxX - minX) / BUCKETS, bh = (maxZ - minZ) / BUCKETS
+  const buckets = Array.from({ length: BUCKETS * BUCKETS }, () => [])
+  for (let t = 0; t < triCount; t++) {
+    const o = t * 9
+    const tx0 = Math.min(tris[o], tris[o + 3], tris[o + 6])
+    const tx1 = Math.max(tris[o], tris[o + 3], tris[o + 6])
+    const tz0 = Math.min(tris[o + 2], tris[o + 5], tris[o + 8])
+    const tz1 = Math.max(tris[o + 2], tris[o + 5], tris[o + 8])
+    const i0 = clampi((tx0 - minX) / bw, BUCKETS), i1 = clampi((tx1 - minX) / bw, BUCKETS)
+    const k0 = clampi((tz0 - minZ) / bh, BUCKETS), k1 = clampi((tz1 - minZ) / bh, BUCKETS)
+    for (let i = i0; i <= i1; i++) for (let k = k0; k <= k1; k++) buckets[k * BUCKETS + i].push(t)
+  }
+
+  // ── 2. surface crossings along the vertical line through (x, z) ──
+  function crossings(x, z, out) {
+    out.length = 0
+    const b = buckets[clampi((z - minZ) / bh, BUCKETS) * BUCKETS + clampi((x - minX) / bw, BUCKETS)]
+    for (let n = 0; n < b.length; n++) {
+      const o = b[n] * 9
+      const ax = tris[o], ay = tris[o + 1], az = tris[o + 2]
+      const bx = tris[o + 3], by = tris[o + 4], bz = tris[o + 5]
+      const cx = tris[o + 6], cy = tris[o + 7], cz = tris[o + 8]
+      // Barycentric test in the XZ plane.
+      const v0x = cx - ax, v0z = cz - az
+      const v1x = bx - ax, v1z = bz - az
+      const v2x = x - ax, v2z = z - az
+      const den = v0x * v1z - v1x * v0z
+      if (Math.abs(den) < 1e-12) continue
+      const u = (v2x * v1z - v1x * v2z) / den
+      const v = (v0x * v2z - v2x * v0z) / den
+      if (u < 0 || v < 0 || u + v > 1) continue
+      out.push(ay + u * (cy - ay) + v * (by - ay))
+    }
+    out.sort((p, q) => p - q)
+    return out
+  }
+
+  // ── 3. flood fill from the seed ──
+  const floor = new Float32Array(GRID * GRID).fill(NaN)
+  const ceil = new Float32Array(GRID * GRID).fill(NaN)
+  const open = new Uint8Array(GRID * GRID)
+  const dx = (maxX - minX) / (GRID - 1), dz = (maxZ - minZ) / (GRID - 1)
+  const xAt = (i) => minX + i * dx
+  const zAt = (k) => minZ + k * dz
+  const hits = []
+
+  // Pick the crossing pair straddling `y`; returns [below, above] or null.
+  function span(x, z, y) {
+    crossings(x, z, hits)
+    let below = -Infinity, above = Infinity
+    for (const h of hits) {
+      if (h <= y && h > below) below = h
+      if (h > y && h < above) above = h
+    }
+    if (below === -Infinity) below = minY - 0.02
+    if (above === Infinity) return null       // open to the sky: not a cavity
+    return [below, above]
+  }
+
+  const si = Math.round((SEED[0] - minX) / dx), sk = Math.round((SEED[2] - minZ) / dz)
+  const start = span(xAt(si), zAt(sk), SEED[1])
+  if (!start) return null
+  const queue = [si + sk * GRID]
+  floor[queue[0]] = start[0]; ceil[queue[0]] = start[1]; open[queue[0]] = 1
+
+  const NEI = [[1, 0], [-1, 0], [0, 1], [0, -1]]
+  while (queue.length) {
+    const cur = queue.pop()
+    const ci = cur % GRID, ck = (cur / GRID) | 0
+    const mid = (floor[cur] + ceil[cur]) * 0.5
+    for (const [ni, nk] of NEI) {
+      const i = ci + ni, k = ck + nk
+      if (i < 0 || k < 0 || i >= GRID || k >= GRID) continue
+      const idx = i + k * GRID
+      if (open[idx]) continue
+      const s = span(xAt(i), zAt(k), mid)
+      if (!s) continue
+      // Reject a step that squeezes shut, or where either surface jumps — a
+      // cliff in the floor or a sudden new ceiling means we have stepped into
+      // a tooth, through the cheek wall, or out of the cavity altogether.
+      // Without this the fill happily walks into the solid interior of the
+      // jaw, where there is also "space" between two surfaces.
+      if (s[1] - s[0] < 0.02) continue
+      if (Math.abs(s[0] - floor[cur]) > 0.06) continue
+      if (Math.abs(s[1] - ceil[cur]) > 0.10) continue
+      open[idx] = 1; floor[idx] = s[0]; ceil[idx] = s[1]
+      queue.push(idx)
+    }
+  }
+
+  return { floor, ceil, open, minX, minZ, dx, dz, minY, maxY, N: GRID }
+}
+
+function clampi(v, n) { return Math.max(0, Math.min(n - 1, Math.floor(v))) }
+
+// Bilinear floor height (model units) at a model-space x/z, plus a headroom
+// and walkability read. Returns null outside the mapped cavity.
+function sampleCavity(x, z) {
+  if (!cavity) return null
+  const fx = (x - cavity.minX) / cavity.dx, fz = (z - cavity.minZ) / cavity.dz
+  const i = Math.floor(fx), k = Math.floor(fz)
+  if (i < 0 || k < 0 || i >= cavity.N - 1 || k >= cavity.N - 1) return null
+  const tx = fx - i, tz = fz - k
+  let h = 0, c = Infinity, w = 0
+  for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) {
+    const idx = (i + a) + (k + b) * cavity.N
+    if (!cavity.open[idx]) return null
+    const weight = (a ? tx : 1 - tx) * (b ? tz : 1 - tz)
+    h += cavity.floor[idx] * weight
+    c = Math.min(c, cavity.ceil[idx])
+    w += weight
+  }
+  if (w < 0.99) return null
+  return { floor: h, ceil: c, headroom: (c - h) * worldScale }
+}
+
+function canStand(x, z) {
+  const s = sampleCavity(x, z)
+  return s && s.headroom >= MIN_HEADROOM ? s : null
+}
+
+// World-space height for the rig (i.e. the player's feet) on a given cell.
+// Normally that is simply the floor, but under a low palate we duck rather
+// than let the camera punch out through the roof.
+function standHeight(s) {
+  return Math.min(s.floor * worldScale, s.ceil * worldScale - EYE_HEIGHT - 0.15)
+}
+
+// ═════════════════════════════ the tour stops ══════════════════════════════
+// Positions are in model units. Each is a place you can be *and* a thing worth
+// knowing about — the tour flies between them in order.
+const SPAWN = [0, 0.02, 0.18]
+
+// `at` is where you stand (model units). `probe` fires a ray from a point in
+// open air towards the feature; wherever it lands on the mesh is where the
+// marker goes. Anchoring to the real surface beats hand-typed coordinates —
+// the markers sit *on* the anatomy instead of hovering near it, and the tour
+// derives which way to face from the same hit.
+const STOPS = [
+  {
+    id: 'incisors', at: [0, 0.02, 0.06], probe: [[0, 0.13, 0.14], [0, 0.34, 1]], tooth: [0, 0.11, 0.33],
+    title: 'The incisors',
+    body: 'The cutting edge. Their enamel is the hardest tissue your body makes — about 96% mineral — but unlike bone it holds no living cells, so it never heals. Below roughly pH 5.5 it simply dissolves.'
+  },
+  {
+    id: 'palate', at: [0, 0.02, 0.28], probe: [[0, 0.20, -0.06], [0, 1, 0]],
+    title: 'The hard palate',
+    body: 'The roof of the mouth, and part of why you can speak clearly. Those ridges are rugae: the tongue presses against them to shape "t", "d", "n" and "l", and they stop slippery food sliding straight back.'
+  },
+  {
+    id: 'tongue', at: [0, 0.02, 0.06], probe: [[0, 0.20, 0.30], [0, -1, 0]],
+    title: 'The tongue',
+    body: 'Eight muscles braided together, anchored to bone at one end only. The surface is carpeted with papillae — taste buds line their walls rather than sitting on top. It repositions food roughly a thousand times in a single meal.'
+  },
+  {
+    id: 'saliva', at: [-0.02, 0.02, 0.18], probe: [[-0.20, 0.10, 0.10], [-1, -0.5, 0]],
+    title: 'Saliva',
+    body: 'Ducts under the tongue deliver a litre or more a day. It is not just water: enzymes start breaking down starch before you swallow, and dissolved minerals buffer acid and put calcium back into enamel between meals.'
+  },
+  {
+    id: 'molars', at: [0, 0.02, 0.05], probe: [[0.10, 0.16, -0.02], [1, 0.35, 0]], tooth: [0.52, 0.15, 0],
+    title: 'The molars',
+    body: 'The mill at the back. Bite force here reaches around 70 kg, several times what the front teeth manage. The pits and fissures on their crowns are where decay usually starts, because a toothbrush bristle is too fat to reach the bottom.'
+  },
+  {
+    id: 'softpalate', at: [0, 0.02, 0.02], probe: [[0, 0.22, -0.24], [0, 1, -0.8]],
+    title: 'The soft palate',
+    body: 'Where the roof stops being bone. On every swallow it lifts and seals off the passage to your nose — which is why laughing mid-drink sends a drink the wrong way.'
+  },
+  {
+    id: 'throat', at: [0, 0.02, -0.06], probe: [[0, 0.02, -0.20], [0, -0.05, -1]],
+    title: 'The throat',
+    body: 'The oropharynx: the shared doorway to both the food pipe and the windpipe. A flap called the epiglottis folds over the airway on every swallow — about six hundred times a day, without you ever deciding to.'
+  }
+]
+
+// ─────────────────────────── hotspot markers ───────────────────────────────
+const hotspots = []
+const markerGroup = new THREE.Group()
+scene.add(markerGroup)
+
+// A small copy of the base-colour texture, used to tell enamel from flesh at a
+// given UV. Teeth and gums interlock too tightly to place tooth markers by
+// coordinates alone, so the tooth stops fan out rays and keep the first one
+// that lands on something white.
+let albedo = null
+function readAlbedo() {
+  const img = mouthMesh.material.map?.image
+  if (!img) return
+  const S = 512
+  const c = document.createElement('canvas')
+  c.width = c.height = S
+  const ctx = c.getContext('2d', { willReadFrequently: true })
+  ctx.drawImage(img, 0, 0, S, S)
+  albedo = { data: ctx.getImageData(0, 0, S, S).data, size: S }
+}
+
+function isEnamel(uv) {
+  if (!albedo || !uv) return false
+  // glTF textures are stored with the UV origin at the top left (flipY off),
+  // so v maps straight onto the row index.
+  const x = Math.min(albedo.size - 1, Math.max(0, Math.round(uv.x * albedo.size)))
+  const y = Math.min(albedo.size - 1, Math.max(0, Math.round(uv.y * albedo.size)))
+  const i = (y * albedo.size + x) * 4
+  const r = albedo.data[i], g = albedo.data[i + 1], b = albedo.data[i + 2]
+  const max = Math.max(r, g, b), min = Math.min(r, g, b)
+  const sat = max === 0 ? 0 : (max - min) / max
+  return max > 120 && sat < 0.30      // bright and close to neutral: a tooth
+}
+
+// Every vertex whose texel reads as enamel *and* that borders the open cavity.
+// The second half matters: the far side of the model samples pale too, and
+// without the cavity test the search happily picks a tooth's hidden root or a
+// patch of the outer shell.
+function findTeeth() {
+  const geo = mouthMesh.geometry
+  const pos = geo.attributes.position, uv = geo.attributes.uv
+  const off = mouthMesh.parent.position
+  const out = []
+  const p = new THREE.Vector3()
+  for (let i = 0; i < pos.count; i++) {
+    if (!isEnamel({ x: uv.getX(i), y: uv.getY(i) })) continue
+    p.set(pos.getX(i) + off.x, pos.getY(i) + off.y, pos.getZ(i) + off.z)
+    const s = sampleCavity(p.x, p.z)
+    if (!s || p.y < s.floor - 0.04 || p.y > s.ceil + 0.04) continue
+    out.push(p.clone())
+  }
+  return out
+}
+
+// Fire each stop's probe at the mesh and park the marker just short of where it
+// lands. Stops carrying a `tooth` hint snap to the nearest enamel instead, so
+// the two dental markers sit on a crown rather than on the gum beside it.
+function anchorMarkers() {
+  const rc = new THREE.Raycaster()
+  const origin = new THREE.Vector3(), dir = new THREE.Vector3()
+  const teeth = albedo ? findTeeth() : []
+  world.updateMatrixWorld(true)
+
+  for (const stop of STOPS) {
+    const [from, towards] = stop.probe
+    origin.fromArray(from).multiplyScalar(worldScale)
+    dir.fromArray(towards).normalize()
+
+    if (stop.tooth && teeth.length) {
+      const hint = new THREE.Vector3().fromArray(stop.tooth)
+      let best = null, bestD = Infinity
+      for (const t of teeth) {
+        const d = t.distanceToSquared(hint)
+        if (d < bestD) { bestD = d; best = t }
+      }
+      // Nudge back towards where you will be standing so the marker floats in
+      // front of the tooth rather than inside it.
+      const away = new THREE.Vector3().fromArray(stop.at).sub(best).normalize()
+      stop.marker = best.clone().addScaledVector(away, 0.035).toArray()
+      continue
+    }
+
+    rc.set(origin, dir)
+    const hit = rc.intersectObject(mouthMesh, false)[0]
+    // Float the marker off the surface, but never further back than halfway to
+    // the probe origin — some features are only a hand's breadth away.
+    const back = hit ? Math.min(0.09 * worldScale, hit.distance * 0.4) : 0
+    stop.marker = hit
+      ? hit.point.clone().addScaledVector(dir, -back).divideScalar(worldScale).toArray()
+      : origin.clone().addScaledVector(dir, 0.2 * worldScale).divideScalar(worldScale).toArray()
+  }
+}
+
+function buildHotspots() {
+  readAlbedo()
+  anchorMarkers()
+  const geo = new THREE.SphereGeometry(1, 20, 14)
+  for (const stop of STOPS) {
+    // A pin (fixed position) holding a pulsing orb and a label. The label is a
+    // sibling of the orb rather than a child, so growing the orb with distance
+    // does not drag the text along with it.
+    const pin = new THREE.Group()
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffd7de, transparent: true, opacity: 0.85, fog: false })
+    const orb = new THREE.Mesh(geo, mat)
+    const halo = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: 0xff8296, transparent: true, opacity: 0.22, fog: false, side: THREE.BackSide
+    }))
+    halo.scale.setScalar(2.4)
+    orb.add(halo)
+    const label = makeLabel(stop.title)
+    pin.add(orb, label)
+    markerGroup.add(pin)
+    hotspots.push({ stop, pin, orb, mat, label })
+  }
+  layoutHotspots()
+}
+
+function layoutHotspots() {
+  for (const h of hotspots) {
+    h.pin.position.fromArray(h.stop.marker).multiplyScalar(worldScale)
+  }
+}
+
+function makeLabel(text) {
+  const pad = 26, fontSize = 44
+  const c = document.createElement('canvas')
+  const ctx = c.getContext('2d')
+  ctx.font = `600 ${fontSize}px "Avenir Next", "Segoe UI", system-ui, sans-serif`
+  c.width = Math.ceil(ctx.measureText(text).width) + pad * 2
+  c.height = fontSize + pad * 2
+  const ctx2 = c.getContext('2d')
+  ctx2.font = `600 ${fontSize}px "Avenir Next", "Segoe UI", system-ui, sans-serif`
+  roundRect(ctx2, 0, 0, c.width, c.height, 22)
+  ctx2.fillStyle = 'rgba(24,6,12,0.82)'; ctx2.fill()
+  ctx2.strokeStyle = 'rgba(255,150,170,0.5)'; ctx2.lineWidth = 3; ctx2.stroke()
+  ctx2.fillStyle = '#ffe9ee'; ctx2.textBaseline = 'middle'
+  ctx2.fillText(text, pad, c.height / 2 + 2)
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, fog: false }))
+  sprite.renderOrder = 10
+  sprite.userData.aspect = c.width / c.height
+  return sprite
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+// ═══════════════════════ world-space reading panel ═════════════════════════
+// The DOM overlay is invisible inside a headset, so anything you need to read
+// in VR has to be geometry. This panel floats a fixed distance in front of you
+// (so it stays legible at any world scale) and turns to face you.
+const PANEL_W = 1024        // canvas pixels
+const PANEL_WORLD_W = 1.1   // metres, at the distance it floats
+
+const panel = (() => {
+  const c = document.createElement('canvas')
+  c.width = PANEL_W; c.height = 512
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, fog: false })
+  )
+  mesh.renderOrder = 20
+  mesh.visible = false
+  scene.add(mesh)
+
+  const TITLE_FONT = '600 52px "Avenir Next", "Segoe UI", system-ui, sans-serif'
+  const BODY_FONT = '34px "Avenir Next", "Segoe UI", system-ui, sans-serif'
+  const LINE = 47, PAD = 56
+
+  function draw(title, body) {
+    let ctx = c.getContext('2d')
+    // Measure first so the panel is exactly as tall as the text needs.
+    ctx.font = BODY_FONT
+    const lines = wrapLines(ctx, body, PANEL_W - PAD * 2)
+    const height = 150 + lines.length * LINE + PAD
+    if (c.height !== height) c.height = height   // resizing clears the canvas
+    ctx = c.getContext('2d')
+
+    ctx.clearRect(0, 0, c.width, c.height)
+    roundRect(ctx, 8, 8, c.width - 16, c.height - 16, 34)
+    ctx.fillStyle = 'rgba(22,5,10,0.90)'; ctx.fill()
+    ctx.strokeStyle = 'rgba(255,150,170,0.55)'; ctx.lineWidth = 4; ctx.stroke()
+
+    ctx.textBaseline = 'top'
+    ctx.fillStyle = '#ff8ea0'
+    ctx.font = TITLE_FONT
+    ctx.fillText(title, PAD, 56)
+
+    ctx.fillStyle = '#f4dde2'
+    ctx.font = BODY_FONT
+    lines.forEach((l, i) => ctx.fillText(l, PAD, 150 + i * LINE))
+
+    tex.needsUpdate = true   // re-uploads at the new canvas size
+    mesh.scale.set(PANEL_WORLD_W, PANEL_WORLD_W * c.height / PANEL_W, 1)
+  }
+
+  return { mesh, draw }
+})()
+
+function wrapLines(ctx, text, maxWidth) {
+  const lines = []
+  let line = ''
+  for (const word of text.split(' ')) {
+    const test = line ? line + ' ' + word : word
+    if (ctx.measureText(test).width > maxWidth && line) { lines.push(line); line = word }
+    else line = test
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
+let panelHideAt = 0
+function showPanel(stop) {
+  // Outside a headset the DOM caption already carries the text; two copies of
+  // the same paragraph on screen is just clutter.
+  if (renderer.xr.isPresenting) {
+    panel.draw(stop.title, stop.body)
+    panel.mesh.visible = true
+    panel.mesh.position.copy(_head)   // start at the viewer and ease outward
+    panelHideAt = performance.now() + 30000
+  }
+  setCaption(stop.title, stop.body)
+}
+function hidePanel() {
+  panel.mesh.visible = false
+  setCaption(null)
+}
+
+// ═══════════════════════════ comfort vignette ══════════════════════════════
+// Narrowing the field of view while you move is the single most effective
+// motion-sickness mitigation in VR. It fades in with speed and out when still.
+const vignette = (() => {
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false, fog: false,
+    uniforms: { uAmount: { value: 0 } },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform float uAmount;
+      void main() {
+        float r = length(vUv - 0.5) * 2.0;
+        float inner = mix(1.25, 0.42, uAmount);
+        float a = smoothstep(inner, inner + 0.42, r) * uAmount;
+        gl_FragColor = vec4(0.02, 0.0, 0.01, a);
+      }`
+  })
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.6), mat)
+  mesh.position.z = -0.28
+  mesh.renderOrder = 30
+  mesh.frustumCulled = false
+  camera.add(mesh)
+  return mat.uniforms.uAmount
+})()
+
+// ═══════════════════════════════ player state ══════════════════════════════
+const player = {
+  pos: new THREE.Vector3(),   // world-space feet position
+  yaw: 0,                     // rig yaw, only changed by snap turns / mouse look
+  fly: false,
+  speed: 0
+}
+
+function placePlayer(modelPos, lookAt) {
+  const p = new THREE.Vector3().fromArray(modelPos).multiplyScalar(worldScale)
+  const s = sampleCavity(modelPos[0], modelPos[2])
+  player.pos.set(p.x, s ? standHeight(s) : p.y, p.z)
+  rig.position.copy(player.pos)
+  if (lookAt) {
+    player.yaw = Math.atan2(-lookAt[0], -lookAt[2])
+    rig.rotation.y = player.yaw
+  }
+}
+
+// Rotate the rig about the player's actual head, not the rig origin — turning
+// around the rig origin makes you swing sideways through the room.
+const _head = new THREE.Vector3()
+function headWorld(out) {
+  const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
+  return out.setFromMatrixPosition(cam.matrixWorld)
+}
+function turn(angle) {
+  headWorld(_head)
+  const s = Math.sin(angle), c = Math.cos(angle)
+  const ox = rig.position.x - _head.x, oz = rig.position.z - _head.z
+  rig.position.x = _head.x + ox * c - oz * s
+  rig.position.z = _head.z + ox * s + oz * c
+  rig.rotation.y += angle
+  player.yaw = rig.rotation.y
+  player.pos.copy(rig.position)
+}
+
+// Move by a world-space delta, honouring walls and the tongue underfoot.
+const _try = new THREE.Vector3()
+function moveBy(dx, dy, dz) {
+  if (player.fly || !cavity) {
+    player.pos.x += dx; player.pos.y += dy; player.pos.z += dz
+    const lim = 1.15 * worldScale
+    player.pos.x = THREE.MathUtils.clamp(player.pos.x, -lim, lim)
+    player.pos.y = THREE.MathUtils.clamp(player.pos.y, -0.62 * worldScale, 0.62 * worldScale)
+    player.pos.z = THREE.MathUtils.clamp(player.pos.z, -lim, lim)
+    rig.position.copy(player.pos)
+    return
+  }
+  // Walk: try the full step, then each axis alone so you slide along a wall
+  // instead of sticking to it.
+  const tries = [[dx, dz], [dx, 0], [0, dz]]
+  for (const [ax, az] of tries) {
+    if (!ax && !az) continue
+    _try.set(player.pos.x + ax, 0, player.pos.z + az)
+    const s = canStand(_try.x / worldScale, _try.z / worldScale)
+    if (s) {
+      player.pos.x = _try.x; player.pos.z = _try.z
+      // Ease the feet onto the surface so bumps in the tongue don't jolt you.
+      const target = standHeight(s)
+      player.pos.y += (target - player.pos.y) * 0.35
+      break
+    }
+  }
+  rig.position.copy(player.pos)
+}
+
+// ═══════════════════════════════ locomotion ════════════════════════════════
+const keys = new Set()
+addEventListener('keydown', (e) => {
+  if (e.repeat) return
+  keys.add(e.code)
+  if (e.code === 'KeyF') setFly(!player.fly)
+  if (e.code === 'KeyL') setLamp(!lampOn)
+  if (e.code === 'KeyT' || e.code === 'Enter') nextStop()
+  if (e.code === 'Escape') hidePanel()
+})
+addEventListener('keyup', (e) => keys.delete(e.code))
+addEventListener('blur', () => keys.clear())
+
+// Mouse look: drag anywhere, or use pointer lock for a proper FPS feel.
+let dragging = false, lastX = 0, lastY = 0, pitch = 0
+const canvas = renderer.domElement
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch' && e.clientX < innerWidth * 0.4) { touchStick = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0 }; return }
+  dragging = true; lastX = e.clientX; lastY = e.clientY
+  canvas.setPointerCapture(e.pointerId)
+})
+canvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType !== 'touch') {
+    mouseNDC = mouseNDC || new THREE.Vector2()
+    mouseNDC.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1)
+  }
+  if (touchStick && e.pointerId === touchStick.id) {
+    touchStick.dx = THREE.MathUtils.clamp((e.clientX - touchStick.x) / 70, -1, 1)
+    touchStick.dy = THREE.MathUtils.clamp((e.clientY - touchStick.y) / 70, -1, 1)
+    return
+  }
+  if (!dragging) return
+  look(e.clientX - lastX, e.clientY - lastY)
+  lastX = e.clientX; lastY = e.clientY
+})
+const endPointer = (e) => {
+  if (touchStick && e.pointerId === touchStick.id) touchStick = null
+  dragging = false
+}
+canvas.addEventListener('pointerup', endPointer)
+canvas.addEventListener('pointercancel', endPointer)
+canvas.addEventListener('click', pickFromMouse)
+
+let touchStick = null
+
+function look(dx, dy) {
+  // Drag moves the scene with your finger (the 360-viewer convention), so the
+  // view swings the opposite way.
+  player.yaw += dx * 0.0032
+  pitch = THREE.MathUtils.clamp(pitch + dy * 0.0032, -1.3, 1.3)
+  rig.rotation.y = player.yaw
+  if (!renderer.xr.isPresenting) camera.rotation.x = pitch
+}
+
+// ─────────────────────────── XR controllers ────────────────────────────────
+const controllers = []
+for (let i = 0; i < 2; i++) {
+  const c = renderer.xr.getController(i)
+  c.userData.index = i
+  rig.add(c)
+
+  // A short laser and a bead where it lands: the standard "where am I
+  // pointing" affordance, kept subtle so it doesn't fight the scene.
+  const ray = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]),
+    new THREE.LineBasicMaterial({ color: 0xff9db0, transparent: true, opacity: 0.65, fog: false })
+  )
+  ray.scale.z = 6
+  c.add(ray)
+
+  const tip = new THREE.Mesh(
+    new THREE.SphereGeometry(0.012, 12, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffe3e8, fog: false })
+  )
+  tip.position.z = -0.03
+  c.add(tip)
+
+  c.addEventListener('selectstart', () => pickFromController(c))
+  c.addEventListener('squeezestart', () => setFly(!player.fly))
+  controllers.push(c)
+}
+
+const raycaster = new THREE.Raycaster()
+const _m = new THREE.Vector2()
+
+function pickFromMouse(e) {
+  if (renderer.xr.isPresenting) return
+  _m.x = (e.clientX / innerWidth) * 2 - 1
+  _m.y = -(e.clientY / innerHeight) * 2 + 1
+  raycaster.setFromCamera(_m, camera)
+  pick(raycaster)
+}
+
+function pickFromController(c) {
+  raycaster.ray.origin.setFromMatrixPosition(c.matrixWorld)
+  raycaster.ray.direction.set(0, 0, -1).transformDirection(c.matrixWorld)
+  if (!pick(raycaster)) hidePanel()
+}
+
+function pick(rc) {
+  const h = firstHotspot(rc)
+  if (!h) return false
+  showPanel(h.stop)
+  tourIndex = STOPS.indexOf(h.stop)
+  return true
+}
+
+function firstHotspot(rc) {
+  const hit = rc.intersectObjects(hotspots.map((x) => x.orb), false)[0]
+  return hit ? hotspots.find((x) => x.orb === hit.object) : null
+}
+
+// Highlight whatever the mouse or a controller is pointing at, so it is
+// obvious the markers can be interacted with.
+const _hoverRc = new THREE.Raycaster()
+let mouseNDC = null
+function updateHover() {
+  let target = null
+  if (renderer.xr.isPresenting) {
+    for (const c of controllers) {
+      _hoverRc.ray.origin.setFromMatrixPosition(c.matrixWorld)
+      _hoverRc.ray.direction.set(0, 0, -1).transformDirection(c.matrixWorld)
+      target = firstHotspot(_hoverRc) || target
+    }
+  } else if (mouseNDC) {
+    _hoverRc.setFromCamera(mouseNDC, camera)
+    target = firstHotspot(_hoverRc)
+  }
+  for (const h of hotspots) h.hovered = h === target
+  if (!renderer.xr.isPresenting) canvas.style.cursor = target ? 'pointer' : ''
+}
+
+// ═════════════════════════════ the guided tour ═════════════════════════════
+// Rather than teleport (disorienting) or fly you there automatically (nauseating
+// if you did not ask for it), each stop eases you across over ~1.6 s with the
+// comfort vignette closed down.
+let tourIndex = -1
+let travel = null
+
+function nextStop() {
+  tourIndex = (tourIndex + 1) % STOPS.length
+  goToStop(STOPS[tourIndex])
+}
+
+function goToStop(stop) {
+  const to = new THREE.Vector3().fromArray(stop.at).multiplyScalar(worldScale)
+  const s = sampleCavity(stop.at[0], stop.at[2])
+  if (s && !player.fly) to.y = standHeight(s)
+
+  // Face the marker from where you will be standing, and (outside VR, where
+  // we own the pitch) tilt to meet it as well.
+  const marker = new THREE.Vector3().fromArray(stop.marker).multiplyScalar(worldScale)
+  const eye = to.clone().setY(to.y + EYE_HEIGHT)
+  const toMarker = marker.clone().sub(eye)
+  travel = {
+    from: player.pos.clone(), to,
+    fromYaw: rig.rotation.y,
+    toYaw: Math.atan2(-toMarker.x, -toMarker.z),
+    fromPitch: pitch,
+    toPitch: THREE.MathUtils.clamp(Math.atan2(toMarker.y, Math.hypot(toMarker.x, toMarker.z)), -1.2, 1.2),
+    t: 0, dur: 1.6, stop
+  }
+  // Take the short way round the circle.
+  let d = travel.toYaw - travel.fromYaw
+  while (d > Math.PI) d -= Math.PI * 2
+  while (d < -Math.PI) d += Math.PI * 2
+  travel.toYaw = travel.fromYaw + d
+  showPanel(stop)
+}
+
+function updateTravel(dt) {
+  if (!travel) return
+  travel.t = Math.min(1, travel.t + dt / travel.dur)
+  const e = travel.t < 0.5 ? 4 * travel.t ** 3 : 1 - Math.pow(-2 * travel.t + 2, 3) / 2  // easeInOutCubic
+  player.pos.lerpVectors(travel.from, travel.to, e)
+  rig.position.copy(player.pos)
+  rig.rotation.y = player.yaw = THREE.MathUtils.lerp(travel.fromYaw, travel.toYaw, e)
+  if (!renderer.xr.isPresenting) {
+    pitch = THREE.MathUtils.lerp(travel.fromPitch, travel.toPitch, e)
+    camera.rotation.x = pitch
+  }
+  player.speed = Math.max(player.speed, travel.from.distanceTo(travel.to) / travel.dur * 0.6)
+  if (travel.t >= 1) travel = null
+}
+
+// ═══════════════════════════════ world scale ═══════════════════════════════
+// Changing scale keeps you at the same *anatomical* place — you grow or shrink
+// around your own position rather than being flung across the mouth.
+function setScale(next) {
+  next = THREE.MathUtils.clamp(next, 2, 24)
+  const modelPos = player.pos.clone().divideScalar(worldScale)
+  worldScale = next
+  world.scale.setScalar(worldScale)
+  layoutHotspots()
+  const s = sampleCavity(modelPos.x, modelPos.z)
+  player.pos.copy(modelPos).multiplyScalar(worldScale)
+  if (s && !player.fly) player.pos.y = standHeight(s)
+  rig.position.copy(player.pos)
+  // Shrink the mouth far enough and there is no longer room to stand up in it.
+  // Rather than leave the camera embedded in the palate, lift off.
+  if (s && !player.fly && s.headroom < EYE_HEIGHT + 0.4) {
+    setFly(true)
+    player.pos.y = (s.floor + s.ceil) * 0.5 * worldScale - EYE_HEIGHT * 0.5
+    rig.position.copy(player.pos)
+    setCaption('Too big to stand', 'At this size the mouth is smaller than you are, so you are hovering. Grow again, or press Walk to land.')
+  }
+  scene.fog.density = 0.012 * (DEFAULT_SCALE / worldScale)
+  applyLamp()
+  document.getElementById('scale').value = String(THREE.MathUtils.clamp(worldScale, 2, 20))
+}
+
+// ══════════════════════════════ ambient sound ══════════════════════════════
+// Generated in-browser so the page stays a single file: a slow breath (filtered
+// noise swelling and fading) under an occasional distant heartbeat.
+let audio = null
+function startAudio() {
+  if (audio) { audio.ctx.resume(); return }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const master = ctx.createGain()
+  master.gain.value = 0.0
+  master.connect(ctx.destination)
+
+  // Breath: brown-ish noise through a wandering low-pass.
+  const len = ctx.sampleRate * 4
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate)
+  const d = buf.getChannelData(0)
+  let last = 0
+  for (let i = 0; i < len; i++) {
+    const white = Math.random() * 2 - 1
+    last = (last + 0.02 * white) / 1.02
+    d[i] = last * 3.2
+  }
+  const src = ctx.createBufferSource()
+  src.buffer = buf; src.loop = true
+  const filt = ctx.createBiquadFilter()
+  filt.type = 'lowpass'; filt.frequency.value = 420; filt.Q.value = 0.7
+  const swell = ctx.createGain(); swell.gain.value = 0.5
+  const lfo = ctx.createOscillator(); lfo.frequency.value = 0.14
+  const lfoGain = ctx.createGain(); lfoGain.gain.value = 0.42
+  lfo.connect(lfoGain); lfoGain.connect(swell.gain)
+  src.connect(filt); filt.connect(swell); swell.connect(master)
+  src.start(); lfo.start()
+
+  // Heartbeat: two soft low thumps a second apart, once every ~4 s.
+  function beat(t, gain) {
+    const o = ctx.createOscillator(); o.frequency.setValueAtTime(62, t)
+    o.frequency.exponentialRampToValueAtTime(28, t + 0.16)
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(0.0001, t)
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.03)
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34)
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.4)
+  }
+  const timer = setInterval(() => {
+    if (ctx.state !== 'running') return
+    const t = ctx.currentTime + 0.05
+    beat(t, 0.16); beat(t + 0.28, 0.10)
+  }, 3800)
+
+  master.gain.linearRampToValueAtTime(0.85, ctx.currentTime + 2.5)
+  audio = { ctx, master, timer }
+}
+function setSound(on) {
+  soundOn = on
+  chip('cSound', on)
+  if (on) startAudio()
+  else if (audio) audio.ctx.suspend()
+}
+
+// ═══════════════════════════════ frame loop ════════════════════════════════
+const clock = new THREE.Clock()
+const _fwd = new THREE.Vector3(), _right = new THREE.Vector3(), _prev = new THREE.Vector3()
+let snapCooldown = 0
+let started = false
+
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1)
+  const t = clock.elapsedTime
+  _prev.copy(player.pos)
+
+  if (started) {
+    updateTravel(dt)
+    if (!travel) {
+      readKeyboard(dt)
+      readTouch(dt)
+      readGamepads(dt)
+    }
+  }
+
+  // Speed drives the comfort vignette (and it opens back up quickly when you
+  // stop, so standing still is never letterboxed).
+  const moved = player.pos.distanceTo(_prev) / Math.max(dt, 1e-4)
+  player.speed += (moved - player.speed) * 0.25
+  const want = THREE.MathUtils.clamp((player.speed / (WALK_SPEED * 1.2)) * 0.85, 0, 0.85)
+  vignette.value += (want - vignette.value) * (want > vignette.value ? 0.25 : 0.12)
+
+  // Hotspots pulse gently and hold a constant apparent size, so a marker
+  // across the mouth is as readable as one at your feet.
+  headWorld(_head)
+  updateHover()
+  for (const h of hotspots) {
+    const dist = h.pin.position.distanceTo(_head)
+    const pulse = 1 + Math.sin(t * 2 + h.pin.position.x) * 0.07
+    // Sizes are proportional to distance, which holds their *angular* size
+    // constant — a marker never balloons when you walk up to it.
+    const s = Math.min(dist * 0.03, 0.9) * pulse * (h.hovered ? 1.4 : 1)
+    h.orb.scale.setScalar(s)
+    // Markers across the mouth fade out, so the two or three near you stay
+    // readable instead of stacking into a column of text.
+    h.mat.opacity = h.hovered ? 1 : THREE.MathUtils.clamp(1.5 - dist / (worldScale * 0.55), 0.12, 0.9)
+    const ls = Math.min(dist * 0.05, 1.4)
+    h.label.scale.set(ls * h.label.userData.aspect, ls, 1)
+    h.label.position.y = s * 2.4 + ls * 0.8
+    h.label.material.opacity = THREE.MathUtils.clamp(1.6 - dist / (worldScale * 0.5), 0, 1)
+    h.label.visible = h.label.material.opacity > 0.03
+  }
+
+  // Panel: hold it at a fixed distance in front of the viewer, facing them.
+  if (panel.mesh.visible) {
+    const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.getWorldQuaternion(new THREE.Quaternion()))
+    dir.y *= 0.35
+    dir.normalize()
+    const target = _head.clone().addScaledVector(dir, 1.7).add(new THREE.Vector3(0, -0.18, 0))
+    panel.mesh.position.lerp(target, 0.12)
+    panel.mesh.quaternion.copy(cam.getWorldQuaternion(new THREE.Quaternion()))
+    if (performance.now() > panelHideAt) hidePanel()
+  }
+
+  // Drift the motes and keep them wrapped around the viewer.
+  {
+    const a = motes.points.geometry.attributes.position
+    for (let i = 0; i < motes.N; i++) {
+      const y = a.array[i * 3 + 1] + dt * (0.06 + (i % 7) * 0.012)
+      a.array[i * 3 + 1] = y > _head.y + 5 ? _head.y - 3 : y
+      a.array[i * 3] += Math.sin(t * 0.4 + motes.seed[i]) * dt * 0.05
+      // Re-centre the cloud on the viewer when they wander off.
+      const dx = a.array[i * 3] - _head.x, dz = a.array[i * 3 + 2] - _head.z
+      if (Math.abs(dx) > 12) a.array[i * 3] -= Math.sign(dx) * 24
+      if (Math.abs(dz) > 12) a.array[i * 3 + 2] -= Math.sign(dz) * 24
+    }
+    a.needsUpdate = true
+  }
+
+  if (snapCooldown > 0) snapCooldown -= dt
+  renderer.render(scene, camera)
+})
+
+// ─────────────────────────── input: keyboard ───────────────────────────────
+function readKeyboard(dt) {
+  const f = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0)
+  const r = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0)
+  const u = (keys.has('Space') ? 1 : 0) - (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 1 : 0)
+  if (keys.has('ArrowLeft')) look(6, 0)
+  if (keys.has('ArrowRight')) look(-6, 0)
+  if (f || r || u) applyMove(f, r, u, dt)
+}
+
+// ─────────────────────────── input: touch ──────────────────────────────────
+function readTouch(dt) {
+  if (!touchStick) return
+  applyMove(-touchStick.dy, touchStick.dx, 0, dt)
+}
+
+// ─────────────────────── input: XR controllers ─────────────────────────────
+function readGamepads(dt) {
+  const session = renderer.xr.getSession()
+  if (!session) return
+  for (const src of session.inputSources) {
+    const gp = src.gamepad
+    if (!gp || gp.axes.length < 4) continue
+    const x = deadzone(gp.axes[2]), y = deadzone(gp.axes[3])
+    if (src.handedness === 'right') {
+      // Right stick: snap turn, and (in fly mode) altitude.
+      if (Math.abs(x) > 0.7 && snapCooldown <= 0) {
+        turn(-Math.sign(x) * SNAP_TURN)
+        snapCooldown = 0.28
+      }
+      if (player.fly && Math.abs(y) > 0.15) applyMove(0, 0, -y, dt)
+    } else {
+      // Left stick: glide, relative to where you are looking.
+      if (x || y) applyMove(-y, x, 0, dt)
+    }
+  }
+}
+
+function deadzone(v) { return Math.abs(v) < 0.12 ? 0 : v }
+
+// Convert forward/right/up intent into a world-space step. "Forward" follows
+// the direction you are actually looking, which is what everyone expects.
+function applyMove(fwd, right, up, dt) {
+  const cam = renderer.xr.isPresenting ? renderer.xr.getCamera() : camera
+  cam.getWorldDirection(_fwd)
+  _fwd.y = player.fly ? _fwd.y : 0
+  // Looking straight up or down leaves no horizontal component; fall back to
+  // the rig's own facing rather than snapping to world forward.
+  if (_fwd.lengthSq() < 1e-6) _fwd.set(-Math.sin(rig.rotation.y), 0, -Math.cos(rig.rotation.y))
+  _fwd.normalize()
+  _right.set(-_fwd.z, 0, _fwd.x).normalize()   // forward × up
+  const speed = (player.fly ? FLY_SPEED : WALK_SPEED) * dt * (worldScale / DEFAULT_SCALE) ** 0.35
+  moveBy(
+    (_fwd.x * fwd + _right.x * right) * speed,
+    (_fwd.y * fwd) * speed + up * speed,
+    (_fwd.z * fwd + _right.z * right) * speed
+  )
+}
+
+// ═════════════════════════════════ WebXR ═══════════════════════════════════
+let xrSupported = false
+let modelReady = false
+
+async function refreshVRButton() {
+  const btn = document.getElementById('enterVR')
+  const btn2 = document.getElementById('enterVR2')
+  const note = document.getElementById('note')
+
+  if (!navigator.xr) {
+    btn.disabled = true
+    btn.textContent = isSecureContext ? '🥽 VR not available' : '🥽 VR needs HTTPS'
+    note.classList.remove('hidden')
+    note.innerHTML = isSecureContext
+      ? 'No WebXR device found. Open this page in a headset browser (Quest, Pico, Vision Pro) to go inside — everything else works here.'
+      : 'WebXR only runs over HTTPS. Serve this page from a secure origin (GitHub Pages works) and the VR button will light up.'
+    return
+  }
+  try {
+    xrSupported = await navigator.xr.isSessionSupported('immersive-vr')
+  } catch { xrSupported = false }
+
+  if (xrSupported) {
+    // Stay disabled until the mouth is actually in the scene — dropping someone
+    // into an empty headset view is worse than a moment's wait.
+    btn.disabled = !modelReady
+    btn.textContent = modelReady ? '🥽 Enter VR' : '🥽 Loading…'
+    btn2.style.display = ''
+    btn2.onclick = enterVR
+    note.classList.add('hidden')
+  } else {
+    btn.disabled = true
+    btn.textContent = '🥽 No headset detected'
+    note.classList.remove('hidden')
+    note.innerHTML = 'This browser has WebXR but no connected headset. Open the same link inside a headset to step in.'
+  }
+}
+
+async function enterVR() {
+  if (!modelReady) return
+  try {
+    const session = await navigator.xr.requestSession('immersive-vr', {
+      optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers']
+    })
+    await renderer.xr.setSession(session)
+    beginExperience()
+    // In VR the headset supplies eye height from the floor, so the camera must
+    // sit at the rig origin rather than being lifted manually.
+    camera.position.set(0, 0, 0)
+    camera.rotation.set(0, 0, 0)
+    try { renderer.xr.setFoveation(0.6) } catch {}
+    session.addEventListener('end', () => {
+      camera.position.set(0, EYE_HEIGHT, 0)
+      camera.rotation.x = pitch
+    })
+  } catch (err) {
+    console.error(err)
+    setStatus('The headset refused the session: ' + err.message)
+  }
+}
+
+// ═══════════════════════════════ page UI ═══════════════════════════════════
+const TOUCH = matchMedia('(pointer: coarse)').matches
+
+const KEYMAP = TOUCH ? [
+  ['Move', 'Drag the left edge like a joystick'],
+  ['Look', 'Drag anywhere else'],
+  ['Tour', 'Tap Tour for the next stop'],
+  ['Inspect', 'Tap a glowing marker'],
+  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect']
+] : [
+  ['Move', 'W A S D'],
+  ['Look', 'Drag with the mouse'],
+  ['Fly', 'F (then Space / Shift)'],
+  ['Tour', 'T — next stop'],
+  ['Inspect', 'Click a glowing marker'],
+  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect']
+]
+
+const dl = document.getElementById('keys')
+for (const [k, v] of KEYMAP) {
+  const dt = document.createElement('dt'); dt.textContent = k
+  const dd = document.createElement('dd'); dd.textContent = v
+  dl.append(dt, dd)
+}
+
+let lampOn = true, soundOn = false
+
+function chip(id, on) { document.getElementById(id).setAttribute('aria-pressed', String(on)) }
+function setFly(on) {
+  player.fly = on
+  chip('cMode', !on)
+  document.getElementById('cMode').textContent = on ? '🕊 Fly' : '🚶 Walk'
+  document.getElementById('cMode').setAttribute('aria-pressed', 'true')
+  if (!on) {
+    const s = canStand(player.pos.x / worldScale, player.pos.z / worldScale)
+    if (s) { player.pos.y = standHeight(s); rig.position.copy(player.pos) }
+  }
+}
+// Inverse-square falloff means the lamp has to grow with the world, otherwise
+// growing to giant size leaves everything pitch black.
+function applyLamp() {
+  lamp.intensity = lampOn ? LAMP_POWER * (worldScale / DEFAULT_SCALE) ** 2 : 0
+}
+function setLamp(on) { lampOn = on; applyLamp(); chip('cLamp', on) }
+
+document.getElementById('cMode').onclick = () => setFly(!player.fly)
+document.getElementById('cLamp').onclick = () => setLamp(!lampOn)
+document.getElementById('cSound').onclick = () => setSound(!soundOn)
+document.getElementById('cTour').onclick = nextStop
+document.getElementById('scale').oninput = (e) => setScale(parseFloat(e.target.value))
+document.getElementById('enterVR').onclick = enterVR
+document.getElementById('enterDesktop').onclick = () => { beginExperience() }
+document.getElementById('toggleHud').onclick = () => {
+  const hud = document.getElementById('hud')
+  hud.classList.toggle('hidden')
+  document.getElementById('toggleHud').classList.toggle('show', hud.classList.contains('hidden'))
+}
+
+function beginExperience() {
+  if (started) return
+  started = true
+  document.getElementById('curtain').classList.add('gone')
+  // On a phone the panel would eat half the screen, so start it folded away.
+  if (TOUCH) document.getElementById('toggleHud').classList.add('show')
+  else document.getElementById('hud').classList.remove('hidden')
+  setTimeout(() => document.getElementById('curtain').remove(), 700)
+  setCaption('Welcome to the mouth', TOUCH
+    ? 'Drag to look around, and drag the left edge to walk. Tap ☰ for the tour, the size slider and sound.'
+    : 'Walk up to a glowing marker and click it to read about it, or press Tour to be shown around. Drag the Size slider to grow or shrink.')
+  setTimeout(() => { if (!panel.mesh.visible) setCaption(null) }, 9000)
+}
+
+function setStatus(msg) { document.getElementById('status').textContent = msg }
+
+let captionTimer = 0
+function setCaption(title, body) {
+  const el = document.getElementById('caption')
+  clearTimeout(captionTimer)
+  if (!title) { el.classList.remove('show'); return }
+  el.innerHTML = ''
+  const b = document.createElement('b'); b.textContent = title
+  el.append(b, document.createTextNode(body || ''))
+  el.classList.add('show')
+  captionTimer = setTimeout(() => el.classList.remove('show'), 26000)
+}
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(innerWidth, innerHeight)
+})
+
+refreshVRButton()
+if (navigator.xr) navigator.xr.addEventListener?.('devicechange', refreshVRButton)
+
+// Expose a little state for debugging from the console.
+window.MOUTH = {
+  scene, renderer, camera, rig, player, setScale, goToStop, STOPS,
+  get cavity() { return cavity },
+  get mesh() { return mouthMesh },
+  get albedo() { return albedo },
+  isEnamel,
+  get travelling() { return !!travel }
+}
+</script>
+</body>
+</html>

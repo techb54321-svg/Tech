@@ -155,7 +155,7 @@
     <button class="chip" id="cSound" aria-pressed="false">🔊 Sound</button>
     <button class="chip" id="cTour">🧭 Tour</button>
     <button class="chip" id="cDetail" aria-pressed="true">✨ Detail</button>
-    <button class="chip" id="cPhoto" aria-pressed="false">📷 Photo</button>
+    <button class="chip" id="cPhoto" aria-pressed="true">📷 Photo</button>
   </div>
 </div>
 
@@ -189,13 +189,15 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 //  where you can walk, how high your feet sit, and where the tour flies you.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const MODEL_URL = './assets/inside-the-mouth.glb'
+// ?model=… swaps the mesh without editing the file, which makes fitting a new
+// scan a matter of reloading rather than rebuilding.
+const MODEL_URL = new URLSearchParams(location.search).get('model') || './assets/inside-the-mouth.glb'
 
 // Model-space axes, established by inspecting the mesh:
 //   +X → your left/right,  +Y → up (palate),  +Z → out through the lips.
 // The model is ~1.9 × 0.98 × 1.76 units, so one model unit is roughly one
 // "mouth width". WORLD_SCALE turns that into metres for a shrunken visitor.
-const DEFAULT_SCALE = 9
+const DEFAULT_SCALE = 12
 const EYE_HEIGHT = 1.6          // metres, used outside VR (in VR the headset knows)
 const WALK_SPEED = 2.6          // metres/second
 const FLY_SPEED = 3.4
@@ -740,9 +742,9 @@ const projector = {
   // arrives, this is a tuning job rather than a rebuild.
   enabled: false,
   // All in centred model space. Tuned against the mesh — see alignProjector().
-  from: new THREE.Vector3(0, 0.14, 0.62),
-  at: new THREE.Vector3(0, 0.08, -0.30),
-  fov: 62,
+  from: new THREE.Vector3(0, 0.12, 1.40),
+  at: new THREE.Vector3(0, 0.06, 0.15),
+  fov: 48,
   aspect: 1672 / 941,
   strength: 0.9,
   camera: null,
@@ -891,7 +893,9 @@ function makeFleshMaterial(mesh) {
     uProjPos: { value: new THREE.Vector3() },
     uProjMap: { value: null },
     uProjDepth: { value: null },
-    uProjStrength: { value: 0 }
+    uProjStrength: { value: 0 },
+    uMucosa: { value: new THREE.Color(0xb8555c) },
+    uFlatten: { value: 0.75 }
   }
 
   mat.onBeforeCompile = (shader) => {
@@ -918,6 +922,8 @@ function makeFleshMaterial(mesh) {
         uniform sampler2D uProjMap;
         uniform sampler2D uProjDepth;
         uniform float uProjStrength;
+        uniform vec3 uMucosa;
+        uniform float uFlatten;
         varying vec3 vLocalPos;
         varying vec3 vLocalNormal;
         void main() {`)
@@ -925,6 +931,16 @@ function makeFleshMaterial(mesh) {
       // still picks up the lamp, the occlusion bake and everything else.
       .replace('#include <color_fragment>', `
         #include <color_fragment>
+        // The generated texture is an automatic atlas — thousands of tiny
+        // islands, each handed a roughly random tint, which reads as muddy
+        // patchwork and turns teeth into black glass. Collapse its hue onto one
+        // mucosa colour while keeping its light and shade, so it works as a
+        // plausible base coat under the photograph.
+        {
+          float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+          vec3 flattened = uMucosa * (0.55 + 1.05 * lum);
+          diffuseColor.rgb = mix(diffuseColor.rgb, flattened, uFlatten);
+        }
         if (uProjStrength > 0.001) {
           vec4 clip = uProjMatrix * vec4(vLocalPos, 1.0);
           if (clip.w > 0.0) {
@@ -970,7 +986,7 @@ function makeFleshMaterial(mesh) {
 }
 
 let fleshMaterial = null
-let photoOn = false
+let photoOn = true
 
 // Push the current projector state into the material.
 function applyProjection() {
@@ -1004,7 +1020,7 @@ function setPhoto(on) {
 //      and naturally excludes the solid interior of the cheeks and jaw.
 //
 const GRID = 112                       // nodes per axis across the model bbox
-const SEED = [0, 0.20, 0.0]            // a point known to be in open air
+const SEED = (new URLSearchParams(location.search).get('seed') || '0,0,0.5').split(',').map(Number)
 
 function buildCavity(mesh) {
   const geo = mesh.geometry
@@ -1166,7 +1182,7 @@ function standHeight(s) {
 // ═════════════════════════════ the tour stops ══════════════════════════════
 // Positions are in model units. Each is a place you can be *and* a thing worth
 // knowing about — the tour flies between them in order.
-const SPAWN = [0, 0.02, 0.18]
+const SPAWN = [0, -0.25, 0.74]
 
 // `at` is where you stand (model units). `probe` fires a ray from a point in
 // open air towards the feature; wherever it lands on the mesh is where the
@@ -1175,37 +1191,37 @@ const SPAWN = [0, 0.02, 0.18]
 // derives which way to face from the same hit.
 const STOPS = [
   {
-    id: 'incisors', at: [0, 0.02, 0.06], probe: [[0, 0.13, 0.14], [0, 0.34, 1]], tooth: [0, 0.11, 0.33],
+    id: 'incisors', at: [0, -0.25, 0.62], probe: [[0, 0.0, 0.70], [0, 0.22, 1]],
     title: 'The incisors',
     body: 'The cutting edge. Their enamel is the hardest tissue your body makes — about 96% mineral — but unlike bone it holds no living cells, so it never heals. Below roughly pH 5.5 it simply dissolves.'
   },
   {
-    id: 'palate', at: [0, 0.02, 0.28], probe: [[0, 0.20, -0.06], [0, 1, 0]],
+    id: 'palate', at: [0, -0.25, 0.72], probe: [[0, 0.0, 0.52], [0, 1, 0]],
     title: 'The hard palate',
     body: 'The roof of the mouth, and part of why you can speak clearly. Those ridges are rugae: the tongue presses against them to shape "t", "d", "n" and "l", and they stop slippery food sliding straight back.'
   },
   {
-    id: 'tongue', at: [0, 0.02, 0.06], probe: [[0, 0.20, 0.30], [0, -1, 0]],
+    id: 'tongue', at: [0, -0.25, 0.78], probe: [[0, -0.05, 0.55], [0, -1, 0]],
     title: 'The tongue',
     body: 'Eight muscles braided together, anchored to bone at one end only. The surface is carpeted with papillae — taste buds line their walls rather than sitting on top. It repositions food roughly a thousand times in a single meal.'
   },
   {
-    id: 'saliva', at: [-0.02, 0.02, 0.18], probe: [[-0.20, 0.10, 0.10], [-1, -0.5, 0]],
+    id: 'saliva', at: [0, -0.25, 0.70], probe: [[-0.15, -0.15, 0.62], [-1, -0.4, 0]],
     title: 'Saliva',
     body: 'Ducts under the tongue deliver a litre or more a day. It is not just water: enzymes start breaking down starch before you swallow, and dissolved minerals buffer acid and put calcium back into enamel between meals.'
   },
   {
-    id: 'molars', at: [0, 0.02, 0.05], probe: [[0.10, 0.16, -0.02], [1, 0.35, 0]], tooth: [0.52, 0.15, 0],
+    id: 'molars', at: [0, -0.25, 0.60], probe: [[0, 0.0, 0.52], [1, 0.45, 0]],
     title: 'The molars',
     body: 'The mill at the back. Bite force here reaches around 70 kg, several times what the front teeth manage. The pits and fissures on their crowns are where decay usually starts, because a toothbrush bristle is too fat to reach the bottom.'
   },
   {
-    id: 'softpalate', at: [0, 0.02, 0.02], probe: [[0, 0.22, -0.24], [0, 1, -0.8]],
+    id: 'softpalate', at: [0, -0.25, 0.45], probe: [[0, -0.02, 0.20], [0, 1, -0.5]],
     title: 'The soft palate',
     body: 'Where the roof stops being bone. On every swallow it lifts and seals off the passage to your nose — which is why laughing mid-drink sends a drink the wrong way.'
   },
   {
-    id: 'throat', at: [0, 0.02, -0.06], probe: [[0, 0.02, -0.20], [0, -0.05, -1]],
+    id: 'throat', at: [0, -0.25, 0.34], probe: [[0, -0.06, 0.18], [0, -0.02, -1]],
     title: 'The throat',
     body: 'The oropharynx: the shared doorway to both the food pipe and the windpipe. A flap called the epiglottis folds over the airway on every swallow — about six hundred times a day, without you ever deciding to.'
   }
@@ -2091,7 +2107,7 @@ function applyLamp() {
   // whole trick: close in, inverse-square blows out whatever is nearest and
   // leaves the rest black; stood back, the same falloff spans the mouth as a
   // gentle three-to-one gradient from the incisors to the throat.
-  opening.position.set(0, 0.45 * worldScale, 1.5 * worldScale)
+  opening.position.set(0, 0.20 * worldScale, 1.65 * worldScale)
 }
 function setLamp(on) { lampOn = on; applyLamp(); chip('cLamp', on) }
 

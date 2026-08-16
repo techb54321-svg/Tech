@@ -155,6 +155,8 @@ URL works and a plain `http://192.168.x.x` address on your own network does not.
 | Right thumbstick up/down | Rise and sink, while flying |
 | Grip | Toggle walking / flying |
 | Trigger | Point at a glowing marker to read about it |
+| A / X | Jump to the next tour stop |
+| B / Y | Toggle the expensive shading, if the frame rate suffers |
 
 Comfort is handled the way it should be: snap turning rather than smooth
 turning, and a vignette that closes in whenever you are moving and opens again
@@ -170,6 +172,7 @@ the moment you stop.
 | T | Jump to the next tour stop |
 | Click a marker | Read about that part of the mouth |
 | Size slider | Grow or shrink, from a room-sized mouth to a cavernous one |
+| G | Toggle the expensive shading |
 
 On a phone the panel folds away behind ☰, dragging the left edge works as a
 walking stick, and dragging anywhere else looks around.
@@ -196,3 +199,34 @@ hover instead of burying your head in the palate.
 The two dental markers are placed by sampling the model's own base-colour
 texture at each vertex and snapping to the nearest enamel-coloured point that
 borders the cavity, which puts them on a crown rather than on the gum beside it.
+
+## Why it looks wet rather than moulded
+
+The scan arrives as albedo, normals and roughness, and nothing else — no
+occlusion, no translucency, no light. Rendered plainly it reads as a painted
+cast, so four things are added on top:
+
+- **Baked contact shadows.** Twenty-four short rays over the hemisphere at
+  every vertex, traced through a uniform grid, written into vertex colours.
+  This is what darkens the gum line, the gaps between teeth and the folds under
+  the tongue. The result is remapped so only genuinely enclosed places darken —
+  raw hemisphere openness averages about 0.6 even in the open, and multiplying
+  that in unshaped just dims the model uniformly.
+- **A light standing outside the lips.** One warm point light, placed well back
+  rather than in the mouth, so inverse-square falloff spans the cavity as a
+  gentle gradient from the incisors to the throat instead of blowing out
+  whatever is nearest. Flat ambient is nearly switched off; it is what made the
+  first version read as a diagram.
+- **Saliva.** A clear coat over the rough diffuse surface, with a small
+  procedural environment for it to reflect — a clear coat with nothing to
+  reflect just turns black.
+- **Subsurface backscatter**, faked as a warm rim where the surface turns away
+  from you, scaled by albedo so gums bleed red and teeth stay bone-coloured.
+
+Plus fine tissue relief tiled far denser than the capture resolves, since at
+crumb scale every surface is inches from your face, and a slow breath on the
+whole model, because nothing alive holds still.
+
+The **Detail** toggle (B/Y in a headset, G on a keyboard) drops the clear coat,
+the reflections and the backscatter if an older headset struggles. The geometry
+and the baked occlusion stay either way.

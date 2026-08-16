@@ -154,6 +154,7 @@
     <button class="chip" id="cLamp" aria-pressed="true">🔦 Lamp</button>
     <button class="chip" id="cSound" aria-pressed="false">🔊 Sound</button>
     <button class="chip" id="cTour">🧭 Tour</button>
+    <button class="chip" id="cDetail" aria-pressed="true">✨ Detail</button>
   </div>
 </div>
 
@@ -206,7 +207,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 renderer.setSize(innerWidth, innerHeight)
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.1
+renderer.toneMappingExposure = 1.0
 renderer.xr.enabled = true
 renderer.xr.setReferenceSpaceType('local-floor')
 document.body.appendChild(renderer.domElement)
@@ -230,22 +231,65 @@ scene.add(rig)
 // The bake in the GLB is albedo-only (its emissive map is essentially black),
 // so the mouth needs real lights. Three sources: soft red bounce that fills
 // the cavity, daylight spilling in through the lips, and a lamp on your head.
-const ambient = new THREE.AmbientLight(0xffd2d8, 0.42)
+// Flat ambient is what made this read as a diagram rather than a place, so
+// there is only a trace of it now: the image-based environment below carries
+// the fill, and nearly all the shaping comes from light entering at the lips.
+const ambient = new THREE.AmbientLight(0xffd2d8, 0.10)
 scene.add(ambient)
 
-const bounce = new THREE.HemisphereLight(0xff8f9e, 0x2c0810, 0.6)
+const bounce = new THREE.HemisphereLight(0xff8f9e, 0x2c0810, 0.18)
 scene.add(bounce)
 
-// Daylight from the world outside the mouth, placed beyond the lips (+Z).
-const daylight = new THREE.DirectionalLight(0xfff0e2, 0.85)
+// Daylight from the world outside the mouth, beyond the lips (+Z).
+const daylight = new THREE.DirectionalLight(0xfff0e2, 0.55)
 daylight.position.set(0, 6, 26)
 scene.add(daylight)
+
+// A warm source parked in the mouth opening. This is the light that does the
+// work: it falls off with distance, so the front of the mouth is bright, the
+// molars are dimmer and the throat goes properly dark — the depth cue you get
+// in any real cavity and the one thing uniform ambient can never give you.
+const OPENING_POWER = 150
+const opening = new THREE.PointLight(0xffc9a8, OPENING_POWER, 0, 2)
+scene.add(opening)
+
+// ───────────────────────── image-based lighting ────────────────────────────
+// A clear coat with nothing to reflect just turns black, so the scene gets a
+// cheap procedural environment: warm and bright towards the opening, deep red
+// around the sides, near-black overhead and below.
+{
+  const c = document.createElement('canvas')
+  c.width = 256; c.height = 128
+  const ctx = c.getContext('2d')
+  const g = ctx.createLinearGradient(0, 0, 0, 128)
+  g.addColorStop(0, '#120306')
+  g.addColorStop(0.42, '#7d1c26')
+  g.addColorStop(0.58, '#8e2530')
+  g.addColorStop(1, '#1b0509')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 256, 128)
+  // A soft warm lobe standing in for the daylight beyond the lips.
+  const lobe = ctx.createRadialGradient(64, 66, 2, 64, 66, 62)
+  lobe.addColorStop(0, 'rgba(255,226,196,0.95)')
+  lobe.addColorStop(1, 'rgba(255,190,150,0)')
+  ctx.fillStyle = lobe
+  ctx.fillRect(0, 0, 256, 128)
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.mapping = THREE.EquirectangularReflectionMapping
+  tex.colorSpace = THREE.SRGBColorSpace
+  const pmrem = new THREE.PMREMGenerator(renderer)
+  pmrem.compileEquirectangularShader()
+  scene.environment = pmrem.fromEquirectangular(tex).texture
+  tex.dispose()
+  pmrem.dispose()
+}
 
 // Head lamp — gives the normal map something to bite on and makes nearby
 // surfaces feel close. Attached to the camera so it always faces where you do.
 // Its reach is tied to world scale (see setScale) so shrinking does not leave
 // you in the dark, and it falls off fast enough that distance still reads.
-const LAMP_POWER = 11
+const LAMP_POWER = 3
 const lamp = new THREE.PointLight(0xffd8c8, LAMP_POWER, 0, 2)
 lamp.position.set(0, 0.05, 0.2)
 camera.add(lamp)
@@ -325,11 +369,17 @@ world.scale.setScalar(DEFAULT_SCALE)
 scene.add(world)
 
 let mouthMesh = null        // the single mesh in the GLB
+let modelRoot = null        // its parent, breathed on each frame
 let cavity = null           // walkable height field (see buildCavity)
 let worldScale = DEFAULT_SCALE
 
 const loader = new GLTFLoader()
 loader.load(MODEL_URL, onLoaded, onProgress, onLoadError)
+
+// Let the browser paint before a long synchronous pass.
+function nextFrame() {
+  return new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)))
+}
 
 function onProgress(e) {
   if (!e.lengthComputable) return
@@ -343,11 +393,12 @@ function onLoadError(err) {
   setStatus('Could not load the model. Serve this page over http(s) rather than opening the file directly.')
 }
 
-function onLoaded(gltf) {
+async function onLoaded(gltf) {
   const root = gltf.scene
   const box = new THREE.Box3().setFromObject(root)
   root.position.sub(box.getCenter(new THREE.Vector3()))   // centre on the origin
   world.add(root)
+  modelRoot = root
 
   root.traverse((o) => {
     if (!o.isMesh) return
@@ -361,14 +412,23 @@ function onLoaded(gltf) {
       if (mat[key]) { mat[key].anisotropy = maxAniso; mat[key].needsUpdate = true }
     }
     mat.side = THREE.DoubleSide      // we are inside a single-shell scan
-    mat.emissiveIntensity = 0.45
     mat.needsUpdate = true
   })
 
+  // Both of the passes below block the main thread for a second or two on a
+  // headset, so hand the browser a frame between them — otherwise the loading
+  // text never repaints and it reads as a hang.
   setStatus('Mapping the cavity…')
+  await nextFrame()
   cavity = buildCavity(mouthMesh)
 
+  setStatus('Baking contact shadows…')
+  await nextFrame()
+  bakeOcclusion(mouthMesh)
+  makeFleshMaterial(mouthMesh)
+
   buildHotspots()
+  applyLamp()
   setStatus('Ready.')
   modelReady = true
   document.querySelector('#bar i').style.width = '100%'
@@ -376,6 +436,342 @@ function onLoaded(gltf) {
   refreshVRButton()
   placePlayer(SPAWN.slice())
 }
+
+// ═══════════════════════════ contact shadows ═══════════════════════════════
+//
+//  The scan carries no occlusion of its own, and that is most of why it reads
+//  as flat: in a real mouth the gum line, the gaps between teeth and the folds
+//  under the tongue are all *darker* than the surfaces around them, because
+//  very little light reaches down there. So we bake it ourselves — short rays
+//  over the hemisphere at every vertex, written into a vertex-colour attribute
+//  that multiplies the albedo.
+//
+//  Rays are deliberately short (a fifth of a model unit). Occlusion beyond
+//  that is the job of the lighting, and capping the length keeps each ray to a
+//  handful of grid cells, which is what makes 170k of them affordable at load.
+const AO_RAYS = 24
+const AO_REACH = 0.20
+const AO_STRENGTH = 0.85
+
+function bakeOcclusion(mesh) {
+  const geo = mesh.geometry
+  const pos = geo.attributes.position
+  const nrm = geo.attributes.normal
+  const tris = triangleSoup(mesh)
+  const grid = new TriGrid(tris, 48)
+
+  // A fixed, evenly spread set of hemisphere directions (Fibonacci sphere,
+  // upper half) reused for every vertex, then rotated into its normal's frame.
+  const dirs = []
+  for (let i = 0; i < AO_RAYS; i++) {
+    const y = (i + 0.5) / AO_RAYS
+    const r = Math.sqrt(1 - y * y)
+    const phi = i * Math.PI * (3 - Math.sqrt(5))
+    dirs.push([Math.cos(phi) * r, y, Math.sin(phi) * r])
+  }
+
+  const ao = new Float32Array(pos.count)
+  const o = new THREE.Vector3(), n = new THREE.Vector3()
+  const t = new THREE.Vector3(), bt = new THREE.Vector3(), d = new THREE.Vector3()
+
+  for (let i = 0; i < pos.count; i++) {
+    o.set(pos.getX(i), pos.getY(i), pos.getZ(i))
+    n.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i)).normalize()
+    // Build a frame around the normal.
+    t.set(Math.abs(n.y) < 0.9 ? 0 : 1, Math.abs(n.y) < 0.9 ? 1 : 0, 0).cross(n).normalize()
+    bt.crossVectors(n, t)
+    // Lift off the surface so a ray does not immediately hit its own triangle.
+    o.addScaledVector(n, 1e-4)
+
+    let open = 0
+    for (const dir of dirs) {
+      d.set(
+        t.x * dir[0] + n.x * dir[1] + bt.x * dir[2],
+        t.y * dir[0] + n.y * dir[1] + bt.y * dir[2],
+        t.z * dir[0] + n.z * dir[1] + bt.z * dir[2]
+      )
+      const hit = grid.hitDistance(o, d, AO_REACH)
+      // A near hit occludes fully, a far one barely — so a tooth touching a gum
+      // darkens the seam without flattening the whole crown.
+      open += hit < 0 ? 1 : Math.min(1, (hit / AO_REACH) ** 2)
+    }
+    ao[i] = open / AO_RAYS
+  }
+
+  smoothPerVertex(geo, ao)
+
+  // Remap before use. Raw hemisphere openness averages about 0.6 even on a
+  // wide-open surface, so multiplying it in raw just dims the whole model by a
+  // third and the lights get turned up to compensate — no contrast gained.
+  // Pinning everything above `open` back to full white spends the range where
+  // it reads: seams, folds and the gaps between teeth.
+  const OPEN = 0.72, SHUT = 0.22
+  const colors = new Float32Array(pos.count * 3)
+  for (let i = 0; i < pos.count; i++) {
+    const t = THREE.MathUtils.clamp((ao[i] - SHUT) / (OPEN - SHUT), 0, 1)
+    const shaped = t * t * (3 - 2 * t)                 // smoothstep
+    const v = 1 - (1 - shaped) * AO_STRENGTH
+    colors[i * 3] = colors[i * 3 + 1] = colors[i * 3 + 2] = v
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+}
+
+// One pass of neighbour averaging over the mesh's own edges. Twenty-four rays
+// is a small sample, and without this the bake shows as speckle.
+function smoothPerVertex(geo, values) {
+  const index = geo.index
+  if (!index) return
+  const sum = new Float32Array(values.length)
+  const count = new Uint16Array(values.length)
+  for (let i = 0; i < index.count; i += 3) {
+    const a = index.getX(i), b = index.getX(i + 1), c = index.getX(i + 2)
+    for (const [p, q] of [[a, b], [b, c], [c, a]]) {
+      sum[p] += values[q]; count[p]++
+      sum[q] += values[p]; count[q]++
+    }
+  }
+  for (let i = 0; i < values.length; i++) {
+    if (count[i]) values[i] = values[i] * 0.4 + (sum[i] / count[i]) * 0.6
+  }
+}
+
+// Every triangle as nine flat floats, in the same space the cavity map uses.
+function triangleSoup(mesh) {
+  const geo = mesh.geometry
+  const pos = geo.attributes.position
+  const index = geo.index
+  const count = index ? index.count / 3 : pos.count / 3
+  const tris = new Float32Array(count * 9)
+  for (let t = 0; t < count; t++) {
+    for (let c = 0; c < 3; c++) {
+      const vi = index ? index.getX(t * 3 + c) : t * 3 + c
+      tris[t * 9 + c * 3] = pos.getX(vi)
+      tris[t * 9 + c * 3 + 1] = pos.getY(vi)
+      tris[t * 9 + c * 3 + 2] = pos.getZ(vi)
+    }
+  }
+  return tris
+}
+
+// A uniform 3D grid over the triangles, walked with a DDA. Three.js's own
+// raycaster tests every triangle in the mesh, which is fine a few times a frame
+// and hopeless for a hundred thousand bake rays.
+class TriGrid {
+  constructor(tris, res) {
+    this.tris = tris
+    this.res = res
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity]
+    for (let i = 0; i < tris.length; i += 3) {
+      for (let a = 0; a < 3; a++) {
+        lo[a] = Math.min(lo[a], tris[i + a]); hi[a] = Math.max(hi[a], tris[i + a])
+      }
+    }
+    this.lo = lo
+    this.cell = [(hi[0] - lo[0]) / res, (hi[1] - lo[1]) / res, (hi[2] - lo[2]) / res].map((v) => v || 1e-6)
+    this.cells = new Array(res * res * res)
+    const n = tris.length / 9
+    for (let t = 0; t < n; t++) {
+      const o = t * 9
+      const mn = [0, 1, 2].map((a) => Math.min(tris[o + a], tris[o + 3 + a], tris[o + 6 + a]))
+      const mx = [0, 1, 2].map((a) => Math.max(tris[o + a], tris[o + 3 + a], tris[o + 6 + a]))
+      const i0 = this.idx(mn), i1 = this.idx(mx)
+      for (let x = i0[0]; x <= i1[0]; x++)
+        for (let y = i0[1]; y <= i1[1]; y++)
+          for (let z = i0[2]; z <= i1[2]; z++) {
+            const k = (z * res + y) * res + x
+            ;(this.cells[k] || (this.cells[k] = [])).push(o)
+          }
+    }
+  }
+
+  idx(p) {
+    return [0, 1, 2].map((a) =>
+      Math.max(0, Math.min(this.res - 1, Math.floor((p[a] - this.lo[a]) / this.cell[a]))))
+  }
+
+  // Distance to the nearest hit within maxDist, or -1 for a clear line.
+  hitDistance(origin, dir, maxDist) {
+    const { res, cell, lo } = this
+    let cx = Math.floor((origin.x - lo[0]) / cell[0])
+    let cy = Math.floor((origin.y - lo[1]) / cell[1])
+    let cz = Math.floor((origin.z - lo[2]) / cell[2])
+    if (cx < 0 || cy < 0 || cz < 0 || cx >= res || cy >= res || cz >= res) return -1
+
+    const step = [Math.sign(dir.x) || 1, Math.sign(dir.y) || 1, Math.sign(dir.z) || 1]
+    const tDelta = [
+      Math.abs(cell[0] / (dir.x || 1e-12)),
+      Math.abs(cell[1] / (dir.y || 1e-12)),
+      Math.abs(cell[2] / (dir.z || 1e-12))
+    ]
+    const next = (c, s, a, oc) => {
+      const bound = lo[a] + (c + (s > 0 ? 1 : 0)) * cell[a]
+      return Math.abs((bound - oc) / ((a === 0 ? dir.x : a === 1 ? dir.y : dir.z) || 1e-12))
+    }
+    const tMax = [
+      next(cx, step[0], 0, origin.x),
+      next(cy, step[1], 1, origin.y),
+      next(cz, step[2], 2, origin.z)
+    ]
+
+    let travelled = 0
+    while (travelled <= maxDist) {
+      const bucket = this.cells[(cz * res + cy) * res + cx]
+      if (bucket) {
+        for (let b = 0; b < bucket.length; b++) {
+          const dist = this.rayTri(origin, dir, bucket[b])
+          if (dist > 1e-5 && dist <= maxDist) return dist
+        }
+      }
+      const axis = tMax[0] < tMax[1] ? (tMax[0] < tMax[2] ? 0 : 2) : (tMax[1] < tMax[2] ? 1 : 2)
+      travelled = tMax[axis]
+      tMax[axis] += tDelta[axis]
+      if (axis === 0) { cx += step[0]; if (cx < 0 || cx >= res) break }
+      else if (axis === 1) { cy += step[1]; if (cy < 0 || cy >= res) break }
+      else { cz += step[2]; if (cz < 0 || cz >= res) break }
+    }
+    return -1
+  }
+
+  // Möller–Trumbore, without the back-face cull: the scan is a single shell we
+  // stand inside, so both faces of it can shadow.
+  rayTri(o, d, t) {
+    const T = this.tris
+    const ax = T[t], ay = T[t + 1], az = T[t + 2]
+    const e1x = T[t + 3] - ax, e1y = T[t + 4] - ay, e1z = T[t + 5] - az
+    const e2x = T[t + 6] - ax, e2y = T[t + 7] - ay, e2z = T[t + 8] - az
+    const px = d.y * e2z - d.z * e2y, py = d.z * e2x - d.x * e2z, pz = d.x * e2y - d.y * e2x
+    const det = e1x * px + e1y * py + e1z * pz
+    if (Math.abs(det) < 1e-12) return -1
+    const inv = 1 / det
+    const tx = o.x - ax, ty = o.y - ay, tz = o.z - az
+    const u = (tx * px + ty * py + tz * pz) * inv
+    if (u < 0 || u > 1) return -1
+    const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x
+    const v = (d.x * qx + d.y * qy + d.z * qz) * inv
+    if (v < 0 || u + v > 1) return -1
+    return (e2x * qx + e2y * qy + e2z * qz) * inv
+  }
+}
+
+// ═══════════════════════════ the wet flesh look ════════════════════════════
+//
+//  Three changes turn the scan from painted clay into living tissue:
+//
+//  * a clear coat, which is what saliva actually is — a thin specular film
+//    over a rough diffuse surface, so highlights sit *on* the flesh rather
+//    than in it;
+//  * subsurface backscatter, faked with a rim term, because real tissue is
+//    translucent and glows warm where it thins out at an edge;
+//  * the baked occlusion above, multiplied in through vertex colours.
+//
+// Fine relief, tiled far denser than the scan's own normal map. The capture
+// resolves folds but nothing below them, so up close — which at crumb scale is
+// always — every surface reads as smooth plastic. This is the papillae on the
+// tongue and the grain of mucosa: too small to identify, but their absence is
+// exactly what makes a scan look like a scan.
+function tissueBump() {
+  const S = 256
+  const c = document.createElement('canvas')
+  c.width = c.height = S
+  const ctx = c.getContext('2d')
+  const img = ctx.createImageData(S, S)
+
+  // Value noise summed over three octaves, wrapped so the tile repeats cleanly.
+  const rand = (x, y) => {
+    const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+    return n - Math.floor(n)
+  }
+  const octave = (x, y, f) => {
+    const xf = (x * f) % f, yf = (y * f) % f
+    const x0 = Math.floor(xf), y0 = Math.floor(yf)
+    const tx = xf - x0, ty = yf - y0
+    const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty)
+    const a = rand(x0 % f, y0 % f), b = rand((x0 + 1) % f, y0 % f)
+    const d = rand(x0 % f, (y0 + 1) % f), e = rand((x0 + 1) % f, (y0 + 1) % f)
+    return (a + (b - a) * sx) + ((d + (e - d) * sx) - (a + (b - a) * sx)) * sy
+  }
+
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const u = x / S, v = y / S
+      const n = octave(u, v, 8) * 0.5 + octave(u, v, 19) * 0.32 + octave(u, v, 47) * 0.18
+      const g = Math.round(THREE.MathUtils.clamp(n, 0, 1) * 255)
+      const i = (y * S + x) * 4
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = g
+      img.data[i + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+
+  const tex = new THREE.CanvasTexture(c)
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.repeat.set(38, 38)
+  return tex
+}
+
+function makeFleshMaterial(mesh) {
+  const old = mesh.material
+  const mat = new THREE.MeshPhysicalMaterial({
+    map: old.map,
+    normalMap: old.normalMap,
+    normalScale: old.normalScale,
+    roughnessMap: old.roughnessMap,
+    metalnessMap: old.metalnessMap,
+    side: THREE.DoubleSide,
+    vertexColors: true,          // the occlusion bake
+    // Flesh and enamel are both dielectric. The glTF defaults left metalness at
+    // 1.0 multiplied by the packed map, which was quietly greying everything.
+    metalness: 0,
+    roughness: 1.0,          // let the baked roughness map decide
+    bumpMap: tissueBump(),
+    bumpScale: 0.085,
+    envMapIntensity: 0.45,
+    // Saliva.
+    clearcoat: 0.25,
+    clearcoatRoughness: 0.45,
+    // No sheen lobe: it is one of the pricier things you can ask a fragment
+    // shader for, and the subsurface rim below covers the same ground.
+  })
+
+  mat.userData.uniforms = {
+    uSSS: { value: 0.30 },
+    uSSSColor: { value: new THREE.Color(0xc4414f) },
+    uTime: { value: 0 }
+  }
+
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, mat.userData.uniforms)
+    // Add a view-dependent rim of warm light. Where the surface turns away from
+    // you — the edge of the tongue, the rim of a fold — light that entered the
+    // tissue nearby scatters back out, and that red bleed is most of what makes
+    // flesh look like flesh rather than plastic.
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', `
+        uniform float uSSS;
+        uniform vec3 uSSSColor;
+        void main() {`)
+      .replace('#include <opaque_fragment>', `
+        {
+          vec3 vN = normalize(normal);
+          vec3 vV = normalize(vViewPosition);
+          float rim = pow(1.0 - abs(dot(vN, vV)), 2.5);
+          // Scale by the albedo so teeth stay bone-coloured while gums bleed red.
+          outgoingLight += uSSSColor * rim * uSSS * diffuseColor.rgb;
+        }
+        #include <opaque_fragment>`)
+  }
+
+  mesh.material = mat
+  old.dispose()
+
+  const maxAniso = renderer.capabilities.getMaxAnisotropy()
+  for (const key of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'bumpMap']) {
+    if (mat[key]) { mat[key].anisotropy = maxAniso; mat[key].needsUpdate = true }
+  }
+  fleshMaterial = mat
+}
+
+let fleshMaterial = null
 
 // ═══════════════════════ mapping the open air inside ═══════════════════════
 //
@@ -943,6 +1339,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') setFly(!player.fly)
   if (e.code === 'KeyL') setLamp(!lampOn)
   if (e.code === 'KeyT' || e.code === 'Enter') nextStop()
+  if (e.code === 'KeyG') setDetail(!detailOn)
   if (e.code === 'Escape') hidePanel()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
@@ -1279,6 +1676,17 @@ renderer.setAnimationLoop(() => {
     a.needsUpdate = true
   }
 
+  // Breathing. A real mouth is never still, and a few millimetres of swell at
+  // the rate of a resting breath is enough that the whole space stops reading
+  // as a museum cast. Applied to the model rather than to `world`, so the
+  // cavity map and the markers stay put.
+  if (modelRoot) {
+    const breath = Math.sin(t * 0.68)
+    modelRoot.scale.set(1 + breath * 0.004, 1 + breath * 0.0055, 1 + breath * 0.004)
+    modelRoot.rotation.x = breath * 0.0035
+  }
+  if (fleshMaterial) fleshMaterial.userData.uniforms.uTime.value = t
+
   if (snapCooldown > 0) snapCooldown -= dt
   renderer.render(scene, camera)
 })
@@ -1300,12 +1708,27 @@ function readTouch(dt) {
 }
 
 // ─────────────────────── input: XR controllers ─────────────────────────────
+// Face buttons, edge-triggered. Without these the tour and the quality switch
+// live only on DOM chips, which do not exist once you are inside a headset.
+const buttonWasDown = { left: [], right: [] }
+function pressed(hand, gp, i) {
+  const now = !!gp.buttons[i]?.pressed
+  const was = buttonWasDown[hand][i]
+  buttonWasDown[hand][i] = now
+  return now && !was
+}
+
 function readGamepads(dt) {
   const session = renderer.xr.getSession()
   if (!session) return
   for (const src of session.inputSources) {
     const gp = src.gamepad
-    if (!gp || gp.axes.length < 4) continue
+    if (!gp) continue
+    const hand = src.handedness === 'right' ? 'right' : 'left'
+    // A / X advances the tour; B / Y drops the expensive shading.
+    if (pressed(hand, gp, 4)) nextStop()
+    if (pressed(hand, gp, 5)) setDetail(!detailOn)
+    if (gp.axes.length < 4) continue
     const x = deadzone(gp.axes[2]), y = deadzone(gp.axes[3])
     if (src.handedness === 'right') {
       // Right stick: snap turn, and (in fly mode) altitude.
@@ -1411,14 +1834,14 @@ const KEYMAP = TOUCH ? [
   ['Look', 'Drag anywhere else'],
   ['Tour', 'Tap Tour for the next stop'],
   ['Inspect', 'Tap a glowing marker'],
-  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect']
+  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect · A/X next stop · B/Y detail']
 ] : [
   ['Move', 'W A S D'],
   ['Look', 'Drag with the mouse'],
   ['Fly', 'F (then Space / Shift)'],
   ['Tour', 'T — next stop'],
   ['Inspect', 'Click a glowing marker'],
-  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect']
+  ['In VR', 'Left stick move · right stick turn · grip to fly · trigger to inspect · A/X next stop · B/Y detail']
 ]
 
 const dl = document.getElementById('keys')
@@ -1441,17 +1864,40 @@ function setFly(on) {
     if (s) { player.pos.y = standHeight(s); rig.position.copy(player.pos) }
   }
 }
-// Inverse-square falloff means the lamp has to grow with the world, otherwise
-// growing to giant size leaves everything pitch black.
+// Inverse-square falloff means every point light has to grow with the world,
+// otherwise growing to giant size leaves everything pitch black.
 function applyLamp() {
-  lamp.intensity = lampOn ? LAMP_POWER * (worldScale / DEFAULT_SCALE) ** 2 : 0
+  const k = (worldScale / DEFAULT_SCALE) ** 2
+  lamp.intensity = lampOn ? LAMP_POWER * k : 0
+  opening.intensity = OPENING_POWER * k
+  // Well outside the lips rather than sitting on the tongue. Distance is the
+  // whole trick: close in, inverse-square blows out whatever is nearest and
+  // leaves the rest black; stood back, the same falloff spans the mouth as a
+  // gentle three-to-one gradient from the incisors to the throat.
+  opening.position.set(0, 0.45 * worldScale, 1.5 * worldScale)
 }
 function setLamp(on) { lampOn = on; applyLamp(); chip('cLamp', on) }
+
+// The wet look — clear coat, image-based reflections, subsurface rim — is the
+// most expensive thing on screen, and every pixel of a headset's display is
+// covered by it. This is the escape hatch if the frame rate suffers on an
+// older device; the geometry and the baked occlusion stay either way.
+let detailOn = true
+function setDetail(on) {
+  detailOn = on
+  chip('cDetail', on)
+  if (!fleshMaterial) return
+  fleshMaterial.clearcoat = on ? 0.25 : 0
+  fleshMaterial.envMapIntensity = on ? 0.45 : 0.18
+  fleshMaterial.userData.uniforms.uSSS.value = on ? 0.30 : 0.16
+  fleshMaterial.needsUpdate = true
+}
 
 document.getElementById('cMode').onclick = () => setFly(!player.fly)
 document.getElementById('cLamp').onclick = () => setLamp(!lampOn)
 document.getElementById('cSound').onclick = () => setSound(!soundOn)
 document.getElementById('cTour').onclick = nextStop
+document.getElementById('cDetail').onclick = () => setDetail(!detailOn)
 document.getElementById('scale').oninput = (e) => setScale(parseFloat(e.target.value))
 document.getElementById('enterVR').onclick = enterVR
 document.getElementById('enterDesktop').onclick = () => { beginExperience() }
@@ -1503,6 +1949,8 @@ window.MOUTH = {
   scene, renderer, camera, rig, player, setScale, goToStop, STOPS,
   get cavity() { return cavity },
   get mesh() { return mouthMesh },
+  get material() { return fleshMaterial },
+  lights: { get opening() { return opening }, get lamp() { return lamp }, get ambient() { return ambient } },
   get albedo() { return albedo },
   isEnamel,
   get travelling() { return !!travel }

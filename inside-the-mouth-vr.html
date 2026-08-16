@@ -155,6 +155,7 @@
     <button class="chip" id="cSound" aria-pressed="false">🔊 Sound</button>
     <button class="chip" id="cTour">🧭 Tour</button>
     <button class="chip" id="cDetail" aria-pressed="true">✨ Detail</button>
+    <button class="chip" id="cPhoto" aria-pressed="false">📷 Photo</button>
   </div>
 </div>
 
@@ -426,6 +427,10 @@ async function onLoaded(gltf) {
   await nextFrame()
   bakeOcclusion(mouthMesh)
   makeFleshMaterial(mouthMesh)
+
+  setStatus('Projecting the photograph…')
+  await nextFrame()
+  if (await loadProjection(mouthMesh)) applyProjection()
 
   buildHotspots()
   applyLamp()
@@ -709,6 +714,151 @@ function tissueBump() {
   return tex
 }
 
+// ═══════════════════════ photographic projection ═══════════════════════════
+//
+//  A real photograph carries detail no generated texture will match, but it
+//  only knows about one viewpoint. So we treat it as a slide projector: stand
+//  a virtual camera where the photographer stood, project the image onto the
+//  mesh from there, and blend it over the base texture wherever the surface
+//  genuinely faces the lens.
+//
+//  Three tests decide whether a fragment takes the photo:
+//    * it falls inside the frame (with a soft edge, so there is no hard seam);
+//    * its surface turns towards the projector rather than away;
+//    * nothing nearer to the projector is blocking it — otherwise the uvula
+//      paints itself onto the throat wall behind it. That needs a depth map
+//      rendered from the projector, exactly like a shadow map.
+//
+//  Geometry here is static, so the depth map is rendered once at load.
+const PHOTO_URL = './assets/mouth-photo.webp'
+
+const projector = {
+  // Off until the mesh matches the photograph. Projection only works when the
+  // geometry it lands on is the geometry the picture was taken of; against the
+  // current scan the photo's molars come down across the tongue. The Meshy
+  // sculpt generated from this same image lines up by construction — when that
+  // arrives, this is a tuning job rather than a rebuild.
+  enabled: false,
+  // All in centred model space. Tuned against the mesh — see alignProjector().
+  from: new THREE.Vector3(0, 0.14, 0.62),
+  at: new THREE.Vector3(0, 0.08, -0.30),
+  fov: 62,
+  aspect: 1672 / 941,
+  strength: 0.9,
+  camera: null,
+  matrix: new THREE.Matrix4(),
+  depthTarget: null,
+  texture: null
+}
+
+function loadProjection(mesh) {
+  return new Promise((resolve) => {
+    new THREE.TextureLoader().load(
+      PHOTO_URL,
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+        // Clamp, so anything outside the frame samples the edge rather than
+        // tiling a second mouth across the cheeks.
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping
+        projector.texture = tex
+        projector.aspect = tex.image.width / tex.image.height
+        buildProjector(mesh)
+        projector.enabled = true
+        resolve(true)
+      },
+      undefined,
+      () => resolve(false)      // no photo bundled: carry on without it
+    )
+  })
+}
+
+function buildProjector(mesh) {
+  const cam = new THREE.PerspectiveCamera(projector.fov, projector.aspect, 0.02, 6)
+  cam.position.copy(projector.from)
+  cam.lookAt(projector.at)
+  cam.updateMatrixWorld(true)
+  cam.updateProjectionMatrix()
+  projector.camera = cam
+
+  // mesh-local → centred model space → projector clip space.
+  const offset = new THREE.Matrix4().makeTranslation(
+    mesh.parent.position.x, mesh.parent.position.y, mesh.parent.position.z)
+  projector.matrix
+    .copy(cam.projectionMatrix)
+    .multiply(cam.matrixWorldInverse)
+    .multiply(offset)
+
+  renderProjectorDepth(mesh, cam)
+}
+
+// Render the mesh from the projector's point of view and keep the depth, so
+// the shader can tell lit-by-the-photo from hidden-behind-something.
+function renderProjectorDepth(mesh, cam) {
+  const size = 1024
+  const target = new THREE.WebGLRenderTarget(size, Math.round(size / projector.aspect), {
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    format: THREE.RGBAFormat,
+    type: THREE.UnsignedByteType
+  })
+
+  // The projector is defined in centred model space, so flatten the world
+  // scale for the duration of the render — otherwise the camera would be
+  // sitting a ninth of the way into the tongue.
+  const savedScale = world.scale.clone()
+  world.scale.set(1, 1, 1)
+  world.updateMatrixWorld(true)
+
+  const hidden = []
+  scene.traverse((o) => {
+    if (o !== mesh && (o.isMesh || o.isPoints || o.isSprite || o.isLine) && o.visible) {
+      hidden.push(o); o.visible = false
+    }
+  })
+  const depthMaterial = new THREE.MeshDepthMaterial({
+    depthPacking: THREE.RGBADepthPacking,
+    side: THREE.DoubleSide
+  })
+  const prevOverride = scene.overrideMaterial
+  const prevTarget = renderer.getRenderTarget()
+
+  scene.overrideMaterial = depthMaterial
+  renderer.setRenderTarget(target)
+  renderer.setClearColor(0xffffff, 1)   // "nothing here" = maximum depth
+  renderer.clear()
+  renderer.render(scene, cam)
+
+  renderer.setRenderTarget(prevTarget)
+  scene.overrideMaterial = prevOverride
+  renderer.setClearColor(0x000000, 0)
+  depthMaterial.dispose()
+  for (const o of hidden) o.visible = true
+  world.scale.copy(savedScale)
+  world.updateMatrixWorld(true)
+
+  if (projector.depthTarget) projector.depthTarget.dispose()
+  projector.depthTarget = target
+}
+
+// Re-aim the projector at runtime (used while tuning the fit against a mesh).
+function alignProjector(opts = {}) {
+  if (opts.from) projector.from.fromArray(opts.from)
+  if (opts.at) projector.at.fromArray(opts.at)
+  if (opts.fov) projector.fov = opts.fov
+  if (opts.strength !== undefined) projector.strength = opts.strength
+  if (!mouthMesh) return
+  buildProjector(mouthMesh)
+  if (fleshMaterial) {
+    const u = fleshMaterial.userData.uniforms
+    u.uProjMatrix.value.copy(projector.matrix)
+    u.uProjPos.value.copy(projector.from)
+    u.uProjDepth.value = projector.depthTarget.texture
+    u.uProjStrength.value = projector.enabled && photoOn ? projector.strength : 0
+  }
+}
+
+
 function makeFleshMaterial(mesh) {
   const old = mesh.material
   const mat = new THREE.MeshPhysicalMaterial({
@@ -736,20 +886,68 @@ function makeFleshMaterial(mesh) {
   mat.userData.uniforms = {
     uSSS: { value: 0.30 },
     uSSSColor: { value: new THREE.Color(0xc4414f) },
-    uTime: { value: 0 }
+    uTime: { value: 0 },
+    uProjMatrix: { value: new THREE.Matrix4() },
+    uProjPos: { value: new THREE.Vector3() },
+    uProjMap: { value: null },
+    uProjDepth: { value: null },
+    uProjStrength: { value: 0 }
   }
 
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, mat.userData.uniforms)
-    // Add a view-dependent rim of warm light. Where the surface turns away from
-    // you — the edge of the tongue, the rim of a fold — light that entered the
-    // tissue nearby scatters back out, and that red bleed is most of what makes
-    // flesh look like flesh rather than plastic.
+
+    // The photo is projected in the *vertex* stage's local space, so it stays
+    // welded to the anatomy no matter how the world is scaled or breathed on.
+    shader.vertexShader = shader.vertexShader
+      .replace('void main() {', `
+        varying vec3 vLocalPos;
+        varying vec3 vLocalNormal;
+        void main() {`)
+      .replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        vLocalPos = transformed;
+        vLocalNormal = objectNormal;`)
+
     shader.fragmentShader = shader.fragmentShader
       .replace('void main() {', `
         uniform float uSSS;
         uniform vec3 uSSSColor;
+        uniform mat4 uProjMatrix;
+        uniform vec3 uProjPos;
+        uniform sampler2D uProjMap;
+        uniform sampler2D uProjDepth;
+        uniform float uProjStrength;
+        varying vec3 vLocalPos;
+        varying vec3 vLocalNormal;
         void main() {`)
+      // Blend the photograph in before lighting, so it behaves as albedo and
+      // still picks up the lamp, the occlusion bake and everything else.
+      .replace('#include <color_fragment>', `
+        #include <color_fragment>
+        if (uProjStrength > 0.001) {
+          vec4 clip = uProjMatrix * vec4(vLocalPos, 1.0);
+          if (clip.w > 0.0) {
+            vec3 ndc = clip.xyz / clip.w;
+            vec2 uv = ndc.xy * 0.5 + 0.5;
+            if (all(greaterThan(uv, vec2(0.0))) && all(lessThan(uv, vec2(1.0)))) {
+              // Facing test: a surface angled away from the lens receives a
+              // smeared, stretched slice of the image, so fade it out.
+              vec3 toLens = normalize(uProjPos - vLocalPos);
+              float facing = smoothstep(0.15, 0.55, dot(normalize(vLocalNormal), toLens));
+              // Occlusion test against the projector's own depth map: without
+              // it the uvula repaints itself on the wall behind it.
+              float here = ndc.z * 0.5 + 0.5;
+              float front = unpackRGBAToDepth(texture2D(uProjDepth, uv));
+              float unblocked = step(here - 0.0035, front);
+              // Soft frame edge, so the photo dissolves instead of ending.
+              vec2 edge = smoothstep(0.0, 0.08, uv) * smoothstep(0.0, 0.08, 1.0 - uv);
+              float w = uProjStrength * facing * unblocked * edge.x * edge.y;
+              vec4 shot = texture2D(uProjMap, uv);
+              diffuseColor.rgb = mix(diffuseColor.rgb, shot.rgb, w);
+            }
+          }
+        }`)
       .replace('#include <opaque_fragment>', `
         {
           vec3 vN = normalize(normal);
@@ -772,6 +970,24 @@ function makeFleshMaterial(mesh) {
 }
 
 let fleshMaterial = null
+let photoOn = false
+
+// Push the current projector state into the material.
+function applyProjection() {
+  if (!fleshMaterial || !projector.texture) return
+  const u = fleshMaterial.userData.uniforms
+  u.uProjMatrix.value.copy(projector.matrix)
+  u.uProjPos.value.copy(projector.from)
+  u.uProjMap.value = projector.texture
+  u.uProjDepth.value = projector.depthTarget.texture
+  u.uProjStrength.value = photoOn ? projector.strength : 0
+}
+
+function setPhoto(on) {
+  photoOn = on
+  chip('cPhoto', on)
+  applyProjection()
+}
 
 // ═══════════════════════ mapping the open air inside ═══════════════════════
 //
@@ -1340,6 +1556,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyL') setLamp(!lampOn)
   if (e.code === 'KeyT' || e.code === 'Enter') nextStop()
   if (e.code === 'KeyG') setDetail(!detailOn)
+  if (e.code === 'KeyP') setPhoto(!photoOn)
   if (e.code === 'Escape') hidePanel()
 })
 addEventListener('keyup', (e) => keys.delete(e.code))
@@ -1898,6 +2115,7 @@ document.getElementById('cLamp').onclick = () => setLamp(!lampOn)
 document.getElementById('cSound').onclick = () => setSound(!soundOn)
 document.getElementById('cTour').onclick = nextStop
 document.getElementById('cDetail').onclick = () => setDetail(!detailOn)
+document.getElementById('cPhoto').onclick = () => setPhoto(!photoOn)
 document.getElementById('scale').oninput = (e) => setScale(parseFloat(e.target.value))
 document.getElementById('enterVR').onclick = enterVR
 document.getElementById('enterDesktop').onclick = () => { beginExperience() }
@@ -1953,7 +2171,8 @@ window.MOUTH = {
   lights: { get opening() { return opening }, get lamp() { return lamp }, get ambient() { return ambient } },
   get albedo() { return albedo },
   isEnamel,
-  get travelling() { return !!travel }
+  get travelling() { return !!travel },
+  projector, alignProjector, setPhoto
 }
 </script>
 </body>

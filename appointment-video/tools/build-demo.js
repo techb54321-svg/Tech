@@ -640,7 +640,9 @@ ${playerJs}
 
       const next = () => (n < DEMO.scenes.length - 1 ? showScene(n + 1) : schedule(1600, showTitle));
 
-      if (sound && window.speechSynthesis) {
+      // Speak only when the film is actually running, sound is on, and
+      // someone is looking (hidden tabs stay quiet).
+      if (running && sound && !document.hidden && window.speechSynthesis) {
         const u = new SpeechSynthesisUtterance(narr);
         const vLang = (LANG_META[lang] || {}).tts || "en-US";
         u.lang = lang === "en" ? "en-US" : vLang;
@@ -649,11 +651,16 @@ ${playerJs}
         const watchdog = setTimeout(() => { if (my === token && running) next(); }, Math.min(11000, 3000 + narr.length * 65) + 1500);
         u.onstart = () => { if (my === token) duckScore(true); };
         u.onboundary = (e) => { if (my === token) karaokeMark(spans, e.charIndex || 0); };
-        u.onend = () => { clearTimeout(watchdog); karaokeMark(spans, Infinity); duckScore(false); if (my === token && running) setTimeout(next, 800); };
-        u.onerror = () => { clearTimeout(watchdog); narrEl.classList.add("all-said"); duckScore(false); if (my === token && running) setTimeout(next, readMs); };
+        // Both delays go through schedule(), which re-checks token and
+        // running when the timer FIRES — so pausing right after a line
+        // ends really pauses. A cancelled older utterance (my !== token)
+        // must not touch the new scene's line at all.
+        u.onend = () => { clearTimeout(watchdog); if (my !== token) return; karaokeMark(spans, Infinity); duckScore(false); if (running) schedule(800, next); };
+        u.onerror = () => { clearTimeout(watchdog); if (my !== token) return; narrEl.classList.add("all-said"); duckScore(false); if (running) schedule(readMs, next); };
         try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { schedule(readMs, next); }
       } else {
-        schedule(readMs, next);
+        narrEl.classList.add("all-said");
+        if (running) schedule(readMs, next);
       }
     }
 

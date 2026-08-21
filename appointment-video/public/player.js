@@ -133,6 +133,10 @@ function renderScene() {
   $("caption-en").textContent = scene.caption;
   $("caption-en").hidden = !translated;
 
+  // Hide the previous scene's narration line; the next speak rebuilds it.
+  // (Without this, flipping scenes while paused shows stale narration.)
+  $("narr-line").hidden = true;
+
   // The "why this?" quote. The closing reminder is written by the app,
   // so we must not present it as something the doctor said.
   $("why-label").textContent = scene.app_note
@@ -199,12 +203,20 @@ let scoreGain = null;   // master volume for the music
 let scoreTimer = null;  // schedules the next pluck
 const SCORE_NOTES = [261.6, 329.6, 392.0, 440.0, 523.3, 659.3]; // C4 pentatony, gentle
 
+let scoreBus = null; // where the plucks play into, ahead of the echo
+
 function ensureScoreGraph() {
   audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === "suspended") audioCtx.resume();
   if (scoreGain) return;
+  // Everything — dry notes AND their echo — flows out through scoreGain,
+  // so ducking and stopping govern the echo tail too.
   scoreGain = audioCtx.createGain();
   scoreGain.gain.value = 0.05;
+  scoreGain.connect(audioCtx.destination);
+  scoreBus = audioCtx.createGain();
+  scoreBus.gain.value = 1;
+  scoreBus.connect(scoreGain);
   // a soft echo: delay fed back into itself through a lowpass
   const delay = audioCtx.createDelay(1.0);
   delay.delayTime.value = 0.42;
@@ -213,12 +225,11 @@ function ensureScoreGraph() {
   const soften = audioCtx.createBiquadFilter();
   soften.type = "lowpass";
   soften.frequency.value = 1600;
-  scoreGain.connect(audioCtx.destination);
-  scoreGain.connect(delay);
+  scoreBus.connect(delay);
   delay.connect(soften);
   soften.connect(feedback);
   feedback.connect(delay);
-  soften.connect(audioCtx.destination);
+  soften.connect(scoreGain);
 }
 
 function pluck() {
@@ -234,7 +245,7 @@ function pluck() {
     env.gain.setValueAtTime(0.0001, t);
     env.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
     env.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
-    osc.connect(env).connect(scoreGain);
+    osc.connect(env).connect(scoreBus);
     osc.start(t);
     osc.stop(t + 1.5);
   } catch { /* never break playback over music */ }
@@ -435,7 +446,12 @@ function speakCurrentScene() {
   // Safety net: if the browser never starts speaking (e.g. no voice for
   // this language), fall back to a simple timer — minus the time we
   // already waited, so the scene and its timeline segment end together.
-  const watchdog = setTimeout(() => advance(Math.max(0, fallbackMs - 1500)), 1500);
+  const watchdog = setTimeout(() => {
+    // The voice never started — light the whole narration line so it
+    // doesn't sit dimmed for the rest of the scene.
+    if (token === speakToken) narrEl.classList.add("all-said");
+    advance(Math.max(0, fallbackMs - 1500));
+  }, 1500);
   utter.onstart = () => {
     clearTimeout(watchdog);
     // If the voice took so long to start that the watchdog already armed
@@ -456,6 +472,9 @@ function speakCurrentScene() {
   };
   utter.onerror = () => {
     clearTimeout(watchdog);
+    // Cancelling speech (pause, skipping ahead) fires an error on the OLD
+    // utterance — which must not touch the NEW scene's narration line.
+    if (token !== speakToken) return;
     narrEl.classList.add("all-said");
     duckScore(false);
     advance(fallbackMs);

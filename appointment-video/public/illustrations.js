@@ -50,9 +50,13 @@ const BOIL_DEFS = [7, 31, 53]
 // slow push-in moves toward (styles.css reads the --cam variables).
 function svgWrap(inner, cam = "180 101 1.22") {
   const [cx, cy, cs] = cam.split(" ");
+  // The focal point is written as percentages of the frame, so the
+  // camera aims at the same spot whatever size the stage renders at.
+  const px = ((cx / 360) * 100).toFixed(2);
+  const py = ((cy / 202) * 100).toFixed(2);
   return (
     `<svg viewBox="0 0 360 202" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid slice"` +
-    ` style="--camx:${cx}px;--camy:${cy}px;--cams:${cs}">` +
+    ` style="--camx:${px}%;--camy:${py}%;--cams:${cs}">` +
     `<defs>${BOIL_DEFS}</defs>` +
     `<g class="ink" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">` +
     inner +

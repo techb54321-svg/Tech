@@ -247,6 +247,24 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
 @keyframes cam-push { from { transform: scale(1); } to { transform: scale(var(--cams, 1.25)); } }
 @keyframes cam-settle { from { transform: scale(var(--cams, 1.25)); } to { transform: scale(1.02); } }
 
+/* Parallax: while the camera moves, the far layer resists it and the
+   near layer exaggerates it, so the scene has real depth. Origins use
+   the same focal point as the camera. */
+.layer-bg, .layer-mid, .layer-fg {
+  transform-box: view-box;
+  transform-origin: var(--camx, 50%) var(--camy, 50%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .scene-layer svg.kb-zoom .layer-bg { animation: par-in-bg 10s cubic-bezier(.32,.08,.24,1) both; }
+  .scene-layer svg.kb-zoom .layer-fg { animation: par-in-fg 10s cubic-bezier(.32,.08,.24,1) both; }
+  .scene-layer svg.kb-drift .layer-bg { animation: par-out-bg 10s cubic-bezier(.32,.08,.24,1) both; }
+  .scene-layer svg.kb-drift .layer-fg { animation: par-out-fg 10s cubic-bezier(.32,.08,.24,1) both; }
+}
+@keyframes par-in-bg { from { transform: scale(1); } to { transform: scale(0.94); } }
+@keyframes par-in-fg { from { transform: scale(1); } to { transform: scale(1.07); } }
+@keyframes par-out-bg { from { transform: scale(0.94); } to { transform: scale(1); } }
+@keyframes par-out-fg { from { transform: scale(1.07); } to { transform: scale(1.01); } }
+
 /* The hand-drawn "line boil": flip between the three wobble filters
    a few times a second. Under reduced motion the first filter holds —
    the drawing keeps its hand-made warp but stays still. */

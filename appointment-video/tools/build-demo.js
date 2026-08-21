@@ -45,16 +45,6 @@ const DEMO_DATA = JSON.stringify({
   scenes,
 });
 
-// The hero "preview reel" cycles through a handful of scenes, each
-// shown in a different language in turn — so a visitor sees the whole
-// idea (pictures, captions, translation) before touching anything.
-const HERO_SCENES = JSON.stringify(
-  content.demoResult.scenes.slice(0, 5).map((s, i) => ({
-    illustration: s.illustration,
-    caption: s.caption,
-    lang: ["en", "vi", "ar", "zh", "en"][i % 5],
-  }))
-);
 
 // The charset declaration matters: without it, a plain static host can
 // serve the file without an encoding and the Vietnamese/Arabic/Chinese
@@ -161,34 +151,77 @@ body {
 }
 @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ---------- Ambient preview reel ---------- */
-.reel {
-  display: flex; align-items: center; gap: 18px;
-  background: var(--page-card);
-  border: 1px solid var(--page-line);
-  border-radius: 22px;
-  padding: 16px 20px;
-  box-shadow: 0 1px 2px rgba(var(--page-shadow), 0.06), 0 18px 40px rgba(var(--page-shadow), 0.12);
-  max-width: 680px;
+/* ---------- The feature presentation ----------
+   The film itself, top of page, playing on its own the moment you
+   arrive. This is the product — everything else is footnotes. */
+.feature {
+  width: 100%; max-width: 760px;
+  background: radial-gradient(120% 90% at 50% 0%, #332b24, #241e19 65%);
+  border-radius: 26px;
+  padding: 14px 14px 16px;
+  box-shadow: 0 4px 10px rgba(var(--page-shadow), 0.25), 0 30px 70px rgba(var(--page-shadow), 0.4);
 }
-.reel-stage {
-  width: 148px; aspect-ratio: 360 / 202; flex: none;
-  border-radius: 12px;
-  background: #fbf5ea;
+.sc-stage {
+  position: relative;
+  aspect-ratio: 360 / 202;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: inset 0 0 14px rgba(58, 51, 48, 0.12);
+  background: #fbf5ea;
 }
-.reel-stage svg { width: 100%; height: 100%; display: block; }
-.reel-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.reel-caption { font-weight: 700; font-size: 1.08rem; min-height: 1.4em; }
-.reel-caption[dir="rtl"] { text-align: right; }
-.reel-lang {
-  font-size: 0.74rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
-  color: var(--page-muted);
+.sc-stage::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: 16px;
+  box-shadow: inset 0 0 50px rgba(58, 51, 48, 0.16);
 }
-@media (max-width: 560px) {
-  .reel { padding: 14px 16px; gap: 14px; }
-  .reel-stage { width: 108px; }
+.sc-title-card {
+  position: absolute; inset: 0; z-index: 2;
+  background: #fbf5ea;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  transition: opacity 450ms ease;
+}
+.sc-title-card.fade { opacity: 0; pointer-events: none; }
+.sc-title-card .tc-kicker {
+  margin: 0; font-size: 0.78rem; font-weight: 700;
+  letter-spacing: 2.4px; text-transform: uppercase; color: #a08d7c;
+}
+.sc-title-card .tc-title {
+  margin: 0; font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.5rem, 4vw, 2.3rem); font-weight: 600; color: #3a3330;
+}
+.sc-title-card .tc-rule {
+  width: 52px; height: 4px; border-radius: 2px;
+  background: #e2574c; margin-top: 12px;
+}
+.sc-sound {
+  position: absolute; right: 12px; bottom: 12px; z-index: 3;
+  border: none; border-radius: 999px; cursor: pointer;
+  padding: 9px 16px; font-family: inherit; font-weight: 800; font-size: 0.85rem;
+  background: rgba(36, 30, 25, 0.82); color: #f6ead8;
+  backdrop-filter: blur(3px);
+}
+.sc-sound:hover { background: rgba(36, 30, 25, 0.95); }
+.sc-captions { min-height: 4.6em; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 12px 10px 2px; text-align: center; }
+.sc-caption {
+  margin: 0; color: #f6ead8; font-weight: 700;
+  font-size: clamp(1.1rem, 2.6vw, 1.45rem); line-height: 1.35; text-wrap: balance;
+}
+.sc-caption-en { margin: 0; color: #b3a291; font-size: 0.88rem; }
+.sc-bar { display: flex; gap: 5px; margin: 10px 6px 4px; }
+.sc-bar button { flex: 1; height: 24px; background: none; border: none; padding: 10px 0; cursor: pointer; }
+.sc-bar .seg { display: block; height: 4px; border-radius: 2px; background: rgba(246, 234, 216, 0.22); overflow: hidden; }
+.sc-bar .fill { display: block; height: 100%; width: 0; background: #e2574c; border-radius: 2px; }
+.sc-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 6px 0; flex-wrap: wrap; }
+.sc-langs { display: flex; gap: 6px; flex-wrap: wrap; }
+.sc-langs button {
+  border: 1.5px solid rgba(246, 234, 216, 0.35); background: none; cursor: pointer;
+  color: #f6ead8; font-family: inherit; font-weight: 700; font-size: 0.82rem;
+  padding: 6px 12px; border-radius: 999px;
+}
+.sc-langs button.on { background: #e2574c; border-color: #e2574c; color: #fff; }
+.sc-pp {
+  border: 2px solid rgba(246, 234, 216, 0.4); background: none; cursor: pointer;
+  color: #f6ead8; width: 42px; height: 42px; border-radius: 50%; font-size: 0.95rem;
 }
 
 /* ---------- Notice ---------- */
@@ -279,14 +312,29 @@ ${appStyles
     <h1 class="display">Visit <span class="accent-word">Recap</span></h1>
     <p class="lede">A recording of a doctor's appointment, turned into a short animated
       film the patient and their family can actually understand — in their own language.</p>
-    <p class="sub">This page is the real app, running live. Watch it work below, then try it yourself.</p>
+    <p class="sub">This is that film, playing now. Tap for sound — it narrates. Switch the language while it plays.</p>
   </div>
 
-  <div class="reel" id="reel" aria-hidden="true">
-    <div class="reel-stage" id="reel-stage"></div>
-    <div class="reel-text">
-      <span class="reel-lang" id="reel-lang">English</span>
-      <span class="reel-caption" id="reel-caption"></span>
+  <!-- The film, playing by itself the moment the page opens. -->
+  <div class="feature" id="sc-cinema">
+    <div class="sc-stage" id="sc-stage">
+      <div class="scene-layer" id="sc-a"></div>
+      <div class="scene-layer" id="sc-b"></div>
+      <div class="sc-title-card" id="sc-title">
+        <p class="tc-kicker">Your appointment</p>
+        <p class="tc-title">The story of your visit</p>
+        <div class="tc-rule"></div>
+      </div>
+      <button class="sc-sound" id="sc-sound">&#128263; Tap for sound</button>
+    </div>
+    <div class="sc-captions">
+      <p class="sc-caption" id="sc-caption"></p>
+      <p class="sc-caption-en" id="sc-caption-en" hidden></p>
+    </div>
+    <div class="sc-bar" id="sc-bar" aria-label="Scenes"></div>
+    <div class="sc-row">
+      <div class="sc-langs" id="sc-langs"></div>
+      <button class="sc-pp" id="sc-pp" aria-label="Pause">&#9208;</button>
     </div>
   </div>
 
@@ -452,40 +500,174 @@ ${playerJs}
 </script>
 
 <script>
-// ---- Ambient hero preview reel: real scenes, real languages, on a loop ----
+// ---- The feature presentation: the film auto-plays on page load ----
+// Its own tiny player (separate from the phone's, which is the real
+// app code). Silent until tapped — browsers require a tap before any
+// page may speak — then the narration takes over the pacing.
 (function () {
-  const HERO = ${HERO_SCENES};
-  const LANG_NAMES = { en: "English", vi: "Ti\\u1EBFng Vi\\u1EC7t", ar: "\\u0627\\u0644\\u0639\\u0631\\u0628\\u064A\\u0629", zh: "\\u7B80\\u4F53\\u4E2D\\u6587" };
-  const LANG_DIR = { ar: "rtl" };
-  const stage = document.getElementById("reel-stage");
-  const captionEl = document.getElementById("reel-caption");
-  const langEl = document.getElementById("reel-lang");
-  let i = 0;
+  // DEMO and LANG_META are defined by later script tags, so all the work
+  // happens in boot(), which runs after every script has loaded.
+  function boot() {
+    const pick = (m) => (m && (m[lang] || m.en)) || "";
+    const layerA = document.getElementById("sc-a");
+    const layerB = document.getElementById("sc-b");
+    const titleEl = document.getElementById("sc-title");
+    const capEl = document.getElementById("sc-caption");
+    const capEnEl = document.getElementById("sc-caption-en");
+    const barEl = document.getElementById("sc-bar");
+    const langsEl = document.getElementById("sc-langs");
+    const soundBtn = document.getElementById("sc-sound");
+    const ppBtn = document.getElementById("sc-pp");
 
-  function show(index) {
-    const scene = HERO[index];
-    stage.innerHTML = illustrationSVG(scene.illustration);
-    captionEl.textContent = scene.caption[scene.lang] || scene.caption.en;
-    captionEl.dir = LANG_DIR[scene.lang] || "ltr";
-    langEl.textContent = LANG_NAMES[scene.lang] || "English";
-  }
-  show(0);
+    const LANG_LABELS = { en: "English", vi: "Ti\\u1EBFng Vi\\u1EC7t", ar: "\\u0627\\u0644\\u0639\\u0631\\u0628\\u064A\\u0629", zh: "\\u4E2D\\u6587" };
+    let lang = "en";
+    let i = -1;               // -1 = title card
+    let running = true;
+    let sound = false;
+    let timer = null;
+    let front = "b";
+    let token = 0;
 
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!reduceMotion) {
-    setInterval(function () {
-      i = (i + 1) % HERO.length;
-      captionEl.style.opacity = "0";
-      stage.style.opacity = "0";
-      setTimeout(function () {
-        show(i);
-        captionEl.style.transition = "opacity 260ms ease";
-        stage.style.transition = "opacity 260ms ease";
-        captionEl.style.opacity = "1";
-        stage.style.opacity = "1";
-      }, 220);
-    }, 3200);
+    // Language pills.
+    for (const code of ["en", "vi", "ar", "zh"]) {
+      const b = document.createElement("button");
+      b.textContent = LANG_LABELS[code];
+      b.className = code === "en" ? "on" : "";
+      b.addEventListener("click", () => {
+        lang = code;
+        [...langsEl.children].forEach((x) => x.classList.toggle("on", x === b));
+        if (i >= 0) showScene(i);      // re-say the current scene in the new language
+      });
+      langsEl.appendChild(b);
+    }
+
+    // Timeline segments (tap to jump).
+    DEMO.scenes.forEach((_, n) => {
+      const seg = document.createElement("button");
+      seg.setAttribute("aria-label", "Scene " + (n + 1));
+      seg.innerHTML = '<span class="seg"><span class="fill"></span></span>';
+      seg.addEventListener("click", () => { showScene(n); });
+      barEl.appendChild(seg);
+    });
+
+    function segFill(n, ms) {
+      [...barEl.children].forEach((b, k) => {
+        const f = b.querySelector(".fill");
+        f.style.transition = "none";
+        f.style.width = k < n ? "100%" : "0%";
+      });
+      const f = barEl.children[n] && barEl.children[n].querySelector(".fill");
+      if (!f || !running) return;
+      void f.offsetWidth;
+      f.style.transition = "width " + ms + "ms linear";
+      f.style.width = "100%";
+    }
+
+    function stopTalk() {
+      if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) {}
+    }
+
+    function schedule(ms, fn) {
+      clearTimeout(timer);
+      const my = ++token;
+      timer = setTimeout(() => { if (my === token && running) fn(); }, ms);
+    }
+
+    function showTitle() {
+      i = -1;
+      stopTalk();
+      titleEl.hidden = false;
+      titleEl.classList.remove("fade");
+      capEl.textContent = "";
+      capEnEl.hidden = true;
+      [...barEl.children].forEach((b) => {
+        const f = b.querySelector(".fill");
+        f.style.transition = "none"; f.style.width = "0%";
+      });
+      schedule(1800, () => showScene(0));
+    }
+
+    function showScene(n) {
+      i = n;
+      stopTalk();
+      titleEl.classList.add("fade");
+      const scene = DEMO.scenes[n];
+
+      // Crossfade to the fresh drawing (choreography restarts with it).
+      const back = front === "a" ? layerB : layerA;
+      const fore = front === "a" ? layerA : layerB;
+      back.innerHTML = illustrationSVG(scene.illustration);
+      back.querySelector("svg").classList.add(n % 2 ? "kb-drift" : "kb-zoom");
+      back.classList.add("front");
+      fore.classList.remove("front");
+      front = front === "a" ? "b" : "a";
+
+      // Captions: chosen language big, English small underneath.
+      const cap = pick(scene.caption);
+      capEl.textContent = cap;
+      capEl.dir = lang === "ar" ? "rtl" : "ltr";
+      capEnEl.textContent = scene.caption.en;
+      capEnEl.hidden = lang === "en";
+
+      // Timing: narration when sound is on, reading time when silent.
+      const narr = pick(scene.narration || scene.caption);
+      const readMs = Math.min(9000, 3400 + cap.length * 55);
+      segFill(n, sound ? Math.min(11000, 3000 + narr.length * 65) : readMs);
+
+      const next = () => (n < DEMO.scenes.length - 1 ? showScene(n + 1) : schedule(1600, showTitle));
+
+      if (sound && window.speechSynthesis) {
+        const u = new SpeechSynthesisUtterance(narr);
+        const vLang = (LANG_META[lang] || {}).tts || "en-US";
+        u.lang = lang === "en" ? "en-US" : vLang;
+        u.rate = 0.95;
+        const my = ++token;
+        const watchdog = setTimeout(() => { if (my === token && running) next(); }, Math.min(11000, 3000 + narr.length * 65) + 1500);
+        u.onend = () => { clearTimeout(watchdog); if (my === token && running) setTimeout(next, 800); };
+        u.onerror = () => { clearTimeout(watchdog); if (my === token && running) setTimeout(next, readMs); };
+        try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { schedule(readMs, next); }
+      } else {
+        schedule(readMs, next);
+      }
+    }
+
+    soundBtn.addEventListener("click", () => {
+      sound = !sound;
+      soundBtn.innerHTML = sound ? "&#128266; Sound on" : "&#128263; Tap for sound";
+      if (!sound) stopTalk();
+      if (running && i >= 0) showScene(i);   // restart the beat under the new setting
+      else if (running && i < 0) { /* title card: sound starts from scene 1 */ }
+    });
+
+    ppBtn.addEventListener("click", () => {
+      running = !running;
+      ppBtn.innerHTML = running ? "&#9208;" : "&#9654;";
+      ppBtn.setAttribute("aria-label", running ? "Pause" : "Play");
+      if (!running) { clearTimeout(timer); token++; stopTalk(); }
+      else if (i < 0) showTitle(); else showScene(i);
+    });
+
+    // Don't talk to an empty room: pause narration when the tab hides.
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopTalk();
+    });
+
+    // If someone starts the interactive phone below, bow out quietly —
+    // two films talking over each other helps nobody.
+    const phoneGen = document.getElementById("generate-btn");
+    if (phoneGen) phoneGen.addEventListener("click", () => {
+      if (running) {
+        running = false;
+        ppBtn.innerHTML = "&#9654;";
+        ppBtn.setAttribute("aria-label", "Play");
+        clearTimeout(timer); token++; stopTalk();
+      }
+    });
+
+    showTitle();
   }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
 
 // ---- A very light tilt on the phone mockup, following the pointer ----

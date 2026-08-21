@@ -5,7 +5,7 @@
 // safe). A demo page needs no server at all, so you can put it online
 // or open it on a phone and show people how it works.
 //
-// It uses the SAME drawings, styles and example appointment as the real
+// It embeds the SAME drawings, stylesheet and player code as the real
 // app, so what people see is genuinely the app — the only difference is
 // that it replays one prepared appointment instead of reading a new one.
 //
@@ -19,11 +19,12 @@ const ROOT = path.join(__dirname, "..");
 const read = (...p) => fs.readFileSync(path.join(ROOT, ...p), "utf8");
 
 const illustrations = read("public", "illustrations.js");
+const playerJs = read("public", "player.js");
 const appStyles = read("public", "styles.css");
 const content = JSON.parse(read("public", "content.json"));
 
-// Build the finished scene list once, exactly as the server would:
-// the prepared scenes, then the fixed closing reminder.
+// The full prepared "video": the scenes plus the fixed closing
+// reminder, with captions in every language (picked at play time).
 const scenes = content.demoResult.scenes.map((s) => ({
   illustration: s.illustration,
   excerpt: s.excerpt,
@@ -145,7 +146,6 @@ body {
 .hero .lede { font-size: 1.15rem; margin: 0; max-width: 58ch; color: var(--page-ink); }
 .hero .sub { color: var(--page-muted); margin: 0; font-size: 1rem; }
 
-/* Staggered entrance for the hero column. */
 @media (prefers-reduced-motion: no-preference) {
   .hero > * { animation: rise-in 640ms cubic-bezier(.16,.9,.28,1) both; }
   .hero .eyebrow { animation-delay: 0ms; }
@@ -156,30 +156,25 @@ body {
 @keyframes rise-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------- Ambient preview reel ---------- */
-/* A small "trailer" that cycles through real scenes and real languages,
-   so the idea reads instantly — before anyone taps a single button. */
 .reel {
   display: flex; align-items: center; gap: 18px;
   background: var(--page-card);
   border: 1px solid var(--page-line);
   border-radius: 22px;
-  padding: 18px 22px;
+  padding: 16px 20px;
   box-shadow: 0 1px 2px rgba(var(--page-shadow), 0.06), 0 18px 40px rgba(var(--page-shadow), 0.12);
-  max-width: 640px;
+  max-width: 680px;
 }
 .reel-stage {
-  width: 64px; height: 64px; flex: none;
-  border-radius: 16px;
-  background: var(--page-accent-tint);
-  display: flex; align-items: center; justify-content: center;
+  width: 148px; aspect-ratio: 360 / 202; flex: none;
+  border-radius: 12px;
+  background: #fbf5ea;
   overflow: hidden;
+  box-shadow: inset 0 0 14px rgba(58, 51, 48, 0.12);
 }
-.reel-stage svg { width: 78%; height: 78%; }
+.reel-stage svg { width: 100%; height: 100%; display: block; }
 .reel-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.reel-caption {
-  font-weight: 700; font-size: 1.08rem;
-  min-height: 1.4em;
-}
+.reel-caption { font-weight: 700; font-size: 1.08rem; min-height: 1.4em; }
 .reel-caption[dir="rtl"] { text-align: right; }
 .reel-lang {
   font-size: 0.74rem; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
@@ -187,7 +182,7 @@ body {
 }
 @media (max-width: 560px) {
   .reel { padding: 14px 16px; gap: 14px; }
-  .reel-stage { width: 52px; height: 52px; border-radius: 13px; }
+  .reel-stage { width: 108px; }
 }
 
 /* ---------- Notice ---------- */
@@ -214,7 +209,7 @@ body {
 .phone { width: 100%; display: flex; justify-content: center; }
 .phone-frame {
   --tilt-x: 0deg; --tilt-y: 0deg;
-  width: 100%; max-width: 380px;
+  width: 100%; max-width: 390px;
   padding: 14px 12px 22px;
   border-radius: 44px;
   background: linear-gradient(155deg, #34302b, #17130f 70%);
@@ -227,7 +222,6 @@ body {
   transition: transform 300ms ease-out;
 }
 .phone-frame::before {
-  /* the notch */
   content: ""; position: absolute; top: 14px; left: 50%; translate: -50% 0;
   width: 92px; height: 22px; border-radius: 12px; background: #17130f; z-index: 2;
 }
@@ -236,7 +230,7 @@ body {
   color: #3a3330;
   border-radius: 30px;
   overflow: hidden;
-  max-height: 74vh; overflow-y: auto;
+  max-height: 76vh; overflow-y: auto;
   scrollbar-width: thin;
 }
 .side { display: flex; flex-direction: column; gap: 22px; }
@@ -254,7 +248,7 @@ body {
 
 @media (min-width: 900px) {
   .stage-row { flex-direction: row; align-items: flex-start; gap: 44px; }
-  .phone { width: 400px; flex: none; position: sticky; top: 28px; }
+  .phone { width: 410px; flex: none; position: sticky; top: 28px; }
   .side { flex: 1; padding-top: 4px; }
 }
 
@@ -277,8 +271,8 @@ ${appStyles
   <div class="hero">
     <span class="eyebrow">A live prototype</span>
     <h1 class="display">Visit <span class="accent-word">Recap</span></h1>
-    <p class="lede">A recording of a doctor's appointment, turned into a short picture-video
-      the patient and their family can actually understand — in their own language.</p>
+    <p class="lede">A recording of a doctor's appointment, turned into a short animated
+      film the patient and their family can actually understand — in their own language.</p>
     <p class="sub">This page is the real app, running live. Watch it work below, then try it yourself.</p>
   </div>
 
@@ -292,7 +286,7 @@ ${appStyles
 
   <div class="notice">
     <p><strong>This demo replays one prepared appointment.</strong> Everything you can
-      touch is real — the pictures, the narration, the four languages, the
+      touch is real — the animated scenes, the narration, the four languages, the
       "Why this?" quotes. The one thing it can't do is read a <em>new</em>
       recording, because that needs a private key that must stay on a server.</p>
     <p>To use it on your own appointments, run the app on your computer:
@@ -352,13 +346,18 @@ ${appStyles
             </div>
           </section>
 
-          <!-- 4. Player -->
-          <section id="screen-player" class="screen">
-            <div class="card player-card">
+          <!-- 4. Player: the little cinema -->
+          <section id="screen-player" class="screen player-screen">
+            <div class="theater">
               <h2 class="visually-hidden">Your video</h2>
-              <div id="stage"></div>
-              <p id="caption-main" aria-live="polite"></p>
-              <p id="caption-en" hidden></p>
+              <div id="stage">
+                <div class="scene-layer" id="scene-a"></div>
+                <div class="scene-layer" id="scene-b"></div>
+              </div>
+              <div class="caption-zone">
+                <p id="caption-main" aria-live="polite"></p>
+                <p id="caption-en" hidden></p>
+              </div>
               <div id="dots" role="group" aria-label="Scenes"></div>
               <div id="controls">
                 <button id="prev-btn" class="btn btn-round" aria-label="Previous scene">&#9198;</button>
@@ -391,13 +390,14 @@ ${appStyles
       <div class="side-block">
         <h2 class="display">What it does</h2>
         <p>An appointment is a lot to take in, and most summaries are written at a
-          reading level that leaves people behind. This turns one into six pictures
-          with short captions, read aloud, in the language the family speaks at home.</p>
+          reading level that leaves people behind. This turns one into six animated
+          scenes with short captions, read aloud, in the language the family speaks at home.</p>
       </div>
       <div class="side-block">
         <h2 class="display">How to read it</h2>
         <ul>
-          <li>Scenes play by themselves, like a video. Use &#9654; and the arrows to move around.</li>
+          <li>Scenes play by themselves, like a little film — crossfades, a slow
+            camera drift, and a timeline that fills as each scene plays.</li>
           <li>Pick a language at the start — the caption switches, with English kept underneath.</li>
           <li><strong>"Why this?"</strong> shows the doctor's actual words behind each scene, so
             nothing is taken on trust.</li>
@@ -411,8 +411,8 @@ ${appStyles
           <li>It can never state a dose or how often to take something unless those exact
             words were said in the room.</li>
           <li>Anything unclear becomes <strong>"Check this with your doctor."</strong></li>
-          <li>Pictures come from a fixed set of 15 drawings — the AI chooses from them and
-            never draws its own.</li>
+          <li>Pictures come from a fixed set of 15 hand-drawn scenes — the AI chooses from
+            them and never draws its own.</li>
         </ul>
       </div>
       <div class="side-block">
@@ -432,6 +432,11 @@ ${appStyles
 
 <script>
 ${illustrations}
+</script>
+
+<script>
+// ---- The app's own player, embedded unchanged ----
+${playerJs}
 </script>
 
 <script>
@@ -467,7 +472,7 @@ ${illustrations}
         captionEl.style.opacity = "1";
         stage.style.opacity = "1";
       }, 220);
-    }, 2800);
+    }, 3200);
   }
 })();
 
@@ -492,24 +497,13 @@ ${illustrations}
 </script>
 
 <script>
-// ---- The demo's own small player (the same behaviour as the real app) ----
+// ---- Demo glue: the screens around the shared player ----
 const DEMO = ${DEMO_DATA};
 
-const LANG_META = {
-  en: { tts: "en-US" },
-  vi: { tts: "vi-VN" },
-  ar: { tts: "ar-SA", rtl: true },
-  zh: { tts: "zh-CN" },
-};
-
-const $ = (id) => document.getElementById(id);
 const screens = {
   consent: $("screen-consent"), input: $("screen-input"),
   processing: $("screen-processing"), player: $("screen-player"),
 };
-
-let lang = "en", idx = 0, playing = false;
-let speakToken = 0, advanceTimer = null;
 
 function showScreen(name) {
   for (const el of Object.values(screens)) el.classList.remove("active");
@@ -517,6 +511,23 @@ function showScreen(name) {
   const heading = screens[name].querySelector("h2");
   if (heading) { heading.setAttribute("tabindex", "-1"); heading.focus({ preventScroll: true }); }
   screens[name].scrollIntoView({ block: "nearest" });
+}
+
+// Shape the prepared appointment exactly like the real server's answer,
+// for whichever language is picked.
+function demoDataFor(langCode) {
+  const pick = (m) => m[langCode] || m.en;
+  return {
+    summary: DEMO.summary.en,
+    summary_translated: pick(DEMO.summary),
+    scenes: DEMO.scenes.map((s) => ({
+      caption: s.caption.en,
+      caption_translated: pick(s.caption),
+      excerpt: s.excerpt,
+      illustration: s.illustration,
+      app_note: s.app_note,
+    })),
+  };
 }
 
 $("transcript-input").value = DEMO.transcript;
@@ -527,143 +538,19 @@ $("consent-tick").addEventListener("change", (e) => {
 $("consent-continue").addEventListener("click", () => showScreen("input"));
 
 $("generate-btn").addEventListener("click", () => {
-  lang = $("language-select").value;
+  const chosenLang = $("language-select").value;
   // Phones only allow speech that starts from a tap — unlock it here.
   if (window.speechSynthesis) {
     try { speechSynthesis.speak(new SpeechSynthesisUtterance("")); } catch (e) {}
   }
   showScreen("processing");
-  setTimeout(() => { buildPlayer(); showScreen("player"); play(); }, 1400);
+  setTimeout(() => {
+    loadPlayer(demoDataFor(chosenLang), chosenLang);
+    showScreen("player");
+    play();
+  }, 1400);
 });
 
-function textFor(map) { return map[lang] || map.en; }
-function isTranslated(map) { return lang !== "en" && !!map[lang] && map[lang] !== map.en; }
-
-function setTextLanguage(el, translated) {
-  if (!translated) { el.lang = "en"; el.dir = "ltr"; return; }
-  el.lang = lang === "zh" ? "zh-CN" : lang;
-  el.dir = LANG_META[lang].rtl ? "rtl" : "ltr";
-}
-
-function replayAnimation(el) {
-  el.style.animation = "none";
-  void el.offsetWidth;
-  el.style.animation = "";
-}
-
-function buildPlayer() {
-  idx = 0; playing = false;
-  const dots = $("dots");
-  dots.innerHTML = "";
-  DEMO.scenes.forEach((_, i) => {
-    const dot = document.createElement("button");
-    dot.setAttribute("aria-label", "Scene " + (i + 1));
-    dot.addEventListener("click", () => goTo(i));
-    dots.appendChild(dot);
-  });
-  const sum = $("summary-main");
-  sum.textContent = textFor(DEMO.summary);
-  setTextLanguage(sum, isTranslated(DEMO.summary));
-  $("summary-en").textContent = DEMO.summary.en;
-  $("summary-en").hidden = !isTranslated(DEMO.summary);
-  renderScene();
-}
-
-function renderScene() {
-  const scene = DEMO.scenes[idx];
-  const translated = isTranslated(scene.caption);
-  $("stage").innerHTML = illustrationSVG(scene.illustration);
-  const main = $("caption-main");
-  main.textContent = textFor(scene.caption);
-  setTextLanguage(main, translated);
-  replayAnimation(main);
-  $("caption-en").textContent = scene.caption.en;
-  $("caption-en").hidden = !translated;
-  $("why-label").textContent = scene.app_note ? "About this last scene:" : "From the appointment:";
-  $("why-quote").textContent = scene.app_note ? scene.excerpt : "\\u201C" + scene.excerpt + "\\u201D";
-  $("why-panel").hidden = true;
-  $("why-btn").setAttribute("aria-expanded", "false");
-  $("why-btn").textContent = scene.app_note
-    ? "Why this? Where this note comes from"
-    : "Why this? Show the doctor's words";
-  [...$("dots").children].forEach((d, i) => {
-    d.classList.toggle("on", i === idx);
-    if (i === idx) d.setAttribute("aria-current", "true"); else d.removeAttribute("aria-current");
-  });
-  $("prev-btn").disabled = idx === 0;
-  $("next-btn").disabled = idx === DEMO.scenes.length - 1;
-  updatePlayButton();
-}
-
-function updatePlayButton() {
-  const atEnd = idx === DEMO.scenes.length - 1;
-  const btn = $("play-btn");
-  btn.textContent = playing ? "\\u23F8" : (atEnd ? "\\u21BB" : "\\u25B6");
-  btn.setAttribute("aria-label", playing ? "Pause" : atEnd ? "Play again from the start" : "Play");
-}
-
-function play() { playing = true; updatePlayButton(); speakCurrentScene(); }
-
-function pause() {
-  playing = false; speakToken++;
-  clearTimeout(advanceTimer);
-  if (window.speechSynthesis) speechSynthesis.cancel();
-  updatePlayButton();
-}
-
-function goTo(i) { idx = i; renderScene(); if (playing) speakCurrentScene(); }
-
-function speakCurrentScene() {
-  const token = ++speakToken;
-  clearTimeout(advanceTimer);
-  const scene = DEMO.scenes[idx];
-  const translated = isTranslated(scene.caption);
-  const text = textFor(scene.caption);
-  const voiceLang = translated ? LANG_META[lang].tts : "en-US";
-
-  const advance = (delayMs) => {
-    if (token !== speakToken || !playing) return;
-    clearTimeout(advanceTimer);
-    advanceTimer = setTimeout(() => {
-      if (token !== speakToken || !playing) return;
-      if (idx < DEMO.scenes.length - 1) goTo(idx + 1);
-      else { playing = false; updatePlayButton(); }
-    }, delayMs);
-  };
-
-  const fallbackMs = 3000 + text.length * 70;
-  if (!window.speechSynthesis) { advance(fallbackMs); return; }
-
-  speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = voiceLang;
-  utter.rate = 0.95;
-  const wanted = voiceLang.split("-")[0];
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith(wanted));
-  if (voice) utter.voice = voice;
-
-  const watchdog = setTimeout(() => advance(fallbackMs), 1500);
-  utter.onstart = () => clearTimeout(watchdog);
-  utter.onend = () => { clearTimeout(watchdog); advance(900); };
-  utter.onerror = () => { clearTimeout(watchdog); advance(fallbackMs); };
-  speechSynthesis.speak(utter);
-}
-
-if (window.speechSynthesis) speechSynthesis.getVoices();
-
-$("play-btn").addEventListener("click", () => {
-  if (playing) { pause(); return; }
-  if (idx === DEMO.scenes.length - 1) { idx = 0; renderScene(); }
-  play();
-});
-$("prev-btn").addEventListener("click", () => { if (idx > 0) goTo(idx - 1); });
-$("next-btn").addEventListener("click", () => { if (idx < DEMO.scenes.length - 1) goTo(idx + 1); });
-$("why-btn").addEventListener("click", () => {
-  const panel = $("why-panel");
-  panel.hidden = !panel.hidden;
-  $("why-btn").setAttribute("aria-expanded", String(!panel.hidden));
-  if (!panel.hidden) pause();
-});
 $("restart-link").addEventListener("click", (e) => { e.preventDefault(); pause(); showScreen("input"); });
 </script>
 `;

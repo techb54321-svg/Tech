@@ -164,77 +164,119 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---- Player screen ---- */
-.player-card { text-align: center; }
+/* ---- Player screen: a little cinema -------------------------------
+   The video plays inside a dark warm "theater" card: the bright scene
+   up top like a film frame, captions beneath it like subtitles, then
+   a story-style timeline where each segment fills as its scene plays. */
+.player-screen { padding-left: 10px; padding-right: 10px; }
 
-#stage {
+.theater {
   background:
-    radial-gradient(140px 140px at 50% 38%, rgba(226, 87, 76, 0.06), transparent 70%),
-    var(--paper);
-  border-radius: 18px;
-  padding: 10px;
-  max-width: 320px;
-  margin: 0 auto;
+    radial-gradient(120% 90% at 50% 0%, #332b24, #241e19 65%);
+  border-radius: 24px;
+  padding: 12px 12px 18px;
+  box-shadow: 0 3px 8px rgba(var(--shadow-color), 0.2), 0 24px 60px rgba(var(--shadow-color), 0.35);
+  color: var(--theater-text);
+  text-align: center;
+  margin-bottom: 14px;
 }
-#stage svg {
-  width: 100%; height: auto; display: block;
-  animation: scene-pop 480ms cubic-bezier(.2,.8,.3,1) both;
-}
-@keyframes scene-pop {
-  from { opacity: 0; transform: scale(0.94) translateY(6px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
+:root { --theater-text: #f6ead8; --theater-dim: #b3a291; }
 
-#caption-main {
-  font-size: 1.4rem; font-weight: 700;
-  margin: 16px 6px 4px; min-height: 2.2em;
-  animation: caption-in 380ms ease-out both;
+/* The film frame. Two layers stacked so scenes can crossfade. */
+#stage {
+  position: relative;
+  aspect-ratio: 360 / 202;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fbf5ea;
 }
-#caption-en { color: var(--muted); font-size: 0.9rem; margin: 0 6px 6px; }
+#stage::after {
+  /* a soft vignette, like a printed frame */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: 16px;
+  box-shadow: inset 0 0 44px rgba(58, 51, 48, 0.16);
+}
+.scene-layer {
+  position: absolute; inset: 0;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+.scene-layer.front { opacity: 1; }
+.scene-layer svg { width: 100%; height: 100%; display: block; }
+
+/* The slow "camera" drift, alternating direction scene to scene. */
+@media (prefers-reduced-motion: no-preference) {
+  .scene-layer.front svg.kb-zoom { animation: ken-zoom 9s ease-in-out both; }
+  .scene-layer.front svg.kb-drift { animation: ken-drift 9s ease-in-out both; }
+}
+@keyframes ken-zoom { from { transform: scale(1); } to { transform: scale(1.07) translateY(-3px); } }
+@keyframes ken-drift { from { transform: scale(1.06) translateX(4px); } to { transform: scale(1.06) translateX(-6px); } }
+
+/* Subtitles under the frame. */
+.caption-zone { min-height: 4.4em; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 8px 2px; }
+#caption-main {
+  font-size: 1.32rem; font-weight: 700; line-height: 1.35;
+  margin: 0; color: var(--theater-text);
+  animation: caption-in 380ms ease-out both;
+  text-wrap: balance;
+}
+#caption-en { color: var(--theater-dim); font-size: 0.88rem; margin: 0; }
 @keyframes caption-in {
-  from { opacity: 0; transform: translateY(4px); }
+  from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Progress dots. The dot you see is small, but the area you can tap is
-   much bigger (a see-through border around it), so it's easy on a phone. */
-#dots { display: flex; justify-content: center; gap: 4px; margin: 8px 0 2px; }
+/* The story timeline: one segment per scene; the current one fills
+   as the scene plays, finished ones stay lit. Tap any segment to jump. */
+#dots { display: flex; gap: 5px; margin: 10px 4px 2px; }
 #dots button {
-  width: 36px; height: 36px; border-radius: 50%;
-  border: 12px solid transparent;   /* the invisible, easy-to-tap part */
-  background: var(--ink);
-  background-clip: content-box;      /* colour only the small middle */
-  padding: 0; cursor: pointer;
-  opacity: 0.35;
-  transition: opacity 200ms ease, transform 200ms cubic-bezier(.34,1.6,.64,1);
+  flex: 1; height: 26px;
+  background: none; border: none; padding: 11px 0; cursor: pointer;
 }
-#dots button.on { background: var(--accent); opacity: 1; transform: scale(1.2); }
+#dots button .seg {
+  display: block; height: 4px; border-radius: 2px;
+  background: rgba(246, 234, 216, 0.22);
+  overflow: hidden;
+}
+#dots button .fill {
+  display: block; height: 100%; width: 0;
+  background: var(--accent);
+  border-radius: 2px;
+}
+#dots button.done .fill { width: 100%; }
 
-/* play controls */
-#controls { display: flex; justify-content: center; gap: 14px; margin-top: 10px; }
+/* play controls, floating on the dark */
+#controls { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 8px; }
 .btn-round {
-  width: 58px; height: 58px; border-radius: 50%;
-  font-size: 1.2rem; padding: 0; margin-top: 0;
+  width: 54px; height: 54px; border-radius: 50%;
+  font-size: 1.1rem; padding: 0; margin-top: 0;
   display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 2px solid rgba(246, 234, 216, 0.4);
+  color: var(--theater-text);
 }
+.btn-round:hover { border-color: var(--theater-text); box-shadow: none; }
 .btn-play {
-  width: 76px; height: 76px; font-size: 1.7rem;
+  width: 74px; height: 74px; font-size: 1.65rem;
   background: var(--accent); border-color: var(--accent); color: #fff;
-  box-shadow: 0 6px 18px rgba(226, 87, 76, 0.3);
+  box-shadow: 0 6px 22px rgba(226, 87, 76, 0.45);
 }
-.btn-play:hover { box-shadow: 0 8px 22px rgba(226, 87, 76, 0.4); }
+.btn-play:hover { box-shadow: 0 8px 26px rgba(226, 87, 76, 0.55); border-color: var(--accent); }
 
-/* "why this?" panel */
+/* "why this?" — the receipts, inside the theater */
+.theater .link-btn { color: #f0b9a8; }
 #why-panel {
-  background: var(--paper); border-radius: 12px;
-  padding: 10px 14px; margin-top: 10px; text-align: left;
-  border: 1px solid var(--line);
+  background: rgba(246, 234, 216, 0.08);
+  border: 1px solid rgba(246, 234, 216, 0.14);
+  border-radius: 12px;
+  padding: 10px 14px; margin: 8px 2px 0; text-align: left;
+  color: var(--theater-text);
   animation: why-in 240ms ease-out both;
 }
 @keyframes why-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+#why-panel .small-note { color: var(--theater-dim); }
 #why-panel blockquote {
   margin: 4px 0 6px; padding-left: 10px;
   border-left: 4px solid var(--accent);
@@ -326,4 +368,58 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
     60%  { stroke-dashoffset: 0; }
     100% { stroke-dashoffset: 0; }
   }
+
+  .a-pulse-soft { animation: ani-pulse-soft 3.4s ease-in-out infinite; }
+  @keyframes ani-pulse-soft { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+
+  .a-twinkle { animation: ani-twinkle 2.2s ease-in-out infinite; }
+  @keyframes ani-twinkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+  .a-drift { animation: ani-drift 7s ease-in-out infinite; }
+  @keyframes ani-drift { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(14px); } }
+
+  .a-scroll { animation: ani-scroll 1.3s linear infinite; }
+  @keyframes ani-scroll { from { transform: translateX(0); } to { transform: translateX(-48px); } }
+
+  .a-steam { animation: ani-steam 2.2s ease-in-out infinite; }
+  @keyframes ani-steam {
+    0%   { transform: translateY(3px); opacity: 0; }
+    35%  { opacity: 0.6; }
+    100% { transform: translateY(-10px); opacity: 0; }
+  }
+
+  .a-grow-y { animation: ani-grow-y 3s ease-in-out infinite; }
+  @keyframes ani-grow-y { 0%, 100% { transform: scaleY(0.75); } 50% { transform: scaleY(1); } }
+
+  /* ---- Stick-person movements (each limb is its own group,
+         rotating around the joint set by illustrations.js) ---- */
+  .anim-walk .p-legL { animation: limb-swing 0.7s ease-in-out infinite; }
+  .anim-walk .p-legR { animation: limb-swing 0.7s ease-in-out infinite; animation-delay: -0.35s; }
+  .anim-walk .p-armL { animation: limb-swing-small 0.7s ease-in-out infinite; animation-delay: -0.35s; }
+  .anim-walk .p-armR { animation: limb-swing-small 0.7s ease-in-out infinite; }
+  .anim-walk { animation: person-bob 0.35s ease-in-out infinite; }
+  @keyframes limb-swing { 0%, 100% { transform: rotate(16deg); } 50% { transform: rotate(-16deg); } }
+  @keyframes limb-swing-small { 0%, 100% { transform: rotate(11deg); } 50% { transform: rotate(-11deg); } }
+  @keyframes person-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+
+  .anim-talk .p-armR { animation: gesture 1.7s ease-in-out infinite; }
+  .anim-talk .p-head { animation: head-tilt 3.2s ease-in-out infinite; }
+  @keyframes gesture { 0%, 100% { transform: rotate(0deg); } 45% { transform: rotate(14deg); } 65% { transform: rotate(8deg); } }
+  @keyframes head-tilt { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-4deg); } }
+
+  .anim-nod .p-head { animation: head-nod 2.1s ease-in-out infinite; }
+  @keyframes head-nod { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(5deg); } 55% { transform: rotate(-1deg); } }
+
+  .anim-cheer .p-armL { animation: cheer-wave 0.9s ease-in-out infinite; }
+  .anim-cheer .p-armR { animation: cheer-wave 0.9s ease-in-out infinite; animation-delay: -0.45s; }
+  .anim-cheer { animation: person-hop 0.9s ease-in-out infinite; }
+  @keyframes cheer-wave { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+  @keyframes person-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-5px); } 55% { transform: translateY(-5px); } }
+
+  .anim-sip .p-armR { animation: sip 2.6s ease-in-out infinite; }
+  .anim-sip .p-head { animation: sip-head 2.6s ease-in-out infinite; }
+  @keyframes sip { 0%, 100% { transform: rotate(0deg); } 45%, 60% { transform: rotate(-12deg); } }
+  @keyframes sip-head { 0%, 100% { transform: rotate(0deg); } 45%, 60% { transform: rotate(6deg); } }
+
+  .anim-bounce { animation: person-hop 1.2s ease-in-out infinite; }
 }

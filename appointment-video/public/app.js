@@ -1,28 +1,20 @@
 // ============================================================
-// app.js — everything the browser does.
+// app.js — the app around the player.
 //
 // The app is four "screens" (sections in index.html); we show
 // one at a time. The flow is:
 //   consent  →  input  →  processing  →  player
 //
-// The browser's own speech features are used for the extras:
-//   - SpeechRecognition: live transcription while recording
-//   - speechSynthesis:   reading captions aloud
-// Both are optional — pasting a transcript always works.
+// This file handles the first three screens and talking to the
+// server. Watching the finished video is player.js's job — this
+// file hands it data with loadPlayer(...) and play().
+//
+// The browser's own speech recognition is used for the optional
+// live transcription while recording; pasting always works.
 // ============================================================
 
-// ---- Languages ------------------------------------------------------
-// "tts" is the voice language for reading aloud.
-// "rtl" marks right-to-left writing (Arabic).
-const LANG_META = {
-  en: { tts: "en-US" },
-  vi: { tts: "vi-VN" },
-  ar: { tts: "ar-SA", rtl: true },
-  zh: { tts: "zh-CN" },
-};
-
-// ---- Grab the page elements we need --------------------------------
-const $ = (id) => document.getElementById(id);
+// ---- The screens ----------------------------------------------------
+// ($ comes from player.js, loaded just before this file.)
 const screens = {
   consent: $("screen-consent"),
   input: $("screen-input"),
@@ -43,14 +35,7 @@ function showScreen(name) {
   }
 }
 
-// ---- App state ------------------------------------------------------
-let data = null;        // the summary + scenes from the server
-let lang = "en";        // chosen language code
-let idx = 0;            // which scene is showing
-let playing = false;    // is the "video" running?
-let speakToken = 0;     // rises every time speech starts, so old callbacks can be ignored
-let advanceTimer = null; // timer that moves to the next scene
-let requestCount = 0;   // rises with each "make my video", so old answers can be ignored
+let requestCount = 0; // rises with each "make my video", so old answers can be ignored
 
 // ============================================================
 // SCREEN 1: consent
@@ -182,7 +167,7 @@ $("generate-btn").addEventListener("click", async () => {
     showInputError("Please add the appointment first — record it, paste it, or tap the example link.");
     return;
   }
-  lang = $("language-select").value;
+  const chosenLang = $("language-select").value;
 
   // Phones (especially iPhones) only allow speech to start as a direct
   // result of a tap. Say an empty phrase now, while we still count as
@@ -207,14 +192,13 @@ $("generate-btn").addEventListener("click", async () => {
     const res = await fetch("/api/scenes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ transcript, language: lang }),
+      body: JSON.stringify({ transcript, language: chosenLang }),
     });
     const body = await res.json();
     if (myRequest !== requestCount) return; // the user moved on — drop it
     if (!res.ok) throw new Error(body.error || "Something went wrong.");
 
-    data = body;
-    buildPlayer();
+    loadPlayer(body, chosenLang);  // hand the video to the player
     showScreen("player");
     play(); // start the show automatically
   } catch (err) {
@@ -236,202 +220,7 @@ $("processing-back").addEventListener("click", () => {
   showScreen("input");
 });
 
-// ============================================================
-// SCREEN 4: the player
-// ============================================================
-function buildPlayer() {
-  idx = 0;
-  playing = false;
-
-  // One progress dot per scene.
-  const dots = $("dots");
-  dots.innerHTML = "";
-  data.scenes.forEach((_, i) => {
-    const dot = document.createElement("button");
-    dot.setAttribute("aria-label", "Scene " + (i + 1));
-    dot.addEventListener("click", () => { goTo(i); });
-    dots.appendChild(dot);
-  });
-
-  // The plain-language summary below the player.
-  const sumMain = $("summary-main");
-  sumMain.textContent = translationOf(data.summary_translated, data.summary);
-  setTextLanguage(sumMain, isTranslated(data.summary_translated, data.summary));
-  $("summary-en").textContent = data.summary;
-  $("summary-en").hidden = !isTranslated(data.summary_translated, data.summary);
-
-  renderScene();
-}
-
-// Did we really get a translation back, or is it just the English again?
-// (Demo mode and English itself both give back the same words.)
-function isTranslated(translated, english) {
-  return lang !== "en" && !!translated && translated !== english;
-}
-function translationOf(translated, english) {
-  return isTranslated(translated, english) ? translated : english;
-}
-
-// Give an element the right language + writing direction, so Arabic reads
-// right-to-left and screen readers pronounce it properly. Text that isn't
-// really translated stays marked as English, so it isn't flipped around.
-function setTextLanguage(el, translated) {
-  if (!translated) { el.lang = "en"; el.dir = "ltr"; return; }
-  el.lang = lang === "zh" ? "zh-CN" : lang;
-  el.dir = LANG_META[lang].rtl ? "rtl" : "ltr";
-}
-
-// Restarts a CSS entrance animation on an element whose content changed
-// but which is itself the same DOM node (a fresh <svg> replays on its
-// own; a <p> whose text we just updated needs this nudge instead).
-function replayAnimation(el) {
-  el.style.animation = "none";
-  void el.offsetWidth; // force the browser to notice, before re-enabling
-  el.style.animation = "";
-}
-
-function renderScene() {
-  const scene = data.scenes[idx];
-  const translated = isTranslated(scene.caption_translated, scene.caption);
-
-  // Big picture (from the fixed library — see illustrations.js).
-  $("stage").innerHTML = illustrationSVG(scene.illustration);
-
-  // Caption in the chosen language, English in small print underneath.
-  const main = $("caption-main");
-  main.textContent = translationOf(scene.caption_translated, scene.caption);
-  setTextLanguage(main, translated);
-  replayAnimation(main);
-  $("caption-en").textContent = scene.caption;
-  $("caption-en").hidden = !translated;
-
-  // The "why this?" quote. The closing reminder is written by the app,
-  // so we must not present it as something the doctor said.
-  $("why-label").textContent = scene.app_note
-    ? "About this last scene:"
-    : "From the appointment:";
-  $("why-quote").textContent = scene.app_note ? scene.excerpt : "“" + scene.excerpt + "”";
-  $("why-panel").hidden = true;
-  $("why-btn").setAttribute("aria-expanded", "false");
-  $("why-btn").textContent = scene.app_note
-    ? "Why this? Where this note comes from"
-    : "Why this? Show the doctor's words";
-
-  // Update dots and button states.
-  [...$("dots").children].forEach((d, i) => {
-    d.classList.toggle("on", i === idx);
-    // Tells a screen reader which scene we're on.
-    if (i === idx) d.setAttribute("aria-current", "true");
-    else d.removeAttribute("aria-current");
-  });
-  $("prev-btn").disabled = idx === 0;
-  $("next-btn").disabled = idx === data.scenes.length - 1;
-  updatePlayButton();
-}
-
-function updatePlayButton() {
-  const atEnd = idx === data.scenes.length - 1;
-  const btn = $("play-btn");
-  btn.textContent = playing ? "⏸" : (atEnd && !playing ? "↻" : "▶");
-  // Keep the spoken label in step with the symbol.
-  btn.setAttribute("aria-label", playing ? "Pause" : atEnd ? "Play again from the start" : "Play");
-}
-
-// ---- Reading aloud + moving to the next scene ----------------------
-function play() {
-  playing = true;
-  updatePlayButton();
-  speakCurrentScene();
-}
-
-function pause() {
-  playing = false;
-  speakToken++; // makes any in-flight speech callbacks stale
-  clearTimeout(advanceTimer);
-  if (window.speechSynthesis) speechSynthesis.cancel();
-  updatePlayButton();
-}
-
-function goTo(i) {
-  idx = i;
-  renderScene();
-  if (playing) speakCurrentScene();
-}
-
-function speakCurrentScene() {
-  const token = ++speakToken; // remember which "speak" this is
-  clearTimeout(advanceTimer);
-
-  const scene = data.scenes[idx];
-  const translated = isTranslated(scene.caption_translated, scene.caption);
-  const text = translationOf(scene.caption_translated, scene.caption);
-  // Read English words with an English voice, even in another language mode.
-  const voiceLang = translated ? LANG_META[lang].tts : "en-US";
-
-  // If this scene finishes and we're still playing, move on.
-  // Two guards matter here: clear any timer we already set (the watchdog
-  // below and the real "finished speaking" event can both call this), and
-  // check again when the timer actually fires — by then the user may have
-  // pressed pause or skipped to another scene.
-  const advance = (delayMs) => {
-    if (token !== speakToken || !playing) return; // stale — ignore
-    clearTimeout(advanceTimer);
-    advanceTimer = setTimeout(() => {
-      if (token !== speakToken || !playing) return; // changed while waiting
-      if (idx < data.scenes.length - 1) goTo(idx + 1);
-      else { playing = false; updatePlayButton(); } // the end
-    }, delayMs);
-  };
-
-  // How long to show the scene if speech isn't available: reading time.
-  const fallbackMs = 3000 + text.length * 70;
-
-  if (!window.speechSynthesis) {
-    advance(fallbackMs);
-    return;
-  }
-
-  speechSynthesis.cancel(); // stop anything still talking
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = voiceLang;
-  utter.rate = 0.95; // a touch slower than normal — easier to follow
-
-  // Use a matching installed voice if there is one (e.g. a Vietnamese voice).
-  const wanted = voiceLang.split("-")[0];
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith(wanted));
-  if (voice) utter.voice = voice;
-
-  // Safety net: if the browser never starts speaking (e.g. no voice for
-  // this language), fall back to a simple timer.
-  const watchdog = setTimeout(() => advance(fallbackMs), 1500);
-  utter.onstart = () => clearTimeout(watchdog);
-  utter.onend = () => { clearTimeout(watchdog); advance(900); };
-  utter.onerror = () => { clearTimeout(watchdog); advance(fallbackMs); };
-
-  speechSynthesis.speak(utter);
-}
-
-// Some browsers load their voice list late — this nudges them early.
-if (window.speechSynthesis) speechSynthesis.getVoices();
-
-// ---- Player buttons -------------------------------------------------
-$("play-btn").addEventListener("click", () => {
-  if (playing) { pause(); return; }
-  // Pressing play at the very end starts the video over.
-  if (idx === data.scenes.length - 1) { idx = 0; renderScene(); }
-  play();
-});
-
-$("prev-btn").addEventListener("click", () => { if (idx > 0) goTo(idx - 1); });
-$("next-btn").addEventListener("click", () => { if (idx < data.scenes.length - 1) goTo(idx + 1); });
-
-$("why-btn").addEventListener("click", () => {
-  const panel = $("why-panel");
-  panel.hidden = !panel.hidden;
-  $("why-btn").setAttribute("aria-expanded", String(!panel.hidden));
-  if (!panel.hidden) pause(); // pause so there's time to read
-});
-
+// ---- Leaving the player --------------------------------------------
 $("restart-link").addEventListener("click", (e) => {
   e.preventDefault();
   pause();

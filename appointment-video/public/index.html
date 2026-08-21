@@ -91,19 +91,25 @@
   </section>
 
   <!-- ============ SCREEN 4: PLAYER ============ -->
-  <section id="screen-player" class="screen">
-    <div class="card player-card">
+  <section id="screen-player" class="screen player-screen">
+    <!-- The little cinema: film frame, subtitles, timeline, controls -->
+    <div class="theater">
       <!-- A heading for screen readers; sighted users see the picture. -->
       <h2 class="visually-hidden">Your video</h2>
 
-      <!-- the big picture -->
-      <div id="stage"></div>
+      <!-- the film frame: two layers so scenes can crossfade -->
+      <div id="stage">
+        <div class="scene-layer" id="scene-a"></div>
+        <div class="scene-layer" id="scene-b"></div>
+      </div>
 
       <!-- captions: chosen language large, English small underneath -->
-      <p id="caption-main" aria-live="polite"></p>
-      <p id="caption-en" hidden></p>
+      <div class="caption-zone">
+        <p id="caption-main" aria-live="polite"></p>
+        <p id="caption-en" hidden></p>
+      </div>
 
-      <!-- progress dots -->
+      <!-- the story timeline: one segment per scene -->
       <div id="dots" role="group" aria-label="Scenes"></div>
 
       <!-- play controls -->
@@ -135,8 +141,9 @@
     <p>This is a summary tool, not medical advice. Always ask your clinic if anything is unclear.</p>
   </footer>
 
-  <!-- the picture library, then the app logic -->
+  <!-- the picture library, the player, then the app logic -->
   <script src="illustrations.js"></script>
+  <script src="player.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

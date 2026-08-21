@@ -228,18 +228,47 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
   background: var(--accent); margin-top: 10px;
 }
 
-/* The slow "camera" drift, alternating direction scene to scene. */
-/* Note: not gated on .front — the outgoing layer must keep its camera
+/* Real camera work. Every scene declares its own focal point (the
+   --cam variables set in illustrations.js): kb-zoom scenes push slowly
+   IN toward it; kb-drift scenes open close on it and pull gently out.
+   Alternating gives the film an editing rhythm.
+   Not gated on .front — the outgoing layer must keep its camera
    position while it fades out, or every cut would visibly snap back. */
 @media (prefers-reduced-motion: no-preference) {
-  .scene-layer svg.kb-zoom { animation: ken-zoom 9s ease-in-out both; }
-  .scene-layer svg.kb-drift { animation: ken-drift 9s ease-in-out both; }
+  .scene-layer svg.kb-zoom {
+    transform-origin: var(--camx, 50%) var(--camy, 50%);
+    animation: cam-push 10s cubic-bezier(.32,.08,.24,1) both;
+  }
+  .scene-layer svg.kb-drift {
+    transform-origin: var(--camx, 50%) var(--camy, 50%);
+    animation: cam-settle 10s cubic-bezier(.32,.08,.24,1) both;
+  }
 }
-@keyframes ken-zoom { from { transform: scale(1); } to { transform: scale(1.07) translateY(-3px); } }
-@keyframes ken-drift { from { transform: scale(1.06) translateX(4px); } to { transform: scale(1.06) translateX(-6px); } }
+@keyframes cam-push { from { transform: scale(1); } to { transform: scale(var(--cams, 1.25)); } }
+@keyframes cam-settle { from { transform: scale(var(--cams, 1.25)); } to { transform: scale(1.02); } }
+
+/* The hand-drawn "line boil": flip between the three wobble filters
+   a few times a second. Under reduced motion the first filter holds —
+   the drawing keeps its hand-made warp but stays still. */
+.scene-layer svg .ink { filter: url(#boil1); }
+@media (prefers-reduced-motion: no-preference) {
+  .scene-layer svg .ink { animation: ink-boil 0.48s steps(1, end) infinite; }
+}
+@keyframes ink-boil {
+  0%   { filter: url(#boil1); }
+  33%  { filter: url(#boil2); }
+  66%  { filter: url(#boil3); }
+}
+
+/* A whisper of paper grain over the film frame. */
+#stage::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
 
 /* Subtitles under the frame. */
-.caption-zone { min-height: 4.4em; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 8px 2px; }
+.caption-zone { min-height: 5.6em; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 10px 8px 2px; }
 #caption-main {
   font-size: 1.32rem; font-weight: 700; line-height: 1.35;
   margin: 0; color: var(--theater-text);
@@ -247,6 +276,15 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
   text-wrap: balance;
 }
 #caption-en { color: var(--theater-dim); font-size: 0.88rem; margin: 0; }
+
+/* The narration line: what the voice is saying, word by word. Words
+   start dim and brighten as they're spoken (karaoke-style, driven by
+   the speech engine's word events in player.js). When no per-word
+   timing is available, .all-said lights the whole line. */
+#narr-line { margin: 0; font-size: 0.95rem; line-height: 1.5; color: var(--theater-dim); }
+.k-word { opacity: 0.4; transition: opacity 160ms ease, color 160ms ease; }
+.k-word.said { opacity: 1; color: var(--theater-text); }
+.all-said .k-word, #narr-line.all-said { opacity: 1; color: var(--theater-text); }
 @keyframes caption-in {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }

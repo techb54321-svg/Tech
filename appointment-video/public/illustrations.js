@@ -35,11 +35,26 @@ const GOLD = "#e9b95f";
 const NIGHT = "#333a63";
 const CREAM = "#f6ead6";
 
+// "Line boil": three near-identical wobble filters. styles.css flips
+// between them a few times a second, so every stroke shivers slightly —
+// the classic hand-drawn-animation feel. With reduced motion the first
+// filter stays put: still hand-drawn, just still.
+const BOIL_DEFS = [7, 31, 53]
+  .map((seed, i) =>
+    `<filter id="boil${i + 1}"><feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="1" seed="${seed}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.6"/></filter>`
+  )
+  .join("");
+
 // Wrap a scene in an <svg> tag with our shared "marker pen" style.
-function svgWrap(inner) {
+// "cam" is the scene's camera note: "x y scale" — the focal point the
+// slow push-in moves toward (styles.css reads the --cam variables).
+function svgWrap(inner, cam = "180 101 1.22") {
+  const [cx, cy, cs] = cam.split(" ");
   return (
-    `<svg viewBox="0 0 360 202" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid slice">` +
-    `<g fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">` +
+    `<svg viewBox="0 0 360 202" role="img" aria-hidden="true" preserveAspectRatio="xMidYMid slice"` +
+    ` style="--camx:${cx}px;--camy:${cy}px;--cams:${cs}">` +
+    `<defs>${BOIL_DEFS}</defs>` +
+    `<g class="ink" fill="none" stroke="${INK}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">` +
     inner +
     `</g></svg>`
   );
@@ -209,7 +224,7 @@ const ILLUSTRATIONS = {
         <circle class="a-flicker" style="animation-delay:360ms" cx="227" cy="60" r="2.6" fill="${ACCENT}" stroke="none"/>
       </g>
     </g>
-  `),
+  `, "216 78 1.3"),
 
   // 2. Taking a tablet — morning kitchen, one tablet, a big glass of water.
   taking_tablet: svgWrap(`
@@ -241,7 +256,7 @@ const ILLUSTRATIONS = {
         <path d="M104 69 L104 85" transform="rotate(-18 104 76)" stroke="${ACCENT}" stroke-width="4.5"/>
       </g>
     </g>
-  `),
+  `, "124 84 1.34"),
 
   // 3. Calendar / next appointment.
   calendar: svgWrap(`
@@ -269,7 +284,7 @@ const ILLUSTRATIONS = {
     <g class="in-4">
       <circle class="a-pulse" style="transform-origin:186px 106px" cx="186" cy="106" r="12.5" stroke="${ACCENT}" stroke-width="5"/>
     </g>
-  `),
+  `, "186 104 1.34"),
 
   // 4. Blood test — calm clinic table, tube filling, one drop.
   blood_test: svgWrap(`
@@ -308,7 +323,7 @@ const ILLUSTRATIONS = {
       <circle class="a-flicker" cx="222" cy="68" r="2.6" fill="${ACCENT}" stroke="none"/>
       <circle class="a-flicker" style="animation-delay:200ms" cx="233" cy="60" r="2.6" fill="${ACCENT}" stroke="none"/>
     </g>
-  `),
+  `, "126 102 1.34"),
 
   // 5. Drinking water.
   drinking_water: svgWrap(`
@@ -335,7 +350,7 @@ const ILLUSTRATIONS = {
       <circle class="a-rise" style="animation-delay:700ms" cx="120" cy="140" r="4" stroke="${ACCENT}" stroke-width="4"/>
       <circle class="a-rise" style="animation-delay:1200ms" cx="112" cy="146" r="3" stroke="${ACCENT}" stroke-width="3.5"/>
     </g>
-  `),
+  `, "114 84 1.3"),
 
   // 6. Walking — our patient striding through the park.
   walking: svgWrap(`
@@ -368,7 +383,7 @@ const ILLUSTRATIONS = {
         <path d="M262 180 L286 180 M310 180 L334 180 M214 180 L238 180" stroke-width="4" opacity="0.4"/>
       </g>
     </g>
-  `),
+  `, "206 106 1.3"),
 
   // 7. Healthy plate of food.
   healthy_food: svgWrap(`
@@ -402,7 +417,7 @@ const ILLUSTRATIONS = {
       <path class="a-steam" style="animation-delay:0ms" d="M282 122 Q278 112 284 104" stroke-width="3.5" opacity="0.5"/>
       <path class="a-steam" style="animation-delay:600ms" d="M298 122 Q302 112 296 104" stroke-width="3.5" opacity="0.5"/>
     </g>
-  `),
+  `, "182 116 1.3"),
 
   // 8. Heart / blood pressure — the beating centrepiece.
   heart: svgWrap(`
@@ -420,7 +435,7 @@ const ILLUSTRATIONS = {
       <!-- the pulse line travelling right across the frame -->
       <path class="a-dash" d="M22 100 L120 100 L136 100 L150 70 L168 132 L184 100 L338 100" stroke-width="5" pathLength="100"/>
     </g>
-  `),
+  `, "180 100 1.26"),
 
   // 9. Lungs / breathing.
   lungs: svgWrap(`
@@ -443,7 +458,7 @@ const ILLUSTRATIONS = {
       <circle class="a-rise" style="animation-delay:200ms" cx="120" cy="60" r="2.5" stroke="${ACCENT}" stroke-width="3"/>
       <circle class="a-rise" style="animation-delay:900ms" cx="244" cy="64" r="2.5" stroke="${ACCENT}" stroke-width="3"/>
     </g>
-  `),
+  `, "180 118 1.28"),
 
   // 10. Sleeping — the one night scene, moonlit and quiet.
   sleeping: svgWrap(`
@@ -482,7 +497,7 @@ const ILLUSTRATIONS = {
       <path class="a-float" style="animation-delay:0ms" d="M148 84 L170 84 L148 106 L170 106" stroke="${ACCENT}" stroke-width="6"/>
       <path class="a-float" style="animation-delay:600ms" d="M182 62 L196 62 L182 76 L196 76" stroke="${ACCENT}" stroke-width="5"/>
     </g>
-  `),
+  `, "112 128 1.3"),
 
   // 11. Warning sign — something to watch for, taken seriously but kindly.
   warning: svgWrap(`
@@ -503,7 +518,7 @@ const ILLUSTRATIONS = {
       <!-- someone pointing it out, calmly -->
       ${person({ x: 286, feetY: 170, h: 94, look: -1, armL: 14, armR: -78, cls: "anim-talk" })}
     </g>
-  `),
+  `, "150 102 1.28"),
 
   // 12. Phone call — our patient ringing the clinic.
   phone_call: svgWrap(`
@@ -528,7 +543,7 @@ const ILLUSTRATIONS = {
       <path class="a-ring" style="transform-origin:186px 92px;animation-delay:200ms" d="M176 66 Q196 92 176 118" stroke="${ACCENT}" stroke-width="4.5"/>
       <path class="a-ring" style="transform-origin:202px 92px;animation-delay:400ms" d="M190 54 Q216 92 190 130" stroke="${ACCENT}" stroke-width="4"/>
     </g>
-  `),
+  `, "116 92 1.32"),
 
   // 13. Question mark / something unclear.
   question: svgWrap(`
@@ -555,7 +570,7 @@ const ILLUSTRATIONS = {
         <circle cx="300" cy="80" r="3.5" fill="${INK}" stroke="none" opacity="0.55"/>
       </g>
     </g>
-  `),
+  `, "226 82 1.3"),
 
   // 14. Family — walking together, hand in hand.
   family: svgWrap(`
@@ -585,7 +600,7 @@ const ILLUSTRATIONS = {
         <path d="M181 68 Q160 54 166 38 Q170 26 181 34 Q192 26 196 38 Q202 54 181 68 Z" stroke="${ACCENT}" stroke-width="5.5" fill="${ACCENT}" fill-opacity="0.15"/>
       </g>
     </g>
-  `),
+  `, "180 96 1.26"),
 
   // 15. Thumbs up — good news, small celebration.
   thumbs_up: svgWrap(`
@@ -617,7 +632,7 @@ const ILLUSTRATIONS = {
       <path class="a-flicker" style="animation-delay:330ms" d="M170 52 L162 42" stroke="${GOLD}" stroke-width="4.5"/>
       <path class="a-flicker" style="animation-delay:110ms" d="M196 36 L200 24" stroke="${GOLD}" stroke-width="4.5"/>
     </g>
-  `),
+  `, "234 108 1.3"),
 };
 
 // Look a picture up by ID. Unknown IDs get the question mark,

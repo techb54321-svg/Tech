@@ -201,12 +201,19 @@ body {
   backdrop-filter: blur(3px);
 }
 .sc-sound:hover { background: rgba(36, 30, 25, 0.95); }
-.sc-captions { min-height: 4.6em; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 12px 10px 2px; text-align: center; }
+.sc-captions { min-height: 6em; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 12px 10px 2px; text-align: center; }
 .sc-caption {
   margin: 0; color: #f6ead8; font-weight: 700;
   font-size: clamp(1.1rem, 2.6vw, 1.45rem); line-height: 1.35; text-wrap: balance;
 }
+.sc-narr { margin: 0; color: #b3a291; font-size: clamp(0.9rem, 1.8vw, 1.02rem); line-height: 1.5; }
+.sc-narr .k-word.said, .sc-narr.all-said { color: #f6ead8; }
 .sc-caption-en { margin: 0; color: #b3a291; font-size: 0.88rem; }
+.sc-stage::before {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
 .sc-bar { display: flex; gap: 5px; margin: 10px 6px 4px; }
 .sc-bar button { flex: 1; height: 24px; background: none; border: none; padding: 10px 0; cursor: pointer; }
 .sc-bar .seg { display: block; height: 4px; border-radius: 2px; background: rgba(246, 234, 216, 0.22); overflow: hidden; }
@@ -329,6 +336,7 @@ ${appStyles
     </div>
     <div class="sc-captions">
       <p class="sc-caption" id="sc-caption"></p>
+      <p class="sc-narr" id="sc-narr"></p>
       <p class="sc-caption-en" id="sc-caption-en" hidden></p>
     </div>
     <div class="sc-bar" id="sc-bar" aria-label="Scenes"></div>
@@ -415,6 +423,7 @@ ${appStyles
               </div>
               <div class="caption-zone">
                 <p id="caption-main" aria-live="polite"></p>
+                <p id="narr-line" hidden></p>
                 <p id="caption-en" hidden></p>
               </div>
               <div id="dots" role="group" aria-label="Scenes"></div>
@@ -579,6 +588,7 @@ ${playerJs}
       titleEl.hidden = false;
       titleEl.classList.remove("fade");
       capEl.textContent = "";
+      document.getElementById("sc-narr").hidden = true;
       capEnEl.hidden = true;
       [...barEl.children].forEach((b) => {
         const f = b.querySelector(".fill");
@@ -604,16 +614,28 @@ ${playerJs}
       // Clear the faded-out layer so its animations stop costing frames.
       setTimeout(() => { if (!fore.classList.contains("front")) fore.innerHTML = ""; }, 600);
 
-      // Captions: chosen language big, English small underneath.
+      // Captions: chosen language big, the narration line under it
+      // (karaoke-lit when the voice is on), English small underneath.
       const cap = pick(scene.caption);
       capEl.textContent = cap;
       capEl.dir = lang === "ar" ? "rtl" : "ltr";
       capEnEl.textContent = scene.caption.en;
       capEnEl.hidden = lang === "en";
 
-      // Timing: narration when sound is on, reading time when silent.
       const narr = pick(scene.narration || scene.caption);
-      const readMs = Math.min(9000, 3400 + cap.length * 55);
+      const narrEl = document.getElementById("sc-narr");
+      narrEl.dir = lang === "ar" ? "rtl" : "ltr";
+      let spans = null;
+      if (narr !== cap) {
+        narrEl.hidden = false;
+        spans = karaokePrepare(narrEl, narr);   // shared with the app player
+        if (!sound) narrEl.classList.add("all-said");
+      } else {
+        narrEl.hidden = true;
+      }
+
+      // Timing: narration when sound is on, reading time when silent.
+      const readMs = Math.min(9000, 3400 + (narr !== cap ? narr : cap).length * 42);
       segFill(n, sound ? Math.min(11000, 3000 + narr.length * 65) : readMs);
 
       const next = () => (n < DEMO.scenes.length - 1 ? showScene(n + 1) : schedule(1600, showTitle));
@@ -625,8 +647,10 @@ ${playerJs}
         u.rate = 0.95;
         const my = ++token;
         const watchdog = setTimeout(() => { if (my === token && running) next(); }, Math.min(11000, 3000 + narr.length * 65) + 1500);
-        u.onend = () => { clearTimeout(watchdog); if (my === token && running) setTimeout(next, 800); };
-        u.onerror = () => { clearTimeout(watchdog); if (my === token && running) setTimeout(next, readMs); };
+        u.onstart = () => { if (my === token) duckScore(true); };
+        u.onboundary = (e) => { if (my === token) karaokeMark(spans, e.charIndex || 0); };
+        u.onend = () => { clearTimeout(watchdog); karaokeMark(spans, Infinity); duckScore(false); if (my === token && running) setTimeout(next, 800); };
+        u.onerror = () => { clearTimeout(watchdog); narrEl.classList.add("all-said"); duckScore(false); if (my === token && running) setTimeout(next, readMs); };
         try { speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { schedule(readMs, next); }
       } else {
         schedule(readMs, next);
@@ -636,7 +660,8 @@ ${playerJs}
     soundBtn.addEventListener("click", () => {
       sound = !sound;
       soundBtn.innerHTML = sound ? "&#128266; Sound on" : "&#128263; Tap for sound";
-      if (!sound) stopTalk();
+      if (sound) startScore();               // the music-box score (from player.js)
+      else { stopTalk(); stopScore(); }
       if (running && i >= 0) showScene(i);   // restart the beat under the new setting
       else if (running && i < 0) { /* title card: sound starts from scene 1 */ }
     });
@@ -645,8 +670,8 @@ ${playerJs}
       running = !running;
       ppBtn.innerHTML = running ? "&#9208;" : "&#9654;";
       ppBtn.setAttribute("aria-label", running ? "Pause" : "Play");
-      if (!running) { clearTimeout(timer); token++; stopTalk(); }
-      else if (i < 0) showTitle(); else showScene(i);
+      if (!running) { clearTimeout(timer); token++; stopTalk(); stopScore(); }
+      else { if (sound) startScore(); if (i < 0) showTitle(); else showScene(i); }
     });
 
     // Don't talk to an empty room: pause narration when the tab hides.
@@ -662,7 +687,7 @@ ${playerJs}
         running = false;
         ppBtn.innerHTML = "&#9654;";
         ppBtn.setAttribute("aria-label", "Play");
-        clearTimeout(timer); token++; stopTalk();
+        clearTimeout(timer); token++; stopTalk(); stopScore();
       }
     });
 

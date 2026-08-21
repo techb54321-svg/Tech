@@ -189,6 +189,115 @@ function updatePlayButton() {
   btn.setAttribute("aria-label", playing ? "Pause" : atEnd ? "Play again from the start" : "Play");
 }
 
+// ---- The score ------------------------------------------------------
+// A quiet, music-box-like backing track, synthesised live with the
+// browser's own audio — no sound files. Soft pentatonic plucks through
+// a gentle echo, so it never fights the narration; it ducks further
+// whenever the voice is speaking.
+let scoreOn = false;
+let scoreGain = null;   // master volume for the music
+let scoreTimer = null;  // schedules the next pluck
+const SCORE_NOTES = [261.6, 329.6, 392.0, 440.0, 523.3, 659.3]; // C4 pentatony, gentle
+
+function ensureScoreGraph() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  if (scoreGain) return;
+  scoreGain = audioCtx.createGain();
+  scoreGain.gain.value = 0.05;
+  // a soft echo: delay fed back into itself through a lowpass
+  const delay = audioCtx.createDelay(1.0);
+  delay.delayTime.value = 0.42;
+  const feedback = audioCtx.createGain();
+  feedback.gain.value = 0.32;
+  const soften = audioCtx.createBiquadFilter();
+  soften.type = "lowpass";
+  soften.frequency.value = 1600;
+  scoreGain.connect(audioCtx.destination);
+  scoreGain.connect(delay);
+  delay.connect(soften);
+  soften.connect(feedback);
+  feedback.connect(delay);
+  soften.connect(audioCtx.destination);
+}
+
+function pluck() {
+  if (!scoreOn || muted) return;
+  try {
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = "triangle";
+    // wander gently around the low notes, visiting high ones now and then
+    const n = SCORE_NOTES[Math.random() < 0.7 ? Math.floor(Math.random() * 4) : 4 + Math.floor(Math.random() * 2)];
+    osc.frequency.value = n;
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
+    osc.connect(env).connect(scoreGain);
+    osc.start(t);
+    osc.stop(t + 1.5);
+  } catch { /* never break playback over music */ }
+  scoreTimer = setTimeout(pluck, 750 + Math.random() * 1050);
+}
+
+function startScore() {
+  if (muted || scoreOn || !(window.AudioContext || window.webkitAudioContext)) return;
+  try {
+    ensureScoreGraph();
+    scoreOn = true;
+    scoreGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    scoreGain.gain.setTargetAtTime(0.05, audioCtx.currentTime, 0.4);
+    pluck();
+  } catch { /* no audio available */ }
+}
+
+function stopScore() {
+  scoreOn = false;
+  clearTimeout(scoreTimer);
+  if (scoreGain && audioCtx) scoreGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.25);
+}
+
+// Duck the music while the voice is talking, lift it between scenes.
+function duckScore(down) {
+  if (scoreGain && audioCtx && scoreOn) {
+    scoreGain.gain.setTargetAtTime(down ? 0.018 : 0.05, audioCtx.currentTime, 0.3);
+  }
+}
+
+// ---- Karaoke narration ----------------------------------------------
+// Split a narration line into word spans. As the speech engine reports
+// each word being spoken (utterance boundary events), earlier words
+// light up — the text visibly keeps pace with the voice.
+function karaokePrepare(el, text) {
+  el.classList.remove("all-said");
+  // Text without spaces (Chinese) can't be split into words — show it
+  // whole and fully lit.
+  if (!text.includes(" ")) {
+    el.textContent = text;
+    el.classList.add("all-said");
+    return null;
+  }
+  el.innerHTML = "";
+  const spans = [];
+  let offset = 0;
+  for (const w of text.split(" ")) {
+    const s = document.createElement("span");
+    s.className = "k-word";
+    s.textContent = w;
+    el.appendChild(s);
+    el.appendChild(document.createTextNode(" "));
+    spans.push({ start: offset, el: s });
+    offset += w.length + 1;
+  }
+  return spans;
+}
+
+function karaokeMark(spans, charIndex) {
+  if (!spans) return;
+  for (const s of spans) if (s.start <= charIndex) s.el.classList.add("said");
+}
+
 // A very small, soft two-note chime on scene changes — made with the
 // browser's own audio, no sound files. Skipped when muted.
 function chime() {
@@ -214,6 +323,7 @@ function chime() {
 function play() {
   playing = true;
   updatePlayButton();
+  startScore(); // the music-box score runs underneath the whole film
   // The first play of a video opens on the title card for a moment,
   // like a film — then the story starts.
   if (titlePending) {
@@ -240,6 +350,7 @@ function pause() {
   speakToken++; // makes any in-flight speech callbacks stale
   clearTimeout(advanceTimer);
   if (window.speechSynthesis) speechSynthesis.cancel();
+  stopScore();
   freezeSegmentFill();
   updatePlayButton();
 }
@@ -276,6 +387,19 @@ function speakCurrentScene() {
   startSegmentFill(fallbackMs);
   chime();
 
+  // The narration line under the caption, ready to light up word by
+  // word as the voice speaks it.
+  const narrEl = $("narr-line");
+  const captionShown = translationOf(scene.caption_translated, scene.caption);
+  let spans = null;
+  if (hasNarration && text !== captionShown) {
+    setTextLanguage(narrEl, translated);
+    spans = karaokePrepare(narrEl, text);
+    narrEl.hidden = false;
+  } else {
+    narrEl.hidden = true;
+  }
+
   // If this scene finishes and we're still playing, move on.
   // Two guards matter here: clear any timer we already set (the watchdog
   // below and the real "finished speaking" event can both call this), and
@@ -287,11 +411,13 @@ function speakCurrentScene() {
     advanceTimer = setTimeout(() => {
       if (token !== speakToken || !playing) return; // changed while waiting
       if (idx < playerData.scenes.length - 1) goTo(idx + 1);
-      else { playing = false; updatePlayButton(); } // the end
+      else { playing = false; stopScore(); updatePlayButton(); } // the end
     }, delayMs);
   };
 
   if (!window.speechSynthesis || muted) {
+    // No voice — show the whole narration line lit, advance on the clock.
+    narrEl.classList.add("all-said");
     advance(fallbackMs);
     return;
   }
@@ -316,9 +442,24 @@ function speakCurrentScene() {
     // an advance, cancel it — once real speech is running, finishing the
     // sentence is what decides when to move on, not the timer.
     if (token === speakToken) clearTimeout(advanceTimer);
+    duckScore(true);
   };
-  utter.onend = () => { clearTimeout(watchdog); advance(900); };
-  utter.onerror = () => { clearTimeout(watchdog); advance(fallbackMs); };
+  // As each word is spoken, light it up in the narration line.
+  utter.onboundary = (e) => {
+    if (token === speakToken) karaokeMark(spans, e.charIndex || 0);
+  };
+  utter.onend = () => {
+    clearTimeout(watchdog);
+    karaokeMark(spans, Infinity);
+    duckScore(false);
+    advance(900);
+  };
+  utter.onerror = () => {
+    clearTimeout(watchdog);
+    narrEl.classList.add("all-said");
+    duckScore(false);
+    advance(fallbackMs);
+  };
 
   speechSynthesis.speak(utter);
 }
@@ -344,7 +485,12 @@ $("mute-btn").addEventListener("click", () => {
   const btn = $("mute-btn");
   btn.textContent = muted ? "🔇" : "🔊";
   btn.setAttribute("aria-label", muted ? "Turn sound on" : "Turn sound off");
-  if (muted && window.speechSynthesis) speechSynthesis.cancel();
+  if (muted) {
+    if (window.speechSynthesis) speechSynthesis.cancel();
+    stopScore();
+  } else if (playing) {
+    startScore();
+  }
   // If we're mid-scene, restart it under the new sound setting.
   if (playing) speakCurrentScene();
 });

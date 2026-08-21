@@ -601,6 +601,8 @@ ${playerJs}
       back.classList.add("front");
       fore.classList.remove("front");
       front = front === "a" ? "b" : "a";
+      // Clear the faded-out layer so its animations stop costing frames.
+      setTimeout(() => { if (!fore.classList.contains("front")) fore.innerHTML = ""; }, 600);
 
       // Captions: chosen language big, English small underneath.
       const cap = pick(scene.caption);

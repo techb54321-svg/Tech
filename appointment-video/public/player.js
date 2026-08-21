@@ -115,8 +115,15 @@ function renderScene() {
   // Alternate the slow camera move so consecutive scenes feel different.
   backEl.querySelector("svg").classList.add(idx % 2 ? "kb-drift" : "kb-zoom");
   backEl.classList.add("front");
-  $("scene-" + frontLayer).classList.remove("front");
+  const outgoing = $("scene-" + frontLayer);
+  outgoing.classList.remove("front");
   frontLayer = back;
+  // Once the old scene has finished fading, take its drawing out of the
+  // page — otherwise its animations keep running invisibly, wasting the
+  // phone's battery and starving the next scene of smooth frames.
+  setTimeout(() => {
+    if (!outgoing.classList.contains("front")) outgoing.innerHTML = "";
+  }, 600);
 
   // Caption in the chosen language, English in small print underneath.
   const main = $("caption-main");

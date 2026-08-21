@@ -88,10 +88,21 @@ You will receive the transcript. Reply with:
 Each scene has:
 - "caption": at most 12 words, plain English, grade-5 reading level.
 - "caption_translated": the caption in ${languageName}, equally simple.
+- "narration": one or two short, warm sentences (at most 30 words) that
+  TELL this beat of the story to the patient, in second person ("you"),
+  grade-5 reading level. This is spoken aloud, so make it sound like a
+  kind person talking, not a label. It must obey the same safety rules
+  as the caption.
+- "narration_translated": the narration in ${languageName}, equally warm
+  and simple.
 - "excerpt": the exact words from the transcript this scene came from,
   copied verbatim (a short quote, not a paraphrase).
 - "illustration": the best matching picture ID from the fixed list.
   You may ONLY use these IDs — never invent new ones.
+
+Together the scenes should read like one continuous story about this
+patient's visit — what the doctor found, what to do about it, and what
+happens next — not a list of disconnected facts.
 
 SAFETY RULES — follow these exactly:
 - NEVER state a medicine dose or how often to take it unless those exact
@@ -126,10 +137,12 @@ function buildOutputSchema() {
             properties: {
               caption: { type: "string" },
               caption_translated: { type: "string" },
+              narration: { type: "string" },
+              narration_translated: { type: "string" },
               excerpt: { type: "string" },
               illustration: { type: "string", enum: ILLUSTRATION_IDS },
             },
-            required: ["caption", "caption_translated", "excerpt", "illustration"],
+            required: ["caption", "caption_translated", "narration", "narration_translated", "excerpt", "illustration"],
             additionalProperties: false,
           },
         },
@@ -187,6 +200,9 @@ function cleanResult(raw, language) {
     .map((s) => ({
       caption: String(s.caption),
       caption_translated: String(s.caption_translated || s.caption),
+      // The spoken story line; falls back to the caption if missing.
+      narration: String(s.narration || s.caption),
+      narration_translated: String(s.narration_translated || s.narration || s.caption_translated || s.caption),
       excerpt: String(s.excerpt),
       // Unknown picture ID? Fall back to the question mark.
       illustration: ILLUSTRATION_IDS.includes(s.illustration) ? s.illustration : "question",
@@ -201,6 +217,8 @@ function cleanResult(raw, language) {
   scenes.push({
     caption: DISCLAIMER.en,
     caption_translated: DISCLAIMER[language],
+    narration: DISCLAIMER.en,
+    narration_translated: DISCLAIMER[language],
     excerpt: "This closing reminder is added by the app itself, not taken from your recording.",
     illustration: "phone_call",
     app_note: true,
@@ -225,6 +243,8 @@ function buildMockResult(language) {
     scenes: d.scenes.map((s) => ({
       caption: s.caption.en,
       caption_translated: pick(s.caption),
+      narration: s.narration ? s.narration.en : s.caption.en,
+      narration_translated: s.narration ? pick(s.narration) : pick(s.caption),
       excerpt: s.excerpt,
       illustration: s.illustration,
     })),

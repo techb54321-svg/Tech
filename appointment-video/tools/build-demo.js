@@ -29,11 +29,13 @@ const scenes = content.demoResult.scenes.map((s) => ({
   illustration: s.illustration,
   excerpt: s.excerpt,
   caption: s.caption,
+  narration: s.narration,
 }));
 scenes.push({
   illustration: "phone_call",
   excerpt: "This closing reminder is added by the app itself, not taken from your recording.",
   caption: content.disclaimer,
+  narration: content.disclaimer,
   app_note: true,
 });
 
@@ -357,6 +359,11 @@ ${appStyles
               <div id="stage">
                 <div class="scene-layer" id="scene-a"></div>
                 <div class="scene-layer" id="scene-b"></div>
+                <div id="title-card" hidden>
+                  <p class="tc-kicker">Your appointment</p>
+                  <p class="tc-title">The story of your visit</p>
+                  <div class="tc-rule"></div>
+                </div>
               </div>
               <div class="caption-zone">
                 <p id="caption-main" aria-live="polite"></p>
@@ -367,6 +374,7 @@ ${appStyles
                 <button id="prev-btn" class="btn btn-round" aria-label="Previous scene">&#9198;</button>
                 <button id="play-btn" class="btn btn-round btn-play" aria-label="Play">&#9654;</button>
                 <button id="next-btn" class="btn btn-round" aria-label="Next scene">&#9197;</button>
+                <button id="mute-btn" class="btn btn-round btn-small" aria-label="Turn sound off">&#128266;</button>
               </div>
               <button id="why-btn" class="link-btn" aria-expanded="false" aria-controls="why-panel">Why this? Show the doctor's words</button>
               <div id="why-panel" hidden>
@@ -527,6 +535,8 @@ function demoDataFor(langCode) {
     scenes: DEMO.scenes.map((s) => ({
       caption: s.caption.en,
       caption_translated: pick(s.caption),
+      narration: s.narration ? s.narration.en : s.caption.en,
+      narration_translated: s.narration ? pick(s.narration) : pick(s.caption),
       excerpt: s.excerpt,
       illustration: s.illustration,
       app_note: s.app_note,

@@ -1,15 +1,12 @@
 {
   "_readme": "Fixed text used by both the server and the shareable demo page. Keeping it here means the wording and translations only ever live in one place.",
-
   "disclaimer": {
     "en": "This is a summary, not medical advice. Ask your clinic if anything is unclear.",
     "vi": "Đây là bản tóm tắt, không phải lời khuyên y tế. Hãy hỏi phòng khám nếu có điều gì chưa rõ.",
     "ar": "هذا ملخص وليس نصيحة طبية. اسأل عيادتك إذا كان هناك أي شيء غير واضح.",
     "zh": "这是一份摘要，不是医疗建议。如有不清楚的地方，请咨询您的诊所。"
   },
-
   "demoTranscript": "Doctor: Good morning. So I've looked at the readings you brought in, and your blood pressure is still running a bit high — around 150 over 95 most mornings.\nPatient: Is that dangerous?\nDoctor: It's not an emergency, but we should treat it. I'd like to start you on amlodipine 5 milligrams, one tablet once a day, in the morning. Some people get a little ankle swelling with it — if that happens, give the clinic a call.\nPatient: Okay.\nDoctor: I also want you to get a blood test next week before we go any further — just kidney function and cholesterol, the form is at reception.\nPatient: Do I need to change anything else?\nDoctor: The two big ones are a 30 minute walk most days, and cutting down on salty food — takeaway and packet soups are the main culprits. And keep drinking plenty of water.\nPatient: What about the dizziness I mentioned?\nDoctor: That could be a few different things, we'll see what the blood test says first. If it gets worse, don't wait — ring us straight away.\nDoctor: Let's book you in to see you again in four weeks to check the pressure. Reception can set that up on your way out.",
-
   "demoResult": {
     "summary": {
       "en": "The doctor said your blood pressure is a little high. You will start one new tablet, amlodipine 5 mg once a day. You need a blood test next week, and you should walk more and eat less salt. You will come back in four weeks to see how things are going.",
@@ -26,6 +23,12 @@
           "vi": "Huyết áp của bạn hơi cao.",
           "ar": "ضغط دمك مرتفع قليلاً.",
           "zh": "您的血压有点高。"
+        },
+        "narration": {
+          "en": "The doctor checked your blood pressure. It is a little high — not an emergency, but it needs care.",
+          "vi": "Bác sĩ đã đo huyết áp của bạn. Nó hơi cao — không nguy cấp, nhưng cần được điều trị.",
+          "ar": "قاس الطبيب ضغط دمك. إنه مرتفع قليلاً — ليس حالة طارئة، لكنه يحتاج إلى عناية.",
+          "zh": "医生检查了您的血压。它有点高——不是紧急情况，但需要治疗。"
         }
       },
       {
@@ -36,6 +39,12 @@
           "vi": "Uống một viên thuốc mới mỗi ngày: amlodipine 5 mg.",
           "ar": "تناول قرصاً جديداً كل يوم: أملوديبين 5 ملغ.",
           "zh": "每天服用一片新药：氨氯地平 5 毫克。"
+        },
+        "narration": {
+          "en": "There is one new tablet to help: amlodipine, 5 milligrams. Take it once every morning.",
+          "vi": "Có một viên thuốc mới để giúp bạn: amlodipine 5 mg. Uống một viên mỗi buổi sáng.",
+          "ar": "هناك قرص جديد للمساعدة: أملوديبين 5 ملغ. تناوله مرة واحدة كل صباح.",
+          "zh": "有一种新药来帮助您：氨氯地平5毫克。每天早上服用一次。"
         }
       },
       {
@@ -46,6 +55,12 @@
           "vi": "Đi xét nghiệm máu vào tuần tới.",
           "ar": "أجرِ تحليل دم الأسبوع القادم.",
           "zh": "下周去做血液检查。"
+        },
+        "narration": {
+          "en": "Next week, a quick blood test. It checks your kidneys and cholesterol before anything else changes.",
+          "vi": "Tuần tới, bạn sẽ làm một xét nghiệm máu nhanh. Nó kiểm tra thận và cholesterol trước khi thay đổi gì thêm.",
+          "ar": "الأسبوع القادم، تحليل دم سريع. يفحص الكلى والكوليسترول قبل أي تغيير آخر.",
+          "zh": "下周做一个快速血液检查。在进一步治疗前，先检查肾功能和胆固醇。"
         }
       },
       {
@@ -56,6 +71,12 @@
           "vi": "Đi bộ 30 phút hầu hết các ngày. Ăn ít muối hơn.",
           "ar": "امشِ 30 دقيقة معظم الأيام. قلّل الملح.",
           "zh": "大多数日子步行 30 分钟。少吃盐。"
+        },
+        "narration": {
+          "en": "Small things help a lot: a 30 minute walk most days, less salty food, and plenty of water.",
+          "vi": "Những điều nhỏ giúp ích rất nhiều: đi bộ 30 phút hầu hết các ngày, ăn ít muối hơn, và uống nhiều nước.",
+          "ar": "أشياء صغيرة تساعد كثيراً: المشي 30 دقيقة معظم الأيام، وتقليل الملح، وشرب الكثير من الماء.",
+          "zh": "小事情帮助很大：大多数日子步行30分钟，少吃盐，多喝水。"
         }
       },
       {
@@ -66,6 +87,12 @@
           "vi": "Hãy hỏi bác sĩ của bạn về điều này.",
           "ar": "اسأل طبيبك عن هذا.",
           "zh": "请向您的医生确认这一点。"
+        },
+        "narration": {
+          "en": "You mentioned feeling dizzy. The doctor wants the blood test first — so check this with your doctor.",
+          "vi": "Bạn đã nói về việc bị chóng mặt. Bác sĩ muốn chờ kết quả xét nghiệm máu trước — hãy hỏi bác sĩ của bạn về điều này.",
+          "ar": "ذكرتَ الشعور بالدوخة. يريد الطبيب نتيجة تحليل الدم أولاً — اسأل طبيبك عن هذا.",
+          "zh": "您提到了头晕。医生想先看血液检查的结果——请向您的医生确认这一点。"
         }
       },
       {
@@ -76,6 +103,12 @@
           "vi": "Quay lại sau 4 tuần.",
           "ar": "عد بعد 4 أسابيع.",
           "zh": "4 周后复诊。"
+        },
+        "narration": {
+          "en": "In four weeks you will see the doctor again, to check the pressure is coming down.",
+          "vi": "Sau bốn tuần, bạn sẽ gặp lại bác sĩ để kiểm tra xem huyết áp có đang giảm không.",
+          "ar": "بعد أربعة أسابيع ستقابل الطبيب مرة أخرى، للتأكد من أن الضغط ينخفض.",
+          "zh": "四周后您将再次见到医生，检查血压是否在下降。"
         }
       }
     ]

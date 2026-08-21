@@ -35,6 +35,9 @@ let playing = false;    // is the "video" running?
 let speakToken = 0;     // rises every time speech starts, so old callbacks can be ignored
 let advanceTimer = null; // timer that moves to the next scene
 let frontLayer = "b";   // which of the two scene layers is showing
+let titlePending = false; // show the little opening title card before scene 1?
+let muted = false;      // narration + sound effects off?
+let audioCtx = null;    // for the tiny scene-change note
 
 // ---- Loading a new video --------------------------------------------
 function loadPlayer(data, langCode) {
@@ -42,6 +45,9 @@ function loadPlayer(data, langCode) {
   lang = langCode;
   idx = 0;
   playing = false;
+  titlePending = true;       // every new video opens with the title beat
+  $("title-card").hidden = true;
+  $("title-card").classList.remove("fade");
 
   // One timeline segment per scene. Tap a segment to jump to its scene.
   const dots = $("dots");
@@ -176,10 +182,49 @@ function updatePlayButton() {
   btn.setAttribute("aria-label", playing ? "Pause" : atEnd ? "Play again from the start" : "Play");
 }
 
+// A very small, soft two-note chime on scene changes — made with the
+// browser's own audio, no sound files. Skipped when muted.
+function chime() {
+  if (muted) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(660, t);
+    osc.frequency.setValueAtTime(880, t + 0.09);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.03, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  } catch { /* no audio — never break playback over a chime */ }
+}
+
 // ---- Reading aloud + moving to the next scene ----------------------
 function play() {
   playing = true;
   updatePlayButton();
+  // The first play of a video opens on the title card for a moment,
+  // like a film — then the story starts.
+  if (titlePending) {
+    titlePending = false;
+    const tc = $("title-card");
+    tc.hidden = false;
+    tc.classList.remove("fade");
+    const token = ++speakToken;
+    clearTimeout(advanceTimer);
+    chime();
+    advanceTimer = setTimeout(() => {
+      if (token !== speakToken || !playing) return;
+      tc.classList.add("fade");
+      setTimeout(() => { tc.hidden = true; }, 500);
+      speakCurrentScene();
+    }, 1700);
+    return;
+  }
   speakCurrentScene();
 }
 
@@ -201,15 +246,28 @@ function goTo(i) {
 function speakCurrentScene() {
   const token = ++speakToken; // remember which "speak" this is
   clearTimeout(advanceTimer);
+  // If the title card is still up (e.g. someone tapped Next during it),
+  // clear it — the story is moving now.
+  const tc = $("title-card");
+  if (!tc.hidden) { tc.classList.add("fade"); setTimeout(() => { tc.hidden = true; }, 500); }
 
   const scene = playerData.scenes[idx];
-  const translated = isTranslated(scene.caption_translated, scene.caption);
-  const text = translationOf(scene.caption_translated, scene.caption);
+  // What we SPEAK is the narration — the fuller storytelling line —
+  // while the short caption stays on screen. Older data without a
+  // narration falls back to reading the caption.
+  const hasNarration = !!scene.narration;
+  const translated = hasNarration
+    ? isTranslated(scene.narration_translated, scene.narration)
+    : isTranslated(scene.caption_translated, scene.caption);
+  const text = hasNarration
+    ? translationOf(scene.narration_translated, scene.narration)
+    : translationOf(scene.caption_translated, scene.caption);
   // Read English words with an English voice, even in another language mode.
   const voiceLang = translated ? LANG_META[lang].tts : "en-US";
 
   const fallbackMs = sceneDurationMs(text);
   startSegmentFill(fallbackMs);
+  chime();
 
   // If this scene finishes and we're still playing, move on.
   // Two guards matter here: clear any timer we already set (the watchdog
@@ -226,7 +284,7 @@ function speakCurrentScene() {
     }, delayMs);
   };
 
-  if (!window.speechSynthesis) {
+  if (!window.speechSynthesis || muted) {
     advance(fallbackMs);
     return;
   }
@@ -271,6 +329,18 @@ $("play-btn").addEventListener("click", () => {
 
 $("prev-btn").addEventListener("click", () => { if (idx > 0) goTo(idx - 1); });
 $("next-btn").addEventListener("click", () => { if (idx < playerData.scenes.length - 1) goTo(idx + 1); });
+
+// Sound on/off: silences the narration and the little chime. Scenes
+// keep advancing on the reading-time clock instead.
+$("mute-btn").addEventListener("click", () => {
+  muted = !muted;
+  const btn = $("mute-btn");
+  btn.textContent = muted ? "🔇" : "🔊";
+  btn.setAttribute("aria-label", muted ? "Turn sound on" : "Turn sound off");
+  if (muted && window.speechSynthesis) speechSynthesis.cancel();
+  // If we're mid-scene, restart it under the new sound setting.
+  if (playing) speakCurrentScene();
+});
 
 $("why-btn").addEventListener("click", () => {
   const panel = $("why-panel");

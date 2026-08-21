@@ -67,7 +67,7 @@
         <a href="#" id="example-link">Use an example appointment</a>
       </p>
 
-      <p id="input-error" class="error-note" hidden></p>
+      <p id="input-error" class="error-note" role="alert" hidden></p>
       <button id="generate-btn" class="btn btn-primary">Make my video ▶</button>
     </div>
   </section>
@@ -78,7 +78,7 @@
       <div class="spinner" id="processing-spinner"></div>
       <h2 id="processing-title">Making your video…</h2>
       <p id="processing-text" class="small-note">Reading the appointment and drawing the scenes. This takes a moment.</p>
-      <p id="processing-error" class="error-note" hidden></p>
+      <p id="processing-error" class="error-note" role="alert" hidden></p>
       <button id="processing-back" class="btn" hidden>← Back</button>
     </div>
   </section>
@@ -86,15 +86,18 @@
   <!-- ============ SCREEN 4: PLAYER ============ -->
   <section id="screen-player" class="screen">
     <div class="card player-card">
+      <!-- A heading for screen readers; sighted users see the picture. -->
+      <h2 class="visually-hidden">Your video</h2>
+
       <!-- the big picture -->
       <div id="stage"></div>
 
       <!-- captions: chosen language large, English small underneath -->
-      <p id="caption-main"></p>
+      <p id="caption-main" aria-live="polite"></p>
       <p id="caption-en" hidden></p>
 
       <!-- progress dots -->
-      <div id="dots" role="tablist" aria-label="Scenes"></div>
+      <div id="dots" role="group" aria-label="Scenes"></div>
 
       <!-- play controls -->
       <div id="controls">
@@ -104,9 +107,9 @@
       </div>
 
       <!-- where did this scene come from? -->
-      <button id="why-btn" class="link-btn">Why this? Show the doctor's words</button>
+      <button id="why-btn" class="link-btn" aria-expanded="false" aria-controls="why-panel">Why this? Show the doctor's words</button>
       <div id="why-panel" hidden>
-        <p class="small-note">From the appointment:</p>
+        <p id="why-label" class="small-note">From the appointment:</p>
         <blockquote id="why-quote"></blockquote>
       </div>
     </div>

@@ -46,6 +46,13 @@ function showScreen(name) {
   for (const el of Object.values(screens)) el.classList.remove("active");
   screens[name].classList.add("active");
   window.scrollTo(0, 0);
+  // Move the reading position to the new screen's heading, so people using
+  // a screen reader or keyboard land in the right place instead of the top.
+  const heading = screens[name].querySelector("h2");
+  if (heading) {
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+  }
 }
 
 // ---- App state ------------------------------------------------------
@@ -55,6 +62,7 @@ let idx = 0;            // which scene is showing
 let playing = false;    // is the "video" running?
 let speakToken = 0;     // rises every time speech starts, so old callbacks can be ignored
 let advanceTimer = null; // timer that moves to the next scene
+let requestCount = 0;   // rises with each "make my video", so old answers can be ignored
 
 // ============================================================
 // SCREEN 1: consent
@@ -89,7 +97,7 @@ if (!SpeechRec) {
   $("record-box").hidden = true;
   const note = $("record-note");
   note.hidden = false;
-  note.textContent = "Recording needs a secure page (https or localhost) — on this address, paste the transcript below instead.";
+  note.textContent = "Recording doesn't work at this web address — please paste the transcript below instead. (It works on the computer running the app, or when the address starts with https.)";
 }
 
 $("record-btn").addEventListener("click", () => {
@@ -122,25 +130,46 @@ function startRecording() {
   recognition.onend = () => { if (recording) recognition.start(); };
 
   recognition.onerror = (event) => {
+    // A short silence ("no-speech") is normal — onend just starts listening
+    // again. Everything else is a real problem: stop, and say what happened,
+    // otherwise we would restart forever and the user would wait for nothing.
+    if (event.error === "no-speech") return;
+    stopRecording();
     if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      stopRecording();
-      showInputError("Microphone was blocked. Allow the microphone in your browser, or paste the transcript instead.");
+      showInputError("The microphone was blocked. Allow the microphone in your browser, or paste the transcript below instead.");
+    } else if (event.error === "network") {
+      showInputError("Live transcribing needs an internet connection and it can't reach the service. Please paste the transcript below instead.");
+    } else if (event.error === "audio-capture") {
+      showInputError("No microphone was found. Plug one in, or paste the transcript below instead.");
+    } else {
+      showInputError("Recording stopped unexpectedly. Please try again, or paste the transcript below instead.");
     }
-    // other errors (like "no-speech") are harmless; onend will restart
   };
 
   recognition.start();
   $("record-btn").textContent = "⏹ Stop recording";
   $("record-btn").classList.add("recording");
   $("record-status").hidden = false;
+  // While we're writing into the box, typing in it would be overwritten
+  // on the next word heard — so lock it until recording stops.
+  $("transcript-input").readOnly = true;
 }
 
 function stopRecording() {
   recording = false;
-  if (recognition) recognition.stop();
+  if (recognition) {
+    // Forget this listener completely before stopping it. Otherwise its
+    // final "end" event could restart a recogniser we've finished with.
+    recognition.onresult = null;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.stop();
+    recognition = null;
+  }
   $("record-btn").textContent = "🎙️ Record the appointment";
   $("record-btn").classList.remove("recording");
   $("record-status").hidden = true;
+  $("transcript-input").readOnly = false;
 }
 
 function showInputError(message) {
@@ -161,6 +190,13 @@ $("generate-btn").addEventListener("click", async () => {
   }
   lang = $("language-select").value;
 
+  // Phones (especially iPhones) only allow speech to start as a direct
+  // result of a tap. Say an empty phrase now, while we still count as
+  // "being tapped", so the narration is allowed to speak later.
+  if (window.speechSynthesis) {
+    try { speechSynthesis.speak(new SpeechSynthesisUtterance("")); } catch { /* ignore */ }
+  }
+
   // Show the "working on it" screen.
   $("processing-error").hidden = true;
   $("processing-back").hidden = true;
@@ -169,6 +205,10 @@ $("generate-btn").addEventListener("click", async () => {
   $("processing-text").hidden = false;
   showScreen("processing");
 
+  // Remember which request this is. If the user presses Back and starts
+  // again, the older answer must not jump them into the player.
+  const myRequest = ++requestCount;
+
   try {
     const res = await fetch("/api/scenes", {
       method: "POST",
@@ -176,6 +216,7 @@ $("generate-btn").addEventListener("click", async () => {
       body: JSON.stringify({ transcript, language: lang }),
     });
     const body = await res.json();
+    if (myRequest !== requestCount) return; // the user moved on — drop it
     if (!res.ok) throw new Error(body.error || "Something went wrong.");
 
     data = body;
@@ -183,6 +224,7 @@ $("generate-btn").addEventListener("click", async () => {
     showScreen("player");
     play(); // start the show automatically
   } catch (err) {
+    if (myRequest !== requestCount) return; // the user moved on — stay quiet
     $("processing-spinner").hidden = true;
     $("processing-title").textContent = "That didn't work";
     $("processing-text").hidden = true;
@@ -195,7 +237,10 @@ $("generate-btn").addEventListener("click", async () => {
   }
 });
 
-$("processing-back").addEventListener("click", () => showScreen("input"));
+$("processing-back").addEventListener("click", () => {
+  requestCount++; // any answer still on its way is now out of date
+  showScreen("input");
+});
 
 // ============================================================
 // SCREEN 4: the player
@@ -215,42 +260,66 @@ function buildPlayer() {
   });
 
   // The plain-language summary below the player.
-  const isEnglish = lang === "en";
   const sumMain = $("summary-main");
-  sumMain.textContent = isEnglish ? data.summary : data.summary_translated;
-  setTextLanguage(sumMain);
+  sumMain.textContent = translationOf(data.summary_translated, data.summary);
+  setTextLanguage(sumMain, isTranslated(data.summary_translated, data.summary));
   $("summary-en").textContent = data.summary;
-  $("summary-en").hidden = isEnglish;
+  $("summary-en").hidden = !isTranslated(data.summary_translated, data.summary);
 
   renderScene();
 }
 
-// Give an element the right language + writing direction,
-// so Arabic reads right-to-left and screen readers say it properly.
-function setTextLanguage(el) {
+// Did we really get a translation back, or is it just the English again?
+// (Demo mode and English itself both give back the same words.)
+function isTranslated(translated, english) {
+  return lang !== "en" && !!translated && translated !== english;
+}
+function translationOf(translated, english) {
+  return isTranslated(translated, english) ? translated : english;
+}
+
+// Give an element the right language + writing direction, so Arabic reads
+// right-to-left and screen readers pronounce it properly. Text that isn't
+// really translated stays marked as English, so it isn't flipped around.
+function setTextLanguage(el, translated) {
+  if (!translated) { el.lang = "en"; el.dir = "ltr"; return; }
   el.lang = lang === "zh" ? "zh-CN" : lang;
   el.dir = LANG_META[lang].rtl ? "rtl" : "ltr";
 }
 
 function renderScene() {
   const scene = data.scenes[idx];
+  const translated = isTranslated(scene.caption_translated, scene.caption);
 
   // Big picture (from the fixed library — see illustrations.js).
   $("stage").innerHTML = illustrationSVG(scene.illustration);
 
   // Caption in the chosen language, English in small print underneath.
   const main = $("caption-main");
-  main.textContent = lang === "en" ? scene.caption : scene.caption_translated;
-  setTextLanguage(main);
+  main.textContent = translationOf(scene.caption_translated, scene.caption);
+  setTextLanguage(main, translated);
   $("caption-en").textContent = scene.caption;
-  $("caption-en").hidden = lang === "en";
+  $("caption-en").hidden = !translated;
 
-  // The "why this?" quote for this scene.
-  $("why-quote").textContent = "“" + scene.excerpt + "”";
+  // The "why this?" quote. The closing reminder is written by the app,
+  // so we must not present it as something the doctor said.
+  $("why-label").textContent = scene.app_note
+    ? "About this last scene:"
+    : "From the appointment:";
+  $("why-quote").textContent = scene.app_note ? scene.excerpt : "“" + scene.excerpt + "”";
   $("why-panel").hidden = true;
+  $("why-btn").setAttribute("aria-expanded", "false");
+  $("why-btn").textContent = scene.app_note
+    ? "Why this? Where this note comes from"
+    : "Why this? Show the doctor's words";
 
   // Update dots and button states.
-  [...$("dots").children].forEach((d, i) => d.classList.toggle("on", i === idx));
+  [...$("dots").children].forEach((d, i) => {
+    d.classList.toggle("on", i === idx);
+    // Tells a screen reader which scene we're on.
+    if (i === idx) d.setAttribute("aria-current", "true");
+    else d.removeAttribute("aria-current");
+  });
   $("prev-btn").disabled = idx === 0;
   $("next-btn").disabled = idx === data.scenes.length - 1;
   updatePlayButton();
@@ -258,7 +327,10 @@ function renderScene() {
 
 function updatePlayButton() {
   const atEnd = idx === data.scenes.length - 1;
-  $("play-btn").textContent = playing ? "⏸" : (atEnd && !playing ? "↻" : "▶");
+  const btn = $("play-btn");
+  btn.textContent = playing ? "⏸" : (atEnd && !playing ? "↻" : "▶");
+  // Keep the spoken label in step with the symbol.
+  btn.setAttribute("aria-label", playing ? "Pause" : atEnd ? "Play again from the start" : "Play");
 }
 
 // ---- Reading aloud + moving to the next scene ----------------------
@@ -287,12 +359,21 @@ function speakCurrentScene() {
   clearTimeout(advanceTimer);
 
   const scene = data.scenes[idx];
-  const text = lang === "en" ? scene.caption : scene.caption_translated;
+  const translated = isTranslated(scene.caption_translated, scene.caption);
+  const text = translationOf(scene.caption_translated, scene.caption);
+  // Read English words with an English voice, even in another language mode.
+  const voiceLang = translated ? LANG_META[lang].tts : "en-US";
 
   // If this scene finishes and we're still playing, move on.
+  // Two guards matter here: clear any timer we already set (the watchdog
+  // below and the real "finished speaking" event can both call this), and
+  // check again when the timer actually fires — by then the user may have
+  // pressed pause or skipped to another scene.
   const advance = (delayMs) => {
     if (token !== speakToken || !playing) return; // stale — ignore
+    clearTimeout(advanceTimer);
     advanceTimer = setTimeout(() => {
+      if (token !== speakToken || !playing) return; // changed while waiting
       if (idx < data.scenes.length - 1) goTo(idx + 1);
       else { playing = false; updatePlayButton(); } // the end
     }, delayMs);
@@ -308,11 +389,11 @@ function speakCurrentScene() {
 
   speechSynthesis.cancel(); // stop anything still talking
   const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = LANG_META[lang].tts;
+  utter.lang = voiceLang;
   utter.rate = 0.95; // a touch slower than normal — easier to follow
 
   // Use a matching installed voice if there is one (e.g. a Vietnamese voice).
-  const wanted = LANG_META[lang].tts.split("-")[0];
+  const wanted = voiceLang.split("-")[0];
   const voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-").startsWith(wanted));
   if (voice) utter.voice = voice;
 
@@ -343,6 +424,7 @@ $("next-btn").addEventListener("click", () => { if (idx < data.scenes.length - 1
 $("why-btn").addEventListener("click", () => {
   const panel = $("why-panel");
   panel.hidden = !panel.hidden;
+  $("why-btn").setAttribute("aria-expanded", String(!panel.hidden));
   if (!panel.hidden) pause(); // pause so there's time to read
 });
 

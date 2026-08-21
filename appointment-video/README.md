@@ -45,6 +45,17 @@ MOCK=1 npm start
 Everything works, but the "AI" answer is a canned example — good for a
 quick look at the flow and the player.
 
+### On Windows
+
+The commands above are written for macOS and Linux. In Windows Command
+Prompt, use `copy .env.example .env` instead of `cp`, and instead of
+putting `MOCK=1` or `PORT=` in front of `npm start`, open `.env` and
+remove the `#` in front of the `MOCK=1` (or `PORT=`) line, then just run
+`npm start`.
+
+If you see "Port 3000 is already busy", Visit Recap is probably still
+running in another window — close it with `Ctrl+C` first.
+
 ## How to use it
 
 1. **Consent** — tick the box after asking your doctor about recording.

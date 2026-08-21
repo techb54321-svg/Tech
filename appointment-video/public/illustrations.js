@@ -159,16 +159,18 @@ const ILLUSTRATIONS = {
 
   // 9. Lungs / breathing -----------------------------------------------
   lungs: svgWrap(`
-    <path d="M100 38 L100 74"/>
-    <path d="M100 74 Q100 88 86 94"/>
-    <path d="M100 74 Q100 88 114 94"/>
-    <!-- left lobe -->
-    <path d="M86 94 Q56 102 51 134 Q48 162 72 164 Q90 164 88 136 Q86 114 86 94 Z" stroke-width="6"/>
-    <!-- right lobe -->
-    <path d="M114 94 Q144 102 149 134 Q152 162 128 164 Q110 164 112 136 Q114 114 114 94 Z" stroke-width="6"/>
+    <!-- short windpipe, branching down into the top of each lung -->
+    <path d="M100 24 L100 62"/>
+    <path d="M100 60 Q94 64 90 74"/>
+    <path d="M100 60 Q106 64 110 74"/>
+    <!-- Left lung: widest at the bottom, almost meeting its pair in the middle.
+         The soft fill makes it read as one solid organ rather than two loops. -->
+    <path d="M86 68 C62 68 40 96 36 124 C32 150 46 166 66 162 C82 158 92 150 94 134 C96 118 93 98 92 82 C91 72 90 68 86 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
+    <!-- right lung (the same shape, mirrored) -->
+    <path d="M114 68 C138 68 160 96 164 124 C168 150 154 166 134 162 C118 158 108 150 106 134 C104 118 107 98 108 82 C109 72 110 68 114 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
     <!-- gentle breaths in and out -->
-    <path d="M66 50 Q60 40 68 32" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M134 50 Q140 40 132 32" stroke="${ACCENT}" stroke-width="5"/>
+    <path d="M78 46 Q70 36 78 26" stroke="${ACCENT}" stroke-width="5"/>
+    <path d="M122 46 Q130 36 122 26" stroke="${ACCENT}" stroke-width="5"/>
   `),
 
   // 10. Sleeping --------------------------------------------------------

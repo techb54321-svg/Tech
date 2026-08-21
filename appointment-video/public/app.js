@@ -21,18 +21,6 @@ const LANG_META = {
   zh: { tts: "zh-CN" },
 };
 
-// A realistic example appointment, for trying the app quickly.
-const EXAMPLE_TRANSCRIPT = `Doctor: Good morning. So I've looked at the readings you brought in, and your blood pressure is still running a bit high — around 150 over 95 most mornings.
-Patient: Is that dangerous?
-Doctor: It's not an emergency, but we should treat it. I'd like to start you on amlodipine 5 milligrams, one tablet once a day, in the morning. Some people get a little ankle swelling with it — if that happens, give the clinic a call.
-Patient: Okay.
-Doctor: I also want you to get a blood test next week before we go any further — just kidney function and cholesterol, the form is at reception.
-Patient: Do I need to change anything else?
-Doctor: The two big ones are a 30 minute walk most days, and cutting down on salty food — takeaway and packet soups are the main culprits. And keep drinking plenty of water.
-Patient: What about the dizziness I mentioned?
-Doctor: That could be a few different things, we'll see what the blood test says first. If it gets worse, don't wait — ring us straight away.
-Doctor: Let's book you in to see you again in four weeks to check the pressure. Reception can set that up on your way out.`;
-
 // ---- Grab the page elements we need --------------------------------
 const $ = (id) => document.getElementById(id);
 const screens = {
@@ -75,9 +63,15 @@ $("consent-continue").addEventListener("click", () => showScreen("input"));
 // ============================================================
 // SCREEN 2: input (record or paste)
 // ============================================================
-$("example-link").addEventListener("click", (e) => {
+$("example-link").addEventListener("click", async (e) => {
   e.preventDefault();
-  $("transcript-input").value = EXAMPLE_TRANSCRIPT;
+  // The example lives in content.json so the app and the demo page agree.
+  try {
+    const res = await fetch("/content.json");
+    $("transcript-input").value = (await res.json()).demoTranscript;
+  } catch {
+    showInputError("Could not load the example. Please paste a transcript instead.");
+  }
 });
 
 // ---- Live recording (optional extra; Chrome and Edge support it) ----

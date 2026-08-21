@@ -1,0 +1,83 @@
+{
+  "_readme": "Fixed text used by both the server and the shareable demo page. Keeping it here means the wording and translations only ever live in one place.",
+
+  "disclaimer": {
+    "en": "This is a summary, not medical advice. Ask your clinic if anything is unclear.",
+    "vi": "Đây là bản tóm tắt, không phải lời khuyên y tế. Hãy hỏi phòng khám nếu có điều gì chưa rõ.",
+    "ar": "هذا ملخص وليس نصيحة طبية. اسأل عيادتك إذا كان هناك أي شيء غير واضح.",
+    "zh": "这是一份摘要，不是医疗建议。如有不清楚的地方，请咨询您的诊所。"
+  },
+
+  "demoTranscript": "Doctor: Good morning. So I've looked at the readings you brought in, and your blood pressure is still running a bit high — around 150 over 95 most mornings.\nPatient: Is that dangerous?\nDoctor: It's not an emergency, but we should treat it. I'd like to start you on amlodipine 5 milligrams, one tablet once a day, in the morning. Some people get a little ankle swelling with it — if that happens, give the clinic a call.\nPatient: Okay.\nDoctor: I also want you to get a blood test next week before we go any further — just kidney function and cholesterol, the form is at reception.\nPatient: Do I need to change anything else?\nDoctor: The two big ones are a 30 minute walk most days, and cutting down on salty food — takeaway and packet soups are the main culprits. And keep drinking plenty of water.\nPatient: What about the dizziness I mentioned?\nDoctor: That could be a few different things, we'll see what the blood test says first. If it gets worse, don't wait — ring us straight away.\nDoctor: Let's book you in to see you again in four weeks to check the pressure. Reception can set that up on your way out.",
+
+  "demoResult": {
+    "summary": {
+      "en": "The doctor said your blood pressure is a little high. You will start one new tablet, amlodipine 5 mg once a day. You need a blood test next week, and you should walk more and eat less salt. You will come back in four weeks to see how things are going.",
+      "vi": "Bác sĩ nói huyết áp của bạn hơi cao. Bạn sẽ bắt đầu uống một loại thuốc mới, amlodipine 5 mg một lần mỗi ngày. Bạn cần xét nghiệm máu vào tuần tới, và bạn nên đi bộ nhiều hơn và ăn ít muối hơn. Bạn sẽ quay lại sau bốn tuần để kiểm tra tình hình.",
+      "ar": "قال الطبيب إن ضغط دمك مرتفع قليلاً. ستبدأ بتناول قرص جديد، أملوديبين 5 ملغ مرة واحدة يومياً. تحتاج إلى تحليل دم الأسبوع القادم، وعليك المشي أكثر وتقليل الملح. ستعود بعد أربعة أسابيع لمعرفة كيف تسير الأمور.",
+      "zh": "医生说您的血压有点高。您将开始服用一种新药，氨氯地平5毫克，每天一次。您需要在下周做血液检查，并且应该多走路、少吃盐。四周后您将复诊，看看情况如何。"
+    },
+    "scenes": [
+      {
+        "illustration": "heart",
+        "excerpt": "your blood pressure is still running a bit high",
+        "caption": {
+          "en": "Your blood pressure is a little high.",
+          "vi": "Huyết áp của bạn hơi cao.",
+          "ar": "ضغط دمك مرتفع قليلاً.",
+          "zh": "您的血压有点高。"
+        }
+      },
+      {
+        "illustration": "taking_tablet",
+        "excerpt": "start you on amlodipine 5 milligrams, one tablet once a day",
+        "caption": {
+          "en": "Take one new tablet each day: amlodipine 5 mg.",
+          "vi": "Uống một viên thuốc mới mỗi ngày: amlodipine 5 mg.",
+          "ar": "تناول قرصاً جديداً كل يوم: أملوديبين 5 ملغ.",
+          "zh": "每天服用一片新药：氨氯地平 5 毫克。"
+        }
+      },
+      {
+        "illustration": "blood_test",
+        "excerpt": "get a blood test next week before we go any further",
+        "caption": {
+          "en": "Get a blood test next week.",
+          "vi": "Đi xét nghiệm máu vào tuần tới.",
+          "ar": "أجرِ تحليل دم الأسبوع القادم.",
+          "zh": "下周去做血液检查。"
+        }
+      },
+      {
+        "illustration": "walking",
+        "excerpt": "a 30 minute walk most days, and cutting down on salty food",
+        "caption": {
+          "en": "Walk 30 minutes most days. Eat less salt.",
+          "vi": "Đi bộ 30 phút hầu hết các ngày. Ăn ít muối hơn.",
+          "ar": "امشِ 30 دقيقة معظم الأيام. قلّل الملح.",
+          "zh": "大多数日子步行 30 分钟。少吃盐。"
+        }
+      },
+      {
+        "illustration": "question",
+        "excerpt": "That could be a few different things, we'll see what the blood test says first",
+        "caption": {
+          "en": "Check this with your doctor.",
+          "vi": "Hãy hỏi bác sĩ của bạn về điều này.",
+          "ar": "اسأل طبيبك عن هذا.",
+          "zh": "请向您的医生确认这一点。"
+        }
+      },
+      {
+        "illustration": "calendar",
+        "excerpt": "see you again in four weeks to check the pressure",
+        "caption": {
+          "en": "Come back in 4 weeks.",
+          "vi": "Quay lại sau 4 tuần.",
+          "ar": "عد بعد 4 أسابيع.",
+          "zh": "4 周后复诊。"
+        }
+      }
+    ]
+  }
+}

@@ -3,3 +3,6 @@
 
 # Installed packages (recreated by "npm install")
 node_modules/
+
+# Built by "npm run demo" — regenerate rather than edit by hand.
+demo.html

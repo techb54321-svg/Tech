@@ -4,7 +4,8 @@
   "description": "Turns a doctor's appointment transcript into a simple narrated picture-video",
   "private": true,
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "demo": "node tools/build-demo.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0"

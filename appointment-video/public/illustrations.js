@@ -107,19 +107,22 @@ function person(o) {
   const [llx, lly] = pt(x, hipY, legL, legLen);
   const [lrx, lry] = pt(x, hipY, legR, legLen);
 
-  // Face marks, nudged toward wherever they're looking.
-  const fx = headX + look * headR * 0.45;
+  // Face marks, nudged toward wherever they're looking. Eye spacing
+  // shrinks with the head, so small heads (children) keep their eyes
+  // inside the outline.
+  const fx = headX + look * headR * 0.4;
   const fy = headY + headR * 0.1;
+  const eyeDX = Math.min(4.5, headR * 0.42);
   let faceMarks = "";
   if (face === "smile") {
     faceMarks =
-      `<circle cx="${(fx - 4.5).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
-      `<circle cx="${(fx + 4.5).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
+      `<circle cx="${(fx - eyeDX).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
+      `<circle cx="${(fx + eyeDX).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
       `<path d="M${(fx - 5).toFixed(1)} ${(fy + 3).toFixed(1)} Q${fx.toFixed(1)} ${(fy + 7.5).toFixed(1)} ${(fx + 5).toFixed(1)} ${(fy + 3).toFixed(1)}" stroke-width="3"/>`;
   } else if (face === "open") {
     faceMarks =
-      `<circle cx="${(fx - 4.5).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
-      `<circle cx="${(fx + 4.5).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
+      `<circle cx="${(fx - eyeDX).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
+      `<circle cx="${(fx + eyeDX).toFixed(1)}" cy="${(fy - 2).toFixed(1)}" r="1.8" fill="${color}" stroke="none"/>` +
       `<ellipse cx="${fx.toFixed(1)}" cy="${(fy + 4.5).toFixed(1)}" rx="2.6" ry="3.4" stroke-width="3"/>`;
   } else if (face === "sleep") {
     faceMarks =
@@ -162,9 +165,9 @@ const ILLUSTRATIONS = {
     <path d="M14 172 Q180 178 346 172" stroke-width="5" opacity="0.55"/>
     <!-- the doctor, explaining -->
     ${person({ x: 176, feetY: 170, h: 96, look: 1, armL: 12, armR: -62, face: "open", cls: "anim-talk" })}
-    <!-- stethoscope -->
-    <path d="M170 118 Q163 132 172 138" stroke="${ACCENT}" stroke-width="4.5"/>
-    <circle cx="174" cy="141" r="4" stroke="${ACCENT}" stroke-width="4.5"/>
+    <!-- stethoscope, hanging from the neck onto the chest -->
+    <path d="M171 103 Q165 113 171 121" stroke="${ACCENT}" stroke-width="4.5"/>
+    <circle cx="173" cy="125" r="4" stroke="${ACCENT}" stroke-width="4.5"/>
     <!-- the patient, listening and nodding -->
     ${person({ x: 258, feetY: 170, h: 92, look: -1, armL: 50, armR: -14, cls: "anim-nod" })}
     <!-- the conversation between them -->
@@ -189,12 +192,12 @@ const ILLUSTRATIONS = {
     <path d="M282 96 L286 130 L306 130 L310 96" stroke-width="5"/>
     <path class="a-shimmer" d="M285 108 Q296 103 307 108" stroke="${ACCENT}" stroke-width="4"/>
     <circle class="a-rise" cx="296" cy="122" r="2.6" stroke="${ACCENT}" stroke-width="3"/>
-    <!-- the person, hand rising to mouth -->
-    ${person({ x: 150, feetY: 170, h: 98, look: 1, armL: 24, armR: -120, legL: 7, legR: -7, face: "open", cls: "anim-sip" })}
-    <!-- the tablet, big and clear -->
-    <g class="a-bob" style="transform-origin:82px 128px">
-      <rect x="58" y="119" width="48" height="19" rx="9.5" transform="rotate(-18 82 128)"/>
-      <path d="M82 121 L82 137" transform="rotate(-18 82 128)" stroke="${ACCENT}" stroke-width="4.5"/>
+    <!-- the person, facing the tablet, hand rising to mouth -->
+    ${person({ x: 150, feetY: 170, h: 98, look: -1, armL: 24, armR: -120, legL: 7, legR: -7, face: "open", cls: "anim-sip" })}
+    <!-- the tablet, big and clear, right where the hand is heading -->
+    <g class="a-bob" style="transform-origin:104px 76px">
+      <rect x="80" y="67" width="48" height="19" rx="9.5" transform="rotate(-18 104 76)"/>
+      <path d="M104 69 L104 85" transform="rotate(-18 104 76)" stroke="${ACCENT}" stroke-width="4.5"/>
     </g>
     ${ground()}
   `),
@@ -239,11 +242,12 @@ const ILLUSTRATIONS = {
     <path class="a-drip" d="M176 66 Q171.5 75 171 79 A5 5 0 1 0 181 79 Q180.5 75 176 66 Z" stroke="${ACCENT}" stroke-width="4"/>
     <!-- the nurse, reassuring -->
     ${person({ x: 268, feetY: 170, h: 96, look: -1, armL: 55, armR: -20, cls: "anim-nod" })}
-    <path d="M262 118 Q255 132 264 138" stroke="${ACCENT}" stroke-width="4.5"/>
-    <circle cx="266" cy="141" r="4" stroke="${ACCENT}" stroke-width="4.5"/>
-    <!-- kind words -->
-    <circle class="a-flicker" cx="236" cy="86" r="2.6" fill="${ACCENT}" stroke="none"/>
-    <circle class="a-flicker" style="animation-delay:200ms" cx="247" cy="80" r="2.6" fill="${ACCENT}" stroke="none"/>
+    <!-- stethoscope, hanging from the neck onto the chest -->
+    <path d="M263 105 Q257 115 263 123" stroke="${ACCENT}" stroke-width="4.5"/>
+    <circle cx="265" cy="127" r="4" stroke="${ACCENT}" stroke-width="4.5"/>
+    <!-- kind words, floating between nurse and tube -->
+    <circle class="a-flicker" cx="222" cy="68" r="2.6" fill="${ACCENT}" stroke="none"/>
+    <circle class="a-flicker" style="animation-delay:200ms" cx="233" cy="60" r="2.6" fill="${ACCENT}" stroke="none"/>
     ${ground()}
   `),
 
@@ -257,7 +261,8 @@ const ILLUSTRATIONS = {
     <circle class="a-rise" style="animation-delay:0ms" cx="104" cy="130" r="4" stroke="${ACCENT}" stroke-width="4"/>
     <circle class="a-rise" style="animation-delay:700ms" cx="120" cy="140" r="4" stroke="${ACCENT}" stroke-width="4"/>
     <circle class="a-rise" style="animation-delay:1200ms" cx="112" cy="146" r="3" stroke="${ACCENT}" stroke-width="3.5"/>
-    <path d="M124 50 L146 18" stroke-width="5"/>
+    <!-- the straw reaches right down into the water -->
+    <path d="M118 96 L146 18" stroke-width="5"/>
     <!-- happy drinker raising their own cup -->
     ${person({ x: 252, feetY: 170, h: 96, look: -1, armL: 20, armR: -118, face: "open", cls: "anim-sip" })}
     <path d="M212 96 L216 118 L230 118 L234 96 Z" stroke-width="4.5" transform="rotate(14 223 107)"/>
@@ -279,10 +284,10 @@ const ILLUSTRATIONS = {
     </g>
     <!-- the walker, mid-stride -->
     ${person({ x: 208, feetY: 168, h: 100, lean: 4, look: 1, armL: 30, armR: -30, legL: 20, legR: -20, cls: "anim-walk" })}
-    <!-- breeze lines sweeping past -->
-    <path class="a-swoop" style="animation-delay:0ms" d="M118 84 L146 84" stroke="${ACCENT}" stroke-width="4.5"/>
-    <path class="a-swoop" style="animation-delay:150ms" d="M108 104 L136 104" stroke="${ACCENT}" stroke-width="4.5"/>
-    <path class="a-swoop" style="animation-delay:300ms" d="M118 124 L146 124" stroke="${ACCENT}" stroke-width="4.5"/>
+    <!-- breeze lines sweeping past the walker -->
+    <path class="a-swoop" style="animation-delay:0ms" d="M150 88 L178 88" stroke="${ACCENT}" stroke-width="4.5"/>
+    <path class="a-swoop" style="animation-delay:150ms" d="M142 108 L170 108" stroke="${ACCENT}" stroke-width="4.5"/>
+    <path class="a-swoop" style="animation-delay:300ms" d="M150 128 L178 128" stroke="${ACCENT}" stroke-width="4.5"/>
     ${ground(168)}
     <!-- path dashes sliding underfoot -->
     <g class="a-scroll">
@@ -296,21 +301,21 @@ const ILLUSTRATIONS = {
     <!-- table -->
     <path d="M28 150 L332 150" stroke-width="5"/>
     <path d="M52 150 L44 186 M308 150 L316 186" stroke-width="5" opacity="0.8"/>
-    <!-- the plate, generous -->
-    <ellipse cx="180" cy="126" rx="92" ry="34"/>
-    <ellipse cx="180" cy="126" rx="66" ry="22" stroke-width="3.5" opacity="0.45"/>
+    <!-- the plate, generous, sitting on the table -->
+    <ellipse cx="180" cy="122" rx="92" ry="27"/>
+    <ellipse cx="180" cy="122" rx="66" ry="17" stroke-width="3.5" opacity="0.45"/>
     <!-- apple -->
-    <circle cx="142" cy="116" r="13" stroke="${ACCENT}" fill="${ACCENT}" fill-opacity="0.25"/>
-    <path d="M142 103 Q144 95 151 93" stroke-width="4"/>
+    <circle cx="142" cy="112" r="13" stroke="${ACCENT}" fill="${ACCENT}" fill-opacity="0.25"/>
+    <path d="M142 99 Q144 91 151 89" stroke-width="4"/>
     <!-- broccoli -->
-    <g class="a-sway" style="transform-origin:214px 124px">
-      <path d="M214 130 L214 114" stroke-width="4.5"/>
-      <path d="M202 114 Q198 102 208 102 Q210 92 220 96 Q230 94 228 104 Q236 110 224 114 Z" stroke-width="4.5" fill="${SAGE}" fill-opacity="0.4"/>
+    <g class="a-sway" style="transform-origin:214px 122px">
+      <path d="M214 126 L214 110" stroke-width="4.5"/>
+      <path d="M202 110 Q198 98 208 98 Q210 88 220 92 Q230 90 228 100 Q236 106 224 110 Z" stroke-width="4.5" fill="${SAGE}" fill-opacity="0.4"/>
     </g>
-    <!-- steam rising from the fresh bowl behind -->
-    <path d="M270 102 Q270 86 290 86 Q310 86 310 102 Z" stroke-width="4.5"/>
-    <path class="a-steam" style="animation-delay:0ms" d="M282 76 Q278 66 284 58" stroke-width="3.5" opacity="0.5"/>
-    <path class="a-steam" style="animation-delay:600ms" d="M298 76 Q302 66 296 58" stroke-width="3.5" opacity="0.5"/>
+    <!-- steam rising from the fresh bowl resting on the table -->
+    <path d="M270 150 Q270 132 290 132 Q310 132 310 150 Z" stroke-width="4.5"/>
+    <path class="a-steam" style="animation-delay:0ms" d="M282 122 Q278 112 284 104" stroke-width="3.5" opacity="0.5"/>
+    <path class="a-steam" style="animation-delay:600ms" d="M298 122 Q302 112 296 104" stroke-width="3.5" opacity="0.5"/>
     <!-- fork and knife -->
     <path d="M62 96 L62 140 M55 96 L55 112 M62 96 L62 112 M69 96 L69 112" stroke-width="4"/>
     <path d="M322 108 Q328 124 322 144" stroke-width="4"/>
@@ -391,9 +396,9 @@ const ILLUSTRATIONS = {
   // 12. Phone call — ringing the clinic.
   phone_call: svgWrap(`
     ${wash("#fbf5ea")}
-    <!-- the caller -->
-    ${person({ x: 96, feetY: 170, h: 98, look: 1, armL: 20, armR: -132, face: "open", cls: "anim-nod" })}
-    <rect x="118" y="88" width="13" height="24" rx="4" stroke-width="4.5" transform="rotate(-18 124 100)"/>
+    <!-- the caller, phone held up to their ear -->
+    ${person({ x: 96, feetY: 170, h: 98, look: 1, armL: 91, armR: -18, face: "open", cls: "anim-nod" })}
+    <rect x="119" y="86" width="13" height="24" rx="4" stroke-width="4.5" transform="rotate(-14 125 98)"/>
     <!-- the ringing, travelling across -->
     <path class="a-ring" style="transform-origin:170px 92px" d="M162 78 Q176 92 162 106" stroke="${ACCENT}" stroke-width="4.5"/>
     <path class="a-ring" style="transform-origin:186px 92px;animation-delay:200ms" d="M176 66 Q196 92 176 118" stroke="${ACCENT}" stroke-width="4.5"/>
@@ -433,12 +438,13 @@ const ILLUSTRATIONS = {
     ${hill(80, 162, 130, 34, 0.22)}
     ${hill(300, 158, 120, 30, 0.25)}
     ${birds(292, 44, 300)}
-    <!-- adult, child, adult — hands joined -->
-    ${person({ x: 122, feetY: 170, h: 98, look: 1, armL: 16, armR: -52, cls: "anim-nod" })}
-    ${person({ x: 180, feetY: 170, h: 62, look: 1, armL: 62, armR: -62, cls: "anim-bounce" })}
-    ${person({ x: 240, feetY: 170, h: 96, look: -1, armL: 55, armR: -16, cls: "anim-nod" })}
-    <!-- joined hands -->
-    <path d="M148 132 L160 142 M222 142 L214 132" stroke-width="5" opacity="0.001"/>
+    <!-- adult, child, adult — inner arms angled down toward the child -->
+    ${person({ x: 122, feetY: 170, h: 98, look: 1, armL: 48, armR: -16, cls: "anim-nod" })}
+    ${person({ x: 180, feetY: 170, h: 62, look: 1, armL: 55, armR: -55, cls: "anim-nod" })}
+    ${person({ x: 240, feetY: 170, h: 96, look: -1, armL: 16, armR: -48, cls: "anim-nod" })}
+    <!-- the held hands: short strokes joining each pair of arm ends -->
+    <path d="M146.8 121.7 L162.7 137.5" stroke-width="5"/>
+    <path d="M215.8 122.7 L197.3 137.5" stroke-width="5"/>
     <!-- a shared heart above -->
     <g class="a-pulse" style="transform-origin:181px 52px">
       <path d="M181 68 Q160 54 166 38 Q170 26 181 34 Q192 26 196 38 Q202 54 181 68 Z" stroke="${ACCENT}" stroke-width="5.5" fill="${ACCENT}" fill-opacity="0.15"/>
@@ -450,8 +456,8 @@ const ILLUSTRATIONS = {
   thumbs_up: svgWrap(`
     ${wash("#fbf5ea")}
     ${sun(52, 44, 16)}
-    <!-- the celebrator, arms up -->
-    ${person({ x: 118, feetY: 170, h: 98, look: 1, armL: 140, armR: -140, face: "open", cls: "anim-cheer" })}
+    <!-- the celebrator, arms up and wide of the head -->
+    ${person({ x: 118, feetY: 170, h: 98, look: 1, armL: 112, armR: -112, face: "open", cls: "anim-cheer" })}
     <!-- the big thumb -->
     <g class="a-bob" style="transform-origin:246px 110px">
       <rect x="206" y="102" width="22" height="46" rx="6" stroke-width="5.5"/>

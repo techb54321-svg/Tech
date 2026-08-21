@@ -242,9 +242,16 @@ function speakCurrentScene() {
   if (voice) utter.voice = voice;
 
   // Safety net: if the browser never starts speaking (e.g. no voice for
-  // this language), fall back to a simple timer.
-  const watchdog = setTimeout(() => advance(fallbackMs), 1500);
-  utter.onstart = () => clearTimeout(watchdog);
+  // this language), fall back to a simple timer — minus the time we
+  // already waited, so the scene and its timeline segment end together.
+  const watchdog = setTimeout(() => advance(Math.max(0, fallbackMs - 1500)), 1500);
+  utter.onstart = () => {
+    clearTimeout(watchdog);
+    // If the voice took so long to start that the watchdog already armed
+    // an advance, cancel it — once real speech is running, finishing the
+    // sentence is what decides when to move on, not the timer.
+    if (token === speakToken) clearTimeout(advanceTimer);
+  };
   utter.onend = () => { clearTimeout(watchdog); advance(900); };
   utter.onerror = () => { clearTimeout(watchdog); advance(fallbackMs); };
 

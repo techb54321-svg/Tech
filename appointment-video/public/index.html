@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!-- Makes the page scale nicely on phones -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visit Recap — understand your doctor visit</title>
+  <!-- A little stethoscope as the tab icon (no extra file needed) -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <h1>Visit Recap</h1>
+    <p class="tagline">Turn a doctor's appointment into a short, simple video.</p>
+  </header>
+
+  <!-- ============ SCREEN 1: CONSENT ============ -->
+  <section id="screen-consent" class="screen active">
+    <div class="card">
+      <div class="big-emoji">🩺</div>
+      <h2>Before you start</h2>
+      <p>
+        Please <strong>ask your doctor or nurse first</strong> before recording
+        an appointment. Most are happy to help — and rules about recording
+        differ from place to place.
+      </p>
+      <p class="small-note">
+        Your transcript is sent to an AI service (Anthropic) to build the
+        summary. This app stores nothing.
+      </p>
+      <label class="tick-row">
+        <input type="checkbox" id="consent-tick">
+        <span>I have permission to use this recording or transcript.</span>
+      </label>
+      <button id="consent-continue" class="btn btn-primary" disabled>Continue</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 2: INPUT ============ -->
+  <section id="screen-input" class="screen">
+    <div class="card">
+      <h2>Add the appointment</h2>
+
+      <label class="field-label" for="language-select">Show the video in…</label>
+      <select id="language-select">
+        <option value="en">English</option>
+        <option value="vi">Tiếng Việt (Vietnamese)</option>
+        <option value="ar">العربية (Arabic)</option>
+        <option value="zh">简体中文 (Chinese)</option>
+      </select>
+
+      <!-- Option A: record and transcribe live (works in Chrome/Edge) -->
+      <div id="record-box">
+        <button id="record-btn" class="btn btn-record">🎙️ Record the appointment</button>
+        <p id="record-status" class="small-note" hidden>Listening… speak normally. Tap stop when done.</p>
+      </div>
+      <p id="record-note" class="small-note" hidden></p>
+
+      <!-- Option B: paste the transcript (always works) -->
+      <label class="field-label" for="transcript-input">…or paste the transcript here</label>
+      <textarea id="transcript-input" rows="8"
+        placeholder="Paste what was said during the appointment…"></textarea>
+      <p class="small-note">
+        No transcript handy?
+        <a href="#" id="example-link">Use an example appointment</a>
+      </p>
+
+      <p id="input-error" class="error-note" hidden></p>
+      <button id="generate-btn" class="btn btn-primary">Make my video ▶</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 3: PROCESSING ============ -->
+  <section id="screen-processing" class="screen">
+    <div class="card center">
+      <div class="spinner" id="processing-spinner"></div>
+      <h2 id="processing-title">Making your video…</h2>
+      <p id="processing-text" class="small-note">Reading the appointment and drawing the scenes. This takes a moment.</p>
+      <p id="processing-error" class="error-note" hidden></p>
+      <button id="processing-back" class="btn" hidden>← Back</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 4: PLAYER ============ -->
+  <section id="screen-player" class="screen">
+    <div class="card player-card">
+      <!-- the big picture -->
+      <div id="stage"></div>
+
+      <!-- captions: chosen language large, English small underneath -->
+      <p id="caption-main"></p>
+      <p id="caption-en" hidden></p>
+
+      <!-- progress dots -->
+      <div id="dots" role="tablist" aria-label="Scenes"></div>
+
+      <!-- play controls -->
+      <div id="controls">
+        <button id="prev-btn" class="btn btn-round" aria-label="Previous scene">⏮</button>
+        <button id="play-btn" class="btn btn-round btn-play" aria-label="Play or pause">▶</button>
+        <button id="next-btn" class="btn btn-round" aria-label="Next scene">⏭</button>
+      </div>
+
+      <!-- where did this scene come from? -->
+      <button id="why-btn" class="link-btn">Why this? Show the doctor's words</button>
+      <div id="why-panel" hidden>
+        <p class="small-note">From the appointment:</p>
+        <blockquote id="why-quote"></blockquote>
+      </div>
+    </div>
+
+    <!-- the plain-language summary paragraph -->
+    <div class="card">
+      <h3>Plain summary</h3>
+      <p id="summary-main"></p>
+      <p id="summary-en" class="small-note" hidden></p>
+    </div>
+
+    <p class="center"><a href="#" id="restart-link">← Start again with a new appointment</a></p>
+  </section>
+
+  <footer>
+    <p>This is a summary tool, not medical advice. Always ask your clinic if anything is unclear.</p>
+  </footer>
+
+  <!-- the picture library, then the app logic -->
+  <script src="illustrations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

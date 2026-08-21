@@ -1,0 +1,5 @@
+# Your secret API key lives here — never commit it.
+.env
+
+# Installed packages (recreated by "npm install")
+node_modules/

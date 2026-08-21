@@ -281,6 +281,15 @@ function setTextLanguage(el, translated) {
   el.dir = LANG_META[lang].rtl ? "rtl" : "ltr";
 }
 
+// Restarts a CSS entrance animation on an element whose content changed
+// but which is itself the same DOM node (a fresh <svg> replays on its
+// own; a <p> whose text we just updated needs this nudge instead).
+function replayAnimation(el) {
+  el.style.animation = "none";
+  void el.offsetWidth; // force the browser to notice, before re-enabling
+  el.style.animation = "";
+}
+
 function renderScene() {
   const scene = data.scenes[idx];
   const translated = isTranslated(scene.caption_translated, scene.caption);
@@ -292,6 +301,7 @@ function renderScene() {
   const main = $("caption-main");
   main.textContent = translationOf(scene.caption_translated, scene.caption);
   setTextLanguage(main, translated);
+  replayAnimation(main);
   $("caption-en").textContent = scene.caption;
   $("caption-en").hidden = !translated;
 

@@ -45,6 +45,21 @@ MOCK=1 npm start
 Everything works, but the "AI" answer is a canned example — good for a
 quick look at the flow and the player.
 
+### A shareable demo page
+
+```bash
+npm run demo
+```
+
+This builds `demo.html` — one self-contained file with no server and no
+API key needed. It uses the same drawings, styles and example
+appointment as the real app, and replays one prepared appointment so you
+can show someone how it works, or open it on a phone. Email it, or put
+it on any web host.
+
+It cannot read a *new* recording — that needs the API key, which has to
+stay on a server.
+
 ### On Windows
 
 The commands above are written for macOS and Linux. In Windows Command
@@ -103,4 +118,6 @@ the app itself, never by the AI.
 | `public/app.js` | The browser logic (recording, player, narration) |
 | `public/illustrations.js` | The 15 built-in stick-figure SVG drawings |
 | `public/styles.css` | The look — warm, big-text, phone-first |
+| `public/content.json` | Fixed wording: the disclaimer in 4 languages, and the example appointment |
+| `tools/build-demo.js` | Builds `demo.html`, the shareable no-server demo |
 | `.env` | Your API key (you create this; never committed to git) |

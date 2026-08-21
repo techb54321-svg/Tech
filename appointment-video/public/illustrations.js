@@ -6,7 +6,12 @@
 // draws or invents images of its own.
 //
 // All pictures share one style: thick dark "marker" lines with
-// one warm accent colour, on a 200 x 200 canvas.
+// one warm accent colour, on a 200 x 200 canvas. Small parts of
+// each drawing carry a class like "a-pulse" or "a-float" — those
+// are idle animations defined once in styles.css (heartbeat,
+// breathing, drifting sleep, and so on), so the pictures feel
+// alive instead of frozen. People who ask for less motion never
+// see them move — see the prefers-reduced-motion rule in styles.css.
 // ============================================================
 
 const INK = "#3a3330";     // main line colour (dark warm grey)
@@ -47,11 +52,11 @@ const ILLUSTRATIONS = {
     <path d="M145 92 L162 116"/>
     <path d="M145 130 L132 166"/>
     <path d="M145 130 L158 166"/>
-    <!-- speech bubble -->
+    <!-- speech bubble, dots taking turns talking -->
     <path d="M82 30 Q100 21 118 30 Q127 39 117 47 Q103 53 89 49 L80 57 L85 47 Q75 39 82 30"/>
-    <circle cx="93" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
-    <circle cx="102" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
-    <circle cx="111" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
+    <circle class="a-flicker" style="animation-delay:0ms" cx="93" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
+    <circle class="a-flicker" style="animation-delay:180ms" cx="102" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
+    <circle class="a-flicker" style="animation-delay:360ms" cx="111" cy="38" r="2.5" fill="${ACCENT}" stroke="none"/>
     ${GROUND}
   `),
 
@@ -60,17 +65,18 @@ const ILLUSTRATIONS = {
     <circle cx="100" cy="58" r="15"/>
     <path d="M94 63 Q100 68 106 63" stroke-width="3.5"/>
     <path d="M100 73 L100 132"/>
-    <!-- arm lifting tablet to mouth -->
-    <path d="M100 92 Q78 84 90 66"/>
+    <!-- arm lifting tablet to mouth, gently bobbing -->
+    <g class="a-bob" style="transform-origin:100px 92px">
+      <path d="M100 92 Q78 84 90 66"/>
+      <rect x="28" y="86" width="46" height="21" rx="10.5" transform="rotate(-22 51 96)"/>
+      <path d="M51 88 L51 105" transform="rotate(-22 51 96)" stroke="${ACCENT}" stroke-width="5"/>
+    </g>
     <!-- other arm holding a glass -->
     <path d="M100 92 L124 108"/>
     <path d="M120 100 L138 100 L135 124 L124 124 Z" stroke-width="5"/>
-    <path d="M122 108 L136 108" stroke="${ACCENT}" stroke-width="4"/>
+    <path class="a-shimmer" d="M122 108 L136 108" stroke="${ACCENT}" stroke-width="4"/>
     <path d="M100 132 L86 168"/>
     <path d="M100 132 L114 168"/>
-    <!-- the big friendly tablet -->
-    <rect x="28" y="86" width="46" height="21" rx="10.5" transform="rotate(-22 51 96)"/>
-    <path d="M51 88 L51 105" transform="rotate(-22 51 96)" stroke="${ACCENT}" stroke-width="5"/>
     ${GROUND}
   `),
 
@@ -90,8 +96,8 @@ const ILLUSTRATIONS = {
     <circle cx="136" cy="124" r="3.5" fill="${INK}" stroke="none"/>
     <circle cx="64" cy="146" r="3.5" fill="${INK}" stroke="none"/>
     <circle cx="88" cy="146" r="3.5" fill="${INK}" stroke="none"/>
-    <!-- the important day, circled -->
-    <circle cx="112" cy="124" r="13" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- the important day, circled and gently pulsing -->
+    <circle class="a-pulse" style="transform-origin:112px 124px" cx="112" cy="124" r="13" stroke="${ACCENT}" stroke-width="5"/>
   `),
 
   // 4. Blood test ------------------------------------------------------
@@ -99,20 +105,21 @@ const ILLUSTRATIONS = {
     <!-- test tube -->
     <path d="M85 52 L85 140 Q85 162 100 162 Q115 162 115 140 L115 52"/>
     <path d="M77 52 L123 52"/>
-    <!-- sample level -->
-    <path d="M86 112 Q93 106 100 112 Q107 118 114 112" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M88 132 Q100 138 112 132" stroke="${ACCENT}" stroke-width="5" opacity="0.6"/>
-    <!-- a single drop -->
-    <path d="M152 54 Q143 72 142 82 A10 10 0 1 0 162 82 Q161 72 152 54 Z" stroke="${ACCENT}" stroke-width="6"/>
+    <!-- sample level, gently shimmering -->
+    <path class="a-shimmer" d="M86 112 Q93 106 100 112 Q107 118 114 112" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-shimmer" style="animation-delay:250ms" d="M88 132 Q100 138 112 132" stroke="${ACCENT}" stroke-width="5" opacity="0.6"/>
+    <!-- a drop, falling toward the tube on a loop -->
+    <path class="a-drip" d="M152 54 Q143 72 142 82 A10 10 0 1 0 162 82 Q161 72 152 54 Z" stroke="${ACCENT}" stroke-width="6"/>
   `),
 
   // 5. Drinking water --------------------------------------------------
   drinking_water: svgWrap(`
     <path d="M70 50 L82 162 L118 162 L130 50 Z"/>
     <!-- water line -->
-    <path d="M77 94 Q88 88 100 94 Q112 100 123 94" stroke="${ACCENT}" stroke-width="5"/>
-    <circle cx="95" cy="122" r="4" stroke="${ACCENT}" stroke-width="4"/>
-    <circle cx="107" cy="138" r="4" stroke="${ACCENT}" stroke-width="4"/>
+    <path class="a-shimmer" d="M77 94 Q88 88 100 94 Q112 100 123 94" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- bubbles, rising and fading on a loop -->
+    <circle class="a-rise" style="animation-delay:0ms" cx="95" cy="140" r="4" stroke="${ACCENT}" stroke-width="4"/>
+    <circle class="a-rise" style="animation-delay:700ms" cx="107" cy="148" r="4" stroke="${ACCENT}" stroke-width="4"/>
     <!-- straw -->
     <path d="M114 56 L134 24"/>
   `),
@@ -126,10 +133,10 @@ const ILLUSTRATIONS = {
     <path d="M104 82 L75 98"/>
     <path d="M99 118 L127 148 L131 168"/>
     <path d="M99 118 L75 146 L61 166"/>
-    <!-- little motion lines -->
-    <path d="M36 58 L56 58" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M28 78 L48 78" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M36 98 L56 98" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- little motion lines, sweeping past on a loop -->
+    <path class="a-swoop" style="animation-delay:0ms" d="M36 58 L56 58" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-swoop" style="animation-delay:150ms" d="M28 78 L48 78" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-swoop" style="animation-delay:300ms" d="M36 98 L56 98" stroke="${ACCENT}" stroke-width="5"/>
     ${GROUND}
   `),
 
@@ -140,9 +147,11 @@ const ILLUSTRATIONS = {
     <!-- apple -->
     <circle cx="86" cy="110" r="13" stroke="${ACCENT}"/>
     <path d="M86 97 Q88 89 95 87" stroke-width="4"/>
-    <!-- broccoli -->
-    <path d="M124 128 L124 112" stroke-width="5"/>
-    <path d="M112 112 Q108 100 118 100 Q120 90 130 94 Q140 92 138 102 Q146 108 134 112 Z" stroke-width="5"/>
+    <!-- broccoli, gently swaying -->
+    <g class="a-sway" style="transform-origin:124px 128px">
+      <path d="M124 128 L124 112" stroke-width="5"/>
+      <path d="M112 112 Q108 100 118 100 Q120 90 130 94 Q140 92 138 102 Q146 108 134 112 Z" stroke-width="5"/>
+    </g>
     <!-- fork -->
     <path d="M24 150 L24 98" stroke-width="5"/>
     <path d="M17 98 L17 76" stroke-width="5"/>
@@ -152,9 +161,9 @@ const ILLUSTRATIONS = {
 
   // 8. Heart / blood pressure ------------------------------------------
   heart: svgWrap(`
-    <path d="M100 162 Q42 120 45 76 Q47 44 76 46 Q94 48 100 68 Q106 48 124 46 Q153 44 155 76 Q158 120 100 162 Z" stroke="${ACCENT}" stroke-width="8"/>
-    <!-- heartbeat line -->
-    <path d="M58 102 L82 102 L92 82 L106 122 L116 102 L142 102" stroke-width="6"/>
+    <path class="a-heartbeat" style="transform-origin:100px 104px" d="M100 162 Q42 120 45 76 Q47 44 76 46 Q94 48 100 68 Q106 48 124 46 Q153 44 155 76 Q158 120 100 162 Z" stroke="${ACCENT}" stroke-width="8"/>
+    <!-- heartbeat line, drawing itself on a loop -->
+    <path class="a-dash" d="M58 102 L82 102 L92 82 L106 122 L116 102 L142 102" stroke-width="6" pathLength="100"/>
   `),
 
   // 9. Lungs / breathing -----------------------------------------------
@@ -163,14 +172,16 @@ const ILLUSTRATIONS = {
     <path d="M100 24 L100 62"/>
     <path d="M100 60 Q94 64 90 74"/>
     <path d="M100 60 Q106 64 110 74"/>
-    <!-- Left lung: widest at the bottom, almost meeting its pair in the middle.
-         The soft fill makes it read as one solid organ rather than two loops. -->
-    <path d="M86 68 C62 68 40 96 36 124 C32 150 46 166 66 162 C82 158 92 150 94 134 C96 118 93 98 92 82 C91 72 90 68 86 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
-    <!-- right lung (the same shape, mirrored) -->
-    <path d="M114 68 C138 68 160 96 164 124 C168 150 154 166 134 162 C118 158 108 150 106 134 C104 118 107 98 108 82 C109 72 110 68 114 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
+    <!-- Both lungs breathe together, expanding and settling on a loop. -->
+    <g class="a-breathe" style="transform-origin:100px 130px">
+      <!-- left lung: widest at the bottom, almost meeting its pair in the middle -->
+      <path d="M86 68 C62 68 40 96 36 124 C32 150 46 166 66 162 C82 158 92 150 94 134 C96 118 93 98 92 82 C91 72 90 68 86 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
+      <!-- right lung (the same shape, mirrored) -->
+      <path d="M114 68 C138 68 160 96 164 124 C168 150 154 166 134 162 C118 158 108 150 106 134 C104 118 107 98 108 82 C109 72 110 68 114 68 Z" stroke-width="6" fill="${ACCENT}" fill-opacity="0.18"/>
+    </g>
     <!-- gentle breaths in and out -->
-    <path d="M78 46 Q70 36 78 26" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M122 46 Q130 36 122 26" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-shimmer" d="M78 46 Q70 36 78 26" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-shimmer" style="animation-delay:250ms" d="M122 46 Q130 36 122 26" stroke="${ACCENT}" stroke-width="5"/>
   `),
 
   // 10. Sleeping --------------------------------------------------------
@@ -184,14 +195,14 @@ const ILLUSTRATIONS = {
     <circle cx="56" cy="126" r="12"/>
     <path d="M50 127 Q53 130 56 127" stroke-width="3"/>
     <path d="M74 150 Q84 126 110 130 L150 130 Q164 132 164 150" stroke-width="6"/>
-    <!-- Zzz -->
-    <path d="M116 58 L138 58 L116 80 L138 80" stroke="${ACCENT}" stroke-width="6"/>
-    <path d="M148 40 L162 40 L148 54 L162 54" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- Zzz, drifting up and fading on a loop -->
+    <path class="a-float" style="animation-delay:0ms" d="M116 58 L138 58 L116 80 L138 80" stroke="${ACCENT}" stroke-width="6"/>
+    <path class="a-float" style="animation-delay:600ms" d="M148 40 L162 40 L148 54 L162 54" stroke="${ACCENT}" stroke-width="5"/>
   `),
 
   // 11. Warning sign -----------------------------------------------------
   warning: svgWrap(`
-    <path d="M100 34 Q104 34 107 40 L172 152 Q176 162 164 164 L36 164 Q24 162 28 152 L93 40 Q96 34 100 34 Z" stroke="${ACCENT}" stroke-width="8"/>
+    <path class="a-alert" style="transform-origin:100px 100px" d="M100 34 Q104 34 107 40 L172 152 Q176 162 164 164 L36 164 Q24 162 28 152 L93 40 Q96 34 100 34 Z" stroke="${ACCENT}" stroke-width="8"/>
     <path d="M100 74 L100 118" stroke-width="9"/>
     <circle cx="100" cy="140" r="6" fill="${INK}" stroke="none"/>
   `),
@@ -205,15 +216,17 @@ const ILLUSTRATIONS = {
     <path d="M84 82 L114 82" stroke-width="4"/>
     <path d="M84 96 L114 96" stroke-width="4"/>
     <path d="M84 110 L104 110" stroke-width="4"/>
-    <!-- ringing -->
-    <path d="M142 82 Q154 100 142 118" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M154 70 Q174 100 154 130" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- ringing, pulsing outward on a loop -->
+    <path class="a-ring" style="transform-origin:140px 100px" d="M142 82 Q154 100 142 118" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-ring" style="transform-origin:150px 100px;animation-delay:200ms" d="M154 70 Q174 100 154 130" stroke="${ACCENT}" stroke-width="5"/>
   `),
 
   // 13. Question mark / something unclear -------------------------------
   question: svgWrap(`
-    <path d="M64 74 Q62 34 100 33 Q138 34 137 70 Q136 95 112 104 Q101 108 101 126" stroke="${ACCENT}" stroke-width="9"/>
-    <circle cx="101" cy="153" r="7" fill="${ACCENT}" stroke="none"/>
+    <g class="a-bob" style="transform-origin:100px 90px">
+      <path d="M64 74 Q62 34 100 33 Q138 34 137 70 Q136 95 112 104 Q101 108 101 126" stroke="${ACCENT}" stroke-width="9"/>
+      <circle cx="101" cy="153" r="7" fill="${ACCENT}" stroke="none"/>
+    </g>
     <path d="M46 118 L38 127" stroke-width="5"/>
     <path d="M154 112 L163 120" stroke-width="5"/>
   `),
@@ -244,8 +257,8 @@ const ILLUSTRATIONS = {
     <path d="M132 90 L150 112"/>
     <path d="M132 130 L120 166"/>
     <path d="M132 130 L144 166"/>
-    <!-- a little heart above -->
-    <path d="M166 52 Q154 44 158 34 Q161 27 166 32 Q171 27 174 34 Q178 44 166 52 Z" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- a little heart above, softly pulsing -->
+    <path class="a-pulse" style="transform-origin:166px 43px" d="M166 52 Q154 44 158 34 Q161 27 166 32 Q171 27 174 34 Q178 44 166 52 Z" stroke="${ACCENT}" stroke-width="5"/>
     ${GROUND}
   `),
 
@@ -260,10 +273,10 @@ const ILLUSTRATIONS = {
     <path d="M100 154 L148 154" stroke-width="4"/>
     <!-- thumb -->
     <path d="M92 120 Q84 92 100 72 Q110 61 118 72 Q123 82 113 96 Q106 105 108 112"/>
-    <!-- little sparks -->
-    <path d="M138 62 L148 50" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M118 48 L121 34" stroke="${ACCENT}" stroke-width="5"/>
-    <path d="M156 82 L170 76" stroke="${ACCENT}" stroke-width="5"/>
+    <!-- little sparks, twinkling in turn -->
+    <path class="a-flicker" style="animation-delay:0ms" d="M138 62 L148 50" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-flicker" style="animation-delay:220ms" d="M118 48 L121 34" stroke="${ACCENT}" stroke-width="5"/>
+    <path class="a-flicker" style="animation-delay:440ms" d="M156 82 L170 76" stroke="${ACCENT}" stroke-width="5"/>
   `),
 };
 

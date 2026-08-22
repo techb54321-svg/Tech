@@ -8,6 +8,7 @@
 
 | File | What it is |
 | --- | --- |
+| `mouth-panorama-360.glb` | The hero dome: a sharp AI-generated 360° panorama of a healthy mouth (source in `source-panoramas/`), uvula and throat straight ahead. |
 | `mouth-healthy-360.glb` | Stand inside a healthy mouth — dewy tongue ahead, throat in front of you, teeth arching around. |
 | `mouth-sugar-attack-360.glb` | The same mouth after the cola: decayed teeth, sticky brown film, and the sugar-bug monsters. |
 

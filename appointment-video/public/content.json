@@ -25,10 +25,10 @@
           "zh": "您的血压有点高。"
         },
         "narration": {
-          "en": "The doctor checked your blood pressure. It is a little high — not an emergency, but it needs care.",
-          "vi": "Bác sĩ đã đo huyết áp của bạn. Nó hơi cao — không nguy cấp, nhưng cần được điều trị.",
-          "ar": "قاس الطبيب ضغط دمك. إنه مرتفع قليلاً — ليس حالة طارئة، لكنه يحتاج إلى عناية.",
-          "zh": "医生检查了您的血压。它有点高——不是紧急情况，但需要治疗。"
+          "en": "Let’s start with what the doctor found. Your heart has been working a little too hard — your blood pressure is running high. Not an emergency. Just something that deserves care.",
+          "vi": "Hãy bắt đầu với điều bác sĩ tìm thấy. Trái tim bạn đang phải làm việc hơi vất vả — huyết áp của bạn đang cao. Không phải cấp cứu, chỉ là điều cần được chăm sóc.",
+          "ar": "لنبدأ بما وجده الطبيب. قلبك يعمل بجهد أكبر قليلاً — ضغط دمك مرتفع. ليست حالة طارئة، فقط أمر يستحق العناية.",
+          "zh": "让我们从医生的发现说起。你的心脏最近有点辛苦——你的血压偏高了。这不是紧急情况，只是需要好好照顾。"
         }
       },
       {
@@ -41,10 +41,10 @@
           "zh": "每天服用一片新药：氨氯地平 5 毫克。"
         },
         "narration": {
-          "en": "There is one new tablet to help: amlodipine, 5 milligrams. Take it once every morning.",
-          "vi": "Có một viên thuốc mới để giúp bạn: amlodipine 5 mg. Uống một viên mỗi buổi sáng.",
-          "ar": "هناك قرص جديد للمساعدة: أملوديبين 5 ملغ. تناوله مرة واحدة كل صباح.",
-          "zh": "有一种新药来帮助您：氨氯地平5毫克。每天早上服用一次。"
+          "en": "So there’s a helper now: one small tablet called amlodipine, five milligrams. Every morning it quietly asks your heart to relax.",
+          "vi": "Vì vậy giờ đây có một trợ thủ: một viên thuốc nhỏ tên amlodipine, 5 miligam. Mỗi buổi sáng, nó nhẹ nhàng giúp trái tim bạn thư giãn.",
+          "ar": "لذلك هناك مساعد الآن: قرص صغير اسمه أملوديبين، خمسة ملليغرامات. كل صباح يطلب من قلبك بهدوء أن يرتاح.",
+          "zh": "所以现在有了一个小帮手：一片叫氨氯地平的小药片，五毫克。每天早晨，它轻轻地让你的心脏放松下来。"
         }
       },
       {
@@ -57,10 +57,10 @@
           "zh": "下周去做血液检查。"
         },
         "narration": {
-          "en": "Next week, a quick blood test. It checks your kidneys and cholesterol before anything else changes.",
-          "vi": "Tuần tới, bạn sẽ làm một xét nghiệm máu nhanh. Nó kiểm tra thận và cholesterol trước khi thay đổi gì thêm.",
-          "ar": "الأسبوع القادم، تحليل دم سريع. يفحص الكلى والكوليسترول قبل أي تغيير آخر.",
-          "zh": "下周做一个快速血液检查。在进一步治疗前，先检查肾功能和胆固醇。"
+          "en": "Before anything else changes, a quick blood test next week — a small check on your kidneys and cholesterol, so the plan truly fits you.",
+          "vi": "Trước khi thay đổi gì thêm, tuần tới sẽ có một xét nghiệm máu nhanh — kiểm tra thận và cholesterol, để kế hoạch thật sự phù hợp với bạn.",
+          "ar": "قبل أي تغيير آخر، تحليل دم سريع الأسبوع القادم — فحص صغير للكلى والكوليسترول، ليكون العلاج مناسباً لك تماماً.",
+          "zh": "在进一步改变之前，下周先做个快速血液检查——看看肾脏和胆固醇，好让方案真正适合你。"
         }
       },
       {
@@ -73,10 +73,10 @@
           "zh": "大多数日子步行 30 分钟。少吃盐。"
         },
         "narration": {
-          "en": "Small things help a lot: a 30 minute walk most days, less salty food, and plenty of water.",
-          "vi": "Những điều nhỏ giúp ích rất nhiều: đi bộ 30 phút hầu hết các ngày, ăn ít muối hơn, và uống nhiều nước.",
-          "ar": "أشياء صغيرة تساعد كثيراً: المشي 30 دقيقة معظم الأيام، وتقليل الملح، وشرب الكثير من الماء.",
-          "zh": "小事情帮助很大：大多数日子步行30分钟，少吃盐，多喝水。"
+          "en": "And the strongest medicine isn’t in a packet: a walk most days, a lighter hand with salt, plenty of water. Small things that add up to a lot.",
+          "vi": "Và liều thuốc mạnh nhất không nằm trong vỉ thuốc: đi bộ hầu hết các ngày, ăn nhạt hơn, uống nhiều nước. Những điều nhỏ cộng lại thành rất lớn.",
+          "ar": "وأقوى دواء ليس في علبة: مشي في معظم الأيام، ملح أقل، وماء وفير. أشياء صغيرة تصنع فرقاً كبيراً.",
+          "zh": "而最有力的药不在药盒里：多数日子去散散步，盐放少一点，水多喝一点。小事累积起来，就是大改变。"
         }
       },
       {
@@ -89,10 +89,10 @@
           "zh": "请向您的医生确认这一点。"
         },
         "narration": {
-          "en": "You mentioned feeling dizzy. The doctor wants the blood test first — so check this with your doctor.",
-          "vi": "Bạn đã nói về việc bị chóng mặt. Bác sĩ muốn chờ kết quả xét nghiệm máu trước — hãy hỏi bác sĩ của bạn về điều này.",
-          "ar": "ذكرتَ الشعور بالدوخة. يريد الطبيب نتيجة تحليل الدم أولاً — اسأل طبيبك عن هذا.",
-          "zh": "您提到了头晕。医生想先看血液检查的结果——请向您的医生确认这一点。"
+          "en": "That dizziness you mentioned? The doctor hasn’t forgotten it. The blood test comes first — and if it ever gets worse, don’t wait. Call straight away.",
+          "vi": "Còn cơn chóng mặt bạn nhắc đến? Bác sĩ không quên đâu. Xét nghiệm máu sẽ làm trước — và nếu nó nặng hơn, đừng chờ đợi. Hãy gọi ngay.",
+          "ar": "والدوخة التي ذكرتها؟ لم ينسها الطبيب. تحليل الدم أولاً — وإذا ساءت يوماً، لا تنتظر. اتصل فوراً.",
+          "zh": "你提到的头晕呢？医生没有忘记。先做血液检查——如果头晕加重，别等，马上打电话。"
         }
       },
       {
@@ -105,10 +105,10 @@
           "zh": "4 周后复诊。"
         },
         "narration": {
-          "en": "In four weeks you will see the doctor again, to check the pressure is coming down.",
-          "vi": "Sau bốn tuần, bạn sẽ gặp lại bác sĩ để kiểm tra xem huyết áp có đang giảm không.",
-          "ar": "بعد أربعة أسابيع ستقابل الطبيب مرة أخرى، للتأكد من أن الضغط ينخفض.",
-          "zh": "四周后您将再次见到医生，检查血压是否在下降。"
+          "en": "In four weeks you’ll sit down together again, and see how far the numbers have come. Through all of it, you won’t be doing this alone.",
+          "vi": "Bốn tuần nữa, hai người sẽ lại ngồi cùng nhau, xem các chỉ số đã tiến bộ đến đâu. Suốt chặng đường này, bạn không hề đơn độc.",
+          "ar": "بعد أربعة أسابيع ستجلسان معاً من جديد، لتريا كم تحسنت الأرقام. وطوال الطريق، لن تكون وحدك.",
+          "zh": "四周后，你们会再次坐在一起，看看数字进步了多少。这一路上，你都不是一个人。"
         }
       }
     ]

@@ -88,11 +88,12 @@ You will receive the transcript. Reply with:
 Each scene has:
 - "caption": at most 12 words, plain English, grade-5 reading level.
 - "caption_translated": the caption in ${languageName}, equally simple.
-- "narration": one or two short, warm sentences (at most 30 words) that
-  TELL this beat of the story to the patient, in second person ("you"),
-  grade-5 reading level. This is spoken aloud, so make it sound like a
-  kind person talking, not a label. It must obey the same safety rules
-  as the caption.
+- "narration": one to three short sentences (at most 34 words) that tell
+  this beat AS A STORY, spoken aloud to the patient in second person.
+  Not a label, not a list item — a kind narrator's voice: acknowledge a
+  feeling where it's natural ("not an emergency", "the doctor hasn't
+  forgotten"), connect the step to its WHY ("so the plan fits you"),
+  use plain grade-5 words. Same safety rules as the caption.
 - "narration_translated": the narration in ${languageName}, equally warm
   and simple.
 - "excerpt": the exact words from the transcript this scene came from,
@@ -100,9 +101,12 @@ Each scene has:
 - "illustration": the best matching picture ID from the fixed list.
   You may ONLY use these IDs — never invent new ones.
 
-Together the scenes should read like one continuous story about this
-patient's visit — what the doctor found, what to do about it, and what
-happens next — not a list of disconnected facts.
+Together the scenes are ONE story with a shape, not a list of facts:
+a beginning (what the doctor found, told honestly and calmly), a middle
+(the plan, each step connected to the reason for it), and an end (what
+happens next, closing with hope and the sense that the patient is not
+doing this alone). If the patient raised a worry in the transcript,
+give it its own beat and show it was heard.
 
 SAFETY RULES — follow these exactly:
 - NEVER state a medicine dose or how often to take it unless those exact

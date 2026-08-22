@@ -138,6 +138,13 @@ const windowLight = (x, y, w, h, floorY) =>
   `<path d="M${x + w / 2} ${y} L${x + w / 2} ${y + h} M${x} ${y + h / 2} L${x + w} ${y + h / 2}" stroke="${WHITE}" stroke-width="4"/>` +
   `<path d="M${x - 2} ${y + h} L${x + w + 2} ${y + h} L${x + w + 26} ${floorY} L${x - 26} ${floorY} Z" fill="${GOLD}" opacity="0.13"/>`;
 
+// Tiny drifting particles — dust in a shaft of light, pollen in the
+// park, fireflies at night. Each [x, y, delayMs] point becomes one.
+const motes = (pts, color = GOLD) =>
+  pts.map(([x, y, d]) =>
+    `<circle class="a-mote" style="animation-delay:${d}ms" cx="${x}" cy="${y}" r="2" fill="${color}" opacity="0"/>`
+  ).join("");
+
 // Big soft leaves poking in from a corner — the foreground layer.
 const fgLeaves = (corner = "left") => {
   const flip = corner === "left" ? "" : ` transform="translate(360 0) scale(-1 1)"`;
@@ -208,11 +215,15 @@ function figure(o) {
     faceMarks +=
       `<path d="M${f1(fx - eyeDX - 2)} ${f1(fy - 1)} q2.5 2 5 0 M${f1(fx + eyeDX - 3)} ${f1(fy - 1)} q2.5 2 5 0" stroke="${INK}" stroke-width="2.2" fill="none"/>`;
   } else {
+    // Eyes blink (styles.css), each character on their own rhythm.
     faceMarks +=
+      `<g class="blink" style="transform-origin:${f1(fx)}px ${f1(fy - 1.5)}px;animation-delay:${(x * 37) % 3100}ms">` +
       `<circle cx="${f1(fx - eyeDX)}" cy="${f1(fy - 1.5)}" r="1.9" fill="${INK}"/>` +
       `<circle cx="${f1(fx + eyeDX)}" cy="${f1(fy - 1.5)}" r="1.9" fill="${INK}"/>` +
+      `</g>` +
       (face === "open"
-        ? `<ellipse cx="${f1(fx)}" cy="${f1(fy + 4.6)}" rx="2.4" ry="3" fill="${INK}"/>`
+        // An open mouth chatters while its owner is mid-speech.
+        ? `<g class="m-talk" style="transform-origin:${f1(fx)}px ${f1(fy + 4.6)}px"><ellipse cx="${f1(fx)}" cy="${f1(fy + 4.6)}" rx="2.4" ry="3" fill="${INK}"/></g>`
         : `<path d="M${f1(fx - 4.5)} ${f1(fy + 3.5)} Q${f1(fx)} ${f1(fy + 7.2)} ${f1(fx + 4.5)} ${f1(fy + 3.5)}" stroke="${INK}" stroke-width="2.6" fill="none"/>`);
   }
 
@@ -262,6 +273,8 @@ function figure(o) {
     `<circle cx="${hx}" cy="${f1(headY - headR * 0.12)}" r="${f1(headR * 1.02)}" fill="${c.hair}"/>` +
     hairExtra +
     `<circle cx="${f1(headX)}" cy="${f1(headY + hairDrop * 0.4)}" r="${f1(headR * 0.94)}" fill="${c.skin}"/>` +
+    // a soft catch-light on the brow, like studio lighting
+    `<circle cx="${f1(headX - headR * 0.3)}" cy="${f1(headY - headR * 0.12)}" r="${f1(headR * 0.32)}" fill="#ffffff" opacity="0.14"/>` +
     faceMarks +
     `</g>` +
     `</g>`
@@ -278,6 +291,7 @@ const ILLUSTRATIONS = {
     ${skyWash("g_dp", "#f6efe2", PAPER)}
     <g class="layer-bg"><g class="in-1">
       ${windowLight(268, 26, 66, 76, 170)}
+      ${motes([[286,120,0],[302,138,1800],[318,112,3600],[296,150,5200]], GOLD)}
       <rect x="34" y="36" width="46" height="58" rx="5" fill="${WHITE}"/>
       <path d="M46 52 L68 52 M50 66 L64 66 M53 80 L61 80" stroke="${SKYB_D}" stroke-width="3.5" fill="none"/>
       ${floor(168)}
@@ -307,6 +321,7 @@ const ILLUSTRATIONS = {
     ${skyWash("g_tt", "#f8ecd6", PAPER)}
     <g class="layer-bg"><g class="in-1">
       ${windowLight(36, 26, 60, 70, 168)}
+      ${motes([[52,116,600],[70,132,2400],[44,144,4100]], GOLD)}
       ${floor(168)}
       <rect x="228" y="126" width="126" height="10" rx="4" fill="#c9a37a"/>
       <rect x="238" y="136" width="10" height="38" fill="#b08a60"/>
@@ -436,6 +451,7 @@ const ILLUSTRATIONS = {
       ${hill(310, 182, 160, 48, SAGE_M)}
       ${birds(84, 58, 0)}
       ${birds(128, 44, 900)}
+      ${motes([[120,120,0],[250,100,1500],[170,140,3000],[290,130,4600]], "#fdfbf6")}
     </g></g>
     <g class="layer-mid">
       <g class="in-1">
@@ -547,6 +563,7 @@ const ILLUSTRATIONS = {
       ${[[52, 30, 0], [96, 56, 400], [150, 26, 800], [230, 44, 200], [268, 22, 600]].map(([x, y, d]) =>
         `<path class="a-twinkle" style="animation-delay:${d}ms" d="M${x} ${y - 5} L${x} ${y + 5} M${x - 5} ${y} L${x + 5} ${y}" stroke="${CREAM}" stroke-width="3" opacity="0.8" fill="none"/>`
       ).join("")}
+      ${motes([[318,110,0],[336,140,2200],[306,150,4400]], GOLD)}
     </g></g>
     <g class="layer-mid">
       <g class="in-2">
@@ -658,6 +675,7 @@ const ILLUSTRATIONS = {
       ${hill(80, 180, 150, 42, SAGE)}
       ${hill(300, 176, 140, 38, SAGE_M)}
       ${birds(288, 48, 300)}
+      ${motes([[110,110,800],[220,90,2600],[280,120,4400]], "#fdfbf6")}
     </g></g>
     <g class="layer-mid">
       <g class="in-1">${tree(330, 170, 0.95)}</g>

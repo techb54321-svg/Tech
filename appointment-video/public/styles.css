@@ -506,6 +506,24 @@ select:focus, textarea:focus { outline: 2px solid var(--accent); border-color: v
 
   .anim-bounce { animation: person-hop 1.2s ease-in-out infinite; }
 
+  /* ---- Life: characters blink on their own rhythm, open mouths
+         chatter while their owner is mid-speech, and tiny particles
+         drift through shafts of light. ---- */
+  .blink { animation: eye-blink 4.3s infinite; }
+  @keyframes eye-blink {
+    0%, 93%, 100% { transform: scaleY(1); }
+    95.5%, 97.5%  { transform: scaleY(0.08); }
+  }
+  .m-talk { animation: mouth-talk 0.34s ease-in-out infinite alternate; }
+  @keyframes mouth-talk { from { transform: scaleY(1); } to { transform: scaleY(0.28); } }
+  .a-mote { animation: mote-drift 7s linear infinite; }
+  @keyframes mote-drift {
+    0%   { transform: translate(0, 0); opacity: 0; }
+    15%  { opacity: 0.7; }
+    80%  { opacity: 0.45; }
+    100% { transform: translate(9px, -28px); opacity: 0; }
+  }
+
   /* ---- Scene choreography: when a scene starts, its layers enter
          in order — setting, main prop, people, then the action. ---- */
   .in-1, .in-2, .in-3, .in-4 { animation: layer-enter 0.55s cubic-bezier(.2,.75,.3,1) both; }

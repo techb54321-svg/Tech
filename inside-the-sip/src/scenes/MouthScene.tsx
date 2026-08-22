@@ -4,6 +4,7 @@ import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
 import { VideoDome } from '../components/VideoDome'
+import { PhotoDome } from '../components/PhotoDome'
 import { enamelTextures, mouthTextures } from '../textures/surfaces'
 
 // Scene 3 — The Mouth. Giant friendly teeth in a warm pink mouth. Glowing acid
@@ -13,11 +14,27 @@ import { enamelTextures, mouthTextures } from '../textures/surfaces'
 // Educational note: sugar feeds mouth bacteria that produce acid, which
 // dissolves enamel over time. Simplified here to a single tap-to-erode beat.
 //
-// If a 360° video of the cola wash / decay is bundled at
-// public/videos/mouth360.mp4, the mouth becomes an immersive video dome;
-// otherwise it falls back to the hand-built procedural mouth below.
+// The mouth backdrop degrades gracefully through three levels:
+//   1. the real mouth photo, projected into a 360° panorama at
+//      public/panoramas/mouth-photo.jpg — a still, so it costs almost
+//      nothing per frame and is rock-solid at headset framerates;
+//   2. the 360° cola-wash video at public/videos/mouth360.mp4, if the
+//      photo isn't bundled;
+//   3. the hand-built procedural mouth below, if neither loads.
 export function MouthScene() {
+  const [photoFailed, setPhotoFailed] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
+
+  if (!photoFailed) {
+    return (
+      <group>
+        <PhotoDome
+          src={`${import.meta.env.BASE_URL}panoramas/mouth-photo.jpg`}
+          onError={() => setPhotoFailed(true)}
+        />
+      </group>
+    )
+  }
   if (!videoFailed) {
     return (
       <group>

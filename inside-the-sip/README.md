@@ -155,6 +155,46 @@ points `baseAssetPath` there (built from `window.location.origin` so it works on
 localhost, a LAN IP, or a tunnel). The 3D controller models are disabled
 (`model: false`) — ray pointers + trigger/pinch selection still work fully.
 
+## 360° backdrops (photo + video domes)
+
+The Mouth scene is a real 360° backdrop rather than procedural geometry. It
+degrades through three levels, so it always renders something:
+
+1. `public/panoramas/mouth-photo.jpg` — the mouth photograph projected into an
+   equirectangular panorama and wrapped around the user by `<PhotoDome>`. A
+   still texture costs nothing per frame, so this is the headset-friendliest
+   option and the default.
+2. `public/videos/mouth360.mp4` — the 360° cola-wash clip in `<VideoDome>`,
+   used if the panorama is missing.
+3. The hand-built procedural mouth, if neither asset loads.
+
+### Regenerating the panorama from a flat photo
+
+A normal photo only covers a slice of a sphere. `tools/make-photo-dome.py`
+projects it properly (rectilinear → equirectangular) into the forward 120° and
+fills the rest of the sphere with a mirrored, blurred, dimmed version of the
+same image, so turning your head shows matching flesh tones instead of a hard
+black edge:
+
+```bash
+pip install pillow numpy
+python3 tools/make-photo-dome.py \
+  "../ChatGPT Image Aug 16, 2026 at 06_40_00 PM.png" \
+  public/panoramas/mouth-photo.jpg
+```
+
+`--hfov` changes how much of the view the photo covers (default 120°) and
+`--width` the panorama resolution (default 4096×2048). The script is a
+dev-time tool only — the app ships just the generated `.jpg`.
+
+## Deploying to the headset (GitHub Pages)
+
+WebXR needs HTTPS, so the simplest way onto a Quest is the Pages deploy in
+`.github/workflows/deploy.yml`: every push to a working branch builds the app
+with `VITE_BASE=/Tech/` and publishes it. Open the published URL
+(`https://<github-user>.github.io/Tech/`) in the Quest browser and tap
+**Enter VR** — no cert warning, no LAN or tunnel needed.
+
 ## A note on the rest of this repository
 
 The files in the repo root (`blood-vessel-simulation.html`, etc.) are a separate,

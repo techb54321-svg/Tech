@@ -1,19 +1,29 @@
 #!/usr/bin/env python3
-"""Turn a flat photo into a 360 equirectangular panorama for the VR photo dome.
+"""Turn a flat photo into a 360 panorama + depth map for the VR photo dome.
 
-A normal photo only covers a slice of the sphere, so we do two things:
+A normal photo only covers a slice of the sphere, and it is flat — which in a
+headset reads as wallpaper, because both eyes see the same image and leaning
+your head moves nothing. So we emit two files:
 
-1. Project it properly (gnomonic / rectilinear) into the forward part of the
-   panorama, so in the headset it looks like a real window rather than a
-   smeared sphere-stretched image.
-2. Fill the rest of the sphere with a mirrored, heavily blurred, darkened
-   version of the same photo, so wherever the user turns their head they see
-   soft, matching flesh tones instead of a hard black edge.
+1. <output>.jpg — the colour panorama. The photo is projected properly
+   (gnomonic / rectilinear) into the forward part of the sphere so it looks
+   like a real window rather than a sphere-stretched smear, and the rest of
+   the sphere is filled with a mirrored, heavily blurred, darkened version of
+   the same photo so turning your head never hits a hard edge.
+2. <output>-depth.png — a greyscale depth map in the same projection, which
+   the app uses to displace the dome's vertices. That is what turns the
+   picture into a place: each eye gets its own view of it, and leaning moves
+   the near teeth against the far throat.
+
+The depth estimate is a heuristic tuned for a photo of a cavity: dark and
+central reads as deep (the throat), bright or peripheral reads as near (teeth,
+lips). It is heavily blurred, because smooth depth displaces cleanly while
+sharp depth edges tear the mesh into spikes.
 
 Usage:
     python3 tools/make-photo-dome.py <photo> <output.jpg> [--hfov 120]
 
-Requires Pillow + numpy (dev-only; the app itself ships just the .jpg).
+Requires Pillow + numpy (dev-only; the app ships just the generated images).
 """
 
 import argparse
@@ -21,6 +31,10 @@ import math
 
 import numpy as np
 from PIL import Image, ImageFilter
+
+# Depth of the blurred surround, i.e. the value that means "the dome's own
+# radius". The app maps 0..1 onto NEAR..FAR around it.
+SURROUND_DEPTH = 0.6
 
 
 def build(photo_path: str, out_path: str, hfov_deg: float, width: int) -> None:
@@ -76,6 +90,38 @@ def build(photo_path: str, out_path: str, hfov_deg: float, width: int) -> None:
         out_path, quality=88, optimize=True, progressive=True
     )
     print(f"wrote {out_path} ({width}x{height}, hfov {hfov_deg:.0f}°, vfov {math.degrees(vfov):.0f}°)")
+
+    depth_path = out_path.rsplit(".", 1)[0] + "-depth.png"
+    write_depth(photo, depth_path, px, py, alpha[..., 0], sx, sy, width, height)
+
+
+def write_depth(photo, depth_path, px, py, alpha, sx, sy, width, height):
+    """Estimate depth for a photo of a cavity and save it in panorama space.
+
+    Two cues, both crude on their own and complementary together:
+      * luminance — inside a mouth the light falls off with distance, so dark
+        is far (the throat) and bright is near (enamel, wet lip highlights);
+      * distance from the centre — the photo looks straight down the axis of
+        the cavity, so the middle is the deep end and the rim is closest.
+    """
+    gray = np.asarray(photo.convert("L").filter(ImageFilter.GaussianBlur(6)), dtype=np.float32) / 255
+    lum = bilinear(gray[..., None], sx, sy)[..., 0]
+
+    radial = np.clip(np.sqrt(px ** 2 + py ** 2), 0, 1)  # 0 centre .. 1 rim
+    far = np.clip(0.55 * (1 - lum) + 0.55 * (1 - radial), 0, 1)
+
+    # Outside the photo, sit at the mid depth the dome radius represents, and
+    # cross-fade with the same feather the colour uses so there is no crease.
+    far = far * alpha + SURROUND_DEPTH * (1 - alpha)
+
+    img = Image.fromarray((np.clip(far, 0, 1) * 255).astype(np.uint8), mode="L")
+    # Depth wants to be smooth, not detailed: every bump here becomes real
+    # geometry in the headset. Half resolution + a wide blur keeps the mesh
+    # calm and the file small.
+    img = img.resize((width // 4, height // 4), Image.LANCZOS)
+    img = img.filter(ImageFilter.GaussianBlur(width / 320))
+    img.save(depth_path, optimize=True)
+    print(f"wrote {depth_path} ({img.width}x{img.height} depth, 0=near 255=far)")
 
 
 def bilinear(src: np.ndarray, sx: np.ndarray, sy: np.ndarray) -> np.ndarray:

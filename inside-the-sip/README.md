@@ -160,10 +160,15 @@ localhost, a LAN IP, or a tunnel). The 3D controller models are disabled
 The Mouth scene is a real 360° backdrop rather than procedural geometry. It
 degrades through three levels, so it always renders something:
 
-1. `public/panoramas/mouth-photo.jpg` — the mouth photograph projected into an
-   equirectangular panorama and wrapped around the user by `<PhotoDome>`. A
-   still texture costs nothing per frame, so this is the headset-friendliest
-   option and the default.
+1. `public/panoramas/mouth-photo.jpg` + `mouth-photo-depth.png` — the mouth
+   photograph projected into an equirectangular panorama and wrapped around
+   the user by `<PhotoDome>`, which **displaces the dome's vertices by the
+   depth map**. This is the difference between a picture and a place: a flat
+   sphere shows both eyes the same image and doesn't move when you lean, so
+   it reads as wallpaper. With depth, each eye sees the shape from its own
+   position and the near teeth slide against the far throat as you move.
+   The displacement is baked into the geometry once on load, so it is free
+   per frame.
 2. `public/videos/mouth360.mp4` — the 360° cola-wash clip in `<VideoDome>`,
    used if the panorama is missing.
 3. The hand-built procedural mouth, if neither asset loads.
@@ -183,9 +188,28 @@ python3 tools/make-photo-dome.py \
   public/panoramas/mouth-photo.jpg
 ```
 
+This writes both the colour panorama and `<output>-depth.png` beside it.
 `--hfov` changes how much of the view the photo covers (default 120°) and
 `--width` the panorama resolution (default 4096×2048). The script is a
-dev-time tool only — the app ships just the generated `.jpg`.
+dev-time tool only — the app ships just the generated images.
+
+Depth is estimated heuristically, tuned for a photo looking into a cavity:
+dark and central reads as deep (the throat), bright or peripheral reads as
+near (teeth, lips). It's deliberately blurred — smooth depth displaces
+cleanly, while sharp depth edges tear the mesh into spikes. For a photo that
+isn't a cavity you'd want to replace the estimate rather than tune it.
+
+### Why the mouth also breathes
+
+Depth alone isn't presence; a still room still reads as a diorama. The scene
+adds the cheapest motion that says "alive", all of it environmental so it
+costs no comfort (the camera never moves):
+
+- the whole mouth swells and settles on a ~5 s breathing cycle (±1.5%);
+- warmth from down the throat throbs slightly out of phase with it;
+- saliva motes drift between 0.6 m and 4 m from your head — these do the most
+  work of anything in the scene, because at those distances they visibly slide
+  against the far walls as you move.
 
 ## Deploying to the headset (GitHub Pages)
 

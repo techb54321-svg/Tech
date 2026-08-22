@@ -1,6 +1,15 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { BackSide, Vector2, type Mesh, type Object3D } from 'three'
+import {
+  AdditiveBlending,
+  BackSide,
+  CanvasTexture,
+  Vector2,
+  type Group,
+  type Mesh,
+  type Object3D,
+  type SpriteMaterial,
+} from 'three'
 import { InstancedSwarm } from '../components/InstancedSwarm'
 import { Glow } from '../components/Glow'
 import { VideoDome } from '../components/VideoDome'
@@ -15,29 +24,38 @@ import { enamelTextures, mouthTextures } from '../textures/surfaces'
 // dissolves enamel over time. Simplified here to a single tap-to-erode beat.
 //
 // The mouth backdrop degrades gracefully through three levels:
-//   1. the real mouth photo, projected into a 360° panorama at
-//      public/panoramas/mouth-photo.jpg — a still, so it costs almost
-//      nothing per frame and is rock-solid at headset framerates;
+//   1. the real mouth photo, displaced into 3D by its depth map — see
+//      public/panoramas/ and <PhotoDome>;
 //   2. the 360° cola-wash video at public/videos/mouth360.mp4, if the
 //      photo isn't bundled;
 //   3. the hand-built procedural mouth below, if neither loads.
+//
+// Everything sits at eye height rather than around the rig's feet, so the
+// panorama is centred on the viewer's head instead of 1.5 m below it.
+const EYE_HEIGHT: [number, number, number] = [0, 1.5, 0]
+
 export function MouthScene() {
   const [photoFailed, setPhotoFailed] = useState(false)
   const [videoFailed, setVideoFailed] = useState(false)
 
   if (!photoFailed) {
     return (
-      <group>
-        <PhotoDome
-          src={`${import.meta.env.BASE_URL}panoramas/mouth-photo.jpg`}
-          onError={() => setPhotoFailed(true)}
-        />
+      <group position={EYE_HEIGHT}>
+        <Breathing>
+          <PhotoDome
+            src={`${import.meta.env.BASE_URL}panoramas/mouth-photo.jpg`}
+            depthSrc={`${import.meta.env.BASE_URL}panoramas/mouth-photo-depth.png`}
+            onError={() => setPhotoFailed(true)}
+          />
+        </Breathing>
+        <ThroatGlow />
+        <Saliva />
       </group>
     )
   }
   if (!videoFailed) {
     return (
-      <group>
+      <group position={EYE_HEIGHT}>
         <VideoDome
           src={`${import.meta.env.BASE_URL}videos/mouth360.mp4`}
           onError={() => setVideoFailed(true)}
@@ -46,6 +64,97 @@ export function MouthScene() {
     )
   }
   return <ProceduralMouth />
+}
+
+// A still photo reads as a picture no matter how good it is; a surface that
+// moves reads as a place. This is the slowest, cheapest motion that says
+// "alive": the whole mouth swells and settles on a ~5 s breathing cycle.
+// Deliberately tiny — at this scale 1.5% is a visible drift of the walls, and
+// anything more would read as a wobble and cost comfort.
+function Breathing({ children }: { children: ReactNode }) {
+  const ref = useRef<Group>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    const breath = 1 + Math.sin(s.clock.elapsedTime * ((Math.PI * 2) / 5)) * 0.015
+    ref.current.scale.setScalar(breath)
+  })
+  return <group ref={ref}>{children}</group>
+}
+
+// Warmth from down the throat, throbbing gently out of phase with the breath.
+// Depth cue as much as mood: it sits behind everything else, so it gives the
+// eye something far away to focus past the near teeth.
+function ThroatGlow() {
+  const ref = useRef<SpriteMaterial>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    ref.current.opacity = 0.26 + Math.sin(s.clock.elapsedTime * 0.9) * 0.07
+  })
+  return (
+    <sprite position={[0, -0.35, -7.2]} scale={[5.5, 4, 1]} raycast={() => null}>
+      <spriteMaterial
+        ref={ref}
+        map={useMemo(softSprite, [])}
+        color="#b02231"
+        blending={AdditiveBlending}
+        transparent
+        opacity={0.26}
+        depthWrite={false}
+        toneMapped={false}
+        fog={false}
+      />
+    </sprite>
+  )
+}
+
+// Motes of saliva drifting through the air around you. These do the heaviest
+// lifting for presence of anything in the scene: they live between 0.6 m and
+// 4 m away, so as your head moves they slide across the far walls at visibly
+// different rates — real parallax, from geometry the photo can never provide.
+function Saliva() {
+  return (
+    <InstancedSwarm
+      count={45}
+      update={(d: Object3D, i: number, t: number) => {
+        const a = frac(Math.sin(i * 12.9898) * 43758.5)
+        const b = frac(Math.sin(i * 78.233) * 43758.5)
+        const c = frac(Math.sin(i * 39.425) * 43758.5)
+
+        const dist = 0.6 + a * 3.4
+        const angle = b * Math.PI * 2 + t * 0.03 * (1 - a) // nearer motes drift faster
+        const rise = ((t * (0.02 + c * 0.03) + c) % 1) - 0.5
+
+        d.position.set(
+          Math.sin(angle) * dist,
+          rise * 2.4 + Math.sin(t * 0.6 + i) * 0.04,
+          Math.cos(angle) * dist - 1.2,
+        )
+        d.scale.setScalar(0.006 + c * 0.012)
+      }}
+    >
+      <sphereGeometry args={[1, 8, 8]} />
+      <meshBasicMaterial color="#ffe9ee" transparent opacity={0.38} toneMapped={false} fog={false} />
+    </InstancedSwarm>
+  )
+}
+
+// Soft radial sprite, generated once and shared (same idea as <Glow>, but
+// sized per-axis here so the throat can be a wide oval rather than a circle).
+let softCache: CanvasTexture | null = null
+function softSprite() {
+  if (softCache) return softCache
+  const size = 128
+  const c = document.createElement('canvas')
+  c.width = c.height = size
+  const ctx = c.getContext('2d')!
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+  g.addColorStop(0, 'rgba(255,255,255,1)')
+  g.addColorStop(0.35, 'rgba(255,255,255,0.45)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, size, size)
+  softCache = new CanvasTexture(c)
+  return softCache
 }
 
 function ProceduralMouth() {

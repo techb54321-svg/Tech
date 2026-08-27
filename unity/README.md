@@ -89,6 +89,23 @@ Vulkan.
 
 ## 4. Assemble the scene
 
+**The fast way (recommended):** after copying the folder in and installing
+the XRIT Starter Assets sample, use the two menu items the kit adds to
+Unity's menu bar:
+
+- **Inside the Sip → Build Starter Scene (Graybox)** — builds the whole
+  ride in one click: rig, JourneyDirector, PulseDriver, NarrationManager,
+  ComfortVignette (shader reference correctly assigned), QuestBootstrap, a
+  grabbable placeholder can wired to SipTrigger → Advance, and a labelled,
+  lit graybox station for each of the 11 beats. Saves the scene and adds it
+  to Build Settings. The console then lists the only settings that remain
+  manual (the XR plug-in checkboxes in Project Settings).
+- **Inside the Sip → Configure Project For Quest** — applies IL2CPP, ARM64,
+  Vulkan, Linear color, ASTC, min SDK 32 and MSAA 4x for you.
+
+The manual steps below describe the same wiring, for when you rebuild
+pieces by hand or want to understand what the menu did:
+
 1. Delete the template's Main Camera. Drop in **XR Origin (XR Rig)** from
    the XRIT Starter Assets.
 2. Create an empty GameObject **JourneyDirector**, add the

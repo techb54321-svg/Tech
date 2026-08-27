@@ -6,6 +6,9 @@ namespace InsideTheSip
     ///  - Auto:   a guided beat that advances by itself after DwellSeconds.
     ///  - Manual: waits until something calls JourneyDirector.Advance()
     ///            (the Continue button, the drink choice, the sip trigger...).
+    ///            The WebXR prototype's 'select' and 'continue' modes both
+    ///            map here — the difference is only which UI affordance you
+    ///            wire to Advance(), so the enum doesn't encode it.
     public enum AdvanceMode
     {
         Auto,

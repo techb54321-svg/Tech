@@ -11,6 +11,12 @@
 //    PulseDriver.cs): emission flushes and the surface physically swells.
 //  - Optional peristalsis: a travelling squeeze wave along object-space Y —
 //    model tubes (esophagus, intestine) with their length along local Y.
+//    Keep amplitude + pulse swell comfortably below the tube radius minus the
+//    ride path's clearance, or the wall will push through the user's face.
+//
+// A DepthOnly pass (with the SAME displaced vertices) keeps the mesh present
+// under depth priming / _CameraDepthTexture. There is deliberately no
+// ShadowCaster pass: on Quest this kit runs without realtime shadows.
 Shader "InsideTheSip/Flesh"
 {
     Properties
@@ -50,6 +56,47 @@ Shader "InsideTheSip/Flesh"
             "RenderPipeline" = "UniversalPipeline"
         }
 
+        HLSLINCLUDE
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
+        TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
+
+        // Global heartbeat published by PulseDriver.cs — deliberately NOT
+        // in the material CBUFFER so Shader.SetGlobalFloat reaches it.
+        float _ITS_Pulse;
+
+        CBUFFER_START(UnityPerMaterial)
+            float4 _BaseMap_ST;
+            half4 _BaseColor;
+            half _BumpScale;
+            half _SpecPower;
+            half _SpecIntensity;
+            half _WrapAmount;
+            half4 _SubsurfaceColor;
+            half _RimPower;
+            half4 _EmissionColor;
+            half _EmissionBase;
+            half _PulseEmission;
+            half _PulseSwell;
+            half _WaveAmplitude;
+            half _WaveLength;
+            half _WaveSpeed;
+        CBUFFER_END
+
+        // Travelling peristalsis squeeze + heartbeat swell, both along the
+        // surface normal. Every pass MUST use this same function or animated
+        // geometry falls out of sync with its own depth. Amplitudes are small,
+        // so we keep the original normals (recomputing isn't worth it on Quest).
+        float3 DisplaceFlesh(float3 positionOS, float3 normalOS)
+        {
+            float wave = sin((positionOS.y / max(_WaveLength, 0.001)
+                - _Time.y * _WaveSpeed) * 6.2831853);
+            float displacement = wave * _WaveAmplitude + _ITS_Pulse * _PulseSwell;
+            return positionOS + normalOS * displacement;
+        }
+        ENDHLSL
+
         Pass
         {
             Name "ForwardLit"
@@ -61,34 +108,8 @@ Shader "InsideTheSip/Flesh"
             #pragma multi_compile_instancing
             #pragma multi_compile_fog
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
-
-            TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
-            TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
-
-            // Global heartbeat published by PulseDriver.cs — deliberately NOT
-            // in the material CBUFFER so Shader.SetGlobalFloat reaches it.
-            float _ITS_Pulse;
-
-            CBUFFER_START(UnityPerMaterial)
-                float4 _BaseMap_ST;
-                half4 _BaseColor;
-                half _BumpScale;
-                half _SpecPower;
-                half _SpecIntensity;
-                half _WrapAmount;
-                half4 _SubsurfaceColor;
-                half _RimPower;
-                half4 _EmissionColor;
-                half _EmissionBase;
-                half _PulseEmission;
-                half _PulseSwell;
-                half _WaveAmplitude;
-                half _WaveLength;
-                half _WaveSpeed;
-            CBUFFER_END
 
             struct Attributes
             {
@@ -119,13 +140,7 @@ Shader "InsideTheSip/Flesh"
                 UNITY_TRANSFER_INSTANCE_ID(IN, OUT);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
 
-                // Travelling peristalsis squeeze + heartbeat swell, both along
-                // the surface normal. Amplitudes are small, so we keep the
-                // original normals (recomputing them isn't worth it on Quest).
-                float wave = sin((IN.positionOS.y / max(_WaveLength, 0.001)
-                    - _Time.y * _WaveSpeed) * 6.2831853);
-                float displacement = wave * _WaveAmplitude + _ITS_Pulse * _PulseSwell;
-                float3 positionOS = IN.positionOS.xyz + IN.normalOS * displacement;
+                float3 positionOS = DisplaceFlesh(IN.positionOS.xyz, IN.normalOS);
 
                 VertexPositionInputs posInputs = GetVertexPositionInputs(positionOS);
                 VertexNormalInputs normInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
@@ -179,6 +194,49 @@ Shader "InsideTheSip/Flesh"
                 half3 color = albedo * (ambient + diffuse) + subsurface + specular + emission;
                 color = MixFog(color, IN.fogFactor);
                 return half4(color, 1);
+            }
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "DepthOnly"
+            Tags { "LightMode" = "DepthOnly" }
+            ZWrite On
+            ColorMask R
+
+            HLSLPROGRAM
+            #pragma vertex depthVert
+            #pragma fragment depthFrag
+            #pragma multi_compile_instancing
+
+            struct DepthAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct DepthVaryings
+            {
+                float4 positionHCS : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            DepthVaryings depthVert (DepthAttributes IN)
+            {
+                DepthVaryings OUT;
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
+                float3 positionOS = DisplaceFlesh(IN.positionOS.xyz, IN.normalOS);
+                OUT.positionHCS = TransformObjectToHClip(positionOS);
+                return OUT;
+            }
+
+            half depthFrag (DepthVaryings IN) : SV_Target
+            {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+                return 0;
             }
             ENDHLSL
         }

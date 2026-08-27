@@ -2,7 +2,10 @@
 // Two counter-scrolling normal layers give a live, churning surface; a
 // fresnel term brightens grazing angles like a real liquid film; emission
 // breathes with the heartbeat so the pool feels like part of the body's
-// rhythm. Transparent, ZWrite off — place over an opaque basin mesh.
+// rhythm. Transparent, ZWrite off — place over an opaque basin mesh, and
+// keep the pool's on-screen coverage modest: transparent pixels pay full
+// overdraw on Quest's tiled GPU. Cull is off so the surface stays visible
+// if the ride path dips through it (mouth wash, the swallowed slug).
 Shader "InsideTheSip/AcidLiquid"
 {
     Properties
@@ -15,7 +18,9 @@ Shader "InsideTheSip/AcidLiquid"
         _Scroll2 ("Layer 2 Scroll (xy) Tiling (z)", Vector) = (-0.02, 0.04, 2.3, 0)
 
         _FresnelPower ("Fresnel Power", Range(0.5, 8)) = 3
-        _SpecPower ("Gloss Power", Range(8, 512)) = 180
+        // Very high gloss powers alias into a shimmering sparkle in VR; ~96
+        // still reads as liquid-sharp through MSAA without the crawl.
+        _SpecPower ("Gloss Power", Range(8, 512)) = 96
         _SpecIntensity ("Specular Intensity", Range(0, 4)) = 1.6
 
         _EmissionColor ("Emission Color", Color) = (0.5, 0.18, 0.02, 1)
@@ -43,7 +48,7 @@ Shader "InsideTheSip/AcidLiquid"
             Tags { "LightMode" = "UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
-            Cull Back
+            Cull Off
 
             HLSLPROGRAM
             #pragma vertex vert

@@ -4,8 +4,8 @@ using UnityEngine.Events;
 namespace InsideTheSip
 {
     /// The body's heartbeat. Publishes a global shader float `_ITS_Pulse`
-    /// (0..1, thumping at the current heart rate) that every InsideTheSip
-    /// shader reads, so vessel walls, organs and lighting all breathe in sync.
+    /// (0..1, thumping at the current heart rate) that the Flesh and
+    /// AcidLiquid shaders read, so tissue walls and liquids breathe in sync.
     /// Also fires onBeat for the heartbeat audio thump and haptic ticks.
     ///
     /// The educational hook: call SetExcitement(1) after the sugar hits the

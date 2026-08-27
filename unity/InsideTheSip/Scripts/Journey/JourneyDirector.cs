@@ -29,10 +29,11 @@ namespace InsideTheSip
         [Tooltip("Shortest/longest a single hop between steps may take, whatever its length.")]
         public Vector2 travelDurationRange = new Vector2(2f, 10f);
 
-        [Tooltip("Smoothly yaw the rig to face along the path while travelling. Yaw only — never pitch or roll the rig in VR.")]
+        [Tooltip("Smoothly yaw the rig to face along the path while travelling. Yaw only — never pitch or roll the rig in VR (and keep the XR Origin level: a tilted rig would turn this yaw into pitch/roll).")]
         public bool alignYawToPath = true;
 
-        [Range(0.5f, 8f)] public float yawTurnSpeed = 2f;
+        [Tooltip("Maximum yaw rate in degrees per second. Uncommanded rotation is the harshest comfort stimulus — keep this modest.")]
+        [Range(10f, 120f)] public float maxYawDegreesPerSecond = 45f;
 
         [Header("Events")]
         public UnityEvent<int> onStepEnter;
@@ -87,6 +88,7 @@ namespace InsideTheSip
         {
             index = Mathf.Clamp(index, 0, Steps.Length - 1);
             if (activeRoutine != null) StopCoroutine(activeRoutine);
+            activeRoutine = null;
             IsTraveling = false;
             NormalizedSpeed = 0f;
             if (CurrentStepIndex >= 0) onStepExit?.Invoke(CurrentStepIndex);
@@ -123,13 +125,22 @@ namespace InsideTheSip
 
                 if (alignYawToPath)
                 {
+                    // Only steer by the horizontal part of the tangent, and only
+                    // when it is a meaningful fraction of the full direction:
+                    // on near-vertical segments (the esophagus drop) the
+                    // horizontal remainder is numerical noise, and chasing it
+                    // whips the rig into fast uncommanded yaw at the exact
+                    // moment the user is also falling — worst-case comfort.
                     Vector3 tangent = path.GetTangent(t);
-                    tangent.y = 0f;
-                    if (tangent.sqrMagnitude > 1e-6f)
+                    Vector3 horizontal = new Vector3(tangent.x, 0f, tangent.z);
+                    if (horizontal.magnitude > 0.25f * tangent.magnitude &&
+                        horizontal.sqrMagnitude > 1e-6f)
                     {
-                        Quaternion target = Quaternion.LookRotation(tangent.normalized, Vector3.up);
-                        rigRoot.rotation = Quaternion.Slerp(rigRoot.rotation, target,
-                            1f - Mathf.Exp(-yawTurnSpeed * Time.deltaTime));
+                        float targetYaw = Quaternion.LookRotation(horizontal.normalized, Vector3.up)
+                            .eulerAngles.y;
+                        float yaw = Mathf.MoveTowardsAngle(rigRoot.eulerAngles.y, targetYaw,
+                            maxYawDegreesPerSecond * Time.deltaTime);
+                        rigRoot.rotation = Quaternion.Euler(0f, yaw, 0f);
                     }
                 }
                 yield return null;
@@ -146,6 +157,12 @@ namespace InsideTheSip
         {
             CurrentStepIndex = index;
             onStepEnter?.Invoke(index);
+
+            // A listener may have called Advance() synchronously from the
+            // event above (StartCoroutine runs to its first yield, setting
+            // IsTraveling). That hop wins — starting a dwell now would stop
+            // the fresh coroutine and soft-lock the state machine.
+            if (IsTraveling) return;
 
             if (index >= Steps.Length - 1)
             {

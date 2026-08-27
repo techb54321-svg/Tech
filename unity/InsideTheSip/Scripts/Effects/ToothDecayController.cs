@@ -8,9 +8,11 @@ namespace InsideTheSip
     /// starts — typically wired to JourneyDirector.onStepEnter via a small
     /// relay, or directly from a Timeline signal.
     ///
-    /// Uses MaterialPropertyBlocks so the shared material asset is never
-    /// mutated and every tooth can share one material (one draw-call-friendly
-    /// batch, important on Quest).
+    /// All listed renderers are switched to ONE shared runtime material and
+    /// _Erosion is animated on that. (One material across all teeth keeps the
+    /// SRP batcher happy — per-renderer MaterialPropertyBlocks would actually
+    /// opt every tooth out of it in URP.) The shared material asset on disk is
+    /// never mutated.
     public class ToothDecayController : MonoBehaviour
     {
         [Tooltip("Renderers of the teeth using the ToothDecay shader.")]
@@ -23,24 +25,37 @@ namespace InsideTheSip
         public AnimationCurve decayCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         [Range(0f, 1f)]
-        [Tooltip("Current erosion, exposed so you can scrub it in the Inspector while tuning the shader.")]
+        [Tooltip("Starting/current erosion. Applied on Start, and scrubbable in Play mode while tuning the shader.")]
         public float erosion;
 
         static readonly int ErosionId = Shader.PropertyToID("_Erosion");
 
-        MaterialPropertyBlock block;
+        Material runtimeMaterial;
         Coroutine routine;
 
-        void Awake()
+        void Start()
         {
-            block = new MaterialPropertyBlock();
+            if (teeth == null || teeth.Length == 0) return;
+
+            var source = teeth[0] != null ? teeth[0].sharedMaterial : null;
+            if (source == null)
+            {
+                Debug.LogWarning("ToothDecayController: no material found on the first tooth renderer.");
+                return;
+            }
+
+            runtimeMaterial = new Material(source);
+            foreach (var r in teeth)
+                if (r != null) r.sharedMaterial = runtimeMaterial;
+
+            Apply(erosion);
         }
 
         void OnValidate()
         {
-            // Live-scrub support in the editor.
-            if (block == null) block = new MaterialPropertyBlock();
-            Apply(erosion);
+            // Live-scrub support while the game runs (edit mode has no runtime material).
+            if (Application.isPlaying && runtimeMaterial != null)
+                Apply(erosion);
         }
 
         public void BeginDecay()
@@ -73,14 +88,13 @@ namespace InsideTheSip
         void Apply(float value)
         {
             erosion = Mathf.Clamp01(value);
-            if (teeth == null) return;
-            foreach (var r in teeth)
-            {
-                if (r == null) continue;
-                r.GetPropertyBlock(block);
-                block.SetFloat(ErosionId, erosion);
-                r.SetPropertyBlock(block);
-            }
+            if (runtimeMaterial != null)
+                runtimeMaterial.SetFloat(ErosionId, erosion);
+        }
+
+        void OnDestroy()
+        {
+            if (runtimeMaterial != null) Destroy(runtimeMaterial);
         }
     }
 }

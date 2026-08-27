@@ -13,7 +13,8 @@ InsideTheSip/            <- copy this whole folder into your project's Assets/
   Scripts/
     Journey/      JourneyStep, JourneySteps (the 11 beats), CatmullRomPath,
                   JourneyDirector (the ride state machine)
-    Rig/          ComfortVignette (auto tunnel-vignette + screen fades)
+    Rig/          ComfortVignette (auto tunnel-vignette + screen fades),
+                  QuestBootstrap (turns fixed foveated rendering ON at runtime)
     Interaction/  SipTrigger (fires when the can is raised & tilted to the face)
     Effects/      ToothDecayController, PulseDriver (global heartbeat)
     Narration/    NarrationManager (voice-over + captions per step)
@@ -73,11 +74,18 @@ performance and comfort guide.
 - HDR **off**, Depth Texture **off**, Opaque Texture **off**.
 - Shadows: start with **no realtime shadows** (bake or fake them); every
   realtime shadow map costs a scene render.
-- Renderer: Forward. Set **Stereo Rendering Mode: Multiview** under
-  XR Plug-in Management → OpenXR settings if not already default.
+- Renderer: Forward. In *Project Settings → XR Plug-in Management → OpenXR*,
+  set **Render Mode: Single Pass Instanced** (Unity maps it to multiview on
+  Quest automatically) — never Multi Pass, which roughly doubles draw-call
+  cost.
 
-Also enable in the OpenXR *Meta Quest Support* feature settings:
-**Foveated rendering** (fixed foveation is nearly free image quality).
+Foveated rendering: enable it in the OpenXR feature settings (*Meta Quest
+Support* / *Foveated Rendering*), **and** put the kit's `QuestBootstrap`
+component in the scene — the checkbox only exposes the capability; the
+foveation level defaults to 0 until a script sets it. Fixed foveation is
+near-free GPU savings (~10–25% of fragment budget) at a slight peripheral
+quality cost you won't notice inside these soft organic scenes. It requires
+Vulkan.
 
 ## 4. Assemble the scene
 
@@ -85,9 +93,14 @@ Also enable in the OpenXR *Meta Quest Support* feature settings:
    the XRIT Starter Assets.
 2. Create an empty GameObject **JourneyDirector**, add the
    `JourneyDirector` component, and drag the XR Origin root onto **rigRoot**.
-3. On the **Main Camera** (inside XR Origin), add `ComfortVignette` and set
-   **motionSource** to the XR Origin root. Set the camera **near clip plane
-   to 0.05** — you'll be very close to teeth and tissue walls.
+3. On the **Main Camera** (inside XR Origin), add `ComfortVignette`, set
+   **motionSource** to the XR Origin root, and **assign the
+   `InsideTheSip_VignetteFade` shader asset to its `vignetteShader` field** —
+   this reference is what keeps the shader in device builds (unreferenced
+   shaders are stripped from the APK, and the vignette would silently vanish
+   on Quest). Set the camera **near clip plane to 0.05** — you'll be very
+   close to teeth and tissue walls. Add `QuestBootstrap` to any always-alive
+   object while you're here (see foveated rendering above).
 4. Create **PulseDriver** on an empty GameObject. Give it an AudioSource
    with a heartbeat "thump" clip and wire **onBeat → AudioSource.Play**.
 5. Make the coke can:
@@ -95,8 +108,10 @@ Also enable in the OpenXR *Meta Quest Support* feature settings:
      be picked up.
    - Add `SipTrigger` to any manager object, assign the can's transform to
      **drink**, and wire **onSip → JourneyDirector.Advance** (plus a gulp
-     sound, plus `ComfortVignette.FadeTo(1, 0.4)` for the plunge moment if
-     you want a hard cut into the mouth).
+     sound, plus **ComfortVignette.FadeToBlack** for the plunge moment if you
+     want a hard cut into the mouth — UnityEvents can't pass two arguments,
+     so use the parameterless `FadeToBlack()`/`FadeClear()` helpers when
+     wiring in the Inspector; the duration comes from `defaultFadeDuration`).
 6. Create **NarrationManager** with a 2D AudioSource and a world-space
    TextMeshPro caption (~2 m ahead of the rig start). Wire
    **JourneyDirector.onStepEnter → NarrationManager.PlayStep**.
@@ -137,4 +152,12 @@ are just Advance() wired to selecting a drink.
 - Only the current scene segment (and its neighbours during transit) should
   be active — wire **onStepEnter/onStepExit** to enable/disable segment
   roots.
+- `Application.targetFrameRate` and vSync are **ignored** in VR — the XR
+  runtime paces frames. The display refresh rate itself is selectable
+  (Quest 2 defaults to 72 Hz, Quest 3 to 90 Hz) via Meta's OpenXR
+  display-refresh-rate extension; for fill-rate-heavy content, explicitly
+  choosing 72 Hz is a legitimate headroom decision. Verify what you're
+  actually running with the OVR Metrics Tool overlay.
+- **URP Render Scale** is the biggest single fill-rate lever: start at 1.0
+  and drop toward 0.85–0.9 on Quest 2 if GPU-bound, before cutting content.
 - Profile on-device early: OVR Metrics Tool / Unity Profiler over USB.

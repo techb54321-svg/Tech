@@ -20,7 +20,7 @@ export interface JourneyStep {
   dwell?: number
 }
 
-// The 10-scene sequence from the brief. Positions trace a gentle path that
+// The 11-scene sequence from the brief. Positions trace a gentle path that
 // descends and curves "through the body", returning to the table at the end.
 // Captions are intentionally short and metaphor-clear (refined in Phase 3).
 export const STEPS: JourneyStep[] = [

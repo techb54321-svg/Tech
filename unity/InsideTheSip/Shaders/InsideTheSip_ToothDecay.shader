@@ -7,6 +7,12 @@
 //
 // Drive the _Erosion property (0 = healthy, 1 = fully eroded) from
 // ToothDecayController.cs.
+//
+// One _ST (tiling/offset) is shared from the Healthy Albedo slot across all
+// four maps — the Tiling/Offset fields on the other slots are intentionally
+// unused. A DepthOnly pass with the SAME recession keeps the teeth present
+// under depth priming / _CameraDepthTexture; no ShadowCaster by design
+// (this kit runs without realtime shadows on Quest).
 Shader "InsideTheSip/ToothDecay"
 {
     Properties
@@ -37,6 +43,45 @@ Shader "InsideTheSip/ToothDecay"
             "RenderPipeline" = "UniversalPipeline"
         }
 
+        HLSLINCLUDE
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+        TEXTURE2D(_HealthyMap);  SAMPLER(sampler_HealthyMap);
+        TEXTURE2D(_DecayMap);    SAMPLER(sampler_DecayMap);
+        TEXTURE2D(_BumpMap);     SAMPLER(sampler_BumpMap);
+        TEXTURE2D(_NoiseMap);    SAMPLER(sampler_NoiseMap);
+
+        CBUFFER_START(UnityPerMaterial)
+            float4 _HealthyMap_ST;
+            half _BumpScale;
+            half _Erosion;
+            half _EdgeWidth;
+            half4 _EdgeColor;
+            half4 _StainTint;
+            half _RecessionDepth;
+            half _HealthyGloss;
+            half _DecayGloss;
+            half _SpecIntensity;
+        CBUFFER_END
+
+        // 0 = healthy, 1 = decayed, sweeping through the noise mask so
+        // erosion creeps across the surface instead of fading uniformly.
+        half DecayBlend(half noise)
+        {
+            half t = _Erosion * (1.0 + _EdgeWidth) - noise;
+            return saturate(t / _EdgeWidth);
+        }
+
+        // Sink the surface where it has eroded (small values — enough to read
+        // as pitting at VR close-up scale). Every pass MUST use this same
+        // function so the animated recession matches its own depth.
+        float3 RecedeTooth(float3 positionOS, float3 normalOS, float2 uv)
+        {
+            half noise = SAMPLE_TEXTURE2D_LOD(_NoiseMap, sampler_NoiseMap, uv, 0).r;
+            return positionOS - normalOS * (_RecessionDepth * DecayBlend(noise));
+        }
+        ENDHLSL
+
         Pass
         {
             Name "ForwardLit"
@@ -48,27 +93,8 @@ Shader "InsideTheSip/ToothDecay"
             #pragma multi_compile_instancing
             #pragma multi_compile_fog
 
-            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
-
-            TEXTURE2D(_HealthyMap);  SAMPLER(sampler_HealthyMap);
-            TEXTURE2D(_DecayMap);    SAMPLER(sampler_DecayMap);
-            TEXTURE2D(_BumpMap);     SAMPLER(sampler_BumpMap);
-            TEXTURE2D(_NoiseMap);    SAMPLER(sampler_NoiseMap);
-
-            CBUFFER_START(UnityPerMaterial)
-                float4 _HealthyMap_ST;
-                half _BumpScale;
-                half _Erosion;
-                half _EdgeWidth;
-                half4 _EdgeColor;
-                half4 _StainTint;
-                half _RecessionDepth;
-                half _HealthyGloss;
-                half _DecayGloss;
-                half _SpecIntensity;
-            CBUFFER_END
 
             struct Attributes
             {
@@ -92,14 +118,6 @@ Shader "InsideTheSip/ToothDecay"
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
-            // 0 = healthy, 1 = decayed, sweeping through the noise mask so
-            // erosion creeps across the surface instead of fading uniformly.
-            half DecayBlend(half noise)
-            {
-                half t = _Erosion * (1.0 + _EdgeWidth) - noise;
-                return saturate(t / _EdgeWidth);
-            }
-
             Varyings vert (Attributes IN)
             {
                 Varyings OUT;
@@ -108,12 +126,7 @@ Shader "InsideTheSip/ToothDecay"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
 
                 float2 uv = TRANSFORM_TEX(IN.uv, _HealthyMap);
-
-                // Sink the surface where it has eroded (small values — enough
-                // to read as pitting at VR close-up scale).
-                half noise = SAMPLE_TEXTURE2D_LOD(_NoiseMap, sampler_NoiseMap, uv, 0).r;
-                half blend = DecayBlend(noise);
-                float3 positionOS = IN.positionOS.xyz - IN.normalOS * (_RecessionDepth * blend);
+                float3 positionOS = RecedeTooth(IN.positionOS.xyz, IN.normalOS, uv);
 
                 VertexPositionInputs posInputs = GetVertexPositionInputs(positionOS);
                 VertexNormalInputs normInputs = GetVertexNormalInputs(IN.normalOS, IN.tangentOS);
@@ -165,6 +178,51 @@ Shader "InsideTheSip/ToothDecay"
                 half3 color = albedo * (ambient + diffuse) + specular;
                 color = MixFog(color, IN.fogFactor);
                 return half4(color, 1);
+            }
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "DepthOnly"
+            Tags { "LightMode" = "DepthOnly" }
+            ZWrite On
+            ColorMask R
+
+            HLSLPROGRAM
+            #pragma vertex depthVert
+            #pragma fragment depthFrag
+            #pragma multi_compile_instancing
+
+            struct DepthAttributes
+            {
+                float4 positionOS : POSITION;
+                float3 normalOS : NORMAL;
+                float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct DepthVaryings
+            {
+                float4 positionHCS : SV_POSITION;
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            DepthVaryings depthVert (DepthAttributes IN)
+            {
+                DepthVaryings OUT;
+                UNITY_SETUP_INSTANCE_ID(IN);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(OUT);
+                float2 uv = TRANSFORM_TEX(IN.uv, _HealthyMap);
+                float3 positionOS = RecedeTooth(IN.positionOS.xyz, IN.normalOS, uv);
+                OUT.positionHCS = TransformObjectToHClip(positionOS);
+                return OUT;
+            }
+
+            half depthFrag (DepthVaryings IN) : SV_Target
+            {
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(IN);
+                return 0;
             }
             ENDHLSL
         }

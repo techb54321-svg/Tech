@@ -50,6 +50,7 @@ Shader "InsideTheSip/ToothDecay"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 
             TEXTURE2D(_HealthyMap);  SAMPLER(sampler_HealthyMap);
             TEXTURE2D(_DecayMap);    SAMPLER(sampler_DecayMap);

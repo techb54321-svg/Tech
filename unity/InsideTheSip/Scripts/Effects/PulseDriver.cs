@@ -57,16 +57,11 @@ namespace InsideTheSip
             excitement = smoothedExcitement;
 
             float bpm = Mathf.Lerp(restingBpm, excitedBpm, smoothedExcitement);
-            float previousPhase = phase;
             phase += (bpm / 60f) * Time.deltaTime;
 
             if (phase >= 1f)
             {
                 phase -= Mathf.Floor(phase);
-                onBeat?.Invoke();
-            }
-            else if (previousPhase > phase)
-            {
                 onBeat?.Invoke();
             }
 

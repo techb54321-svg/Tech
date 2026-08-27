@@ -53,6 +53,7 @@ Shader "InsideTheSip/AcidLiquid"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Packing.hlsl"
 
             TEXTURE2D(_NormalMap); SAMPLER(sampler_NormalMap);
 

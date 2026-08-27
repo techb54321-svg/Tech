@@ -138,6 +138,7 @@ namespace InsideTheSip
             rigRoot.position = path.GetPoint(t1) + worldOffset;
             NormalizedSpeed = 0f;
             IsTraveling = false;
+            activeRoutine = null; // this coroutine is done — don't let EnterStep stop it
             EnterStep(nextIndex);
         }
 

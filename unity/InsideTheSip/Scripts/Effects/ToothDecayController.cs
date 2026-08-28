@@ -28,6 +28,13 @@ namespace InsideTheSip
         [Tooltip("Starting/current erosion. Applied on Start, and scrubbable in Play mode while tuning the shader.")]
         public float erosion;
 
+        [Header("Auto-start")]
+        [Tooltip("Begin eroding by itself when the scene loads — handy for a showcase scene with no interaction yet.")]
+        public bool beginOnStart;
+
+        [Tooltip("Seconds to wait before auto-starting, so the user has a moment to look up at healthy enamel first.")]
+        public float startDelay = 3f;
+
         static readonly int ErosionId = Shader.PropertyToID("_Erosion");
 
         Material runtimeMaterial;
@@ -49,6 +56,14 @@ namespace InsideTheSip
                 if (r != null) r.sharedMaterial = runtimeMaterial;
 
             Apply(erosion);
+
+            if (beginOnStart) StartCoroutine(BeginAfterDelay());
+        }
+
+        IEnumerator BeginAfterDelay()
+        {
+            yield return new WaitForSeconds(Mathf.Max(0f, startDelay));
+            BeginDecay();
         }
 
         void OnValidate()
@@ -58,6 +73,7 @@ namespace InsideTheSip
                 Apply(erosion);
         }
 
+        [ContextMenu("Begin decay (debug)")]
         public void BeginDecay()
         {
             if (routine != null) StopCoroutine(routine);

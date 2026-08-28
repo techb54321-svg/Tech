@@ -36,10 +36,15 @@ namespace InsideTheSip
         [Range(10f, 120f)] public float maxYawDegreesPerSecond = 45f;
 
         [Header("Events")]
-        public UnityEvent<int> onStepEnter;
-        public UnityEvent<int> onStepExit;
-        public UnityEvent onTravelStart;
-        public UnityEvent onJourneyComplete;
+        // NOTE: a raw UnityEvent<int> field is NOT serialized by Unity — it
+        // stays null, never appears in the Inspector, and blows up anything
+        // that tries to add a listener. A [Serializable] subclass fixes both.
+        [System.Serializable] public class StepEvent : UnityEvent<int> { }
+
+        public StepEvent onStepEnter = new StepEvent();
+        public StepEvent onStepExit = new StepEvent();
+        public UnityEvent onTravelStart = new UnityEvent();
+        public UnityEvent onJourneyComplete = new UnityEvent();
 
         public JourneyStep[] Steps { get; private set; }
         public int CurrentStepIndex { get; private set; } = -1;

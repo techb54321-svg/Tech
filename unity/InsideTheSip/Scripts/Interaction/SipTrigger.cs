@@ -28,7 +28,7 @@ namespace InsideTheSip
         [Tooltip("Seconds the pose must be held — filters out accidental passes near the face.")]
         public float holdSeconds = 0.35f;
 
-        public UnityEvent onSip;
+        public UnityEvent onSip = new UnityEvent();
 
         [Header("Haptics")]
         [Range(0f, 1f)] public float hapticAmplitude = 0.7f;

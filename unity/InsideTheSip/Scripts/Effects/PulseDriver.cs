@@ -30,7 +30,7 @@ namespace InsideTheSip
         [Tooltip("Higher = sharper, more thump-like pulse waveform.")]
         public float sharpness = 3f;
 
-        public UnityEvent onBeat;
+        public UnityEvent onBeat = new UnityEvent();
 
         public static float CurrentPulse { get; private set; }
 

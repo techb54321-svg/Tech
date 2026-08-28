@@ -67,10 +67,16 @@ namespace InsideTheSip.EditorTools
                 vignette.motionSource = rig.transform;
                 // Assign through SerializedObject so the shader asset reference
                 // is saved in the scene — that's what keeps it in device builds.
-                var so = new SerializedObject(vignette);
-                so.FindProperty("vignetteShader").objectReferenceValue =
-                    Shader.Find("InsideTheSip/VignetteFade");
-                so.ApplyModifiedPropertiesWithoutUndo();
+                Safely("assign vignette shader", () =>
+                {
+                    var so = new SerializedObject(vignette);
+                    var prop = so.FindProperty("vignetteShader");
+                    var shader = Shader.Find("InsideTheSip/VignetteFade");
+                    if (prop == null || shader == null)
+                        throw new Exception("vignetteShader field or the VignetteFade shader is missing.");
+                    prop.objectReferenceValue = shader;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                });
             }
             else
             {
@@ -89,7 +95,8 @@ namespace InsideTheSip.EditorTools
             var heartbeatSource = pulseGO.AddComponent<AudioSource>();
             heartbeatSource.playOnAwake = false;
             heartbeatSource.spatialBlend = 0f;
-            UnityEventTools.AddVoidPersistentListener(pulse.onBeat, heartbeatSource.Play);
+            Safely("wire heartbeat audio", () =>
+                UnityEventTools.AddVoidPersistentListener(pulse.onBeat, heartbeatSource.Play));
 
             var narrGO = new GameObject("NarrationManager");
             var narration = narrGO.AddComponent<NarrationManager>();
@@ -97,8 +104,9 @@ namespace InsideTheSip.EditorTools
             voice.playOnAwake = false;
             voice.spatialBlend = 0f;
             narration.voiceSource = voice;
-            UnityEventTools.AddPersistentListener(director.onStepEnter,
-                new UnityEngine.Events.UnityAction<int>(narration.PlayStep));
+            Safely("wire narration to onStepEnter", () =>
+                UnityEventTools.AddPersistentListener(director.onStepEnter,
+                    new UnityEngine.Events.UnityAction<int>(narration.PlayStep)));
 
             // --- The sippable can.
             var can = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -110,7 +118,8 @@ namespace InsideTheSip.EditorTools
 
             var sip = new GameObject("SipTrigger").AddComponent<SipTrigger>();
             sip.drink = can.transform;
-            UnityEventTools.AddVoidPersistentListener(sip.onSip, director.Advance);
+            Safely("wire sip to Advance", () =>
+                UnityEventTools.AddVoidPersistentListener(sip.onSip, director.Advance));
 
             // --- A labelled, lit graybox station per beat.
             var segments = new GameObject("Journey Segments (graybox)");
@@ -192,6 +201,19 @@ namespace InsideTheSip.EditorTools
         }
 
         // ---------- helpers ----------
+
+        /// Runs one optional wiring step. A failure here must never abandon
+        /// the rest of the scene build — it just becomes a warning telling
+        /// you which single connection to make by hand.
+        static void Safely(string what, Action action)
+        {
+            try { action(); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Inside the Sip: couldn't " + what + " automatically (" +
+                    e.Message + "). Everything else was still built — wire that one by hand.");
+            }
+        }
 
         static GameObject InstantiateXRRigPrefab()
         {

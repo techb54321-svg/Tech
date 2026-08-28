@@ -35,12 +35,15 @@ namespace InsideTheSip
         [Tooltip("Maximum yaw rate in degrees per second. Uncommanded rotation is the harshest comfort stimulus — keep this modest.")]
         [Range(10f, 120f)] public float maxYawDegreesPerSecond = 45f;
 
-        [Header("Events")]
         // NOTE: a raw UnityEvent<int> field is NOT serialized by Unity — it
         // stays null, never appears in the Inspector, and blows up anything
         // that tries to add a listener. A [Serializable] subclass fixes both.
+        // (This type declaration must sit ABOVE the [Header] attribute —
+        // an attribute binds to whatever declaration follows it, and Header
+        // is only legal on a field.)
         [System.Serializable] public class StepEvent : UnityEvent<int> { }
 
+        [Header("Events")]
         public StepEvent onStepEnter = new StepEvent();
         public StepEvent onStepExit = new StepEvent();
         public UnityEvent onTravelStart = new UnityEvent();

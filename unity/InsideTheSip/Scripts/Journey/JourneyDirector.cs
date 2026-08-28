@@ -83,6 +83,11 @@ namespace InsideTheSip
 
         /// Advance to the next step. Safe to call repeatedly — ignored while
         /// already travelling or after the journey has completed.
+        ///
+        /// The ContextMenu entry lets you ride the whole journey at your desk
+        /// without a headset: press Play, then right-click the JourneyDirector
+        /// component header in the Inspector and pick "Advance (debug)".
+        [ContextMenu("Advance (debug)")]
         public void Advance()
         {
             if (IsTraveling) return;

@@ -26,9 +26,20 @@ Shader "InsideTheSip/Flesh"
         _BumpMap ("Normal Map", 2D) = "bump" {}
         _BumpScale ("Normal Strength", Range(0, 3)) = 1
 
+        [Header(Close up detail)]
+        _DetailNormalMap ("Detail Normal", 2D) = "bump" {}
+        _DetailTiling ("Detail Tiling", Range(1, 80)) = 22
+        _DetailStrength ("Detail Strength", Range(0, 3)) = 1
+
+        [Header(Mask   R equals AO   G equals wetness)]
+        _MaskMap ("AO / Wetness Mask", 2D) = "white" {}
+        _MaskTiling ("Mask Tiling", Range(0.25, 16)) = 2
+        _OcclusionStrength ("Occlusion Strength", Range(0, 1)) = 0.85
+
         [Header(Wetness)]
         _SpecPower ("Gloss Power", Range(4, 256)) = 48
         _SpecIntensity ("Specular Intensity", Range(0, 3)) = 1.2
+        _SpecVariation ("Wetness Variation", Range(0, 1)) = 0.8
 
         [Header(Translucency)]
         _WrapAmount ("Light Wrap", Range(0, 1)) = 0.5
@@ -61,6 +72,8 @@ Shader "InsideTheSip/Flesh"
 
         TEXTURE2D(_BaseMap); SAMPLER(sampler_BaseMap);
         TEXTURE2D(_BumpMap); SAMPLER(sampler_BumpMap);
+        TEXTURE2D(_DetailNormalMap); SAMPLER(sampler_DetailNormalMap);
+        TEXTURE2D(_MaskMap); SAMPLER(sampler_MaskMap);
 
         // Global heartbeat published by PulseDriver.cs — deliberately NOT
         // in the material CBUFFER so Shader.SetGlobalFloat reaches it.
@@ -70,8 +83,13 @@ Shader "InsideTheSip/Flesh"
             float4 _BaseMap_ST;
             half4 _BaseColor;
             half _BumpScale;
+            half _DetailTiling;
+            half _DetailStrength;
+            half _MaskTiling;
+            half _OcclusionStrength;
             half _SpecPower;
             half _SpecIntensity;
+            half _SpecVariation;
             half _WrapAmount;
             half4 _SubsurfaceColor;
             half _RimPower;
@@ -165,9 +183,26 @@ Shader "InsideTheSip/Flesh"
 
                 half3 normalTS = UnpackNormalScale(
                     SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, IN.uv), _BumpScale);
+
+                // Detail normal at high tiling. Without this, surfaces are
+                // smooth and featureless once your face is 20cm from them —
+                // which in VR is most of the time, and reads as plastic.
+                half3 detailTS = UnpackNormalScale(
+                    SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailNormalMap,
+                        IN.uv * _DetailTiling), _DetailStrength);
+                // Whiteout blend: keeps both sets of bumps instead of one
+                // flattening the other.
+                normalTS = normalize(half3(normalTS.xy + detailTS.xy,
+                    normalTS.z * detailTS.z));
+
                 float3x3 tbn = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
                 float3 N = normalize(TransformTangentToWorld(normalTS, tbn));
                 float3 V = normalize(GetWorldSpaceViewDir(IN.positionWS));
+
+                half2 mask = SAMPLE_TEXTURE2D(_MaskMap, sampler_MaskMap,
+                    IN.uv * _MaskTiling).rg;
+                half occlusion = lerp(1.0, mask.r, _OcclusionStrength);
+                half wetness = mask.g;
 
                 Light mainLight = GetMainLight();
                 float3 L = mainLight.direction;
@@ -176,22 +211,30 @@ Shader "InsideTheSip/Flesh"
                 // Wrap diffuse — soft, fleshy light falloff.
                 half wrapped = saturate((dot(N, L) + _WrapAmount) / (1.0 + _WrapAmount));
                 half3 diffuse = lightColor * wrapped;
-                half3 ambient = SampleSH(N);
+                // Ambient is what crevices see, so occlusion belongs here
+                // most of all — this is what gives folds their depth.
+                half3 ambient = SampleSH(N) * occlusion;
 
                 // Fake translucency at silhouettes.
                 half rim = pow(1.0 - saturate(dot(N, V)), _RimPower);
                 half3 subsurface = rim * _SubsurfaceColor.rgb;
 
-                // Wet mucosa highlight.
+                // Wet mucosa highlight. Real tissue is not uniformly wet:
+                // pooled saliva glints hard while drier patches stay dull.
+                // A single constant gloss over a whole surface is the single
+                // biggest "this is plastic" giveaway.
                 float3 H = normalize(L + V);
-                half3 specular = lightColor
-                    * pow(saturate(dot(N, H)), _SpecPower) * _SpecIntensity;
+                half wetLerp = lerp(1.0 - _SpecVariation, 1.0, wetness);
+                half gloss = _SpecPower * lerp(0.35, 1.0, wetLerp);
+                half3 specular = lightColor * pow(saturate(dot(N, H)), gloss)
+                    * _SpecIntensity * wetLerp * occlusion;
 
                 // Blood flush on each heartbeat.
                 half3 emission = _EmissionColor.rgb
                     * (_EmissionBase + _PulseEmission * _ITS_Pulse);
 
-                half3 color = albedo * (ambient + diffuse) + subsurface + specular + emission;
+                half3 color = albedo * (ambient + diffuse)
+                    + subsurface * occlusion + specular + emission;
                 color = MixFog(color, IN.fogFactor);
                 return half4(color, 1);
             }

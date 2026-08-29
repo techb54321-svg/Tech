@@ -12,7 +12,10 @@ namespace InsideTheSip.EditorTools
     public static class ProceduralAssets
     {
         public const string Root = "Assets/InsideTheSip/Generated";
-        const int TexSize = 512;
+        // Base maps get the resolution; detail and mask maps tile heavily
+        // so they stay small without looking soft.
+        const int BaseSize = 1024;
+        const int DetailSize = 512;
 
         // ---------------------------------------------------------------
         // Materials
@@ -29,9 +32,16 @@ namespace InsideTheSip.EditorTools
             mat.SetTextureScale("_BaseMap", new Vector2(4f, 2f));
             mat.SetTexture("_BumpMap", FleshNormal());
             mat.SetFloat("_BumpScale", 1.4f);
+            mat.SetTexture("_DetailNormalMap", FleshDetailNormal());
+            mat.SetFloat("_DetailTiling", 26f);
+            mat.SetFloat("_DetailStrength", 1.1f);
+            mat.SetTexture("_MaskMap", FleshMask());
+            mat.SetFloat("_MaskTiling", 3f);
+            mat.SetFloat("_OcclusionStrength", 0.9f);
             mat.SetColor("_BaseColor", new Color(0.86f, 0.42f, 0.40f));
             mat.SetFloat("_SpecPower", 42f);        // wet, but not a mirror
-            mat.SetFloat("_SpecIntensity", 1.5f);
+            mat.SetFloat("_SpecIntensity", 1.6f);
+            mat.SetFloat("_SpecVariation", 0.85f);  // puddles glint, dry patches don't
             mat.SetFloat("_WrapAmount", 0.6f);
             mat.SetColor("_SubsurfaceColor", new Color(0.85f, 0.16f, 0.12f));
             mat.SetFloat("_RimPower", 2.2f);
@@ -53,7 +63,10 @@ namespace InsideTheSip.EditorTools
             mat.SetTextureScale("_BaseMap", new Vector2(8f, 4f)); // finer papillae
             mat.SetColor("_BaseColor", new Color(0.78f, 0.36f, 0.36f));
             mat.SetFloat("_BumpScale", 2.2f);
-            mat.SetFloat("_SpecIntensity", 2.0f);
+            mat.SetFloat("_DetailTiling", 44f);     // papillae are tiny
+            mat.SetFloat("_DetailStrength", 1.5f);
+            mat.SetFloat("_MaskTiling", 5f);
+            mat.SetFloat("_SpecIntensity", 2.2f);
             mat.SetFloat("_PulseSwell", 0.012f);
             Save(mat, path);
             return mat;
@@ -85,6 +98,9 @@ namespace InsideTheSip.EditorTools
             mat.SetTexture("_DecayMap", ToothDecayed());
             mat.SetTexture("_BumpMap", ToothNormal());
             mat.SetTexture("_NoiseMap", ToothNoise());
+            mat.SetTexture("_DetailNormalMap", ToothDetailNormal());
+            mat.SetFloat("_DetailTiling", 30f);
+            mat.SetFloat("_DetailStrength", 0.75f);
             mat.SetFloat("_BumpScale", 0.8f);
             mat.SetFloat("_Erosion", 0f);
             mat.SetFloat("_EdgeWidth", 0.16f);
@@ -123,8 +139,8 @@ namespace InsideTheSip.EditorTools
         // Textures
         // ---------------------------------------------------------------
 
-        public static Texture2D FleshAlbedo() => Cached("/T_FleshAlbedo.png", false, () =>
-            Paint((u, v) =>
+        public static Texture2D FleshAlbedo() => Cached("/T_FleshAlbedo.png", false, BaseSize, () =>
+            Paint(BaseSize, (u, v) =>
             {
                 float blotch = Fbm(u, v, 4, 4, 0.55f, new Vector2(11f, 3f));
                 float fine = Fbm(u, v, 16, 3, 0.5f, new Vector2(41f, 17f));
@@ -140,16 +156,16 @@ namespace InsideTheSip.EditorTools
                 return c;
             }));
 
-        public static Texture2D FleshNormal() => Cached("/T_FleshNormal.png", true, () =>
-            NormalFromHeight((u, v) =>
+        public static Texture2D FleshNormal() => Cached("/T_FleshNormal.png", true, BaseSize, () =>
+            NormalFromHeight(BaseSize, (u, v) =>
             {
                 float lumps = Fbm(u, v, 5, 4, 0.55f, new Vector2(11f, 3f));
                 float pores = Fbm(u, v, 24, 3, 0.5f, new Vector2(63f, 5f));
                 return lumps * 0.75f + pores * 0.25f;
             }, 5.5f));
 
-        public static Texture2D ToothHealthy() => Cached("/T_ToothHealthy.png", false, () =>
-            Paint((u, v) =>
+        public static Texture2D ToothHealthy() => Cached("/T_ToothHealthy.png", false, BaseSize, () =>
+            Paint(BaseSize, (u, v) =>
             {
                 // Enamel: near-white, faintly translucent-blue at the tip,
                 // warmer toward the root, with vertical growth striations.
@@ -160,8 +176,8 @@ namespace InsideTheSip.EditorTools
                 return Color.Lerp(c, c * 0.94f, striation * 0.5f);
             }));
 
-        public static Texture2D ToothDecayed() => Cached("/T_ToothDecayed.png", false, () =>
-            Paint((u, v) =>
+        public static Texture2D ToothDecayed() => Cached("/T_ToothDecayed.png", false, BaseSize, () =>
+            Paint(BaseSize, (u, v) =>
             {
                 float grime = Fbm(u, v, 8, 4, 0.55f, new Vector2(31f, 13f));
                 float pit = Fbm(u, v, 20, 3, 0.5f, new Vector2(5f, 47f));
@@ -171,15 +187,15 @@ namespace InsideTheSip.EditorTools
                 return Color.Lerp(c, rot * 0.6f, Mathf.Pow(pit, 3f));
             }));
 
-        public static Texture2D ToothNormal() => Cached("/T_ToothNormal.png", true, () =>
-            NormalFromHeight((u, v) =>
+        public static Texture2D ToothNormal() => Cached("/T_ToothNormal.png", true, BaseSize, () =>
+            NormalFromHeight(BaseSize, (u, v) =>
                 Fbm(u * 5f, v, 12, 3, 0.5f, new Vector2(19f, 2f)) * 0.6f +
                 Fbm(u, v, 26, 2, 0.5f, new Vector2(3f, 61f)) * 0.4f, 2.5f));
 
         /// Mask that drives where erosion starts. Low values go first, so the
         /// bias toward the gum line makes decay creep up from the roots.
-        public static Texture2D ToothNoise() => Cached("/T_ToothNoise.png", false, () =>
-            Paint((u, v) =>
+        public static Texture2D ToothNoise() => Cached("/T_ToothNoise.png", false, BaseSize, () =>
+            Paint(BaseSize, (u, v) =>
             {
                 float n = Fbm(u, v, 6, 4, 0.55f, new Vector2(23f, 71f));
                 float gumBias = Mathf.Clamp01(1f - v);   // v=1 is the root end
@@ -187,8 +203,41 @@ namespace InsideTheSip.EditorTools
                 return new Color(m, m, m, 1f);
             }), linear: true);
 
-        public static Texture2D RippleNormal() => Cached("/T_RippleNormal.png", true, () =>
-            NormalFromHeight((u, v) =>
+        /// R = ambient occlusion, G = wetness. One texture, one sample:
+        /// crevices go dark, and only some patches glint.
+        public static Texture2D FleshMask() => Cached("/T_FleshMask.png", false, DetailSize, () =>
+            Paint(DetailSize, (u, v) =>
+            {
+                float height = Fbm(u, v, 5, 4, 0.55f, new Vector2(11f, 3f));
+                float ao = 0.30f + 0.70f * Mathf.Pow(Mathf.Clamp01(height), 0.65f);
+                // Wetness pools in the low spots and varies on a larger scale
+                // than the bumps, so glints read as puddles, not noise.
+                float pooling = 1f - Mathf.Clamp01(height);
+                float patches = Fbm(u, v, 3, 3, 0.6f, new Vector2(57f, 91f));
+                float wetness = Mathf.Clamp01(patches * 0.6f + pooling * 0.55f);
+                return new Color(ao, wetness, 0f, 1f);
+            }), linear: true);
+
+        /// Fine pores, sampled at high tiling so surfaces keep texture when
+        /// your face is 20 cm away — which in VR is most of the time.
+        public static Texture2D FleshDetailNormal() =>
+            Cached("/T_FleshDetail.png", true, DetailSize, () =>
+                NormalFromHeight(DetailSize, (u, v) =>
+                    Fbm(u, v, 14, 3, 0.5f, new Vector2(101f, 17f)) * 0.6f +
+                    Fbm(u, v, 34, 2, 0.5f, new Vector2(7f, 133f)) * 0.4f, 2.8f));
+
+        /// Micro-scratches for enamel — polished, never optically perfect.
+        public static Texture2D ToothDetailNormal() =>
+            Cached("/T_ToothDetail.png", true, DetailSize, () =>
+                NormalFromHeight(DetailSize, (u, v) =>
+                {
+                    float scratches = Fbm(u * 14f, v * 0.6f, 20, 2, 0.5f, new Vector2(3f, 88f));
+                    float grain = Fbm(u, v, 40, 2, 0.5f, new Vector2(45f, 12f));
+                    return scratches * 0.65f + grain * 0.35f;
+                }, 1.6f));
+
+        public static Texture2D RippleNormal() => Cached("/T_RippleNormal.png", true, DetailSize, () =>
+            NormalFromHeight(DetailSize, (u, v) =>
                 Fbm(u, v, 6, 4, 0.55f, new Vector2(83f, 7f)) * 0.7f +
                 Mathf.Sin((u + v) * Mathf.PI * 8f) * 0.15f + 0.15f, 3.5f));
 
@@ -390,15 +439,15 @@ namespace InsideTheSip.EditorTools
         delegate Color Shade(float u, float v);
         delegate float Height(float u, float v);
 
-        static Texture2D Cached(string file, bool isNormalMap, System.Func<Color[]> build,
-            bool linear = false)
+        static Texture2D Cached(string file, bool isNormalMap, int size,
+            System.Func<Color[]> build, bool linear = false)
         {
             EnsureFolder();
             string path = Root + file;
             var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
             if (existing != null) return existing;
 
-            var tex = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, false);
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.SetPixels(build());
             tex.Apply();
             File.WriteAllBytes(path, tex.EncodeToPNG());
@@ -419,34 +468,34 @@ namespace InsideTheSip.EditorTools
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
-        static Color[] Paint(Shade shade)
+        static Color[] Paint(int size, Shade shade)
         {
-            var pixels = new Color[TexSize * TexSize];
-            for (int y = 0; y < TexSize; y++)
-                for (int x = 0; x < TexSize; x++)
-                    pixels[y * TexSize + x] = shade(x / (float)TexSize, y / (float)TexSize);
+            var pixels = new Color[size * size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                    pixels[y * size + x] = shade(x / (float)size, y / (float)size);
             return pixels;
         }
 
-        static Color[] NormalFromHeight(Height height, float strength)
+        static Color[] NormalFromHeight(int size, Height height, float strength)
         {
-            var h = new float[TexSize, TexSize];
-            for (int y = 0; y < TexSize; y++)
-                for (int x = 0; x < TexSize; x++)
-                    h[x, y] = height(x / (float)TexSize, y / (float)TexSize);
+            var h = new float[size, size];
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                    h[x, y] = height(x / (float)size, y / (float)size);
 
-            var pixels = new Color[TexSize * TexSize];
-            for (int y = 0; y < TexSize; y++)
+            var pixels = new Color[size * size];
+            for (int y = 0; y < size; y++)
             {
-                for (int x = 0; x < TexSize; x++)
+                for (int x = 0; x < size; x++)
                 {
-                    float left = h[(x - 1 + TexSize) % TexSize, y];
-                    float right = h[(x + 1) % TexSize, y];
-                    float down = h[x, (y - 1 + TexSize) % TexSize];
-                    float up = h[x, (y + 1) % TexSize];
+                    float left = h[(x - 1 + size) % size, y];
+                    float right = h[(x + 1) % size, y];
+                    float down = h[x, (y - 1 + size) % size];
+                    float up = h[x, (y + 1) % size];
                     var n = new Vector3((left - right) * strength,
                         (down - up) * strength, 1f).normalized;
-                    pixels[y * TexSize + x] = new Color(
+                    pixels[y * size + x] = new Color(
                         n.x * 0.5f + 0.5f, n.y * 0.5f + 0.5f, n.z * 0.5f + 0.5f, 1f);
                 }
             }

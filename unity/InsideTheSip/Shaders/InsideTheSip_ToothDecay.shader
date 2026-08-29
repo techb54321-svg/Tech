@@ -22,6 +22,9 @@ Shader "InsideTheSip/ToothDecay"
         _BumpMap ("Normal Map", 2D) = "bump" {}
         _BumpScale ("Normal Strength", Range(0, 2)) = 1
         _NoiseMap ("Erosion Noise (R)", 2D) = "gray" {}
+        _DetailNormalMap ("Detail Normal (micro scratches)", 2D) = "bump" {}
+        _DetailTiling ("Detail Tiling", Range(1, 80)) = 26
+        _DetailStrength ("Detail Strength", Range(0, 3)) = 0.7
 
         _Erosion ("Erosion", Range(0, 1)) = 0
         _EdgeWidth ("Erosion Edge Width", Range(0.01, 0.5)) = 0.12
@@ -50,10 +53,13 @@ Shader "InsideTheSip/ToothDecay"
         TEXTURE2D(_DecayMap);    SAMPLER(sampler_DecayMap);
         TEXTURE2D(_BumpMap);     SAMPLER(sampler_BumpMap);
         TEXTURE2D(_NoiseMap);    SAMPLER(sampler_NoiseMap);
+        TEXTURE2D(_DetailNormalMap); SAMPLER(sampler_DetailNormalMap);
 
         CBUFFER_START(UnityPerMaterial)
             float4 _HealthyMap_ST;
             half _BumpScale;
+            half _DetailTiling;
+            half _DetailStrength;
             half _Erosion;
             half _EdgeWidth;
             half4 _EdgeColor;
@@ -157,6 +163,17 @@ Shader "InsideTheSip/ToothDecay"
 
                 half3 normalTS = UnpackNormalScale(
                     SAMPLE_TEXTURE2D(_BumpMap, sampler_BumpMap, IN.uv), _BumpScale);
+
+                // Micro-scratches. Enamel is polished but never optically
+                // perfect, and up close a flawless surface reads as plastic.
+                // Decay roughens it further, so scale detail up with erosion.
+                half3 detailTS = UnpackNormalScale(
+                    SAMPLE_TEXTURE2D(_DetailNormalMap, sampler_DetailNormalMap,
+                        IN.uv * _DetailTiling),
+                    _DetailStrength * lerp(1.0, 2.6, blend));
+                normalTS = normalize(half3(normalTS.xy + detailTS.xy,
+                    normalTS.z * detailTS.z));
+
                 float3x3 tbn = float3x3(IN.tangentWS, IN.bitangentWS, IN.normalWS);
                 float3 N = normalize(TransformTangentToWorld(normalTS, tbn));
                 float3 V = normalize(GetWorldSpaceViewDir(IN.positionWS));

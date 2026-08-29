@@ -5,6 +5,10 @@ Nothing here costs money. Downloading takes a free Sketchfab account and
 about 20 minutes of clicking; each entry says what it's for and what the
 licence asks of you.
 
+> **Tip:** a Sketchfab `.glb` records its own licence. Open it in a text
+> editor and look near the start for `"license":` — that beats trusting a
+> half-remembered web page.
+
 ## The three licence rules (read once, then just follow the labels)
 
 - **CC0 / Public domain** — use freely, no credit required (credit is still
@@ -43,12 +47,12 @@ share it under the same licence. Using it inside the app + crediting is fine.
 
 | Asset | Where | Licence | Notes |
 | --- | --- | --- | --- |
-| **Human Teeth** — Alexander Antipov | [Sketchfab](https://sketchfab.com/3d-models/human-teeth-c4c569f0e08948e2a572007a7a5726f2) | CC-BY | Realistic, with 2048px colour/specular/normal maps — the hero candidate. Its colour map becomes the ToothDecay shader's *Healthy Albedo*; paint a stained copy for *Decayed Albedo*. |
+| ⭐ **Human Teeth** — Alexander Antipov | [Sketchfab](https://sketchfab.com/3d-models/human-teeth-c4c569f0e08948e2a572007a7a5726f2) | **CC-BY 4.0 — verified in the downloaded file** | **The chosen model.** 15,568 tris (no decimation needed), Gums and Teeth as separate meshes, full UVs + tangents, three 2048px maps (colour, specular-gloss, normal). Import with **Use Selected Model As → Full Dental Arch**. |
 | **Human Teeth** — 3D EduTex | [Sketchfab](https://sketchfab.com/3d-models/human-teeth-ea6f6ebf18d4437798f20c70baf816fc) | CC-BY | Anatomical set, good backup. |
 | **Free Teeth Base Mesh** — ferrumiron6 | [Sketchfab](https://sketchfab.com/3d-models/free-teeth-base-mesh-b66fde0dc3eb44b0908096aa51b96431) | CC-BY | Clean low-poly base (FBX/OBJ/GLB) if you'd rather sculpt your own detail. |
 | **Human mouth interior** — Auriston Pacheco (uvula, hard + soft palate) | [Sketchfab](https://sketchfab.com/3d-models/human-mouth-interior-fa4957db1ce24cfcab274d62c4fac0c7) | check on page | Exactly the cathedral-of-the-mouth architecture the scene needs. Verify the licence badge before downloading. |
 | **Oral cavity** — Univ. of Dundee Dentistry | [Sketchfab](https://sketchfab.com/3d-models/oral-cavity-64d4e31440ba48ee9e1ecccf6fe0ac17) | check on page (academic uploads are often NC) | Medically accurate reference. |
-| *Gameready mouth & tongue* — Rostokino | [Sketchfab](https://sketchfab.com/3d-models/gameready-human-mouth-and-tongue-6c25fc725d1c404c82ec7499e4f7e041) | CC-BY-**NC-ND** | **Reference only** — ND forbids modification. |
+| ❌ *Gameready mouth & tongue* — Rostokino | [Sketchfab](https://sketchfab.com/3d-models/gameready-human-mouth-and-tongue-6c25fc725d1c404c82ec7499e4f7e041) | **CC-BY-NC-ND 4.0 — verified in the downloaded file** | **Do not ship.** ND forbids distributing a modified version, and every import step here modifies it. Also only 6.3k tris of card-like planes built to be seen from outside. Fine to study, not to use. |
 
 ## Stomach
 

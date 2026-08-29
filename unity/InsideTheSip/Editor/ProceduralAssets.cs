@@ -327,6 +327,112 @@ namespace InsideTheSip.EditorTools
             return mesh;
         }
 
+        /// The mouth cavity itself, built inside-out from the start so there
+        /// is no normal-flipping and no back-face weirdness.
+        ///
+        /// A sphere reads as a cave. A mouth is a lofted tube: narrow at the
+        /// lips, widest at the cheeks, narrowing again into the throat, with
+        /// a domed hard palate overhead carrying transverse ridges (rugae),
+        /// and a flatter floor beneath the tongue. Both ends are left open —
+        /// daylight at the front, the throat at the back.
+        public static Mesh MouthCavity(string assetName, float halfLength,
+            float maxHalfWidth, float ceilingHeight, float floorDepth, int seed)
+        {
+            string path = Root + "/" + assetName + ".asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing != null) return existing;
+
+            const int rings = 56;   // front to back
+            const int around = 40;  // around each cross-section
+            var verts = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+            var rng = new System.Random(seed);
+            var noiseOffset = new Vector2(rng.Next(0, 900), rng.Next(0, 900));
+
+            for (int r = 0; r <= rings; r++)
+            {
+                float t = r / (float)rings;                 // 0 = lips, 1 = throat
+                float z = Mathf.Lerp(-halfLength, halfLength, t);
+
+                // Widest across the cheeks, pinched at both ends.
+                float widthProfile = 0.46f + 0.54f * Mathf.Sin(Mathf.Pow(t, 0.85f) * Mathf.PI);
+                float endPinch = Mathf.Lerp(1f, 0.62f, Mathf.SmoothStep(0f, 1f, (t - 0.72f) / 0.28f));
+                float halfWidth = maxHalfWidth * widthProfile * Mathf.Max(endPinch, 0.4f);
+                float ceiling = ceilingHeight * (0.72f + 0.28f * Mathf.Sin(t * Mathf.PI));
+                float floor = floorDepth * (0.78f + 0.22f * Mathf.Sin(t * Mathf.PI));
+
+                for (int a = 0; a <= around; a++)
+                {
+                    float ang = a / (float)around * Mathf.PI * 2f;
+                    float c = Mathf.Cos(ang), sn = Mathf.Sin(ang);
+
+                    // Superellipse: squarer than a circle, so the palate reads
+                    // as a vault and the floor as a floor.
+                    float x = Mathf.Sign(c) * Mathf.Pow(Mathf.Abs(c), 0.78f) * halfWidth;
+                    float y = sn >= 0f
+                        ? Mathf.Pow(sn, 0.85f) * ceiling
+                        : -Mathf.Pow(-sn, 1.25f) * floor;
+
+                    // Rugae: the ridged washboard on the hard palate. Front
+                    // half only, fading out toward the soft palate.
+                    float upper = Mathf.Clamp01(sn);
+                    float rugaeZone = Mathf.Clamp01(1f - t * 2.4f);
+                    float rugae = Mathf.Sin(t * 46f) * 0.16f * upper * rugaeZone;
+
+                    // Organic wobble so nothing reads as extruded geometry.
+                    float wob = Mathf.PerlinNoise(
+                        t * 5f + noiseOffset.x, ang * 1.6f + noiseOffset.y) - 0.5f;
+
+                    var p = new Vector3(x, y, z);
+                    var outward = new Vector3(x, y, 0f).normalized;
+                    verts.Add(p + outward * ((rugae + wob * 0.4f) * maxHalfWidth * 0.09f));
+                    uvs.Add(new Vector2(a / (float)around * 3f, t * 4f));
+                }
+            }
+
+            for (int r = 0; r < rings; r++)
+            {
+                for (int a = 0; a < around; a++)
+                {
+                    int i0 = r * (around + 1) + a;
+                    int i1 = i0 + 1;
+                    int i2 = i0 + around + 1;
+                    int i3 = i2 + 1;
+                    tris.Add(i0); tris.Add(i2); tris.Add(i1);
+                    tris.Add(i1); tris.Add(i2); tris.Add(i3);
+                }
+            }
+
+            // Measure the winding rather than assuming it, then face inward.
+            Vector3 q0 = verts[tris[0]], q1 = verts[tris[1]], q2 = verts[tris[2]];
+            Vector3 facing = Vector3.Cross(q1 - q0, q2 - q0);
+            Vector3 radial = (q0 + q1 + q2) / 3f;
+            radial.z = 0f;
+            if (Vector3.Dot(facing, radial) > 0f)
+            {
+                for (int i = 0; i < tris.Count; i += 3)
+                {
+                    int tmp = tris[i]; tris[i] = tris[i + 2]; tris[i + 2] = tmp;
+                }
+            }
+
+            var mesh = new Mesh { name = assetName };
+            mesh.indexFormat = verts.Count > 65000
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16;
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+
+            EnsureFolder();
+            AssetDatabase.CreateAsset(mesh, path);
+            return mesh;
+        }
+
         /// An elliptical gum ridge for teeth to emerge from. Without this the
         /// teeth read as tiles floating in space — sockets are what make a
         /// row of enamel look like a jaw.

@@ -20,7 +20,6 @@ namespace InsideTheSip.EditorTools
 
         // World scale: the user is ~2 mm tall, so a 9 mm molar reads as a
         // four-storey cliff. These numbers are in "shrunken" metres.
-        const float CavernRadius = 11f;
         // A dental arch is an ellipse, not a circle — deeper front-to-back
         // than it is wide, which is why the old circular layout crowded and
         // overlapped the front teeth.
@@ -162,8 +161,9 @@ namespace InsideTheSip.EditorTools
 
         static void BuildCavern()
         {
-            var mesh = ProceduralAssets.Sphere("SM_MouthCavern", 72, 44,
-                CavernRadius, inward: true, lumpiness: 0.16f, lumpScale: 2.1f, seed: 7);
+            var mesh = ProceduralAssets.MouthCavity("SM_MouthCavity",
+                halfLength: 14f, maxHalfWidth: 10.5f,
+                ceilingHeight: 7.5f, floorDepth: 5.2f, seed: 7);
 
             var go = new GameObject("Mouth Cavern");
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
@@ -171,13 +171,37 @@ namespace InsideTheSip.EditorTools
             renderer.sharedMaterial = ProceduralAssets.FleshMaterial();
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            // Squash it: a mouth is wider than it is tall.
-            go.transform.localScale = new Vector3(1f, 0.72f, 1.15f);
 
-            // Solid walls, so wandering with the thumbstick can't take you
-            // out through the cheek into empty fog.
+            // Solid cheeks, so thumbstick locomotion can't leave the mouth.
             var collider = go.AddComponent<MeshCollider>();
             collider.sharedMesh = mesh;
+
+            BuildDaylight();
+        }
+
+        /// Daylight past the lips: a warm glowing disc filling the front
+        /// opening. It gives the space somewhere to look, a reason for the
+        /// key light, and the strongest possible depth cue — bright ahead of
+        /// you, deep red behind.
+        static void BuildDaylight()
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            go.name = "Daylight (past the lips)";
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.position = new Vector3(0f, 0.5f, -14.6f);
+            go.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            go.transform.localScale = new Vector3(22f, 16f, 1f);
+
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null) return;
+            var mat = new Material(shader);
+            mat.SetColor("_BaseColor", new Color(1f, 0.86f, 0.72f));
+            AssetDatabase.CreateAsset(mat, ProceduralAssets.Root + "/M_Daylight.mat");
+
+            var renderer = go.GetComponent<MeshRenderer>();
+            renderer.sharedMaterial = mat;
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
         }
 
         static void BuildTongue()

@@ -24,12 +24,18 @@ namespace InsideTheSip.EditorTools
         const float ArchRadius = 5.6f;
         const int TeethPerArch = 11;
 
+        /// Standing height: the top of the tongue. Puts your eyeline between
+        /// the two arches, so the lower teeth rise past you and the upper
+        /// ones hang overhead.
+        const float FloorY = -4.1f;
+
         [MenuItem("Inside the Sip/Build Mouth Scene (Showcase)")]
         public static void BuildMouthScene()
         {
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             BuildLighting();
+            BuildFloor();
             var rig = BuildRig();
             BuildCavern();
             BuildTongue();
@@ -101,10 +107,24 @@ namespace InsideTheSip.EditorTools
             throatGlow.transform.position = new Vector3(0f, 0.5f, 9.5f);
         }
 
+        /// Invisible ground at the top of the tongue. Without this the rig's
+        /// gravity drops you straight through the scene on load.
+        static void BuildFloor()
+        {
+            var floor = new GameObject("Floor (invisible)");
+            floor.transform.position = new Vector3(0f, FloorY - 0.25f, 1.5f);
+            var box = floor.AddComponent<BoxCollider>();
+            box.size = new Vector3(60f, 0.5f, 60f);
+        }
+
         static GameObject BuildRig()
         {
             GameObject rig = InstantiateXRRig();
-            rig.transform.position = new Vector3(0f, -2.2f, -1.5f);
+            // Stand ON the floor, not above it. The XRIT rig has gravity, so
+            // spawning in mid-air means an unpleasant drop the moment the
+            // scene loads — and falling is the fastest way to make someone
+            // sick in VR.
+            rig.transform.position = new Vector3(0f, FloorY, -1.5f);
 
             var cam = rig.GetComponentInChildren<Camera>();
             if (cam != null)
@@ -141,6 +161,11 @@ namespace InsideTheSip.EditorTools
             renderer.receiveShadows = false;
             // Squash it: a mouth is wider than it is tall.
             go.transform.localScale = new Vector3(1f, 0.72f, 1.15f);
+
+            // Solid walls, so wandering with the thumbstick can't take you
+            // out through the cheek into empty fog.
+            var collider = go.AddComponent<MeshCollider>();
+            collider.sharedMesh = mesh;
         }
 
         static void BuildTongue()

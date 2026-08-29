@@ -327,6 +327,71 @@ namespace InsideTheSip.EditorTools
             return mesh;
         }
 
+        /// An elliptical gum ridge for teeth to emerge from. Without this the
+        /// teeth read as tiles floating in space — sockets are what make a
+        /// row of enamel look like a jaw.
+        public static Mesh GumRidge(string assetName, float archX, float archZ,
+            float thickness, float arcDegrees, int seed)
+        {
+            string path = Root + "/" + assetName + ".asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (existing != null) return existing;
+
+            const int along = 80;   // steps around the arch
+            const int around = 14;  // steps around the tube
+            var verts = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var tris = new List<int>();
+            var rng = new System.Random(seed);
+            float wobble = (float)rng.NextDouble() * 90f;
+
+            for (int i = 0; i <= along; i++)
+            {
+                float t = i / (float)along;
+                float angle = Mathf.Deg2Rad * Mathf.Lerp(-arcDegrees, arcDegrees, t);
+                var centre = new Vector3(Mathf.Sin(angle) * archX, 0f, -Mathf.Cos(angle) * archZ);
+                // Tangent of the ellipse, so the tube stays perpendicular.
+                var tangent = new Vector3(Mathf.Cos(angle) * archX, 0f,
+                    Mathf.Sin(angle) * archZ).normalized;
+                var outward = new Vector3(-tangent.z, 0f, tangent.x);
+
+                for (int j = 0; j <= around; j++)
+                {
+                    float a = j / (float)around * Mathf.PI * 2f;
+                    float bump = 1f + 0.10f * (Mathf.PerlinNoise(i * 0.22f + wobble, j * 0.3f) - 0.5f);
+                    Vector3 offset = (outward * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a))
+                        * thickness * bump;
+                    verts.Add(centre + offset);
+                    uvs.Add(new Vector2(t * 6f, j / (float)around));
+                }
+            }
+
+            for (int i = 0; i < along; i++)
+            {
+                for (int j = 0; j < around; j++)
+                {
+                    int a = i * (around + 1) + j;
+                    int b = a + 1;
+                    int c = a + around + 1;
+                    int d = c + 1;
+                    tris.Add(a); tris.Add(c); tris.Add(b);
+                    tris.Add(b); tris.Add(c); tris.Add(d);
+                }
+            }
+
+            var mesh = new Mesh { name = assetName };
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateTangents();
+            mesh.RecalculateBounds();
+
+            EnsureFolder();
+            AssetDatabase.CreateAsset(mesh, path);
+            return mesh;
+        }
+
         /// A tooth: a tapered, rounded block. Crown at +Y, root at -Y, with
         /// UVs running v=0 at the biting edge to v=1 at the gum line so the
         /// erosion mask can creep upward from the root.

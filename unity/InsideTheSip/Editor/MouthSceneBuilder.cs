@@ -21,8 +21,19 @@ namespace InsideTheSip.EditorTools
         // World scale: the user is ~2 mm tall, so a 9 mm molar reads as a
         // four-storey cliff. These numbers are in "shrunken" metres.
         const float CavernRadius = 11f;
-        const float ArchRadius = 5.6f;
+        // A dental arch is an ellipse, not a circle — deeper front-to-back
+        // than it is wide, which is why the old circular layout crowded and
+        // overlapped the front teeth.
+        const float ArchX = 6.2f;
+        const float ArchZ = 7.4f;
+        const float ArchDegrees = 92f;
         const int TeethPerArch = 11;
+        const float ToothHeight = 4.2f;
+
+        // Crown heights, chosen so your eyeline sits just below the lower
+        // crowns: the teeth loom rather than sitting at eye level.
+        const float LowerCrownY = -1.0f;
+        const float UpperCrownY = 1.6f;
 
         /// Standing height: the top of the tongue. Puts your eyeline between
         /// the two arches, so the lower teeth rise past you and the upper
@@ -40,6 +51,7 @@ namespace InsideTheSip.EditorTools
             BuildCavern();
             BuildTongue();
             var teeth = BuildTeeth();
+            BuildUvula();
             BuildColaPool();
             BuildThroat();
             BuildSystems(teeth);
@@ -179,8 +191,11 @@ namespace InsideTheSip.EditorTools
             renderer.sharedMaterial = ProceduralAssets.TongueMaterial();
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            go.transform.position = new Vector3(0f, -6.2f, 1.5f);
-            go.transform.localScale = new Vector3(6.4f, 2.1f, 9.5f);
+            // Top of the tongue sits at the standing height, and it stops
+            // short of the arches so it reads as a tongue in a mouth rather
+            // than a slab filling it.
+            go.transform.position = new Vector3(0f, FloorY - 1.9f, 1.2f);
+            go.transform.localScale = new Vector3(5.0f, 1.9f, 7.6f);
         }
 
         static Renderer[] BuildTeeth()
@@ -189,13 +204,36 @@ namespace InsideTheSip.EditorTools
             var material = ProceduralAssets.ToothMaterial();
             var renderers = new System.Collections.Generic.List<Renderer>();
 
-            // Upper arch hangs down from the palate, lower arch stands up.
-            renderers.AddRange(BuildArch(root.transform, "Upper", 3.4f, true, material));
-            renderers.AddRange(BuildArch(root.transform, "Lower", -5.0f, false, material));
+            BuildGums(root.transform);
+            renderers.AddRange(BuildArch(root.transform, "Upper", true, material));
+            renderers.AddRange(BuildArch(root.transform, "Lower", false, material));
             return renderers.ToArray();
         }
 
-        static Renderer[] BuildArch(Transform parent, string label, float y, bool upper,
+        /// Ridges of gum for the teeth to emerge from, slightly inside the
+        /// arch so the crowns sit in it rather than on it.
+        static void BuildGums(Transform parent)
+        {
+            BuildGum(parent, "Upper Gum", UpperCrownY + ToothHeight * 0.82f, 21);
+            BuildGum(parent, "Lower Gum", LowerCrownY - ToothHeight * 0.82f, 22);
+        }
+
+        static void BuildGum(Transform parent, string name, float y, int seed)
+        {
+            var mesh = ProceduralAssets.GumRidge("SM_" + name.Replace(" ", ""),
+                ArchX, ArchZ, 1.35f, ArchDegrees, seed);
+
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = new Vector3(0f, y, 0f);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = ProceduralAssets.FleshMaterial();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        static Renderer[] BuildArch(Transform parent, string label, bool upper,
             Material material)
         {
             var archRoot = new GameObject(label + " Arch");
@@ -204,37 +242,42 @@ namespace InsideTheSip.EditorTools
 
             for (int i = 0; i < TeethPerArch; i++)
             {
-                // Spread across the front 200 degrees of the arch, incisors
-                // at the front (facing -Z, where the light comes in).
                 float t = i / (float)(TeethPerArch - 1);
-                float angle = Mathf.Lerp(-100f, 100f, t) * Mathf.Deg2Rad;
+                float angle = Mathf.Deg2Rad * Mathf.Lerp(-ArchDegrees, ArchDegrees, t);
 
-                // Incisors are flat blades; molars are wide blocks.
+                // Incisors are flat blades at the front; molars are wide
+                // blocks at the back. Width is capped by the gap to the next
+                // tooth so they can never overlap, whatever the arch size.
                 float toBack = Mathf.Abs(t - 0.5f) * 2f;
-                float crownWidth = Mathf.Lerp(1.5f, 2.6f, toBack);
-                float depth = Mathf.Lerp(0.75f, 2.4f, toBack);
-                float height = Mathf.Lerp(4.6f, 3.2f, toBack);
+                var here = ArchPoint(angle);
+                var next = ArchPoint(Mathf.Deg2Rad *
+                    Mathf.Lerp(-ArchDegrees, ArchDegrees, t + 1f / (TeethPerArch - 1)));
+                float spacing = Vector3.Distance(here, next);
+                float crownWidth = Mathf.Min(Mathf.Lerp(1.5f, 2.6f, toBack), spacing * 0.88f);
+                float depth = Mathf.Lerp(0.85f, 2.4f, toBack);
 
                 var mesh = ProceduralAssets.Tooth(
                     "SM_Tooth_" + label + "_" + i,
-                    crownWidth, crownWidth * 0.66f, depth, height,
+                    crownWidth, crownWidth * 0.66f, depth, ToothHeight,
                     cuspRound: Mathf.Lerp(0.10f, 0.26f, toBack),
                     seed: (upper ? 100 : 200) + i);
 
                 var tooth = new GameObject((upper ? "upper" : "lower") + "-tooth-" + i);
                 tooth.transform.SetParent(archRoot.transform, false);
-                tooth.transform.position = new Vector3(
-                    Mathf.Sin(angle) * ArchRadius,
-                    y,
-                    -Mathf.Cos(angle) * ArchRadius * 1.15f);
 
-                // Point the crown at the gap between the arches, and fan each
-                // tooth outward so the arch reads as a curve, not a row.
-                float lean = upper ? 180f : 0f;
-                tooth.transform.rotation = Quaternion.Euler(
-                    upper ? 8f : -8f,
-                    Mathf.Rad2Deg * angle,
-                    lean);
+                // The mesh has its crown at +Y and root at -Y, so the upper
+                // arch is the same tooth rolled 180 degrees. Position by the
+                // crown, not the centre, so both rows meet the same gap.
+                float centreY = upper
+                    ? UpperCrownY + ToothHeight * 0.5f
+                    : LowerCrownY - ToothHeight * 0.5f;
+                tooth.transform.position = new Vector3(here.x, centreY, here.z);
+
+                // Face each tooth along the arch normal, and tilt it slightly
+                // inward the way real teeth lean toward the tongue.
+                float yaw = Mathf.Rad2Deg * angle;
+                tooth.transform.rotation = Quaternion.Euler(0f, yaw, upper ? 180f : 0f)
+                    * Quaternion.Euler(upper ? 6f : -6f, 0f, 0f);
 
                 tooth.AddComponent<MeshFilter>().sharedMesh = mesh;
                 var renderer = tooth.AddComponent<MeshRenderer>();
@@ -244,6 +287,26 @@ namespace InsideTheSip.EditorTools
                 result.Add(renderer);
             }
             return result.ToArray();
+        }
+
+        static Vector3 ArchPoint(float angle) =>
+            new Vector3(Mathf.Sin(angle) * ArchX, 0f, -Mathf.Cos(angle) * ArchZ);
+
+        /// The uvula. Nothing else in the scene says "mouth" so unmistakably,
+        /// and it's the landmark that gives the throat its depth.
+        static void BuildUvula()
+        {
+            var mesh = ProceduralAssets.Sphere("SM_Uvula", 24, 18, 1f,
+                inward: false, lumpiness: 0.10f, lumpScale: 4f, seed: 41);
+
+            var go = new GameObject("Uvula");
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = go.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = ProceduralAssets.TongueMaterial();
+            renderer.shadowCastingMode = ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            go.transform.position = new Vector3(0f, 3.4f, 8.2f);
+            go.transform.localScale = new Vector3(0.9f, 2.6f, 0.9f);
         }
 
         static void BuildColaPool()

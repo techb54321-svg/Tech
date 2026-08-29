@@ -12,6 +12,24 @@ tuned.
 
 ---
 
+## First: Unity cannot open .glb on its own
+
+Unity imports FBX, OBJ and DAE natively — **not** glTF/GLB. If you have a
+`.glb`, pick one:
+
+- **Easiest:** on the Sketchfab download dialog choose **FBX** instead of
+  glTF. Unity imports it, textures and all, with nothing to install.
+- **Or install glTFast:** Window → Package Manager → **+** → *Add package
+  by name* → `com.unity.cloud.gltfast`. Then `.glb` files import like any
+  other model.
+- **Or convert:** open the `.glb` in Blender and `File → Export → FBX`.
+
+Sketchfab models often use the *specular-glossiness* material extension,
+which no importer maps cleanly onto URP. Don't fight it — the kit's own
+shaders replace those materials anyway. What you want from the download is
+the **geometry** plus the **texture image files**, which you then drag into
+the kit material's slots by hand.
+
 ## The fast path (no Blender at all)
 
 Try this first. Plenty of models work as-is.
@@ -23,7 +41,16 @@ Try this first. Plenty of models work as-is.
    drag the `.glb` in. Unity imports it automatically.
 3. **Open the mouth scene** (`Assets/InsideTheSip/Scenes/Mouth.unity`).
 4. **Click the model** in the Project window to select it.
-5. **Inside the Sip → Use Selected Model As → Tooth (replaces all teeth)**
+5. Pick the menu item that matches what the model actually *is*:
+   - **Full Dental Arch** — a whole jaw in one mesh (most scanned dentistry
+     assets, including Alexander Antipov's "Human teeth"). Places it once,
+     fits it to the arch, splits enamel from gum by mesh name, and disables
+     the generated teeth.
+   - **Tooth (one tooth, cloned to all 22)** — a single tooth, copied into
+     every socket of the generated arch.
+
+   Getting this wrong is obvious: choosing *Tooth* for a whole jaw gives you
+   22 overlapping jaws.
 
 Every generated tooth becomes the real one, scaled to match, still arranged
 in the two arches, still wired to the decay shader. Press Play and the

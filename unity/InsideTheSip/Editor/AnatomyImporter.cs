@@ -19,7 +19,99 @@ namespace InsideTheSip.EditorTools
     /// prepare them.
     public static class AnatomyImporter
     {
-        [MenuItem("Inside the Sip/Use Selected Model As/Tooth (replaces all teeth)")]
+        /// Matches MouthSceneBuilder's arch: 2 * ArchX, so an imported jaw
+        /// lands at the same width the scene was composed around.
+        const float TargetArchWidth = 12.4f;
+
+        /// Vertical centre of the bite gap in the showcase scene.
+        const float ArchCentreY = 0.3f;
+
+        /// For a model that is a whole dental arch in one mesh — the common
+        /// case for scanned dentistry assets. Places it once, fits it to the
+        /// arch, splits enamel from gum by mesh name, and retires the
+        /// generated teeth rather than stacking on top of them.
+        [MenuItem("Inside the Sip/Use Selected Model As/Full Dental Arch (whole jaw in one model)")]
+        public static void UseAsDentalArch()
+        {
+            var source = RequireSelection();
+            if (source == null) return;
+
+            var generated = GameObject.Find("Teeth");
+            if (generated == null)
+            {
+                Debug.LogError("Inside the Sip: no 'Teeth' object in the scene. " +
+                    "Run 'Build Mouth Scene (Showcase)' first.");
+                return;
+            }
+
+            // Keep the generated arch around but switched off, so you can
+            // toggle it back on to compare.
+            generated.SetActive(false);
+
+            var existing = GameObject.Find("Dental Arch (imported)");
+            if (existing != null) Object.DestroyImmediate(existing);
+
+            var anchor = new GameObject("Dental Arch (imported)");
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(source);
+            if (instance == null) instance = Object.Instantiate(source);
+            instance.transform.SetParent(anchor.transform, false);
+
+            var renderers = instance.GetComponentsInChildren<MeshRenderer>(true);
+            if (renderers.Length == 0)
+            {
+                Debug.LogError("Inside the Sip: '" + source.name + "' has no renderers.");
+                Object.DestroyImmediate(anchor);
+                return;
+            }
+
+            // Fit and centre by world bounds — downloaded models arrive at
+            // arbitrary scales and are rarely centred on their own origin.
+            var bounds = renderers[0].bounds;
+            foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+
+            float widest = Mathf.Max(bounds.size.x, bounds.size.z);
+            if (widest > 0.0001f)
+            {
+                float scale = TargetArchWidth / widest;
+                instance.transform.localScale *= scale;
+                bounds = renderers[0].bounds;
+                foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+            }
+            instance.transform.position -= bounds.center;
+            anchor.transform.position = new Vector3(0f, ArchCentreY, 0f);
+
+            // Enamel decays; gum does not. Split them by name, which is how
+            // these models are almost always authored.
+            var toothMaterial = ProceduralAssets.ToothMaterial();
+            var gumMaterial = ProceduralAssets.FleshMaterial();
+            var enamel = new List<Renderer>();
+
+            foreach (var r in renderers)
+            {
+                string name = (r.name + " " + r.transform.parent?.name).ToLowerInvariant();
+                bool isGum = name.Contains("gum") || name.Contains("gingiv");
+                r.sharedMaterial = isGum ? gumMaterial : toothMaterial;
+                r.shadowCastingMode = ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                if (!isGum) enamel.Add(r);
+            }
+
+            var controller = Object.FindFirstObjectByType<ToothDecayController>();
+            if (controller != null) controller.teeth = enamel.ToArray();
+
+            Selection.activeGameObject = anchor;
+            Debug.Log("Inside the Sip: imported '" + source.name + "' as the dental arch. " +
+                enamel.Count + " enamel renderer(s) wired to the decay controller, " +
+                (renderers.Length - enamel.Count) + " treated as gum.\n" +
+                "The generated teeth are disabled, not deleted — re-enable 'Teeth' to compare.\n" +
+                "Now nudge the 'Dental Arch (imported)' transform: rotate it if the bite " +
+                "faces the wrong way, and adjust Y until your eyeline sits in the bite gap.\n" +
+                "If the model has its own colour/normal textures, drag them into the " +
+                "M_Tooth material's Healthy Albedo and Normal Map slots — they will beat " +
+                "the generated ones every time.");
+        }
+
+        [MenuItem("Inside the Sip/Use Selected Model As/Tooth (one tooth, cloned to all 22)")]
         public static void UseAsTooth()
         {
             var source = RequireSelection();

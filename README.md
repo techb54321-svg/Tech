@@ -113,6 +113,22 @@ automated narrated journey to each cell type.
 > All visual effects degrade gracefully: if the optional post-processing
 > libraries can't load, the simulation still runs without them.
 
+## 🎬 Bloodstream Dive (for talks)
+
+`bloodstream-dive.html` is a separate, hands-off **18-second cinematic
+sequence** made to drop into a presentation: press *Begin the dive* (or Space)
+and it plays start-to-finish — heartbeat title card, accelerating plunge,
+a banking ride among red blood cells with pulse surges, then a speed-ramp
+into a light-burst finale and an end card with a replay button.
+
+- Captions carry real physiology: 7 µm cells, 250 million per drop, a
+  60-second lap of the body.
+- All sound (heartbeat, flow whoosh, riser, boom) is generated in-browser —
+  no audio files.
+- `F` toggles fullscreen for presenting, `M` mutes, `Space` restarts.
+- Self-contained single file, same as the explorer: only Three.js comes from
+  a CDN.
+
 ## Notes
 
 Everything is procedurally generated geometry (no external 3D model files), so the

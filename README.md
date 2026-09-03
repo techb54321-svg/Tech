@@ -115,17 +115,22 @@ automated narrated journey to each cell type.
 
 ## 🎬 Bloodstream Dive (for talks)
 
-`bloodstream-dive.html` is a separate, hands-off **18-second cinematic
-sequence** made to drop into a presentation: press *Begin the dive* (or Space)
-and it plays start-to-finish — heartbeat title card, accelerating plunge,
-a banking ride among red blood cells with pulse surges, then a speed-ramp
-into a light-burst finale and an end card with a replay button.
+`bloodstream-dive.html` is a separate, hands-off **endless photoreal ride**
+made to drop into a presentation: open it and you are simply *inside* a
+living vessel, forever — no titles, no captions, no buttons, no ending. The
+camera drifts along a closed loop of artery while a heartbeat pulses the
+flow, the light, and the lens.
 
-- Captions carry real physiology: 7 µm cells, 250 million per drop, a
-  60-second lap of the body.
-- All sound (heartbeat, flow whoosh, riser, boom) is generated in-browser —
-  no audio files.
-- `F` toggles fullscreen for presenting, `M` mutes, `Space` restarts.
+The realism treatment: murky red plasma that swallows the distance,
+backlit translucent biconcave red cells that flex as they tumble, a lumpy
+displaced vessel wall with wet specular endothelium, out-of-focus cells
+brushing past the lens, and a film grade on top (bloom, ACES tone mapping,
+grain, chromatic aberration, vignette).
+
+- All sound (heartbeat, flow whoosh, low drone) is generated in-browser and
+  starts on the first click or key press (browsers block audio before a
+  gesture).
+- `F` toggles fullscreen for presenting, `M` mutes. The cursor hides itself.
 - Self-contained single file, same as the explorer: only Three.js comes from
   a CDN.
 

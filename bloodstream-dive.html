@@ -38,7 +38,8 @@
 if(!window.THREE){ document.getElementById('fallback').style.display='flex'; return; }
 
 var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700;
+var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
+              ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
   cells:     isSmall ? 380 : 1100,
@@ -48,16 +49,16 @@ var COUNTS = {
 };
 
 // ---------- renderer ----------
-var renderer;
-try{
-  renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
-}catch(e){ document.getElementById('fallback').style.display='flex'; return; }
-renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, isSmall?1.5:2));
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.getElementById('stage').appendChild(renderer.domElement);
-
 var postOK = !!(THREE.EffectComposer && THREE.RenderPass && THREE.ShaderPass &&
                 THREE.UnrealBloomPass && THREE.LuminosityHighPassShader && THREE.CopyShader);
+var renderer;
+try{
+  // MSAA only helps the no-post path; the composer path never multisamples the scene
+  renderer = new THREE.WebGLRenderer({antialias:!postOK, powerPreference:'high-performance'});
+}catch(e){ document.getElementById('fallback').style.display='flex'; return; }
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 1.5));
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('stage').appendChild(renderer.domElement);
 if(postOK){
   // stay linear until the final grade pass does ACES + gamma itself
   renderer.outputEncoding = THREE.LinearEncoding;
@@ -69,7 +70,7 @@ if(postOK){
 }
 
 var scene = new THREE.Scene();
-var FOG_COLOR = new THREE.Color(0.075, 0.007, 0.011);   // linear deep red murk
+var FOG_COLOR = new THREE.Color(0.10, 0.010, 0.012);    // linear deep red murk
 var FOG_DENSITY = 0.042;
 scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 var camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 260);
@@ -121,13 +122,41 @@ var curveLen = curve.getLength();
 var FRAME_SEGS = 1200;
 var frames = curve.computeFrenetFrames(FRAME_SEGS, true);
 
+// flatten curve samples + Frenet frames into typed arrays: per-frame lookups
+// become three float lerps instead of spline evals + Vector3 allocations
+var posT = new Float32Array(FRAME_SEGS*3), norT = new Float32Array(FRAME_SEGS*3),
+    binT = new Float32Array(FRAME_SEGS*3);
+(function(){
+  var v = new THREE.Vector3();
+  for(var i=0;i<FRAME_SEGS;i++){
+    curve.getPointAt(i/FRAME_SEGS, v);
+    posT[i*3]=v.x; posT[i*3+1]=v.y; posT[i*3+2]=v.z;
+    var n=frames.normals[i], b=frames.binormals[i];
+    norT[i*3]=n.x; norT[i*3+1]=n.y; norT[i*3+2]=n.z;
+    binT[i*3]=b.x; binT[i*3+1]=b.y; binT[i*3+2]=b.z;
+  }
+})();
+
 function wrap01(u){ u = u % 1; return u < 0 ? u+1 : u; }
+function pointAt(u, out){
+  var f = wrap01(u)*FRAME_SEGS, i0 = Math.floor(f), a = f - i0;
+  var j0 = (i0%FRAME_SEGS)*3, j1 = ((i0+1)%FRAME_SEGS)*3;
+  out.set(posT[j0]+(posT[j1]-posT[j0])*a,
+          posT[j0+1]+(posT[j1+1]-posT[j0+1])*a,
+          posT[j0+2]+(posT[j1+2]-posT[j0+2])*a);
+  return out;
+}
 function frameAt(u, N, B, T){
-  var f = wrap01(u) * FRAME_SEGS;
-  var i0 = Math.floor(f) % FRAME_SEGS, i1 = (i0+1) % FRAME_SEGS, a = f - Math.floor(f);
-  N.copy(frames.normals[i0]).lerp(frames.normals[i1], a).normalize();
-  B.copy(frames.binormals[i0]).lerp(frames.binormals[i1], a).normalize();
-  if(T) T.copy(frames.tangents[i0]).lerp(frames.tangents[i1], a).normalize();
+  var f = wrap01(u)*FRAME_SEGS, i0 = Math.floor(f), a = f - i0;
+  var j0 = (i0%FRAME_SEGS)*3, j1 = ((i0+1)%FRAME_SEGS)*3;
+  N.set(norT[j0]+(norT[j1]-norT[j0])*a, norT[j0+1]+(norT[j1+1]-norT[j0+1])*a,
+        norT[j0+2]+(norT[j1+2]-norT[j0+2])*a).normalize();
+  B.set(binT[j0]+(binT[j1]-binT[j0])*a, binT[j0+1]+(binT[j1+1]-binT[j0+1])*a,
+        binT[j0+2]+(binT[j1+2]-binT[j0+2])*a).normalize();
+  if(T){
+    var t0=frames.tangents[i0%FRAME_SEGS], t1=frames.tangents[(i0+1)%FRAME_SEGS];
+    T.copy(t0).lerp(t1, a).normalize();
+  }
 }
 
 var VESSEL_R = 9;
@@ -136,6 +165,30 @@ var VESSEL_R = 9;
 function makeWallMaps(size){
   var n1 = lattice2(64), n2 = lattice2(64), n3 = lattice2(64);
   var height = new Float32Array(size*size);
+  // endothelial pavement: toroidal Voronoi border field — a connected network of
+  // cell boundaries (F2-F1 metric), slightly stretched along the flow direction
+  var VG = 13, VP = [];
+  for(var vy=0; vy<VG; vy++){
+    VP.push([]);
+    for(var vx=0; vx<VG; vx++){
+      VP[vy].push([(vx+0.15+Math.random()*0.7)/VG, (vy+0.15+Math.random()*0.7)/VG]);
+    }
+  }
+  function voroBorder(u2, v2){
+    var cu = Math.floor(u2*VG), cv = Math.floor(v2*VG);
+    var d1 = 9, d2 = 9;
+    for(var oy=-1; oy<=1; oy++){
+      for(var ox=-1; ox<=1; ox++){
+        var p2 = VP[((cv+oy)%VG+VG)%VG][((cu+ox)%VG+VG)%VG];
+        var du = Math.abs(u2-p2[0]); du = Math.min(du, 1-du) * 0.72;  // stretch along flow
+        var dv = Math.abs(v2-p2[1]); dv = Math.min(dv, 1-dv);
+        var d = Math.sqrt(du*du+dv*dv);
+        if(d<d1){ d2=d1; d1=d; } else if(d<d2){ d2=d; }
+      }
+    }
+    var e2 = d2-d1;                          // 0 exactly on a border
+    return e2 > 0.016 ? 0 : 1 - e2/0.016;
+  }
   var img = document.createElement('canvas'); img.width = img.height = size;
   var ig = img.getContext('2d');
   var idata = ig.createImageData(size,size);
@@ -149,13 +202,18 @@ function makeWallMaps(size){
       var h = n1(u*4, v*4, 4,4)*0.42 + n1(u*10+7, v*11+3, 10,11)*0.30
             + n2(u*23, v*25, 23,25)*0.18 + n3(u*52, v*56, 52,56)*0.10;
       h = h*h*(3-2*h);
-      height[y*size+x] = h;
       var i4 = (y*size+x)*4;
-      // albedo: dark venous red -> lighter tissue red, faint yellowish fat flecks
+      var border = voroBorder(u, v);
+      h = Math.max(0, h - border*0.10);        // cell borders sit in shallow grooves
+      height[y*size+x] = h;
+      // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
       var t = h;
-      var r = 48 + t*84, g = 5 + t*19, b = 9 + t*19;
+      var ao = 0.55 + 0.45*t;
+      var r = (44 + t*96)*ao, g = (7 + t*26)*ao, b = (9 + t*22)*ao;
       var fleck = n3(u*44, v*44, 44,44);
-      if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*46; g += f*34; b += f*6; }
+      if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*40; g += f*30; b += f*6; }
+      var bshade = 1 - border*0.13;
+      r *= bshade; g *= bshade; b *= bshade;
       idata.data[i4]=r; idata.data[i4+1]=g; idata.data[i4+2]=b; idata.data[i4+3]=255;
       // roughness: wet tissue, glossier in the crevices where plasma films pool
       var ro = 90 + t*95;
@@ -191,12 +249,14 @@ function makeWallMaps(size){
   rouT.wrapS = rouT.wrapT = THREE.RepeatWrapping;
   return {map:mapT, normal:nrmT, rough:rouT};
 }
-var wallMaps = makeWallMaps(isSmall?512:1024);
-wallMaps.map.repeat.set(36, 4);      // u runs along the tube, v around it
-wallMaps.normal.repeat.set(36, 4);
-wallMaps.rough.repeat.set(36, 4);
+var wallMaps = makeWallMaps(512);    // fog+grain hide anything finer; keeps startup fast
+// square texel aspect in world space: loop ~1290 units long, circumference ~57
+wallMaps.map.repeat.set(46, 2);      // u runs along the tube, v around it
+wallMaps.normal.repeat.set(46, 2);
+wallMaps.rough.repeat.set(46, 2);
 
-var tubeGeo = new THREE.TubeGeometry(curve, isSmall?700:1200, VESSEL_R, isSmall?20:28, true);
+var TUBE_SEGS = isSmall?700:1200, TUBE_RADIAL = isSmall?20:28;
+var tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGS, VESSEL_R, TUBE_RADIAL, true);
 // organic, lumpy lumen: displace vertices with world-space 3D noise
 (function(){
   var pos = tubeGeo.attributes.position, nor = tubeGeo.attributes.normal;
@@ -206,10 +266,30 @@ var tubeGeo = new THREE.TubeGeometry(curve, isSmall?700:1200, VESSEL_R, isSmall?
     n.set(nor.getX(i),nor.getY(i),nor.getZ(i));
     var d = (noise3(p.x*0.055,p.y*0.055,p.z*0.055)-0.42)*3.2
           + (noise3(p.x*0.22, p.y*0.22, p.z*0.22)-0.5)*1.1;
+    d = Math.max(d, -1.0);          // keep the lumen clear of the particle orbits
     p.addScaledVector(n, d);
     pos.setXYZ(i,p.x,p.y,p.z);
   }
   tubeGeo.computeVertexNormals();
+  // weld normals across the duplicated UV seams (lengthwise row + closure ring),
+  // otherwise computeVertexNormals leaves a visible straight shading line
+  var nn = tubeGeo.attributes.normal;
+  var ring = TUBE_RADIAL+1;
+  var va = new THREE.Vector3(), vb = new THREE.Vector3();
+  for(var r2=0;r2<=TUBE_SEGS;r2++){
+    var a2 = r2*ring, b2 = r2*ring + TUBE_RADIAL;
+    va.set(nn.getX(a2),nn.getY(a2),nn.getZ(a2));
+    vb.set(nn.getX(b2),nn.getY(b2),nn.getZ(b2));
+    va.add(vb).normalize();
+    nn.setXYZ(a2,va.x,va.y,va.z); nn.setXYZ(b2,va.x,va.y,va.z);
+  }
+  for(var c2=0;c2<ring;c2++){
+    var a3 = c2, b3 = TUBE_SEGS*ring + c2;
+    va.set(nn.getX(a3),nn.getY(a3),nn.getZ(a3));
+    vb.set(nn.getX(b3),nn.getY(b3),nn.getZ(b3));
+    va.add(vb).normalize();
+    nn.setXYZ(a3,va.x,va.y,va.z); nn.setXYZ(b3,va.x,va.y,va.z);
+  }
 })();
 var wallMat = new THREE.MeshStandardMaterial({
   map:wallMaps.map, normalMap:wallMaps.normal, roughnessMap:wallMaps.rough,
@@ -220,9 +300,26 @@ var wallMat = new THREE.MeshStandardMaterial({
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.4));
+scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.18));
 var keyLight = new THREE.PointLight(0xffd9b0, 1.25, 80, 2); scene.add(keyLight);
 var backLight = new THREE.PointLight(0xff2612, 3.8, 64, 2); scene.add(backLight);
+
+// glowing murk down the tunnel: the far distance reads as scattering plasma,
+// never a black hole, and it feeds bloom a plausible distant source
+function murkTexture(){
+  var c = document.createElement('canvas'); c.width=c.height=256;
+  var g = c.getContext('2d');
+  var grad = g.createRadialGradient(128,128,0,128,128,128);
+  grad.addColorStop(0,'rgba(122,20,16,0.60)');
+  grad.addColorStop(0.5,'rgba(90,12,10,0.30)');
+  grad.addColorStop(1,'rgba(90,12,10,0)');
+  g.fillStyle=grad; g.fillRect(0,0,256,256);
+  return new THREE.CanvasTexture(c);
+}
+var murk = new THREE.Sprite(new THREE.SpriteMaterial({map:murkTexture(),
+  blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.85}));
+murk.scale.set(26,26,1);
+scene.add(murk);
 
 // ---------- shared cell shader: wrap diffuse + wet spec + backlit translucency ----------
 var cellVert = [
@@ -259,6 +356,8 @@ var cellFrag = [
   'uniform vec3 uBackPos;',
   'uniform vec3 uAlbedo;',
   'uniform vec3 uGlow;',      // transmitted color
+  'uniform vec3 uRim;',
+  'uniform float uSpec;',
   'uniform float uPulse;',
   'uniform float uGrade;',    // 1 => tonemap in-shader (no post chain)
   'uniform float uFogDensity;',
@@ -284,7 +383,7 @@ var cellFrag = [
   '  col *= 1.0 - vDimple*0.42;',   // biconcave centre reads darker
   // wet membrane specular
   '  vec3 H = normalize(Ld + V);',
-  '  col += vec3(1.0,0.82,0.72) * pow(max(dot(N,H),0.0), 90.0) * 0.55 * katt;',
+  '  col += vec3(1.0,0.94,0.88) * pow(max(dot(N,H),0.0), 160.0) * uSpec * katt;',
   // translucency: the deep red glow ahead shines THROUGH thin cells
   '  vec3 Bd = uBackPos - vWorld;',
   '  float bd = length(Bd); Bd /= bd;',
@@ -293,34 +392,36 @@ var cellFrag = [
   '  float thin = 0.45 + 0.55*max(1.0 - abs(dot(N,V))*0.5, vDimple);',
   '  col += uGlow * trans * thin * batt * (0.85 + 0.45*uPulse);',
   // soft rim of scattered red
-  '  float rim = pow(1.0 - max(dot(N,V),0.0), 3.0);',
-  '  col += vec3(0.55,0.05,0.04) * rim * 0.4;',
+  '  float rim = pow(1.0 - max(dot(N,V),0.0), 2.6);',
+  '  col += uRim * rim;',
   // ambient murk bounce
   '  col += albedo * 0.10;',
-  // fog: identical formula to THREE.FogExp2
-  '  float fd = length(uCamPos - vWorld);',
-  '  float f = 1.0 - exp(-uFogDensity*uFogDensity*fd*fd);',
-  '  col = mix(col, uFogColor, clamp(f,0.0,1.0));',
+  // fog: same formula and view-space depth metric as THREE.FogExp2
+  '  float fd = -(viewMatrix * vec4(vWorld, 1.0)).z;',
+  '  float f = clamp(1.0 - exp(-uFogDensity*uFogDensity*fd*fd), 0.0, 1.0);',
+  // built-ins fog AFTER tonemapping, so the degraded path must grade first too
   '  if(uGrade > 0.5){ col = aces(col); col = pow(col, vec3(1.0/2.2)); }',
+  '  col = mix(col, uFogColor, f);',
   '  gl_FragColor = vec4(col, 1.0);',
   '}'
 ].join('\n');
 
-function cellMaterial(albedo, glow){
+function cellMaterial(albedo, glow, spec, rim){
   return new THREE.ShaderMaterial({
     uniforms:{
       uTime:{value:0}, uCamPos:{value:new THREE.Vector3()},
       uKeyPos:{value:new THREE.Vector3()}, uBackPos:{value:new THREE.Vector3()},
       uAlbedo:{value:new THREE.Color(albedo)}, uGlow:{value:new THREE.Color(glow)},
+      uRim:{value:new THREE.Color(rim)}, uSpec:{value:spec},
       uPulse:{value:0}, uGrade:{value:postOK?0:1},
       uFogDensity:{value:FOG_DENSITY}, uFogColor:{value:FOG_COLOR}
     },
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x6e0a10, 0xff2408);
-var platMat = cellMaterial(0x584038, 0xb03418);
-var wbcMat  = cellMaterial(0x8a7462, 0xb03828);
+var rbcMat  = cellMaterial(0x6e0a10, 0xff2408, 0.28, 0x380d0a);
+var platMat = cellMaterial(0x584038, 0xb03418, 0.20, 0x2e0f08);
+var wbcMat  = cellMaterial(0xc4b298, 0xb03828, 0.10, 0x8a7057);
 
 // ---------- red blood cells ----------
 function biconcaveGeo(){
@@ -342,7 +443,7 @@ var AHEAD = 60, BEHIND = 12, WINDOW = AHEAD + BEHIND;
 var cellData = [];
 var tint = new THREE.Color();
 for(var ci=0; ci<COUNTS.cells; ci++){
-  var rr = Math.pow(Math.random(),0.55) * (VESSEL_R-2.4);
+  var rr = Math.pow(Math.random(),0.55) * (VESSEL_R-2.6);
   cellData.push({
     s: Math.random()*WINDOW - BEHIND,
     r: rr, th: Math.random()*Math.PI*2,
@@ -363,7 +464,7 @@ plats.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(plats);
 var platData = [];
 for(var pi=0; pi<COUNTS.platelets; pi++){
-  var pr = Math.pow(Math.random(),0.55)*(VESSEL_R-1.6);
+  var pr = Math.pow(Math.random(),0.55)*(VESSEL_R-2.2);
   platData.push({s:Math.random()*WINDOW-BEHIND, r:pr, th:Math.random()*6.283,
     spin:(Math.random()-0.5)*3,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
@@ -378,8 +479,8 @@ function leukocyteGeo(){
   var p = g.attributes.position, v = new THREE.Vector3();
   for(var i=0;i<p.count;i++){
     v.set(p.getX(i),p.getY(i),p.getZ(i));
-    var n = 1 + (noise3(v.x*1.6+9.0, v.y*1.6, v.z*1.6)-0.5)*0.30
-              + (noise3(v.x*4.5, v.y*4.5+4.0, v.z*4.5)-0.5)*0.10;
+    var n = 1 + (noise3(v.x*3.2+9.0, v.y*3.2, v.z*3.2)-0.5)*0.16
+              + (noise3(v.x*9.0, v.y*9.0+4.0, v.z*9.0)-0.5)*0.09;   // microvilli fuzz
     v.multiplyScalar(n); p.setXYZ(i,v.x,v.y,v.z);
   }
   g.computeVertexNormals();
@@ -409,7 +510,7 @@ microGeo.setAttribute('position', new THREE.BufferAttribute(microPos,3));
 var microData = [];
 for(var mi=0; mi<COUNTS.micro; mi++){
   microData.push({s:Math.random()*WINDOW-BEHIND,
-    r:Math.pow(Math.random(),0.7)*(VESSEL_R-1.2), th:Math.random()*6.283,
+    r:Math.pow(Math.random(),0.7)*(VESSEL_R-2.0), th:Math.random()*6.283,
     flow:1.05+Math.random()*0.15});
 }
 var microMat = new THREE.PointsMaterial({size:0.075, map:dotTexture(),
@@ -437,7 +538,7 @@ for(var bi=0; bi<COUNTS.bokeh; bi++){
   var sm = new THREE.SpriteMaterial({map:bokehTex, transparent:true,
     depthWrite:false, depthTest:false, opacity:0.5+Math.random()*0.3});
   var sp = new THREE.Sprite(sm);
-  var scB = 1.6+Math.random()*3.4;
+  var scB = 1.4+Math.random()*1.8;
   sp.scale.set(scB,scB,1);
   camera.add(sp);
   sp.position.set((Math.random()-0.5)*9,(Math.random()-0.5)*6,-(2+Math.random()*9));
@@ -447,12 +548,13 @@ for(var bi=0; bi<COUNTS.bokeh; bi++){
 scene.add(camera);   // camera must be in the graph for its sprite children to render
 
 // ---------- post chain: bloom + grade (grain, CA, vignette, ACES) ----------
-var composer = null, gradePass = null;
+var composer = null, gradePass = null, bloom = null;
 if(postOK){
   composer = new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene, camera));
-  var bloom = new THREE.UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.65, 0.72);
+  // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
+  // r134's composer.setSize would otherwise silently rebuild it at device pixels
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.55, 0.65, 0.72);
   composer.addPass(bloom);
   var GradeShader = {
     uniforms:{
@@ -482,6 +584,7 @@ if(postOK){
       '  col.g = texture2D(tDiffuse, vUv).g;',
       '  col.b = texture2D(tDiffuse, vUv - c*ca).b;',
       '  col *= 1.0 + uPulse*0.10;',
+      '  col *= vec3(1.02, 0.90, 0.86);',   // pull the salmon cast toward crimson
       '  col = aces(col);',
       '  col = pow(col, vec3(1.0/2.2));',
       '  float vig = smoothstep(0.9, 0.2, r2*1.7);',
@@ -562,13 +665,18 @@ var camU = 0, beatT = 0.6, beatKick = 0, speedSm = 10;
 var clock = new THREE.Clock();
 var _N=new THREE.Vector3(), _B=new THREE.Vector3(), _T=new THREE.Vector3();
 var _pos=new THREE.Vector3(), _q=new THREE.Quaternion(), _m=new THREE.Matrix4(), _scl=new THREE.Vector3();
+var _look=new THREE.Vector3(), _lookN=new THREE.Vector3(), _lookB=new THREE.Vector3();
 
 function placeOnCurve(u, r, th, out){
-  u = wrap01(u);
-  frameAt(u,_N,_B);
-  out.copy(curve.getPointAt(u));
-  out.addScaledVector(_N, Math.cos(th)*r);
-  out.addScaledVector(_B, Math.sin(th)*r);
+  // fully inlined table lerp: position + normal/binormal offsets, zero allocations
+  var f = wrap01(u)*FRAME_SEGS, i0 = Math.floor(f), a = f - i0;
+  var j0 = (i0%FRAME_SEGS)*3, j1 = ((i0+1)%FRAME_SEGS)*3;
+  var cr = Math.cos(th)*r, sr = Math.sin(th)*r;
+  out.set(
+    posT[j0]  +(posT[j1]  -posT[j0]  )*a + (norT[j0]  +(norT[j1]  -norT[j0]  )*a)*cr + (binT[j0]  +(binT[j1]  -binT[j0]  )*a)*sr,
+    posT[j0+1]+(posT[j1+1]-posT[j0+1])*a + (norT[j0+1]+(norT[j1+1]-norT[j0+1])*a)*cr + (binT[j0+1]+(binT[j1+1]-binT[j0+1])*a)*sr,
+    posT[j0+2]+(posT[j1+2]-posT[j0+2])*a + (norT[j0+2]+(norT[j1+2]-norT[j0+2])*a)*cr + (binT[j0+2]+(binT[j1+2]-binT[j0+2])*a)*sr
+  );
 }
 
 function tick(){
@@ -589,15 +697,14 @@ function tick(){
   // camera: drift off-center, look ahead, breathe
   var u = camU;
   frameAt(u,_N,_B,_T);
-  camera.position.copy(curve.getPointAt(u));
+  pointAt(u, camera.position);
   camera.position.addScaledVector(_N, Math.sin(t*0.31)*1.3);
   camera.position.addScaledVector(_B, Math.cos(t*0.23)*1.3);
-  var look = curve.getPointAt(wrap01(u + 10/curveLen));
-  var lookN=new THREE.Vector3(), lookB=new THREE.Vector3();
-  frameAt(wrap01(u + 10/curveLen), lookN, lookB);
-  look.addScaledVector(lookN, Math.sin(t*0.19)*1.6);
-  look.addScaledVector(lookB, Math.cos(t*0.15)*1.6);
-  camera.lookAt(look);
+  pointAt(u + 10/curveLen, _look);
+  frameAt(u + 10/curveLen, _lookN, _lookB);
+  _look.addScaledVector(_lookN, Math.sin(t*0.19)*1.6);
+  _look.addScaledVector(_lookB, Math.cos(t*0.15)*1.6);
+  camera.lookAt(_look);
   if(!reducedMotion){
     camera.rotateZ(Math.sin(t*0.21)*0.10 + Math.sin(t*1.3)*0.008 + pulse*0.004);
   }
@@ -610,6 +717,8 @@ function tick(){
   keyLight.intensity = 1.25 + pulse*0.35;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
   backLight.intensity = 3.8 + pulse*2.8;
+  placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
+  murk.material.opacity = 0.75 + pulse*0.2;
 
   // shader uniforms
   var mats=[rbcMat, platMat, wbcMat];
@@ -681,7 +790,7 @@ function tick(){
     sp2.position.x += bk.vx*dt;
     sp2.position.y += bk.vy*dt;
     sp2.position.z += bk.vz*dt*(0.4 + speedSm*0.04);
-    if(sp2.position.z > -1.2){
+    if(sp2.position.z > -2.5){    // respawn before it becomes a full-screen wash
       sp2.position.set((Math.random()-0.5)*9,(Math.random()-0.5)*6,-(8+Math.random()*4));
     }
   }
@@ -702,6 +811,7 @@ window.addEventListener('resize', function(){
   renderer.setSize(window.innerWidth, window.innerHeight);
   if(composer){
     composer.setSize(window.innerWidth, window.innerHeight);
+    bloom.setSize(960, 540);              // keep the mip chain pinned
     gradePass.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
   }
 });

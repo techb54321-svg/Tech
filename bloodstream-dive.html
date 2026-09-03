@@ -42,7 +42,7 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 380 : 1100,
+  cells:     isSmall ? 420 : 1450,
   platelets: isSmall ? 50  : 130,
   micro:     isSmall ? 300 : 900,
   bokeh:     isSmall ? 10  : 22
@@ -203,7 +203,9 @@ function makeWallMaps(size){
             + n2(u*23, v*25, 23,25)*0.18 + n3(u*52, v*56, 52,56)*0.10;
       h = h*h*(3-2*h);
       var i4 = (y*size+x)*4;
-      var border = voroBorder(u, v);
+      // pavement shows in patches; elsewhere the wall is smooth mucosa
+      var msk = Math.min(1, Math.max(0, (n2(u*3+5, v*3+9, 3,3)-0.35)/0.30));
+      var border = voroBorder(u, v) * (0.20 + 0.80*msk);
       h = Math.max(0, h - border*0.10);        // cell borders sit in shallow grooves
       height[y*size+x] = h;
       // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
@@ -216,7 +218,7 @@ function makeWallMaps(size){
       r *= bshade; g *= bshade; b *= bshade;
       idata.data[i4]=r; idata.data[i4+1]=g; idata.data[i4+2]=b; idata.data[i4+3]=255;
       // roughness: wet tissue, glossier in the crevices where plasma films pool
-      var ro = 90 + t*95;
+      var ro = 128 + t*82;
       rdata.data[i4]=ro; rdata.data[i4+1]=ro; rdata.data[i4+2]=ro; rdata.data[i4+3]=255;
     }
   }
@@ -310,15 +312,15 @@ function murkTexture(){
   var c = document.createElement('canvas'); c.width=c.height=256;
   var g = c.getContext('2d');
   var grad = g.createRadialGradient(128,128,0,128,128,128);
-  grad.addColorStop(0,'rgba(122,20,16,0.60)');
-  grad.addColorStop(0.5,'rgba(90,12,10,0.30)');
-  grad.addColorStop(1,'rgba(90,12,10,0)');
+  grad.addColorStop(0,'rgba(96,14,10,0.42)');
+  grad.addColorStop(0.5,'rgba(74,10,8,0.22)');
+  grad.addColorStop(1,'rgba(74,10,8,0)');
   g.fillStyle=grad; g.fillRect(0,0,256,256);
   return new THREE.CanvasTexture(c);
 }
 var murk = new THREE.Sprite(new THREE.SpriteMaterial({map:murkTexture(),
   blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.85}));
-murk.scale.set(26,26,1);
+murk.scale.set(19,19,1);
 scene.add(murk);
 
 // ---------- shared cell shader: wrap diffuse + wet spec + backlit translucency ----------
@@ -420,8 +422,8 @@ function cellMaterial(albedo, glow, spec, rim){
   });
 }
 var rbcMat  = cellMaterial(0x6e0a10, 0xff2408, 0.28, 0x380d0a);
-var platMat = cellMaterial(0x584038, 0xb03418, 0.20, 0x2e0f08);
-var wbcMat  = cellMaterial(0xc4b298, 0xb03828, 0.10, 0x8a7057);
+var platMat = cellMaterial(0x6b4030, 0xb03418, 0.20, 0x2e0f08);
+var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.10, 0x52301e);
 
 // ---------- red blood cells ----------
 function biconcaveGeo(){
@@ -457,6 +459,19 @@ for(var ci=0; ci<COUNTS.cells; ci++){
 }
 if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
 
+// rouleaux: some red cells travel stacked face-to-face like coin rolls
+var STACKS = isSmall ? 6 : 14, STACK_LEN = 5;
+var stackStart = COUNTS.cells - STACKS*STACK_LEN;
+for(var sk=0; sk<STACKS; sk++){
+  var leadIdx = stackStart + sk*STACK_LEN;
+  var lead = cellData[leadIdx];
+  lead.spin *= 0.35;                       // rolls tumble lazily
+  lead.r = Math.min(lead.r, VESSEL_R-3.4); // keep the whole column off the wall
+  for(var mj=1; mj<STACK_LEN; mj++){
+    cellData[leadIdx+mj] = {leader:leadIdx, off:mj};
+  }
+}
+
 // ---------- platelets ----------
 var platGeo = new THREE.SphereGeometry(0.30, 10, 8); platGeo.scale(1,0.32,1);
 var plats = new THREE.InstancedMesh(platGeo, platMat, COUNTS.platelets);
@@ -469,13 +484,13 @@ for(var pi=0; pi<COUNTS.platelets; pi++){
     spin:(Math.random()-0.5)*3,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
     flow:1.18 - Math.pow(pr/VESSEL_R,2)*0.7});
-  plats.setColorAt(pi, tint.setHSL(0.03+Math.random()*0.03, 0.4, 0.42+Math.random()*0.14));
+  plats.setColorAt(pi, tint.setHSL(0.03+Math.random()*0.03, 0.55, 0.42+Math.random()*0.14));
 }
 if(plats.instanceColor) plats.instanceColor.needsUpdate = true;
 
 // ---------- white cells: rare, big, rolling near the wall ----------
 function leukocyteGeo(){
-  var g = new THREE.SphereGeometry(1.45, 40, 28);   // indexed => smooth shared normals
+  var g = new THREE.SphereGeometry(1.1, 40, 28);    // indexed => smooth shared normals
   var p = g.attributes.position, v = new THREE.Vector3();
   for(var i=0;i<p.count;i++){
     v.set(p.getX(i),p.getY(i),p.getZ(i));
@@ -498,9 +513,9 @@ function dotTexture(){
   var c = document.createElement('canvas'); c.width=c.height=64;
   var g = c.getContext('2d');
   var grad = g.createRadialGradient(32,32,0,32,32,32);
-  grad.addColorStop(0,'rgba(255,235,220,1)');
-  grad.addColorStop(0.4,'rgba(255,200,180,0.4)');
-  grad.addColorStop(1,'rgba(255,200,180,0)');
+  grad.addColorStop(0,'rgba(255,210,185,0.9)');
+  grad.addColorStop(0.4,'rgba(255,190,170,0.35)');
+  grad.addColorStop(1,'rgba(255,190,170,0)');
   g.fillStyle=grad; g.fillRect(0,0,64,64);
   return new THREE.CanvasTexture(c);
 }
@@ -554,7 +569,7 @@ if(postOK){
   composer.addPass(new THREE.RenderPass(scene, camera));
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
-  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.55, 0.65, 0.72);
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.45, 0.6, 0.8);
   composer.addPass(bloom);
   var GradeShader = {
     uniforms:{
@@ -666,6 +681,7 @@ var clock = new THREE.Clock();
 var _N=new THREE.Vector3(), _B=new THREE.Vector3(), _T=new THREE.Vector3();
 var _pos=new THREE.Vector3(), _q=new THREE.Quaternion(), _m=new THREE.Matrix4(), _scl=new THREE.Vector3();
 var _look=new THREE.Vector3(), _lookN=new THREE.Vector3(), _lookB=new THREE.Vector3();
+var _ax=new THREE.Vector3();
 
 function placeOnCurve(u, r, th, out){
   // fully inlined table lerp: position + normal/binormal offsets, zero allocations
@@ -713,12 +729,12 @@ function tick(){
 
   // lights ride with the camera
   keyLight.position.copy(camera.position);
-  keyLight.position.addScaledVector(_N, 1.6).addScaledVector(_B, 1.1);
+  keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
   keyLight.intensity = 1.25 + pulse*0.35;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
   backLight.intensity = 3.8 + pulse*2.8;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
-  murk.material.opacity = 0.75 + pulse*0.2;
+  murk.material.opacity = 0.55 + pulse*0.15;
 
   // shader uniforms
   var mats=[rbcMat, platMat, wbcMat];
@@ -735,11 +751,26 @@ function tick(){
   // red cells
   for(var i=0;i<COUNTS.cells;i++){
     var cd=cellData[i];
+    if(cd.leader !== undefined){
+      // rouleaux member: ride the leader's frame, offset along the disc axis
+      var ld=cellData[cd.leader];
+      placeOnCurve((camDist+ld.s)/curveLen, ld.r + Math.sin(t*0.6 + cd.leader*1.7)*0.22, ld.th, _pos);
+      _q.setFromAxisAngle(ld.axis, (t+cd.leader)*ld.spin % 6.283);
+      _ax.set(0,1,0).applyQuaternion(_q);
+      _pos.addScaledVector(_ax, cd.off*0.55*ld.sc);
+      var nearM = Math.min(1, Math.max(0.06, (Math.abs(ld.s)-0.9)/3.2));
+      _scl.setScalar(ld.sc*nearM);
+      _m.compose(_pos,_q,_scl);
+      cells.setMatrixAt(i,_m);
+      continue;
+    }
     cd.s += speedSm*(cd.flow-1)*dt;
     cd.th += 0.06*dt;
     if(cd.s> AHEAD)  cd.s -= WINDOW;
     if(cd.s<-BEHIND) cd.s += WINDOW;
-    placeOnCurve((camDist+cd.s)/curveLen, cd.r, cd.th, _pos);
+    // slow radial breathing so cells never look rail-mounted
+    var rEff = cd.r + Math.sin(t*0.6 + i*1.7)*0.22;
+    placeOnCurve((camDist+cd.s)/curveLen, rEff, cd.th, _pos);
     _q.setFromAxisAngle(cd.axis, (t+i)*cd.spin % 6.283);
     var near = Math.min(1, Math.max(0.06, (Math.abs(cd.s)-0.9)/3.2));
     _scl.setScalar(cd.sc*near);
@@ -770,6 +801,7 @@ function tick(){
     if(wd.s> AHEAD)  wd.s -= WINDOW;
     if(wd.s<-BEHIND) wd.s += WINDOW;
     placeOnCurve((camDist+wd.s)/curveLen, wd.r, wd.th, wd.mesh.position);
+    wd.mesh.scale.setScalar(Math.min(1, Math.max(0.05, (Math.abs(wd.s)-1.2)/4.5)));
     wd.mesh.rotation.x += 0.28*dt; wd.mesh.rotation.y += 0.17*dt;
   }
 
@@ -779,6 +811,8 @@ function tick(){
     md.s += speedSm*(md.flow-1)*dt;
     if(md.s> AHEAD)  md.s -= WINDOW;
     if(md.s<-BEHIND) md.s += WINDOW;
+    // size-attenuated points balloon at near-zero depth: hop over the lens zone
+    if(md.s > -1.5 && md.s < 1.5) md.s = 1.5;
     placeOnCurve((camDist+md.s)/curveLen, md.r, md.th, _pos);
     microPos[m2*3]=_pos.x; microPos[m2*3+1]=_pos.y; microPos[m2*3+2]=_pos.z;
   }

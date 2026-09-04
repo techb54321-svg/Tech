@@ -32,6 +32,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/RenderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/ShaderPass.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/shaders/BokehShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/postprocessing/BokehPass.js"></script>
 <script>
 (function(){
 'use strict';
@@ -346,10 +348,12 @@ var cellVert = [
   'varying vec3 vN;',
   'varying vec3 vWorld;',
   'varying vec3 vTint;',
+  'varying vec3 vObj;',
   'varying float vDimple;',
   'void main(){',
   '  vec3 p = position;',
   '  vec3 n = normal;',
+  '  vObj = position;',
   '  vDimple = 1.0 - clamp(length(position.xz), 0.0, 1.0);',
   '  #ifdef USE_INSTANCING',
   '    float seed = instanceColor.r*61.0 + instanceColor.g*17.0;',
@@ -384,15 +388,32 @@ var cellFrag = [
   'varying vec3 vN;',
   'varying vec3 vWorld;',
   'varying vec3 vTint;',
+  'varying vec3 vObj;',
   'varying float vDimple;',
   'vec3 aces(vec3 x){',
   '  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);',
+  '}',
+  'float h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }',
+  'float vn3(vec3 p){',
+  '  vec3 i = floor(p); vec3 f = fract(p); f = f*f*(3.0-2.0*f);',
+  '  float a=h31(i), b=h31(i+vec3(1.,0.,0.)), c=h31(i+vec3(0.,1.,0.)), d=h31(i+vec3(1.,1.,0.));',
+  '  float e=h31(i+vec3(0.,0.,1.)), g=h31(i+vec3(1.,0.,1.)), h=h31(i+vec3(0.,1.,1.)), k=h31(i+vec3(1.,1.,1.));',
+  '  return mix(mix(mix(a,b,f.x),mix(c,d,f.x),f.y), mix(mix(e,g,f.x),mix(h,k,f.x),f.y), f.z);',
   '}',
   'void main(){',
   '  vec3 N = normalize(vN);',
   '  vec3 V = normalize(uCamPos - vWorld);',
   '  if(dot(N,V) < 0.0) N = -N;',
+  // membrane micro-relief: perturb the normal so highlights break into glints
+  '  vec3 Tt = normalize(cross(N, vec3(0.577,0.577,0.577)));',
+  '  vec3 Bt = cross(N, Tt);',
+  '  float m1 = vn3(vObj*9.0 + vTint.r*61.0);',
+  '  float m2 = vn3(vObj*9.0 + vTint.g*43.0 + 17.3);',
+  '  N = normalize(N + Tt*(m1-0.5)*0.30 + Bt*(m2-0.5)*0.30);',
   '  vec3 albedo = uAlbedo * vTint;',
+  // haemoglobin absorption: the thick rim runs deeper red than the thin centre
+  '  float thickness = 1.0 - 0.68*vDimple;',
+  '  albedo *= mix(vec3(1.30,1.18,1.10), vec3(0.80,0.72,0.70), thickness);',
   // key light: warm, near the camera
   '  vec3 Ld = uKeyPos - vWorld;',
   '  float kd = length(Ld); Ld /= kd;',
@@ -408,7 +429,7 @@ var cellFrag = [
   '  float bd = length(Bd); Bd /= bd;',
   '  float batt = 1.0/(1.0 + 0.004*bd*bd);',
   '  float trans = pow(max(dot(Bd, -V), 0.0), 6.0);',
-  '  float thin = 0.45 + 0.55*max(1.0 - abs(dot(N,V))*0.5, vDimple);',
+  '  float thin = 0.35 + 0.65*max(1.0 - abs(dot(N,V))*0.5, vDimple*1.15);',
   '  col += uGlow * trans * thin * batt * (0.85 + 0.45*uPulse);',
   // soft rim of scattered red
   '  float rim = pow(1.0 - max(dot(N,V),0.0), 2.6);',
@@ -438,18 +459,20 @@ function cellMaterial(albedo, glow, spec, rim){
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x6e0a10, 0xff2408, 0.28, 0x380d0a);
+var rbcMat  = cellMaterial(0x6e0a10, 0xff2408, 0.34, 0x380d0a);
 var platMat = cellMaterial(0x6b4030, 0xb03418, 0.20, 0x2e0f08);
 var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.10, 0x52301e);
 
 // ---------- red blood cells ----------
 function biconcaveGeo(){
-  var geo = new THREE.SphereGeometry(1, 28, 20);
+  // Evans-Fung measured discocyte profile: thick torus rim, thin dimpled centre
+  var geo = new THREE.SphereGeometry(1, 36, 24);
   var pos = geo.attributes.position;
   for(var i=0;i<pos.count;i++){
     var x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
-    var d=Math.min(1, Math.sqrt(x*x+z*z));
-    pos.setY(i, y * 0.36 * (0.30 + 0.70*d*d));
+    var r=Math.min(1, Math.sqrt(x*x+z*z)), r2=r*r;
+    var prof=0.5*Math.sqrt(Math.max(0,1-r2))*(0.207+2.003*r2-1.123*r2*r2);
+    pos.setY(i, (y>=0?1:-1)*Math.max(prof, 0.02*(1-r2))*0.9);
   }
   geo.computeVertexNormals();
   return geo;
@@ -469,6 +492,8 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     spin:(Math.random()-0.5)*1.6,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
     sc: 0.55+Math.random()*0.35,
+    align: 0.5+Math.random()*0.35,
+    wob: Math.random()*6.283,
     flow: 1.16 - Math.pow(rr/VESSEL_R,2)*0.7
   });
   tint.setHSL(0.99+Math.random()*0.015, 0.6+Math.random()*0.25, 0.42+Math.random()*0.16);
@@ -591,10 +616,18 @@ for(var bi=0; bi<COUNTS.bokeh; bi++){
 scene.add(camera);   // camera must be in the graph for its sprite children to render
 
 // ---------- post chain: bloom + grade (grain, CA, vignette, ACES) ----------
-var composer = null, gradePass = null, bloom = null;
+var composer = null, gradePass = null, bloom = null, bokehPass = null;
 if(postOK){
   composer = new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene, camera));
+  // true depth of field: near cells and far murk soften around a focus plane
+  if(THREE.BokehPass && !isSmall){
+    bokehPass = new THREE.BokehPass(scene, camera, {
+      focus: 8.5, aperture: 0.00028, maxblur: 0.0065,
+      width: window.innerWidth, height: window.innerHeight
+    });
+    composer.addPass(bokehPass);
+  }
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
   bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.45, 0.6, 0.8);
@@ -625,10 +658,13 @@ if(postOK){
       '  vec2 c = vUv - 0.5;',
       '  float r2 = dot(c,c);',
       '  float ca = (0.0035 + uPulse*0.0018) * r2 * 2.0;',
+      // swimming through fluid: a faint refractive wobble on the lens
+      '  vec2 wob = vec2(sin(vUv.y*6.0+uTime*0.8), cos(vUv.x*5.0+uTime*0.6))*0.0016*(1.0+uPulse*0.8);',
+      '  vec2 uvb = vUv + wob;',
       '  vec3 col;',
-      '  col.r = texture2D(tDiffuse, vUv + c*ca).r;',
-      '  col.g = texture2D(tDiffuse, vUv).g;',
-      '  col.b = texture2D(tDiffuse, vUv - c*ca).b;',
+      '  col.r = texture2D(tDiffuse, uvb + c*ca).r;',
+      '  col.g = texture2D(tDiffuse, uvb).g;',
+      '  col.b = texture2D(tDiffuse, uvb - c*ca).b;',
       // crepuscular rays: march toward the backlight, scattered red light surges with the pulse
       '  if(uRays > 0.001){',
       '    vec2 stepv = (uLight - vUv) / 11.0;',
@@ -760,6 +796,7 @@ function applyDPR(){
   if(composer){
     composer.setSize(window.innerWidth, window.innerHeight);
     bloom.setSize(960, 540);
+    if(bokehPass) bokehPass.uniforms['aspect'].value = camera.aspect;
   }
 }
 var clock = new THREE.Clock();
@@ -767,6 +804,30 @@ var _N=new THREE.Vector3(), _B=new THREE.Vector3(), _T=new THREE.Vector3();
 var _pos=new THREE.Vector3(), _q=new THREE.Quaternion(), _m=new THREE.Matrix4(), _scl=new THREE.Vector3();
 var _look=new THREE.Vector3(), _lookN=new THREE.Vector3(), _lookB=new THREE.Vector3();
 var _ax=new THREE.Vector3(), _proj=new THREE.Vector3();
+var _q2=new THREE.Quaternion(), _R=new THREE.Vector3(), _up=new THREE.Vector3(0,1,0);
+var _lookSm=new THREE.Vector3(); var lookInit=false;
+
+function radialAt(u, th, out){        // outward radial direction at (u, theta)
+  var f=wrap01(u)*FRAME_SEGS, i0=Math.floor(f), a=f-i0;
+  var j0=(i0%FRAME_SEGS)*3, j1=((i0+1)%FRAME_SEGS)*3;
+  var ct=Math.cos(th), st=Math.sin(th);
+  out.set(
+    (norT[j0]  +(norT[j1]  -norT[j0]  )*a)*ct + (binT[j0]  +(binT[j1]  -binT[j0]  )*a)*st,
+    (norT[j0+1]+(norT[j1+1]-norT[j0+1])*a)*ct + (binT[j0+1]+(binT[j1+1]-binT[j0+1])*a)*st,
+    (norT[j0+2]+(norT[j1+2]-norT[j0+2])*a)*ct + (binT[j0+2]+(binT[j1+2]-binT[j0+2])*a)*st
+  ).normalize();
+}
+// shared orientation: random tumble blended toward flow alignment (disc plane
+// parallel to the current, normal pointing radially) with a slow wobble
+function cellQuat(u, th, axis, spin, seed, align, phase){
+  _q.setFromAxisAngle(axis, (phase)*spin % 6.283);
+  radialAt(u, th, _R);
+  _R.x += Math.sin(seed)*0.25; _R.y += Math.cos(seed*0.9)*0.25;
+  _R.normalize();
+  _q2.setFromUnitVectors(_up, _R);
+  _q.slerp(_q2, align);
+  return _q;
+}
 
 function placeOnCurve(u, r, th, out){
   // fully inlined table lerp: position + normal/binormal offsets, zero allocations
@@ -809,19 +870,22 @@ function tick(){
   speedSm += (speed-speedSm)*Math.min(1,dt*4);
   camU = wrap01(camU + speedSm*dt/curveLen);
 
-  // camera: drift off-center, look ahead, breathe
+  // camera: wander off-center so the wall looms past, gaze lags into bends
   var u = camU;
   frameAt(u,_N,_B,_T);
   pointAt(u, camera.position);
-  camera.position.addScaledVector(_N, Math.sin(t*0.31)*1.3);
-  camera.position.addScaledVector(_B, Math.cos(t*0.23)*1.3);
+  var wander = reducedMotion ? 0.5 : 1.0;
+  camera.position.addScaledVector(_N, (Math.sin(t*0.31)*0.9 + Math.sin(t*0.071)*2.0)*wander);
+  camera.position.addScaledVector(_B, (Math.cos(t*0.23)*0.9 + Math.cos(t*0.059)*2.0)*wander);
   pointAt(u + 10/curveLen, _look);
   frameAt(u + 10/curveLen, _lookN, _lookB);
   _look.addScaledVector(_lookN, Math.sin(t*0.19)*1.6);
   _look.addScaledVector(_lookB, Math.cos(t*0.15)*1.6);
-  camera.lookAt(_look);
+  if(!lookInit){ _lookSm.copy(_look); lookInit=true; }
+  _lookSm.lerp(_look, Math.min(1, dt*2.2));      // the head turns late into bends
+  camera.lookAt(_lookSm);
   if(!reducedMotion){
-    camera.rotateZ(Math.sin(t*0.21)*0.10 + Math.sin(t*1.3)*0.008 + pulse*0.004);
+    camera.rotateZ(Math.sin(t*0.21)*0.10 + Math.sin(t*1.3)*0.008 + pulse*0.010);
   }
   // gaze follows the mouse / device tilt
   lookX += (lookTX-lookX)*Math.min(1, dt*2.5);
@@ -830,6 +894,10 @@ function tick(){
   camera.rotateX(-lookY*0.22);
   camera.fov = 68 + (reducedMotion?0:pulse*1.6);
   camera.updateProjectionMatrix();
+  if(bokehPass && !reducedMotion){
+    // heartbeat rack focus: the eye refocuses slightly with each pulse
+    bokehPass.materialBokeh.uniforms['focus'].value = 8.5 - pulse*0.9;
+  }
 
   // lights ride with the camera
   keyLight.position.copy(camera.position);
@@ -858,8 +926,9 @@ function tick(){
     if(cd.leader !== undefined){
       // rouleaux member: ride the leader's frame, offset along the disc axis
       var ld=cellData[cd.leader];
-      placeOnCurve((camDist+ld.s)/curveLen, ld.r + Math.sin(t*0.6 + cd.leader*1.7)*0.22, ld.th, _pos);
-      _q.setFromAxisAngle(ld.axis, (t+cd.leader)*ld.spin % 6.283);
+      var lu=(camDist+ld.s)/curveLen;
+      placeOnCurve(lu, ld.r + Math.sin(t*0.6 + cd.leader*1.7)*0.22, ld.th, _pos);
+      cellQuat(lu, ld.th, ld.axis, ld.spin, t*1.2+ld.wob, ld.align, t+cd.leader);
       _ax.set(0,1,0).applyQuaternion(_q);
       _pos.addScaledVector(_ax, cd.off*0.55*ld.sc);
       var nearM = Math.min(1, Math.max(0.06, (Math.abs(ld.s)-0.9)/3.2));
@@ -874,8 +943,9 @@ function tick(){
     if(cd.s<-BEHIND) cd.s += WINDOW;
     // slow radial breathing so cells never look rail-mounted
     var rEff = cd.r + Math.sin(t*0.6 + i*1.7)*0.22;
-    placeOnCurve((camDist+cd.s)/curveLen, rEff, cd.th, _pos);
-    _q.setFromAxisAngle(cd.axis, (t+i)*cd.spin % 6.283);
+    var cu2=(camDist+cd.s)/curveLen;
+    placeOnCurve(cu2, rEff, cd.th, _pos);
+    cellQuat(cu2, cd.th, cd.axis, cd.spin, t*1.2+cd.wob, cd.align, t+i);
     var near = Math.min(1, Math.max(0.06, (Math.abs(cd.s)-0.9)/3.2));
     _scl.setScalar(cd.sc*near);
     _m.compose(_pos,_q,_scl);
@@ -1011,6 +1081,7 @@ window.addEventListener('resize', function(){
   if(composer){
     composer.setSize(window.innerWidth, window.innerHeight);
     bloom.setSize(960, 540);              // keep the mip chain pinned
+    if(bokehPass) bokehPass.uniforms['aspect'].value = camera.aspect;
     gradePass.uniforms.uRes.value.set(window.innerWidth, window.innerHeight);
   }
 });

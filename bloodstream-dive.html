@@ -373,7 +373,7 @@ var cellVert = [
 ].join('\n');
 
 var cellFrag = [
-  'precision highp float;',
+  'uniform sampler2D uNoise;',
   'uniform vec3 uCamPos;',
   'uniform vec3 uKeyPos;',
   'uniform vec3 uBackPos;',
@@ -393,24 +393,20 @@ var cellFrag = [
   'vec3 aces(vec3 x){',
   '  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);',
   '}',
-  'float h31(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7)))*43758.5453); }',
-  'float vn3(vec3 p){',
-  '  vec3 i = floor(p); vec3 f = fract(p); f = f*f*(3.0-2.0*f);',
-  '  float a=h31(i), b=h31(i+vec3(1.,0.,0.)), c=h31(i+vec3(0.,1.,0.)), d=h31(i+vec3(1.,1.,0.));',
-  '  float e=h31(i+vec3(0.,0.,1.)), g=h31(i+vec3(1.,0.,1.)), h=h31(i+vec3(0.,1.,1.)), k=h31(i+vec3(1.,1.,1.));',
-  '  return mix(mix(mix(a,b,f.x),mix(c,d,f.x),f.y), mix(mix(e,g,f.x),mix(h,k,f.x),f.y), f.z);',
-  '}',
   'void main(){',
   '  vec3 N = normalize(vN);',
   '  vec3 V = normalize(uCamPos - vWorld);',
   '  if(dot(N,V) < 0.0) N = -N;',
-  // membrane micro-relief: perturb the normal so highlights break into glints
+  '  float fd = -(viewMatrix * vec4(vWorld, 1.0)).z;',
+  // membrane micro-relief: perturb the normal so highlights break up organically;
+  // amplitude fades with distance so it never shimmers far away
   '  vec3 Tt = normalize(cross(N, vec3(0.577,0.577,0.577)));',
   '  vec3 Bt = cross(N, Tt);',
-  '  float m1 = vn3(vObj*9.0 + vTint.r*61.0);',
-  '  float m2 = vn3(vObj*9.0 + vTint.g*43.0 + 17.3);',
-  '  N = normalize(N + Tt*(m1-0.5)*0.30 + Bt*(m2-0.5)*0.30);',
+  '  vec2 mm = texture2D(uNoise, (vObj.xy + vObj.z*0.37)*0.35 + vec2(vTint.r*7.31, vTint.g*5.17)).rg;',
+  '  float na = clamp(1.4 - fd*0.12, 0.0, 1.0) * 0.72;',
+  '  N = normalize(N + Tt*(mm.x-0.5)*na + Bt*(mm.y-0.5)*na);',
   '  vec3 albedo = uAlbedo * vTint;',
+  '  albedo *= 0.88 + 0.28*mm.x;',      // surface pigment variation kills the sticker look
   // haemoglobin absorption: the thick rim runs deeper red than the thin centre
   '  float thickness = 1.0 - 0.68*vDimple;',
   '  albedo *= mix(vec3(1.30,1.18,1.10), vec3(0.80,0.72,0.70), thickness);',
@@ -422,29 +418,55 @@ var cellFrag = [
   '  vec3 col = albedo * wrap * katt * (1.45 + 0.30*uPulse);',
   '  col *= 1.0 - vDimple*0.42;',   // biconcave centre reads darker
   // wet membrane specular
+  // moist membrane: a broad dim sheen plus a soft-clamped highlight, never a candy dot
   '  vec3 H = normalize(Ld + V);',
-  '  col += vec3(1.0,0.94,0.88) * pow(max(dot(N,H),0.0), 160.0) * uSpec * katt;',
+  '  col += vec3(1.0,0.90,0.82) * min(pow(max(dot(N,H),0.0), 48.0) * uSpec, 0.35) * katt;',
+  '  col += vec3(1.0,0.72,0.60) * pow(1.0 - max(dot(N,V),0.0), 2.5) * 0.20 * katt;',
   // translucency: the deep red glow ahead shines THROUGH thin cells
   '  vec3 Bd = uBackPos - vWorld;',
   '  float bd = length(Bd); Bd /= bd;',
   '  float batt = 1.0/(1.0 + 0.004*bd*bd);',
   '  float trans = pow(max(dot(Bd, -V), 0.0), 6.0);',
   '  float thin = 0.35 + 0.65*max(1.0 - abs(dot(N,V))*0.5, vDimple*1.15);',
-  '  col += uGlow * trans * thin * batt * (0.85 + 0.45*uPulse);',
+  '  col += uGlow * trans * thin * batt * (0.55 + 0.35*uPulse);',
   // soft rim of scattered red
   '  float rim = pow(1.0 - max(dot(N,V),0.0), 2.6);',
   '  col += uRim * rim;',
   // ambient murk bounce
   '  col += albedo * 0.10;',
+  // plasma swallows green then blue then contrast before the fog takes over —
+  // distant cells melt into the murk instead of floating on top of it
+  '  col.g *= exp(-fd*0.045);',
+  '  col.b *= exp(-fd*0.060);',
+  '  col = mix(col, uFogColor*1.8, clamp(fd*0.010, 0.0, 0.30));',
   // fog: same formula and view-space depth metric as THREE.FogExp2
-  '  float fd = -(viewMatrix * vec4(vWorld, 1.0)).z;',
   '  float f = clamp(1.0 - exp(-uFogDensity*uFogDensity*fd*fd), 0.0, 1.0);',
   // built-ins fog AFTER tonemapping, so the degraded path must grade first too
   '  if(uGrade > 0.5){ col = aces(col); col = pow(col, vec3(1.0/2.2)); }',
   '  col = mix(col, uFogColor, f);',
-  '  gl_FragColor = vec4(col, 1.0);',
+  '  gl_FragColor = vec4(max(col, vec3(0.0)), 1.0);',
   '}'
 ].join('\n');
+
+// membrane micro-relief baked once to a tiling texture: one fetch per fragment
+// instead of sixteen sin() hashes
+var cellNoiseTex = (function(){
+  var s=128, c=document.createElement('canvas'); c.width=c.height=s;
+  var g=c.getContext('2d'), id=g.createImageData(s,s);
+  var nA=lattice2(64), nB=lattice2(64);
+  for(var y=0;y<s;y++){
+    for(var x=0;x<s;x++){
+      var u=x/s, v=y/s, i4=(y*s+x)*4;
+      id.data[i4]   = (nA(u*6,v*6,6,6)*0.7 + nA(u*13,v*13,13,13)*0.3)*255;
+      id.data[i4+1] = (nB(u*6+3,v*6+1,6,6)*0.7 + nB(u*13+5,v*13+2,13,13)*0.3)*255;
+      id.data[i4+2] = 128; id.data[i4+3] = 255;
+    }
+  }
+  g.putImageData(id,0,0);
+  var tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return tex;
+})();
 
 function cellMaterial(albedo, glow, spec, rim){
   return new THREE.ShaderMaterial({
@@ -453,17 +475,38 @@ function cellMaterial(albedo, glow, spec, rim){
       uKeyPos:{value:new THREE.Vector3()}, uBackPos:{value:new THREE.Vector3()},
       uAlbedo:{value:new THREE.Color(albedo)}, uGlow:{value:new THREE.Color(glow)},
       uRim:{value:new THREE.Color(rim)}, uSpec:{value:spec},
+      uNoise:{value:cellNoiseTex},
       uPulse:{value:0}, uGrade:{value:postOK?0:1},
       uFogDensity:{value:FOG_DENSITY}, uFogColor:{value:FOG_COLOR}
     },
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x6e0a10, 0xff2408, 0.34, 0x380d0a);
-var platMat = cellMaterial(0x6b4030, 0xb03418, 0.20, 0x2e0f08);
-var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.10, 0x52301e);
+var rbcMat  = cellMaterial(0x800e14, 0xff2408, 0.20, 0x380d0a);
+var platMat = cellMaterial(0x6b4030, 0xb03418, 0.14, 0x2e0f08);
+var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.08, 0x6b4530);
 
 // ---------- red blood cells ----------
+// computeVertexNormals leaves one-sided normals on a sphere's duplicated
+// longitude-seam column (and pole fans) — weld them so no seam line shades in
+function weldSphereNormals(geo, widthSegs, heightSegs, forcePoles){
+  var nn = geo.attributes.normal, ring = widthSegs+1;
+  var va = new THREE.Vector3(), vb = new THREE.Vector3();
+  for(var row=0; row<=heightSegs; row++){
+    var a = row*ring, b = row*ring + widthSegs;
+    va.set(nn.getX(a),nn.getY(a),nn.getZ(a));
+    vb.set(nn.getX(b),nn.getY(b),nn.getZ(b));
+    va.add(vb).normalize();
+    nn.setXYZ(a,va.x,va.y,va.z); nn.setXYZ(b,va.x,va.y,va.z);
+  }
+  if(forcePoles){
+    for(var c3=0; c3<ring; c3++){
+      nn.setXYZ(c3, 0, 1, 0);
+      nn.setXYZ(heightSegs*ring + c3, 0, -1, 0);
+    }
+  }
+}
+
 function biconcaveGeo(){
   // Evans-Fung measured discocyte profile: thick torus rim, thin dimpled centre
   var geo = new THREE.SphereGeometry(1, 36, 24);
@@ -472,9 +515,10 @@ function biconcaveGeo(){
     var x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
     var r=Math.min(1, Math.sqrt(x*x+z*z)), r2=r*r;
     var prof=0.5*Math.sqrt(Math.max(0,1-r2))*(0.207+2.003*r2-1.123*r2*r2);
-    pos.setY(i, (y>=0?1:-1)*Math.max(prof, 0.02*(1-r2))*0.9);
+    pos.setY(i, (y>=0?1:-1)*Math.max(prof, 0.02*(1-r2))*0.78);
   }
   geo.computeVertexNormals();
+  weldSphereNormals(geo, 36, 24, true);
   return geo;
 }
 var cells = new THREE.InstancedMesh(biconcaveGeo(), rbcMat, COUNTS.cells);
@@ -492,11 +536,13 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     spin:(Math.random()-0.5)*1.6,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
     sc: 0.55+Math.random()*0.35,
-    align: 0.5+Math.random()*0.35,
+    align: Math.min(0.85, (0.45+Math.random()*0.30)*(0.75+0.5*rr/VESSEL_R)),
     wob: Math.random()*6.283,
     flow: 1.16 - Math.pow(rr/VESSEL_R,2)*0.7
   });
-  tint.setHSL(0.99+Math.random()*0.015, 0.6+Math.random()*0.25, 0.42+Math.random()*0.16);
+  // haemoglobin gives every RBC the same pigment: hue jitter stays within ±3°,
+  // and all visible color spread comes from thickness and lighting instead
+  tint.setHSL(0.986+Math.random()*0.016, 0.78+Math.random()*0.10, 0.36+Math.random()*0.10);
   cells.setColorAt(ci, tint);
 }
 if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
@@ -541,6 +587,7 @@ function leukocyteGeo(){
     v.multiplyScalar(n); p.setXYZ(i,v.x,v.y,v.z);
   }
   g.computeVertexNormals();
+  weldSphereNormals(g, 40, 28, false);
   return g;
 }
 var whites = [];
@@ -551,7 +598,7 @@ for(var wi=0; wi<2; wi++){
 }
 
 // ---------- bacteria: prey for the white cells (phagocytosis, endlessly) ----------
-var bacMat = cellMaterial(0x555026, 0x6a5a20, 0.30, 0x23200e);
+var bacMat = cellMaterial(0x5c4526, 0x6a5220, 0.18, 0x231a0e);
 var bacGeo = new THREE.SphereGeometry(0.22, 10, 8); bacGeo.scale(1, 0.42, 0.42);
 var bacteria = [];
 for(var bi2=0; bi2<6; bi2++){
@@ -621,12 +668,27 @@ if(postOK){
   composer = new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene, camera));
   // true depth of field: near cells and far murk soften around a focus plane
-  if(THREE.BokehPass && !isSmall){
-    bokehPass = new THREE.BokehPass(scene, camera, {
-      focus: 8.5, aperture: 0.00028, maxblur: 0.0065,
-      width: window.innerWidth, height: window.innerHeight
-    });
-    composer.addPass(bokehPass);
+  if(THREE.BokehPass && THREE.BokehShader && !isSmall){
+    try{
+      bokehPass = new THREE.BokehPass(scene, camera, {
+        focus: 8.5, aperture: 0.00028, maxblur: 0.009,
+        width: window.innerWidth, height: window.innerHeight
+      });
+      // r134 BokehPass ships needsSwap=false: without this the composited DoF
+      // is written to the write buffer and silently discarded by the next pass
+      bokehPass.needsSwap = true;
+      // keep the camera-attached sprites and the murk glow out of the depth
+      // prepass — as solid quads they would stamp wrong focus patches
+      var _bpRender = bokehPass.render.bind(bokehPass);
+      bokehPass.render = function(){
+        murk.visible = false;
+        for(var hb=0; hb<bokehs.length; hb++) bokehs[hb].spr.visible = false;
+        _bpRender.apply(null, arguments);
+        murk.visible = true;
+        for(var hb2=0; hb2<bokehs.length; hb2++) bokehs[hb2].spr.visible = true;
+      };
+      composer.addPass(bokehPass);
+    }catch(e){ bokehPass = null; }
   }
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
@@ -789,11 +851,14 @@ var BEAT_PERIOD = 0.92;                 // ~65 bpm, humanized per beat
 var camU = 0, beatT = 0.6, beatKick = 0, speedSm = 10;
 var waveOrigin = -9999, waveAge = 99;   // heartbeat contraction wave along the wall
 var frameAcc = 0, frameN = 0, dprIdx = 0;              // adaptive resolution governor
-var DPR_LEVELS = [1.5, 1.25, 1.0, 0.8];
+var DPR_LEVELS = [1.5, 1.25, 1.0, 0.8, 0.66];
 function applyDPR(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, DPR_LEVELS[dprIdx]));
   renderer.setSize(window.innerWidth, window.innerHeight);
   if(composer){
+    // r134 composer caches its pixel ratio at construction — refresh it or the
+    // governor only shrinks the final blit while every pass stays full-res
+    composer._pixelRatio = renderer.getPixelRatio();
     composer.setSize(window.innerWidth, window.innerHeight);
     bloom.setSize(960, 540);
     if(bokehPass) bokehPass.uniforms['aspect'].value = camera.aspect;
@@ -817,15 +882,16 @@ function radialAt(u, th, out){        // outward radial direction at (u, theta)
     (norT[j0+2]+(norT[j1+2]-norT[j0+2])*a)*ct + (binT[j0+2]+(binT[j1+2]-binT[j0+2])*a)*st
   ).normalize();
 }
-// shared orientation: random tumble blended toward flow alignment (disc plane
-// parallel to the current, normal pointing radially) with a slow wobble
+// shared orientation: a reduced-amplitude tumble composed with flow alignment
+// (disc plane parallel to the current, normal radial, slow wobble). Composing
+// is continuous in time — slerping absolute rotations pops at hemisphere flips.
 function cellQuat(u, th, axis, spin, seed, align, phase){
-  _q.setFromAxisAngle(axis, (phase)*spin % 6.283);
   radialAt(u, th, _R);
-  _R.x += Math.sin(seed)*0.25; _R.y += Math.cos(seed*0.9)*0.25;
+  _R.x += Math.sin(seed)*0.35; _R.y += Math.cos(seed*0.9)*0.35;
   _R.normalize();
   _q2.setFromUnitVectors(_up, _R);
-  _q.slerp(_q2, align);
+  _q.setFromAxisAngle(axis, (phase*spin*(1.0-align)) % 6.2832);
+  _q.premultiply(_q2);
   return _q;
 }
 
@@ -896,7 +962,7 @@ function tick(){
   camera.updateProjectionMatrix();
   if(bokehPass && !reducedMotion){
     // heartbeat rack focus: the eye refocuses slightly with each pulse
-    bokehPass.materialBokeh.uniforms['focus'].value = 8.5 - pulse*0.9;
+    bokehPass.materialBokeh.uniforms['focus'].value = 8.5 - pulse*2.0;
   }
 
   // lights ride with the camera
@@ -1069,6 +1135,7 @@ function tick(){
   if(frameN >= 60){
     var avg = frameAcc/frameN; frameAcc = 0; frameN = 0;
     if(avg > 0.021 && dprIdx < DPR_LEVELS.length-1){ dprIdx++; applyDPR(); }
+    else if(avg > 0.021 && bokehPass && bokehPass.enabled){ bokehPass.enabled = false; }
     else if(avg < 0.012 && dprIdx > 0){ dprIdx--; applyDPR(); }
   }
 }

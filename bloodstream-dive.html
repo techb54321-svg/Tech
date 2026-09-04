@@ -320,14 +320,14 @@ wallMat.onBeforeCompile = function(shader){
        'float aAlong = uv.x * uLoopLen;',
        'float dWave = mod(aAlong - uWavePos + uLoopLen*1.5, uLoopLen) - uLoopLen*0.5;',
        'float squeeze = exp(-dWave*dWave/22.0) * uWaveAmp;',
-       'vWaveGlow = exp(-dWave*dWave/40.0) * uWaveAmp;',
+       'vWaveGlow = exp(-dWave*dWave/110.0) * uWaveAmp;',
        'transformed -= normal * squeeze * 1.15;'].join('\n'));
   shader.vertexShader = shader.vertexShader.replace('uniform float uLoopLen;',
       'uniform float uLoopLen;\nvarying float vWaveGlow;');
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <common>', '#include <common>\nvarying float vWaveGlow;')
     .replace('#include <emissivemap_fragment>',
-      '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0,0.20,0.07) * vWaveGlow * 0.36;');
+      '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0,0.24,0.08) * vWaveGlow * 0.75;');
   wallMat.userData.shader = shader;
 };
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
@@ -983,7 +983,7 @@ function tick(){
   waveAge += dt;
   if(wallMat.userData.shader){
     var ws = wallMat.userData.shader.uniforms;
-    ws.uWavePos.value = waveOrigin + waveAge*70;
+    ws.uWavePos.value = waveOrigin + waveAge*105;
     ws.uWaveAmp.value = Math.exp(-waveAge*1.15) * (reducedMotion?0.4:1.0);
   }
 

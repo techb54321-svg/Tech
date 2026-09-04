@@ -44,7 +44,7 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 1000 : 4800,
+  cells:     isSmall ? 400 : 1100,
   platelets: isSmall ? 60  : 150,
   micro:     isSmall ? 420 : 1500,
   bokeh:     isSmall ? 10  : 22
@@ -73,7 +73,7 @@ if(postOK){
 
 var scene = new THREE.Scene();
 var FOG_COLOR = new THREE.Color(0.045, 0.004, 0.006);   // near-black oxblood murk
-var FOG_DENSITY = 0.024;
+var FOG_DENSITY = 0.018;
 scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 var camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 260);
 
@@ -128,7 +128,7 @@ var frames = curve.computeFrenetFrames(FRAME_SEGS, true);
 // flatten curve samples + Frenet frames into typed arrays: per-frame lookups
 // become three float lerps instead of spline evals + Vector3 allocations
 var posT = new Float32Array(FRAME_SEGS*3), norT = new Float32Array(FRAME_SEGS*3),
-    binT = new Float32Array(FRAME_SEGS*3);
+    binT = new Float32Array(FRAME_SEGS*3), tanT = new Float32Array(FRAME_SEGS*3);
 (function(){
   var v = new THREE.Vector3();
   for(var i=0;i<FRAME_SEGS;i++){
@@ -137,6 +137,8 @@ var posT = new Float32Array(FRAME_SEGS*3), norT = new Float32Array(FRAME_SEGS*3)
     var n=frames.normals[i], b=frames.binormals[i];
     norT[i*3]=n.x; norT[i*3+1]=n.y; norT[i*3+2]=n.z;
     binT[i*3]=b.x; binT[i*3+1]=b.y; binT[i*3+2]=b.z;
+    var tg=frames.tangents[i];
+    tanT[i*3]=tg.x; tanT[i*3+1]=tg.y; tanT[i*3+2]=tg.z;
   }
 })();
 
@@ -202,26 +204,30 @@ function makeWallMaps(size){
     for(var x=0;x<size;x++){
       var u = x/size, v = y/size;
       // near-isotropic mottling with one broad octave for macro variation (all octaves tile)
-      var h = n1(u*4, v*4, 4,4)*0.42 + n1(u*10+7, v*11+3, 10,11)*0.30
-            + n2(u*23, v*25, 23,25)*0.18 + n3(u*52, v*56, 52,56)*0.10;
+      // fibres run around the vessel (long in v, short in u) with a helical tilt;
+      // every octave keeps integer periods so the map still tiles seamlessly
+      var macro = n1(u*5+2, v*3+1, 5,3);
+      var fu = u*44 + v*11 + macro*3.0, fv = v*14;
+      var fib = n1(fu, fv, 11,14)*0.55 + n2(fu*2+3, fv*2+1, 22,28)*0.30 + n3(u*120, v*40, 120,40)*0.15;
+      var h = fib*0.72 + macro*0.28;
       h = h*h*(3-2*h);
       var i4 = (y*size+x)*4;
       // pavement shows in patches; elsewhere the wall is smooth mucosa
       var msk = Math.min(1, Math.max(0, (n2(u*3+5, v*3+9, 3,3)-0.35)/0.30));
-      var border = voroBorder(u, v) * (0.20 + 0.80*msk);
+      var border = 0.0;   // reference tissue is fibrous, not cobblestone
       h = Math.max(0, h - border*0.10);        // cell borders sit in shallow grooves
       height[y*size+x] = h;
       // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
       var t = h;
-      var ao = 0.52 + 0.48*t;
-      var r = (50 + t*100)*ao, g = (8 + t*26)*ao, b = (10 + t*23)*ao;
+      var ao = 0.40 + 0.60*t;
+      var r = (40 + t*100)*ao, g = (5 + t*22)*ao, b = (6 + t*15)*ao;
       var fleck = n3(u*44, v*44, 44,44);
       if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*40; g += f*30; b += f*6; }
       var bshade = 1 - border*0.13;
       r *= bshade; g *= bshade; b *= bshade;
       idata.data[i4]=r; idata.data[i4+1]=g; idata.data[i4+2]=b; idata.data[i4+3]=255;
       // roughness: wet tissue, glossier in the crevices where plasma films pool
-      var ro = 128 + t*82;
+      var ro = 100 + t*90;
       rdata.data[i4]=ro; rdata.data[i4+1]=ro; rdata.data[i4+2]=ro; rdata.data[i4+3]=255;
     }
   }
@@ -231,7 +237,7 @@ function makeWallMaps(size){
   var nrm = document.createElement('canvas'); nrm.width = nrm.height = size;
   var ng = nrm.getContext('2d');
   var ndata = ng.createImageData(size,size);
-  var S = 3.6;
+  var S = 4.2;
   for(var y2=0;y2<size;y2++){
     for(var x2=0;x2<size;x2++){
       var xm=(x2-1+size)%size, xp=(x2+1)%size, ym=(y2-1+size)%size, yp=(y2+1)%size;
@@ -302,7 +308,7 @@ var tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGS, VESSEL_R, TUBE_RADIAL, tr
 })();
 var wallMat = new THREE.MeshStandardMaterial({
   map:wallMaps.map, normalMap:wallMaps.normal, roughnessMap:wallMaps.rough,
-  normalScale:new THREE.Vector2(1.8,1.8),
+  normalScale:new THREE.Vector2(2.2,2.2),
   color:0xffffff, roughness:1.0, metalness:0.0,
   emissive:0x090103, side:THREE.BackSide
 });
@@ -333,9 +339,9 @@ wallMat.onBeforeCompile = function(shader){
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.30));
-var keyLight = new THREE.PointLight(0xffd9b0, 2.3, 120, 2); scene.add(keyLight);
-var backLight = new THREE.PointLight(0xff2612, 5.5, 70, 2); scene.add(backLight);
+scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.14));
+var keyLight = new THREE.PointLight(0xffd9b0, 1.6, 120, 2); scene.add(keyLight);
+var backLight = new THREE.PointLight(0xff4a30, 8.0, 80, 2); scene.add(backLight);
 
 // glowing murk down the tunnel: the far distance reads as scattering plasma,
 // never a black hole, and it feeds bloom a plausible distant source
@@ -343,15 +349,15 @@ function murkTexture(){
   var c = document.createElement('canvas'); c.width=c.height=256;
   var g = c.getContext('2d');
   var grad = g.createRadialGradient(128,128,0,128,128,128);
-  grad.addColorStop(0,'rgba(96,14,10,0.42)');
-  grad.addColorStop(0.5,'rgba(74,10,8,0.22)');
-  grad.addColorStop(1,'rgba(74,10,8,0)');
+  grad.addColorStop(0,'rgba(255,150,130,0.85)');
+  grad.addColorStop(0.35,'rgba(210,50,36,0.45)');
+  grad.addColorStop(1,'rgba(120,16,12,0)');
   g.fillStyle=grad; g.fillRect(0,0,256,256);
   return new THREE.CanvasTexture(c);
 }
 var murk = new THREE.Sprite(new THREE.SpriteMaterial({map:murkTexture(),
   blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.85}));
-murk.scale.set(22,22,1);
+murk.scale.set(24,24,1);
 scene.add(murk);
 
 // ---------- shared cell shader: wrap diffuse + wet spec + backlit translucency ----------
@@ -415,7 +421,7 @@ var cellFrag = [
   '  vec3 Tt = normalize(cross(N, vec3(0.577,0.577,0.577)));',
   '  vec3 Bt = cross(N, Tt);',
   '  vec2 mm = texture2D(uNoise, (vObj.xy + vObj.z*0.37)*0.35 + vec2(vTint.r*7.31, vTint.g*5.17)).rg;',
-  '  float na = clamp(1.4 - fd*0.12, 0.0, 1.0) * 0.72;',
+  '  float na = clamp(1.4 - fd*0.12, 0.0, 1.0) * 0.5;',
   '  N = normalize(N + Tt*(mm.x-0.5)*na + Bt*(mm.y-0.5)*na);',
   '  vec3 albedo = uAlbedo * vTint;',
   '  albedo *= 0.88 + 0.28*mm.x;',      // surface pigment variation kills the sticker look
@@ -428,12 +434,12 @@ var cellFrag = [
   '  float katt = 1.0/(1.0 + 0.006*kd*kd);',
   '  float wrap = clamp((dot(N,Ld)+0.45)/1.45, 0.0, 1.0);',
   '  vec3 col = albedo * wrap * katt * (1.45 + 0.30*uPulse);',
-  '  col *= 1.0 - vDimple*0.42;',   // biconcave centre reads darker
+  '  col *= 1.0 - vDimple*0.55;',   // biconcave centre reads darker
   // wet membrane specular
   // moist membrane: a broad dim sheen plus a soft-clamped highlight, never a candy dot
   '  vec3 H = normalize(Ld + V);',
   '  col += vec3(1.0,0.90,0.82) * min(pow(max(dot(N,H),0.0), 48.0) * uSpec, 0.35) * katt;',
-  '  col += vec3(1.0,0.72,0.60) * pow(1.0 - max(dot(N,V),0.0), 2.5) * 0.20 * katt;',
+  '  col += vec3(1.0,0.72,0.60) * pow(1.0 - max(dot(N,V),0.0), 2.5) * 0.28 * katt;',
   // translucency: the deep red glow ahead shines THROUGH thin cells
   '  vec3 Bd = uBackPos - vWorld;',
   '  float bd = length(Bd); Bd /= bd;',
@@ -494,7 +500,7 @@ function cellMaterial(albedo, glow, spec, rim){
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x800e14, 0xff2408, 0.20, 0x8a1410);
+var rbcMat  = cellMaterial(0x8c0a12, 0xff2408, 0.14, 0x8a1410);
 var platMat = cellMaterial(0x6b4030, 0xb03418, 0.14, 0x2e0f08);
 var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.08, 0x6b4530);
 
@@ -527,7 +533,7 @@ function biconcaveGeo(){
     var x=pos.getX(i), y=pos.getY(i), z=pos.getZ(i);
     var r=Math.min(1, Math.sqrt(x*x+z*z)), r2=r*r;
     var prof=0.5*Math.sqrt(Math.max(0,1-r2))*(0.207+2.003*r2-1.123*r2*r2);
-    pos.setY(i, (y>=0?1:-1)*Math.max(prof, 0.02*(1-r2))*0.78);
+    pos.setY(i, (y>=0?1:-1)*Math.max(prof, 0.02*(1-r2))*0.86);
   }
   geo.computeVertexNormals();
   weldSphereNormals(geo, 36, 24, true);
@@ -547,7 +553,7 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     r: rr, th: Math.random()*Math.PI*2,
     spin:(Math.random()-0.5)*1.6,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
-    sc: 0.38+Math.pow(Math.random(),2.2)*0.55,
+    sc: 1.0+Math.pow(Math.random(),1.5)*0.6,
     align: Math.min(0.85, (0.45+Math.random()*0.30)*(0.75+0.5*rr/VESSEL_R)),
     wob: Math.random()*6.283,
     // the camera OVERTAKES the flow: cells stream past, which is what sells speed
@@ -564,7 +570,7 @@ if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
 // regularly looms, fills the frame, and whips past the lens — the scale shock
 for(var hc=0; hc<4; hc++){
   var hd = cellData[hc];
-  hd.sc = 1.7 + hc*0.3;
+  hd.sc = 2.6 + hc*0.35;
   hd.r = 0.6 + hc*0.55;
   hd.th = hc*1.57;
   hd.flow = 0.50;
@@ -697,7 +703,7 @@ if(postOK){
   if(THREE.BokehPass && THREE.BokehShader && !isSmall){
     try{
       bokehPass = new THREE.BokehPass(scene, camera, {
-        focus: 10.0, aperture: 0.00036, maxblur: 0.009,
+        focus: 9.0, aperture: 0.0005, maxblur: 0.014,
         width: window.innerWidth, height: window.innerHeight
       });
       // r134 BokehPass ships needsSwap=false: without this the composited DoF
@@ -718,7 +724,7 @@ if(postOK){
   }
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
-  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.6, 0.55, 0.8);
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.75, 0.6, 0.7);
   composer.addPass(bloom);
   var GradeShader = {
     uniforms:{
@@ -774,7 +780,8 @@ if(postOK){
       '    col += vec3(1.0,0.30,0.14) * rays * uRays * 0.028;',
       '  }',
       '  col *= 1.0 + uPulse*0.10;',
-      '  col *= vec3(1.02, 0.90, 0.86);',   // pull the salmon cast toward crimson
+      '  col *= vec3(1.0, 0.86, 0.88);',    // deep crimson, not orange
+      '  col = mix(vec3(dot(col, vec3(0.3,0.59,0.11))), col, 1.15);',
       '  col = aces(col);',
       '  col = pow(col, vec3(1.0/2.2));',
       '  float vig = smoothstep(0.9, 0.2, r2*1.7);',
@@ -938,9 +945,15 @@ function radialAt(u, th, out){        // outward radial direction at (u, theta)
 // shared orientation: a reduced-amplitude tumble composed with flow alignment
 // (disc plane parallel to the current, normal radial, slow wobble). Composing
 // is continuous in time — slerping absolute rotations pops at hemisphere flips.
+function axisAt(u, out){          // tube axis direction at u
+  var f=wrap01(u)*FRAME_SEGS, i0=Math.floor(f), a=f-i0;
+  var j0=(i0%FRAME_SEGS)*3, j1=((i0+1)%FRAME_SEGS)*3;
+  out.set(tanT[j0]+(tanT[j1]-tanT[j0])*a, tanT[j0+1]+(tanT[j1+1]-tanT[j0+1])*a,
+          tanT[j0+2]+(tanT[j1+2]-tanT[j0+2])*a).normalize();
+}
 function cellQuat(u, th, axis, spin, seed, align, phase){
-  radialAt(u, th, _R);
-  _R.x += Math.sin(seed)*0.35; _R.y += Math.cos(seed*0.9)*0.35;
+  axisAt(u, _R);                     // disc normal along the flow: faces toward the viewer
+  _R.x += Math.sin(seed)*0.45; _R.y += Math.cos(seed*0.9)*0.45; _R.z += Math.sin(seed*1.3)*0.3;
   _R.normalize();
   _q2.setFromUnitVectors(_up, _R);
   _q.setFromAxisAngle(axis, (phase*spin*(1.0-align)) % 6.2832);
@@ -1023,15 +1036,15 @@ function tick(){
   camera.updateProjectionMatrix();
   if(bokehPass && !reducedMotion){
     // heartbeat rack focus: the eye refocuses slightly with each pulse
-    bokehPass.materialBokeh.uniforms['focus'].value = 10.0 - pulseSm*1.4;
+    bokehPass.materialBokeh.uniforms['focus'].value = 9.0 - pulseSm*1.2;
   }
 
   // lights ride with the camera
   keyLight.position.copy(camera.position);
   keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
-  keyLight.intensity = 2.3 + pulseSm*0.5;
+  keyLight.intensity = 1.6 + pulseSm*0.4;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
-  backLight.intensity = 5.5 + pulseSm*3.5;
+  backLight.intensity = 8.0 + pulseSm*4.0;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
   murk.material.opacity = 0.80 + pulseSm*0.15;
 

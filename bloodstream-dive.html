@@ -44,9 +44,9 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 420 : 1450,
-  platelets: isSmall ? 50  : 130,
-  micro:     isSmall ? 300 : 900,
+  cells:     isSmall ? 600 : 2400,
+  platelets: isSmall ? 60  : 150,
+  micro:     isSmall ? 380 : 1200,
   bokeh:     isSmall ? 10  : 22
 };
 
@@ -525,11 +525,11 @@ var cells = new THREE.InstancedMesh(biconcaveGeo(), rbcMat, COUNTS.cells);
 cells.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 scene.add(cells);
 
-var AHEAD = 60, BEHIND = 12, WINDOW = AHEAD + BEHIND;
+var AHEAD = 75, BEHIND = 14, WINDOW = AHEAD + BEHIND;
 var cellData = [];
 var tint = new THREE.Color();
 for(var ci=0; ci<COUNTS.cells; ci++){
-  var rr = Math.pow(Math.random(),0.55) * (VESSEL_R-2.6);
+  var rr = Math.pow(Math.random(),0.75) * (VESSEL_R-2.2);
   cellData.push({
     s: Math.random()*WINDOW - BEHIND,
     r: rr, th: Math.random()*Math.PI*2,
@@ -538,7 +538,8 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     sc: 0.55+Math.random()*0.35,
     align: Math.min(0.85, (0.45+Math.random()*0.30)*(0.75+0.5*rr/VESSEL_R)),
     wob: Math.random()*6.283,
-    flow: 1.16 - Math.pow(rr/VESSEL_R,2)*0.7
+    // the camera OVERTAKES the flow: cells stream past, which is what sells speed
+    flow: 0.72 - Math.pow(rr/VESSEL_R,2)*0.30
   });
   // haemoglobin gives every RBC the same pigment: hue jitter stays within ±3°,
   // and all visible color spread comes from thickness and lighting instead
@@ -571,7 +572,7 @@ for(var pi=0; pi<COUNTS.platelets; pi++){
   platData.push({s:Math.random()*WINDOW-BEHIND, r:pr, th:Math.random()*6.283,
     spin:(Math.random()-0.5)*3,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
-    flow:1.18 - Math.pow(pr/VESSEL_R,2)*0.7});
+    flow:0.75 - Math.pow(pr/VESSEL_R,2)*0.30});
   plats.setColorAt(pi, tint.setHSL(0.03+Math.random()*0.03, 0.55, 0.42+Math.random()*0.14));
 }
 if(plats.instanceColor) plats.instanceColor.needsUpdate = true;
@@ -626,7 +627,7 @@ var microData = [];
 for(var mi=0; mi<COUNTS.micro; mi++){
   microData.push({s:Math.random()*WINDOW-BEHIND,
     r:Math.pow(Math.random(),0.7)*(VESSEL_R-2.0), th:Math.random()*6.283,
-    flow:1.05+Math.random()*0.15});
+    flow:0.40+Math.random()*0.15});
 }
 var microMat = new THREE.PointsMaterial({size:0.075, map:dotTexture(),
   color:0xd84828, transparent:true, opacity:0.30, depthWrite:false,
@@ -848,7 +849,7 @@ window.addEventListener('deviceorientation', function(e){
 
 // ---------- animation ----------
 var BEAT_PERIOD = 0.92;                 // ~65 bpm, humanized per beat
-var camU = 0, beatT = 0.6, beatKick = 0, speedSm = 10;
+var camU = 0, beatT = 0.6, beatKick = 0, speedSm = 22, pulseSm = 0, bankSm = 0;
 var waveOrigin = -9999, waveAge = 99;   // heartbeat contraction wave along the wall
 var frameAcc = 0, frameN = 0, dprIdx = 0;              // adaptive resolution governor
 var DPR_LEVELS = [1.5, 1.25, 1.0, 0.8, 0.66];
@@ -915,14 +916,16 @@ function tick(){
   // heartbeat drives the flow — endless
   beatT -= dt;
   if(beatT<=0){
-    beatT += BEAT_PERIOD*(0.94+Math.random()*0.12);  // humanized rhythm
+    beatT += BEAT_PERIOD*(0.97+Math.random()*0.06);  // gently humanized rhythm
     thump();
     beatKick += reducedMotion?2.5:6.5;
     waveOrigin = camU*curveLen - 8;                  // launch a contraction wave
     waveAge = 0;
   }
-  beatKick *= Math.pow(0.05, dt);
+  beatKick *= Math.pow(0.08, dt);
   var pulse = Math.min(1, beatKick/6.5);
+  // visuals ride a smoothed pulse — the raw impulse is a lurch, not a surge
+  pulseSm += (pulse-pulseSm)*Math.min(1, dt*(pulse>pulseSm?9:2.2));
 
   // wall squeeze wave sweeps forward past the camera
   waveAge += dt;
@@ -932,8 +935,8 @@ function tick(){
     ws.uWaveAmp.value = Math.exp(-waveAge*1.15) * (reducedMotion?0.4:1.0);
   }
 
-  var speed = 10 + beatKick;
-  speedSm += (speed-speedSm)*Math.min(1,dt*4);
+  var speed = (reducedMotion?15:26) + beatKick*1.6;
+  speedSm += (speed-speedSm)*Math.min(1,dt*2.5);
   camU = wrap01(camU + speedSm*dt/curveLen);
 
   // camera: wander off-center so the wall looms past, gaze lags into bends
@@ -941,44 +944,50 @@ function tick(){
   frameAt(u,_N,_B,_T);
   pointAt(u, camera.position);
   var wander = reducedMotion ? 0.5 : 1.0;
-  camera.position.addScaledVector(_N, (Math.sin(t*0.31)*0.9 + Math.sin(t*0.071)*2.0)*wander);
-  camera.position.addScaledVector(_B, (Math.cos(t*0.23)*0.9 + Math.cos(t*0.059)*2.0)*wander);
-  pointAt(u + 10/curveLen, _look);
-  frameAt(u + 10/curveLen, _lookN, _lookB);
-  _look.addScaledVector(_lookN, Math.sin(t*0.19)*1.6);
-  _look.addScaledVector(_lookB, Math.cos(t*0.15)*1.6);
+  camera.position.addScaledVector(_N, (Math.sin(t*0.31)*0.6 + Math.sin(t*0.071)*2.0)*wander);
+  camera.position.addScaledVector(_B, (Math.cos(t*0.23)*0.6 + Math.cos(t*0.059)*2.0)*wander);
+  pointAt(u + 14/curveLen, _look);
+  frameAt(u + 14/curveLen, _lookN, _lookB);
+  _look.addScaledVector(_lookN, Math.sin(t*0.19)*1.4);
+  _look.addScaledVector(_lookB, Math.cos(t*0.15)*1.4);
   if(!lookInit){ _lookSm.copy(_look); lookInit=true; }
-  _lookSm.lerp(_look, Math.min(1, dt*2.2));      // the head turns late into bends
+  _lookSm.lerp(_look, Math.min(1, dt*1.8));      // the head turns late into bends
   camera.lookAt(_lookSm);
+  // bank into the turn: the lag between instant and smoothed gaze IS the curve
+  _ax.set(1,0,0).applyQuaternion(camera.quaternion);
+  _R.copy(_look).sub(_lookSm);
+  var bankTarget = Math.max(-0.4, Math.min(0.4, -_R.dot(_ax)*0.12));
+  bankSm += (bankTarget-bankSm)*Math.min(1, dt*2.5);
   if(!reducedMotion){
-    camera.rotateZ(Math.sin(t*0.21)*0.10 + Math.sin(t*1.3)*0.008 + pulse*0.010);
+    camera.rotateZ(bankSm + Math.sin(t*0.21)*0.06);
   }
   // gaze follows the mouse / device tilt
   lookX += (lookTX-lookX)*Math.min(1, dt*2.5);
   lookY += (lookTY-lookY)*Math.min(1, dt*2.5);
   camera.rotateY(-lookX*0.30);
   camera.rotateX(-lookY*0.22);
-  camera.fov = 68 + (reducedMotion?0:pulse*1.6);
+  // velocity widens the view — continuous, never a per-beat pump
+  camera.fov = 70 + Math.min(reducedMotion?6:14, Math.max(0, speedSm-14)*0.5);
   camera.updateProjectionMatrix();
   if(bokehPass && !reducedMotion){
     // heartbeat rack focus: the eye refocuses slightly with each pulse
-    bokehPass.materialBokeh.uniforms['focus'].value = 8.5 - pulse*2.0;
+    bokehPass.materialBokeh.uniforms['focus'].value = 8.5 - pulseSm*1.4;
   }
 
   // lights ride with the camera
   keyLight.position.copy(camera.position);
   keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
-  keyLight.intensity = 1.25 + pulse*0.35;
+  keyLight.intensity = 1.25 + pulseSm*0.35;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
-  backLight.intensity = 3.8 + pulse*2.8;
+  backLight.intensity = 3.8 + pulseSm*2.8;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
-  murk.material.opacity = 0.55 + pulse*0.15;
+  murk.material.opacity = 0.55 + pulseSm*0.15;
 
   // shader uniforms
   var mats=[rbcMat, platMat, wbcMat];
   for(var mi2=0;mi2<3;mi2++){
     var uni = mats[mi2].uniforms;
-    uni.uTime.value=t; uni.uPulse.value=pulse;
+    uni.uTime.value=t; uni.uPulse.value=pulseSm;
     uni.uCamPos.value.copy(camera.position);
     uni.uKeyPos.value.copy(keyLight.position);
     uni.uBackPos.value.copy(backLight.position);
@@ -997,7 +1006,7 @@ function tick(){
       cellQuat(lu, ld.th, ld.axis, ld.spin, t*1.2+ld.wob, ld.align, t+cd.leader);
       _ax.set(0,1,0).applyQuaternion(_q);
       _pos.addScaledVector(_ax, cd.off*0.55*ld.sc);
-      var nearM = Math.min(1, Math.max(0.06, (Math.abs(ld.s)-0.9)/3.2));
+      var nearM = Math.min(1, Math.max(0.30, (Math.abs(ld.s)-0.7)/2.2));
       _scl.setScalar(ld.sc*nearM);
       _m.compose(_pos,_q,_scl);
       cells.setMatrixAt(i,_m);
@@ -1012,7 +1021,7 @@ function tick(){
     var cu2=(camDist+cd.s)/curveLen;
     placeOnCurve(cu2, rEff, cd.th, _pos);
     cellQuat(cu2, cd.th, cd.axis, cd.spin, t*1.2+cd.wob, cd.align, t+i);
-    var near = Math.min(1, Math.max(0.06, (Math.abs(cd.s)-0.9)/3.2));
+    var near = Math.min(1, Math.max(0.30, (Math.abs(cd.s)-0.7)/2.2));
     _scl.setScalar(cd.sc*near);
     _m.compose(_pos,_q,_scl);
     cells.setMatrixAt(i,_m);
@@ -1028,7 +1037,7 @@ function tick(){
     if(pd.s<-BEHIND) pd.s += WINDOW;
     placeOnCurve((camDist+pd.s)/curveLen, pd.r, pd.th, _pos);
     _q.setFromAxisAngle(pd.axis, (t+j)*pd.spin % 6.283);
-    _scl.setScalar(Math.min(1, Math.max(0.06, (Math.abs(pd.s)-0.7)/2.6)));
+    _scl.setScalar(Math.min(1, Math.max(0.30, (Math.abs(pd.s)-0.7)/2.2)));
     _m.compose(_pos,_q,_scl);
     plats.setMatrixAt(j,_m);
   }
@@ -1079,7 +1088,7 @@ function tick(){
       wd.gulp = 1;                                    // swallow throb
     }
     wd.gulp *= Math.pow(0.25, dt);
-    var wScale = Math.min(1, Math.max(0.05, (Math.abs(wd.s)-1.2)/4.5));
+    var wScale = Math.min(1, Math.max(0.15, (Math.abs(wd.s)-1.2)/4.5));
     wd.mesh.scale.setScalar(wScale*(1 + wd.gulp*0.28*Math.sin((1-wd.gulp)*9.0)));
     wd.mesh.rotation.x += 0.28*dt; wd.mesh.rotation.y += 0.17*dt;
   }
@@ -1111,7 +1120,7 @@ function tick(){
   // --- audio follows the flow ---
   if(AC && whooshGain){
     whooshGain.gain.setTargetAtTime(0.10+Math.min(0.25, speedSm/70*0.3), AC.currentTime, 0.15);
-    whooshFilter.frequency.setTargetAtTime(240+speedSm*26+pulse*260, AC.currentTime, 0.1);
+    whooshFilter.frequency.setTargetAtTime(240+speedSm*22+pulseSm*260, AC.currentTime, 0.1);
     if(whooshPan) whooshPan.pan.setTargetAtTime(Math.sin(t*0.21)*0.35, AC.currentTime, 0.25);
   }
 
@@ -1122,9 +1131,9 @@ function tick(){
     var edge = Math.max(Math.abs(_proj.x), Math.abs(_proj.y));
     var fade = _proj.z < 1 ? 1 - Math.min(1, Math.max(0, (edge-1)/0.4)) : 0;
     gradePass.uniforms.uLight.value.set(_proj.x*0.5+0.5, _proj.y*0.5+0.5);
-    gradePass.uniforms.uRays.value = fade * (0.45 + pulse*1.1);
+    gradePass.uniforms.uRays.value = fade * (0.60 + pulseSm*1.1);
     gradePass.uniforms.uTime.value=t;
-    gradePass.uniforms.uPulse.value=pulse;
+    gradePass.uniforms.uPulse.value=pulseSm;
     composer.render();
   }else{
     renderer.render(scene,camera);

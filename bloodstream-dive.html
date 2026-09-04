@@ -44,7 +44,7 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 800 : 3400,
+  cells:     isSmall ? 1000 : 4800,
   platelets: isSmall ? 60  : 150,
   micro:     isSmall ? 420 : 1500,
   bokeh:     isSmall ? 10  : 22
@@ -697,7 +697,7 @@ if(postOK){
   if(THREE.BokehPass && THREE.BokehShader && !isSmall){
     try{
       bokehPass = new THREE.BokehPass(scene, camera, {
-        focus: 10.0, aperture: 0.00028, maxblur: 0.006,
+        focus: 10.0, aperture: 0.00036, maxblur: 0.009,
         width: window.innerWidth, height: window.innerHeight
       });
       // r134 BokehPass ships needsSwap=false: without this the composited DoF

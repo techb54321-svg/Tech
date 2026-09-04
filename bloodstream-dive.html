@@ -299,6 +299,23 @@ var wallMat = new THREE.MeshStandardMaterial({
   color:0xffffff, roughness:1.0, metalness:0.0,
   emissive:0x090103, side:THREE.BackSide
 });
+// living wall: a heartbeat contraction wave travels along the vessel and
+// visibly squeezes the lumen as it sweeps past (uv.x runs 0..1 around the loop)
+wallMat.onBeforeCompile = function(shader){
+  shader.uniforms.uWavePos = {value:-9999};
+  shader.uniforms.uWaveAmp = {value:0};
+  shader.uniforms.uLoopLen = {value:curveLen};
+  shader.vertexShader = shader.vertexShader
+    .replace('#include <common>',
+      '#include <common>\nuniform float uWavePos;\nuniform float uWaveAmp;\nuniform float uLoopLen;')
+    .replace('#include <begin_vertex>',
+      ['#include <begin_vertex>',
+       'float aAlong = uv.x * uLoopLen;',
+       'float dWave = mod(aAlong - uWavePos + uLoopLen*1.5, uLoopLen) - uLoopLen*0.5;',
+       'float squeeze = exp(-dWave*dWave/22.0) * uWaveAmp;',
+       'transformed -= normal * squeeze * 1.15;'].join('\n'));
+  wallMat.userData.shader = shader;
+};
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
@@ -505,7 +522,18 @@ var whites = [];
 for(var wi=0; wi<2; wi++){
   var wm = new THREE.Mesh(leukocyteGeo(), wbcMat);
   scene.add(wm);
-  whites.push({mesh:wm, s:14+wi*31, r:VESSEL_R-3.4, th:wi*2.6, flow:0.45});
+  whites.push({mesh:wm, s:14+wi*31, r:VESSEL_R-3.4, th:wi*2.6, flow:0.45, gulp:0});
+}
+
+// ---------- bacteria: prey for the white cells (phagocytosis, endlessly) ----------
+var bacMat = cellMaterial(0x555026, 0x6a5a20, 0.30, 0x23200e);
+var bacGeo = new THREE.SphereGeometry(0.22, 10, 8); bacGeo.scale(1, 0.42, 0.42);
+var bacteria = [];
+for(var bi2=0; bi2<6; bi2++){
+  var bm = new THREE.Mesh(bacGeo, bacMat);
+  scene.add(bm);
+  bacteria.push({mesh:bm, s:Math.random()*WINDOW-BEHIND, r:VESSEL_R-3.0,
+    th:Math.random()*6.283, ph:Math.random()*6.283, alive:true, respawnAt:0});
 }
 
 // ---------- micro-particles: proteins/lipids drifting in plasma ----------
@@ -574,7 +602,8 @@ if(postOK){
   var GradeShader = {
     uniforms:{
       tDiffuse:{value:null}, uTime:{value:0}, uPulse:{value:0},
-      uRes:{value:new THREE.Vector2(1,1)}
+      uRes:{value:new THREE.Vector2(1,1)},
+      uLight:{value:new THREE.Vector2(0.5,0.5)}, uRays:{value:0}
     },
     vertexShader:[
       'varying vec2 vUv;',
@@ -585,6 +614,8 @@ if(postOK){
       'uniform float uTime;',
       'uniform float uPulse;',
       'uniform vec2 uRes;',
+      'uniform vec2 uLight;',
+      'uniform float uRays;',
       'varying vec2 vUv;',
       'vec3 aces(vec3 x){',
       '  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14),0.0,1.0);',
@@ -598,6 +629,16 @@ if(postOK){
       '  col.r = texture2D(tDiffuse, vUv + c*ca).r;',
       '  col.g = texture2D(tDiffuse, vUv).g;',
       '  col.b = texture2D(tDiffuse, vUv - c*ca).b;',
+      // crepuscular rays: march toward the backlight, scattered red light surges with the pulse
+      '  if(uRays > 0.001){',
+      '    vec2 stepv = (uLight - vUv) / 11.0;',
+      '    float illum = 1.0; float rays = 0.0; vec2 sp = vUv;',
+      '    for(int i=0;i<10;i++){',
+      '      sp += stepv; illum *= 0.84;',
+      '      rays += dot(texture2D(tDiffuse, sp).rgb, vec3(0.55,0.30,0.15)) * illum;',
+      '    }',
+      '    col += vec3(1.0,0.30,0.14) * rays * uRays * 0.028;',
+      '  }',
       '  col *= 1.0 + uPulse*0.10;',
       '  col *= vec3(1.02, 0.90, 0.86);',   // pull the salmon cast toward crimson
       '  col = aces(col);',
@@ -616,7 +657,7 @@ if(postOK){
 }
 
 // ---------- audio: heartbeat + flow, generated, starts on first gesture ----------
-var AC=null, master=null, whooshGain=null, whooshFilter=null, muted=false;
+var AC=null, master=null, whooshGain=null, whooshFilter=null, whooshPan=null, muted=false;
 function audioInit(){
   if(AC) return;
   try{ AC = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
@@ -627,16 +668,37 @@ function audioInit(){
   var src = AC.createBufferSource(); src.buffer=buf; src.loop=true;
   whooshFilter = AC.createBiquadFilter(); whooshFilter.type='lowpass'; whooshFilter.frequency.value=320;
   whooshGain = AC.createGain(); whooshGain.gain.value=0.14;
-  src.connect(whooshFilter); whooshFilter.connect(whooshGain); whooshGain.connect(master);
+  src.connect(whooshFilter); whooshFilter.connect(whooshGain);
+  if(AC.createStereoPanner){
+    whooshPan = AC.createStereoPanner();
+    whooshGain.connect(whooshPan); whooshPan.connect(master);
+  }else{
+    whooshGain.connect(master);
+  }
   src.start();
-  var sub = AC.createOscillator(); sub.type='sine'; sub.frequency.value=46;
-  var subG = AC.createGain(); subG.gain.value=0.05;
-  sub.connect(subG); subG.connect(master); sub.start();
+  // body drone: two barely-detuned low sines beating slowly against each other
+  [55, 55.7].forEach(function(fq){
+    var o = AC.createOscillator(); o.type='sine'; o.frequency.value=fq;
+    var g = AC.createGain(); g.gain.value=0.028;
+    o.connect(g); g.connect(master); o.start();
+  });
 }
 function thump(){
   if(!AC || AC.state!=='running') return;
   var t = AC.currentTime;
-  [[0,0.5,52],[0.16,0.3,40]].forEach(function(hit){
+  var vigor = 0.85 + Math.random()*0.3;          // no two beats identical
+  // soft valve click riding on the lub
+  var nb = AC.createBufferSource();
+  nb.buffer = (function(){
+    var n = AC.createBuffer(1, AC.sampleRate*0.03, AC.sampleRate);
+    var dd = n.getChannelData(0);
+    for(var i2=0;i2<dd.length;i2++) dd[i2] = (Math.random()*2-1)*(1-i2/dd.length);
+    return n;
+  })();
+  var hp = AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900;
+  var ng = AC.createGain(); ng.gain.value = 0.05*vigor;
+  nb.connect(hp); hp.connect(ng); ng.connect(master); nb.start(t+0.01);
+  [[0,0.5*vigor,52],[0.16,0.3*vigor,40]].forEach(function(hit){
     var o=AC.createOscillator(), g=AC.createGain();
     o.type='sine';
     o.frequency.setValueAtTime(hit[2], t+hit[0]);
@@ -671,17 +733,40 @@ function wakeCursor(){
   clearTimeout(cursorTimer);
   cursorTimer=setTimeout(function(){ document.body.classList.add('hidecursor'); },2000);
 }
-window.addEventListener('mousemove', wakeCursor);
 wakeCursor();
 
+// look around: mouse steers the gaze gently; phones use device tilt
+var lookTX=0, lookTY=0, lookX=0, lookY=0;
+window.addEventListener('mousemove', function(e){
+  wakeCursor();
+  lookTX = (e.clientX/window.innerWidth  - 0.5)*2;
+  lookTY = (e.clientY/window.innerHeight - 0.5)*2;
+});
+window.addEventListener('deviceorientation', function(e){
+  if(e.gamma===null) return;
+  lookTX = Math.max(-1, Math.min(1, e.gamma/28));
+  lookTY = Math.max(-1, Math.min(1, (e.beta-45)/32));
+});
+
 // ---------- animation ----------
-var BEAT_PERIOD = 0.92;                 // ~65 bpm
+var BEAT_PERIOD = 0.92;                 // ~65 bpm, humanized per beat
 var camU = 0, beatT = 0.6, beatKick = 0, speedSm = 10;
+var waveOrigin = -9999, waveAge = 99;   // heartbeat contraction wave along the wall
+var frameAcc = 0, frameN = 0, dprIdx = 0;              // adaptive resolution governor
+var DPR_LEVELS = [1.5, 1.25, 1.0, 0.8];
+function applyDPR(){
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, DPR_LEVELS[dprIdx]));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  if(composer){
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloom.setSize(960, 540);
+  }
+}
 var clock = new THREE.Clock();
 var _N=new THREE.Vector3(), _B=new THREE.Vector3(), _T=new THREE.Vector3();
 var _pos=new THREE.Vector3(), _q=new THREE.Quaternion(), _m=new THREE.Matrix4(), _scl=new THREE.Vector3();
 var _look=new THREE.Vector3(), _lookN=new THREE.Vector3(), _lookB=new THREE.Vector3();
-var _ax=new THREE.Vector3();
+var _ax=new THREE.Vector3(), _proj=new THREE.Vector3();
 
 function placeOnCurve(u, r, th, out){
   // fully inlined table lerp: position + normal/binormal offsets, zero allocations
@@ -702,9 +787,23 @@ function tick(){
 
   // heartbeat drives the flow — endless
   beatT -= dt;
-  if(beatT<=0){ beatT += BEAT_PERIOD; thump(); beatKick += reducedMotion?2.5:6.5; }
+  if(beatT<=0){
+    beatT += BEAT_PERIOD*(0.94+Math.random()*0.12);  // humanized rhythm
+    thump();
+    beatKick += reducedMotion?2.5:6.5;
+    waveOrigin = camU*curveLen - 8;                  // launch a contraction wave
+    waveAge = 0;
+  }
   beatKick *= Math.pow(0.05, dt);
   var pulse = Math.min(1, beatKick/6.5);
+
+  // wall squeeze wave sweeps forward past the camera
+  waveAge += dt;
+  if(wallMat.userData.shader){
+    var ws = wallMat.userData.shader.uniforms;
+    ws.uWavePos.value = waveOrigin + waveAge*52;
+    ws.uWaveAmp.value = Math.exp(-waveAge*1.15) * (reducedMotion?0.4:1.0);
+  }
 
   var speed = 10 + beatKick;
   speedSm += (speed-speedSm)*Math.min(1,dt*4);
@@ -724,6 +823,11 @@ function tick(){
   if(!reducedMotion){
     camera.rotateZ(Math.sin(t*0.21)*0.10 + Math.sin(t*1.3)*0.008 + pulse*0.004);
   }
+  // gaze follows the mouse / device tilt
+  lookX += (lookTX-lookX)*Math.min(1, dt*2.5);
+  lookY += (lookTY-lookY)*Math.min(1, dt*2.5);
+  camera.rotateY(-lookX*0.30);
+  camera.rotateX(-lookY*0.22);
   camera.fov = 68 + (reducedMotion?0:pulse*1.6);
   camera.updateProjectionMatrix();
 
@@ -794,14 +898,53 @@ function tick(){
   }
   plats.instanceMatrix.needsUpdate = true;
 
-  // white cells
+  // bacteria: jitter along near the wall; respawn a while after being eaten
+  for(var q=0;q<bacteria.length;q++){
+    var bd2=bacteria[q];
+    if(!bd2.alive){
+      if(t > bd2.respawnAt){
+        bd2.alive = true; bd2.mesh.visible = true;
+        bd2.s = AHEAD-6; bd2.th = Math.random()*6.283; bd2.r = VESSEL_R-3.0;
+      }else{ continue; }
+    }
+    bd2.s += speedSm*(0.55-1)*dt;
+    bd2.th += Math.sin(t*6.5+bd2.ph)*0.7*dt;
+    bd2.r = VESSEL_R-3.0 + Math.sin(t*2.1+bd2.ph)*0.5;
+    if(bd2.s> AHEAD)  bd2.s -= WINDOW;
+    if(bd2.s<-BEHIND) bd2.s += WINDOW;
+    placeOnCurve((camDist+bd2.s)/curveLen, bd2.r, bd2.th, bd2.mesh.position);
+    bd2.mesh.rotation.set(t*1.7+bd2.ph, bd2.ph, t*2.3);
+    bd2.mesh.scale.setScalar(Math.min(1, Math.max(0.05, (Math.abs(bd2.s)-0.8)/2.5)));
+  }
+
+  // white cells hunt: drift toward the nearest bacterium and engulf it
   for(var k=0;k<whites.length;k++){
     var wd=whites[k];
     wd.s += speedSm*(wd.flow-1)*dt;
     if(wd.s> AHEAD)  wd.s -= WINDOW;
     if(wd.s<-BEHIND) wd.s += WINDOW;
+    var prey=null, best=13;
+    for(var q2=0;q2<bacteria.length;q2++){
+      var cand=bacteria[q2];
+      if(!cand.alive) continue;
+      var ds=Math.abs(cand.s-wd.s);
+      if(ds<best){ best=ds; prey=cand; }
+    }
+    if(prey){
+      wd.s += Math.max(-1,Math.min(1,(prey.s-wd.s)))*dt*1.1;
+      var dth=((prey.th-wd.th)%6.2832+9.4248)%6.2832-3.1416;
+      wd.th += Math.max(-1,Math.min(1,dth))*dt*0.9;
+      wd.r += (prey.r-wd.r)*Math.min(1,dt*0.8);
+    }
     placeOnCurve((camDist+wd.s)/curveLen, wd.r, wd.th, wd.mesh.position);
-    wd.mesh.scale.setScalar(Math.min(1, Math.max(0.05, (Math.abs(wd.s)-1.2)/4.5)));
+    if(prey && wd.mesh.position.distanceTo(prey.mesh.position) < 1.25){
+      prey.alive=false; prey.mesh.visible=false;
+      prey.respawnAt = t + 7 + Math.random()*9;
+      wd.gulp = 1;                                    // swallow throb
+    }
+    wd.gulp *= Math.pow(0.25, dt);
+    var wScale = Math.min(1, Math.max(0.05, (Math.abs(wd.s)-1.2)/4.5));
+    wd.mesh.scale.setScalar(wScale*(1 + wd.gulp*0.28*Math.sin((1-wd.gulp)*9.0)));
     wd.mesh.rotation.x += 0.28*dt; wd.mesh.rotation.y += 0.17*dt;
   }
 
@@ -829,12 +972,34 @@ function tick(){
     }
   }
 
+  // --- audio follows the flow ---
+  if(AC && whooshGain){
+    whooshGain.gain.setTargetAtTime(0.10+Math.min(0.25, speedSm/70*0.3), AC.currentTime, 0.15);
+    whooshFilter.frequency.setTargetAtTime(240+speedSm*26+pulse*260, AC.currentTime, 0.1);
+    if(whooshPan) whooshPan.pan.setTargetAtTime(Math.sin(t*0.21)*0.35, AC.currentTime, 0.25);
+  }
+
   if(composer){
+    // aim the god rays at the backlight's screen position, fading it off-screen
+    camera.updateMatrixWorld();
+    _proj.copy(backLight.position).project(camera);
+    var edge = Math.max(Math.abs(_proj.x), Math.abs(_proj.y));
+    var fade = _proj.z < 1 ? 1 - Math.min(1, Math.max(0, (edge-1)/0.4)) : 0;
+    gradePass.uniforms.uLight.value.set(_proj.x*0.5+0.5, _proj.y*0.5+0.5);
+    gradePass.uniforms.uRays.value = fade * (0.45 + pulse*1.1);
     gradePass.uniforms.uTime.value=t;
     gradePass.uniforms.uPulse.value=pulse;
     composer.render();
   }else{
     renderer.render(scene,camera);
+  }
+
+  // adaptive resolution: keep the frame budget on unknown venue hardware
+  frameAcc += dt; frameN++;
+  if(frameN >= 60){
+    var avg = frameAcc/frameN; frameAcc = 0; frameN = 0;
+    if(avg > 0.021 && dprIdx < DPR_LEVELS.length-1){ dprIdx++; applyDPR(); }
+    else if(avg < 0.012 && dprIdx > 0){ dprIdx--; applyDPR(); }
   }
 }
 tick();

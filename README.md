@@ -127,10 +127,19 @@ displaced vessel wall with wet specular endothelium, out-of-focus cells
 brushing past the lens, and a film grade on top (bloom, ACES tone mapping,
 grain, chromatic aberration, vignette).
 
-- All sound (heartbeat, flow whoosh, low drone) is generated in-browser and
-  starts on the first click or key press (browsers block audio before a
-  gesture).
+The vessel is alive: every heartbeat launches a visible contraction wave
+that squeezes the wall as it sweeps past, god rays surge from the glow
+ahead, and white blood cells endlessly hunt down and engulf bacteria
+drifting near the wall (phagocytosis, on a loop). Moving the mouse — or
+tilting a phone — steers your gaze around the vessel.
+
+- All sound (an irregular humanized heartbeat with valve clicks, a flow
+  whoosh that follows the pulse, a low body drone drifting in stereo) is
+  generated in-browser and starts on the first click or key press
+  (browsers block audio before a gesture).
 - `F` toggles fullscreen for presenting, `M` mutes. The cursor hides itself.
+- An adaptive resolution governor steps quality down (and back up) to hold
+  60fps on whatever machine drives the projector.
 - Self-contained single file, same as the explorer: only Three.js comes from
   a CDN.
 

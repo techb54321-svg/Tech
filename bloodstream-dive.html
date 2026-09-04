@@ -73,7 +73,7 @@ if(postOK){
 
 var scene = new THREE.Scene();
 var FOG_COLOR = new THREE.Color(0.045, 0.004, 0.006);   // near-black oxblood murk
-var FOG_DENSITY = 0.030;
+var FOG_DENSITY = 0.024;
 scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 var camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 260);
 
@@ -115,10 +115,11 @@ for(var li=0; li<LOOP_N; li++){
   var R = 205 + Math.sin(a*3.0)*34 + Math.cos(a*5.0)*14;
   ctrl.push(new THREE.Vector3(
     Math.cos(a)*R,
-    Math.sin(a*2.0)*48 + Math.cos(a*3.0)*20,
+    Math.sin(a*2.0)*28 + Math.cos(a*3.0)*12,
     Math.sin(a)*R
   ));
 }
+ctrl.reverse();   // travel the vessel in the opposite direction
 var curve = new THREE.CatmullRomCurve3(ctrl, true, 'catmullrom', 0.5);
 var curveLen = curve.getLength();
 var FRAME_SEGS = 1200;
@@ -213,7 +214,7 @@ function makeWallMaps(size){
       // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
       var t = h;
       var ao = 0.52 + 0.48*t;
-      var r = (44 + t*94)*ao, g = (7 + t*24)*ao, b = (9 + t*21)*ao;
+      var r = (50 + t*100)*ao, g = (8 + t*26)*ao, b = (10 + t*23)*ao;
       var fleck = n3(u*44, v*44, 44,44);
       if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*40; g += f*30; b += f*6; }
       var bshade = 1 - border*0.13;
@@ -325,8 +326,8 @@ wallMat.onBeforeCompile = function(shader){
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.22));
-var keyLight = new THREE.PointLight(0xffd9b0, 1.8, 110, 2); scene.add(keyLight);
+scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.30));
+var keyLight = new THREE.PointLight(0xffd9b0, 2.3, 120, 2); scene.add(keyLight);
 var backLight = new THREE.PointLight(0xff2612, 5.5, 70, 2); scene.add(backLight);
 
 // glowing murk down the tunnel: the far distance reads as scattering plasma,
@@ -770,7 +771,7 @@ if(postOK){
       '  col = aces(col);',
       '  col = pow(col, vec3(1.0/2.2));',
       '  float vig = smoothstep(0.9, 0.2, r2*1.7);',
-      '  col *= mix(0.5, 1.0, vig);',
+      '  col *= mix(0.58, 1.0, vig);',
       '  col += (hash(vUv*uRes + vec2(mod(uTime,7.0)*13.0)) - 0.5) * 0.035;',
       '  gl_FragColor = vec4(col, 1.0);',
       '}'
@@ -962,7 +963,7 @@ function tick(){
     ws.uWaveAmp.value = Math.exp(-waveAge*1.15) * (reducedMotion?0.4:1.0);
   }
 
-  var speed = (reducedMotion?20:40) + beatKick*1.6;
+  var speed = (reducedMotion?20:32) + beatKick*1.6;
   speedSm += (speed-speedSm)*Math.min(1,dt*2.5);
   camU = wrap01(camU + speedSm*dt/curveLen);
 
@@ -1004,7 +1005,7 @@ function tick(){
   // lights ride with the camera
   keyLight.position.copy(camera.position);
   keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
-  keyLight.intensity = 1.8 + pulseSm*0.45;
+  keyLight.intensity = 2.3 + pulseSm*0.5;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
   backLight.intensity = 5.5 + pulseSm*3.5;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);

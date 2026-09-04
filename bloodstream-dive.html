@@ -72,7 +72,7 @@ if(postOK){
 }
 
 var scene = new THREE.Scene();
-var FOG_COLOR = new THREE.Color(0.045, 0.004, 0.006);   // near-black oxblood murk
+var FOG_COLOR = new THREE.Color(0.20, 0.030, 0.022);    // distance glows warm, like a lit throat
 var FOG_DENSITY = 0.018;
 scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 var camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 260);
@@ -168,83 +168,75 @@ var VESSEL_R = 9;
 
 // ---------- wall textures: endothelium, generated procedurally ----------
 function makeWallMaps(size){
-  var n1 = lattice2(64), n2 = lattice2(64), n3 = lattice2(64);
-  var height = new Float32Array(size*size);
-  // endothelial pavement: toroidal Voronoi border field — a connected network of
-  // cell boundaries (F2-F1 metric), slightly stretched along the flow direction
-  var VG = 13, VP = [];
-  for(var vy=0; vy<VG; vy++){
-    VP.push([]);
-    for(var vx=0; vx<VG; vx++){
-      VP[vy].push([(vx+0.15+Math.random()*0.7)/VG, (vy+0.15+Math.random()*0.7)/VG]);
-    }
-  }
-  function voroBorder(u2, v2){
-    var cu = Math.floor(u2*VG), cv = Math.floor(v2*VG);
-    var d1 = 9, d2 = 9;
-    for(var oy=-1; oy<=1; oy++){
-      for(var ox=-1; ox<=1; ox++){
-        var p2 = VP[((cv+oy)%VG+VG)%VG][((cu+ox)%VG+VG)%VG];
-        var du = Math.abs(u2-p2[0]); du = Math.min(du, 1-du) * 0.72;  // stretch along flow
-        var dv = Math.abs(v2-p2[1]); dv = Math.min(dv, 1-dv);
-        var d = Math.sqrt(du*du+dv*dv);
-        if(d<d1){ d2=d1; d1=d; } else if(d<d2){ d2=d; }
-      }
-    }
-    var e2 = d2-d1;                          // 0 exactly on a border
-    return e2 > 0.016 ? 0 : 1 - e2/0.016;
-  }
-  var img = document.createElement('canvas'); img.width = img.height = size;
-  var ig = img.getContext('2d');
-  var idata = ig.createImageData(size,size);
-  var rough = document.createElement('canvas'); rough.width = rough.height = size;
-  var rg = rough.getContext('2d');
-  var rdata = rg.createImageData(size,size);
+  // Tissue built the way texture artists build it: ridged multifractal fibres
+  // (sharp creases, not blobs) running around the vessel, domain-warped for
+  // ropey irregularity, crevice occlusion from the height field, two-tone
+  // mottling and micro-grain. Every octave uses integer periods so it tiles.
+  var nA = lattice2(64), nB = lattice2(64), nC = lattice2(128), nD = lattice2(128);
+  var N = size*size, height = new Float32Array(N), mott = new Float32Array(N);
+  function ridged(n){ var r = 1 - Math.abs(2*n - 1); return r*r; }
   for(var y=0;y<size;y++){
     for(var x=0;x<size;x++){
-      var u = x/size, v = y/size;
-      // near-isotropic mottling with one broad octave for macro variation (all octaves tile)
-      // fibres run around the vessel (long in v, short in u) with a helical tilt;
-      // every octave keeps integer periods so the map still tiles seamlessly
-      var macro = n1(u*5+2, v*3+1, 5,3);
-      var fu = u*44 + v*11 + macro*3.0, fv = v*14;
-      var fib = n1(fu, fv, 11,14)*0.55 + n2(fu*2+3, fv*2+1, 22,28)*0.30 + n3(u*120, v*40, 120,40)*0.15;
-      var h = fib*0.72 + macro*0.28;
-      h = h*h*(3-2*h);
-      var i4 = (y*size+x)*4;
-      // pavement shows in patches; elsewhere the wall is smooth mucosa
-      var msk = Math.min(1, Math.max(0, (n2(u*3+5, v*3+9, 3,3)-0.35)/0.30));
-      var border = 0.0;   // reference tissue is fibrous, not cobblestone
-      h = Math.max(0, h - border*0.10);        // cell borders sit in shallow grooves
-      height[y*size+x] = h;
-      // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
-      var t = h;
-      var ao = 0.40 + 0.60*t;
-      var r = (40 + t*100)*ao, g = (5 + t*22)*ao, b = (6 + t*15)*ao;
-      var fleck = n3(u*44, v*44, 44,44);
-      if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*40; g += f*30; b += f*6; }
-      var bshade = 1 - border*0.13;
-      r *= bshade; g *= bshade; b *= bshade;
-      idata.data[i4]=r; idata.data[i4+1]=g; idata.data[i4+2]=b; idata.data[i4+3]=255;
-      // roughness: wet tissue, glossier in the crevices where plasma films pool
-      var ro = 100 + t*90;
-      rdata.data[i4]=ro; rdata.data[i4+1]=ro; rdata.data[i4+2]=ro; rdata.data[i4+3]=255;
+      var u=x/size, v=y/size, i=y*size+x;
+      var uu = u + (nA(u*3+1, v*2+1, 3,2)-0.5)*0.22;   // strong domain warp (tiles)
+      var vv = v + (nB(u*2+2, v*3+1, 2,3)-0.5)*0.22;
+      var f = ridged(nC(uu*24, vv*5, 24,5))*0.36          // fibres: long around, short along
+            + ridged(nC(uu*48+7, vv*10+3, 48,10))*0.22
+            + ridged(nD(uu*40 + vv*40 + 11, vv*16 + 2, 40,16))*0.18   // diagonal set
+            + ridged(nD(uu*96+3, vv*24+5, 96,24))*0.10
+            + nD(u*128+5, v*128+9, 128,128)*0.10           // micro-grain
+            + nA(u*6, v*4, 6,4)*0.25;                       // macro folds
+      height[i] = f/1.21;
+      mott[i] = nA(u*9+3, v*7+2, 9,7);
     }
+  }
+  // crevice occlusion: how far each texel sits below its neighbourhood
+  var blur = new Float32Array(N), tmp = new Float32Array(N), R = Math.max(2, Math.round(size/170));
+  for(var y2=0;y2<size;y2++){
+    for(var x2=0;x2<size;x2++){
+      var acc=0;
+      for(var k=-R;k<=R;k++) acc += height[y2*size + ((x2+k+size)%size)];
+      tmp[y2*size+x2] = acc/(2*R+1);
+    }
+  }
+  for(var y3=0;y3<size;y3++){
+    for(var x3=0;x3<size;x3++){
+      var acc2=0;
+      for(var k2=-R;k2<=R;k2++) acc2 += tmp[((y3+k2+size)%size)*size + x3];
+      blur[y3*size+x3] = acc2/(2*R+1);
+    }
+  }
+  var img = document.createElement('canvas'); img.width = img.height = size;
+  var ig = img.getContext('2d'), idata = ig.createImageData(size,size);
+  var rough = document.createElement('canvas'); rough.width = rough.height = size;
+  var rg = rough.getContext('2d'), rdata = rg.createImageData(size,size);
+  for(var i2=0;i2<N;i2++){
+    var h = height[i2], cav = h - blur[i2];
+    var ao = Math.min(1.05, Math.max(0.22, 0.62 + 3.2*cav));
+    var m = mott[i2];
+    // two tissue tones: arterial crimson and deep maroon, mixed by slow mottling
+    var r = 128*(1-m) + 52*m, g = 16*(1-m) + 7*m, b = 18*(1-m) + 12*m;
+    var lift = 0.35 + 0.65*h;
+    r = (r*lift + 40*h*h)*ao; g = (g*lift + 12*h*h)*ao; b = (b*lift + 10*h*h)*ao;
+    var i4 = i2*4;
+    idata.data[i4]=r; idata.data[i4+1]=g; idata.data[i4+2]=b; idata.data[i4+3]=255;
+    var ro = 95 + h*75 - Math.max(0,-cav)*160;          // wet plasma films pool in crevices
+    ro = Math.max(40, Math.min(200, ro));
+    rdata.data[i4]=ro; rdata.data[i4+1]=ro; rdata.data[i4+2]=ro; rdata.data[i4+3]=255;
   }
   ig.putImageData(idata,0,0);
   rg.putImageData(rdata,0,0);
-  // normal map from the height field
+  // normal map from the height field (wrapping)
   var nrm = document.createElement('canvas'); nrm.width = nrm.height = size;
-  var ng = nrm.getContext('2d');
-  var ndata = ng.createImageData(size,size);
-  var S = 4.2;
-  for(var y2=0;y2<size;y2++){
-    for(var x2=0;x2<size;x2++){
-      var xm=(x2-1+size)%size, xp=(x2+1)%size, ym=(y2-1+size)%size, yp=(y2+1)%size;
-      var dx=(height[y2*size+xp]-height[y2*size+xm])*S;
-      var dy=(height[yp*size+x2]-height[ym*size+x2])*S;
+  var ng = nrm.getContext('2d'), ndata = ng.createImageData(size,size);
+  var S = 4.5 * (size/512);
+  for(var y4=0;y4<size;y4++){
+    for(var x4=0;x4<size;x4++){
+      var xm=(x4-1+size)%size, xp=(x4+1)%size, ym=(y4-1+size)%size, yp=(y4+1)%size;
+      var dx=(height[y4*size+xp]-height[y4*size+xm])*S;
+      var dy=(height[yp*size+x4]-height[ym*size+x4])*S;
       var inv=1/Math.sqrt(dx*dx+dy*dy+1);
-      var j4=(y2*size+x2)*4;
+      var j4=(y4*size+x4)*4;
       ndata.data[j4]  =(-dx*inv*0.5+0.5)*255;
       ndata.data[j4+1]=(-dy*inv*0.5+0.5)*255;
       ndata.data[j4+2]=( inv*0.5+0.5)*255;
@@ -260,7 +252,7 @@ function makeWallMaps(size){
   rouT.wrapS = rouT.wrapT = THREE.RepeatWrapping;
   return {map:mapT, normal:nrmT, rough:rouT};
 }
-var wallMaps = makeWallMaps(512);    // fog+grain hide anything finer; keeps startup fast
+var wallMaps = makeWallMaps(isSmall ? 512 : 1024);
 // square texel aspect in world space: loop ~1290 units long, circumference ~57
 var maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 wallMaps.map.anisotropy = maxAniso;
@@ -308,7 +300,7 @@ var tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGS, VESSEL_R, TUBE_RADIAL, tr
 })();
 var wallMat = new THREE.MeshStandardMaterial({
   map:wallMaps.map, normalMap:wallMaps.normal, roughnessMap:wallMaps.rough,
-  normalScale:new THREE.Vector2(2.2,2.2),
+  normalScale:new THREE.Vector2(2.6,2.6),
   color:0xffffff, roughness:1.0, metalness:0.0,
   emissive:0x090103, side:THREE.BackSide
 });
@@ -333,15 +325,15 @@ wallMat.onBeforeCompile = function(shader){
   shader.fragmentShader = shader.fragmentShader
     .replace('#include <common>', '#include <common>\nvarying float vWaveGlow;')
     .replace('#include <emissivemap_fragment>',
-      '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0,0.24,0.08) * vWaveGlow * 0.75;');
+      '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0,0.20,0.08) * vWaveGlow * 0.55;');
   wallMat.userData.shader = shader;
 };
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
 scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.14));
-var keyLight = new THREE.PointLight(0xffd9b0, 1.6, 120, 2); scene.add(keyLight);
-var backLight = new THREE.PointLight(0xff4a30, 8.0, 80, 2); scene.add(backLight);
+var keyLight = new THREE.PointLight(0xffd9b0, 1.2, 120, 2); scene.add(keyLight);
+var backLight = new THREE.PointLight(0xff5a3a, 11.0, 95, 2); scene.add(backLight);
 
 // glowing murk down the tunnel: the far distance reads as scattering plasma,
 // never a black hole, and it feeds bloom a plausible distant source
@@ -420,11 +412,11 @@ var cellFrag = [
   // amplitude fades with distance so it never shimmers far away
   '  vec3 Tt = normalize(cross(N, vec3(0.577,0.577,0.577)));',
   '  vec3 Bt = cross(N, Tt);',
-  '  vec2 mm = texture2D(uNoise, (vObj.xy + vObj.z*0.37)*0.35 + vec2(vTint.r*7.31, vTint.g*5.17)).rg;',
-  '  float na = clamp(1.4 - fd*0.12, 0.0, 1.0) * 0.5;',
+  '  vec2 mm = texture2D(uNoise, (vObj.xy + vObj.z*0.37)*0.22 + vec2(vTint.r*7.31, vTint.g*5.17)).rg;',
+  '  float na = clamp(1.4 - fd*0.12, 0.0, 1.0) * 0.6;',
   '  N = normalize(N + Tt*(mm.x-0.5)*na + Bt*(mm.y-0.5)*na);',
   '  vec3 albedo = uAlbedo * vTint;',
-  '  albedo *= 0.88 + 0.28*mm.x;',      // surface pigment variation kills the sticker look
+  '  albedo *= 0.78 + 0.42*mm.x;',      // surface pigment variation kills the sticker look
   // haemoglobin absorption: the thick rim runs deeper red than the thin centre
   '  float thickness = 1.0 - 0.68*vDimple;',
   '  albedo *= mix(vec3(1.30,1.18,1.10), vec3(0.80,0.72,0.70), thickness);',
@@ -433,13 +425,13 @@ var cellFrag = [
   '  float kd = length(Ld); Ld /= kd;',
   '  float katt = 1.0/(1.0 + 0.006*kd*kd);',
   '  float wrap = clamp((dot(N,Ld)+0.45)/1.45, 0.0, 1.0);',
-  '  vec3 col = albedo * wrap * katt * (1.45 + 0.30*uPulse);',
+  '  vec3 col = albedo * wrap * katt * (1.25 + 0.25*uPulse);',
   '  col *= 1.0 - vDimple*0.55;',   // biconcave centre reads darker
   // wet membrane specular
   // moist membrane: a broad dim sheen plus a soft-clamped highlight, never a candy dot
   '  vec3 H = normalize(Ld + V);',
   '  col += vec3(1.0,0.90,0.82) * min(pow(max(dot(N,H),0.0), 48.0) * uSpec, 0.35) * katt;',
-  '  col += vec3(1.0,0.72,0.60) * pow(1.0 - max(dot(N,V),0.0), 2.5) * 0.28 * katt;',
+  '  col += vec3(1.0,0.72,0.60) * pow(1.0 - max(dot(N,V),0.0), 2.5) * 0.18 * katt;',
   // translucency: the deep red glow ahead shines THROUGH thin cells
   '  vec3 Bd = uBackPos - vWorld;',
   '  float bd = length(Bd); Bd /= bd;',
@@ -500,7 +492,7 @@ function cellMaterial(albedo, glow, spec, rim){
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x8c0a12, 0xff2408, 0.14, 0x8a1410);
+var rbcMat  = cellMaterial(0x8c0a12, 0xff2408, 0.08, 0x7a1210);
 var platMat = cellMaterial(0x6b4030, 0xb03418, 0.14, 0x2e0f08);
 var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.08, 0x6b4530);
 
@@ -561,7 +553,7 @@ for(var ci=0; ci<COUNTS.cells; ci++){
   });
   // haemoglobin gives every RBC the same pigment: hue jitter stays within ±3°,
   // and all visible color spread comes from thickness and lighting instead
-  tint.setHSL(0.986+Math.random()*0.016, 0.78+Math.random()*0.10, 0.36+Math.random()*0.10);
+  tint.setHSL(0.986+Math.random()*0.016, 0.78+Math.random()*0.10, 0.28+Math.random()*0.09);
   cells.setColorAt(ci, tint);
 }
 if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
@@ -724,7 +716,7 @@ if(postOK){
   }
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
-  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.75, 0.6, 0.7);
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.6, 0.6, 0.85);
   composer.addPass(bloom);
   var GradeShader = {
     uniforms:{
@@ -1042,9 +1034,9 @@ function tick(){
   // lights ride with the camera
   keyLight.position.copy(camera.position);
   keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
-  keyLight.intensity = 1.6 + pulseSm*0.4;
-  placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
-  backLight.intensity = 8.0 + pulseSm*4.0;
+  keyLight.intensity = 1.2 + pulseSm*0.35;
+  placeOnCurve(u + 28/curveLen, 0, 0, backLight.position);
+  backLight.intensity = 11.0 + pulseSm*4.0;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
   murk.material.opacity = 0.80 + pulseSm*0.15;
 

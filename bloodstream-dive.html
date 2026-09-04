@@ -72,7 +72,7 @@ if(postOK){
 }
 
 var scene = new THREE.Scene();
-var FOG_COLOR = new THREE.Color(0.10, 0.010, 0.012);    // linear deep red murk
+var FOG_COLOR = new THREE.Color(0.045, 0.004, 0.006);   // near-black oxblood murk
 var FOG_DENSITY = 0.042;
 scene.fog = new THREE.FogExp2(FOG_COLOR, FOG_DENSITY);
 var camera = new THREE.PerspectiveCamera(68, window.innerWidth/window.innerHeight, 0.1, 260);
@@ -212,8 +212,8 @@ function makeWallMaps(size){
       height[y*size+x] = h;
       // albedo: deep crimson tissue with baked crevice AO, faint fat flecks
       var t = h;
-      var ao = 0.55 + 0.45*t;
-      var r = (44 + t*96)*ao, g = (7 + t*26)*ao, b = (9 + t*22)*ao;
+      var ao = 0.45 + 0.55*t;
+      var r = (38 + t*88)*ao, g = (6 + t*22)*ao, b = (8 + t*19)*ao;
       var fleck = n3(u*44, v*44, 44,44);
       if(fleck > 0.87){ var f=(fleck-0.87)/0.13; r += f*40; g += f*30; b += f*6; }
       var bshade = 1 - border*0.13;
@@ -321,9 +321,9 @@ wallMat.onBeforeCompile = function(shader){
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
 
 // ---------- lights ----------
-scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.18));
+scene.add(new THREE.HemisphereLight(0x3a070d, 0x0a0102, 0.12));
 var keyLight = new THREE.PointLight(0xffd9b0, 1.25, 80, 2); scene.add(keyLight);
-var backLight = new THREE.PointLight(0xff2612, 3.8, 64, 2); scene.add(backLight);
+var backLight = new THREE.PointLight(0xff2612, 5.5, 70, 2); scene.add(backLight);
 
 // glowing murk down the tunnel: the far distance reads as scattering plasma,
 // never a black hole, and it feeds bloom a plausible distant source
@@ -339,7 +339,7 @@ function murkTexture(){
 }
 var murk = new THREE.Sprite(new THREE.SpriteMaterial({map:murkTexture(),
   blending:THREE.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.85}));
-murk.scale.set(19,19,1);
+murk.scale.set(22,22,1);
 scene.add(murk);
 
 // ---------- shared cell shader: wrap diffuse + wet spec + backlit translucency ----------
@@ -482,7 +482,7 @@ function cellMaterial(albedo, glow, spec, rim){
     vertexShader:cellVert, fragmentShader:cellFrag
   });
 }
-var rbcMat  = cellMaterial(0x800e14, 0xff2408, 0.20, 0x380d0a);
+var rbcMat  = cellMaterial(0x800e14, 0xff2408, 0.20, 0x8a1410);
 var platMat = cellMaterial(0x6b4030, 0xb03418, 0.14, 0x2e0f08);
 var wbcMat  = cellMaterial(0x6e4028, 0xb03828, 0.08, 0x6b4530);
 
@@ -535,7 +535,7 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     r: rr, th: Math.random()*Math.PI*2,
     spin:(Math.random()-0.5)*1.6,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
-    sc: 0.55+Math.random()*0.35,
+    sc: 0.50+Math.pow(Math.random(),2.2)*0.75,
     align: Math.min(0.85, (0.45+Math.random()*0.30)*(0.75+0.5*rr/VESSEL_R)),
     wob: Math.random()*6.283,
     // the camera OVERTAKES the flow: cells stream past, which is what sells speed
@@ -547,6 +547,19 @@ for(var ci=0; ci<COUNTS.cells; ci++){
   cells.setColorAt(ci, tint);
 }
 if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
+
+// hero cells: a few outsized cells riding near the camera's line so something
+// regularly looms, fills the frame, and whips past the lens — the scale shock
+for(var hc=0; hc<4; hc++){
+  var hd = cellData[hc];
+  hd.sc = 2.1 + hc*0.35;
+  hd.r = 0.6 + hc*0.55;
+  hd.th = hc*1.57;
+  hd.flow = 0.55;
+  hd.align = 0.8;
+  hd.spin *= 0.4;
+  hd.s = hc*(WINDOW/4) - BEHIND;         // spread them around the cycle
+}
 
 // rouleaux: some red cells travel stacked face-to-face like coin rolls
 var STACKS = isSmall ? 6 : 14, STACK_LEN = 5;
@@ -693,7 +706,7 @@ if(postOK){
   }
   // fixed low base resolution: the 5-mip blur destroys finer detail anyway, and
   // r134's composer.setSize would otherwise silently rebuild it at device pixels
-  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.45, 0.6, 0.8);
+  bloom = new THREE.UnrealBloomPass(new THREE.Vector2(960, 540), 0.6, 0.55, 0.8);
   composer.addPass(bloom);
   var GradeShader = {
     uniforms:{
@@ -744,7 +757,7 @@ if(postOK){
       '  col = pow(col, vec3(1.0/2.2));',
       '  float vig = smoothstep(0.9, 0.2, r2*1.7);',
       '  col *= mix(0.5, 1.0, vig);',
-      '  col += (hash(vUv*uRes + vec2(mod(uTime,7.0)*13.0)) - 0.5) * 0.05;',
+      '  col += (hash(vUv*uRes + vec2(mod(uTime,7.0)*13.0)) - 0.5) * 0.035;',
       '  gl_FragColor = vec4(col, 1.0);',
       '}'
     ].join('\n')
@@ -967,7 +980,7 @@ function tick(){
   camera.rotateY(-lookX*0.30);
   camera.rotateX(-lookY*0.22);
   // velocity widens the view — continuous, never a per-beat pump
-  camera.fov = 70 + Math.min(reducedMotion?6:14, Math.max(0, speedSm-14)*0.5);
+  camera.fov = 74 + Math.min(reducedMotion?6:14, Math.max(0, speedSm-14)*0.5);
   camera.updateProjectionMatrix();
   if(bokehPass && !reducedMotion){
     // heartbeat rack focus: the eye refocuses slightly with each pulse
@@ -979,9 +992,9 @@ function tick(){
   keyLight.position.addScaledVector(_N, 0.9).addScaledVector(_B, 0.6);
   keyLight.intensity = 1.25 + pulseSm*0.35;
   placeOnCurve(u + 20/curveLen, 0, 0, backLight.position);
-  backLight.intensity = 3.8 + pulseSm*2.8;
+  backLight.intensity = 5.5 + pulseSm*3.5;
   placeOnCurve(u + 30/curveLen, 0, 0, murk.position);
-  murk.material.opacity = 0.55 + pulseSm*0.15;
+  murk.material.opacity = 0.80 + pulseSm*0.15;
 
   // shader uniforms
   var mats=[rbcMat, platMat, wbcMat];
@@ -1076,7 +1089,7 @@ function tick(){
       if(ds<best){ best=ds; prey=cand; }
     }
     if(prey){
-      wd.s += Math.max(-1,Math.min(1,(prey.s-wd.s)))*dt*1.1;
+      wd.s += Math.max(-1,Math.min(1,(prey.s-wd.s)))*dt*(0.5 + speedSm*0.06);
       var dth=((prey.th-wd.th)%6.2832+9.4248)%6.2832-3.1416;
       wd.th += Math.max(-1,Math.min(1,dth))*dt*0.9;
       wd.r += (prey.r-wd.r)*Math.min(1,dt*0.8);
@@ -1100,7 +1113,7 @@ function tick(){
     if(md.s> AHEAD)  md.s -= WINDOW;
     if(md.s<-BEHIND) md.s += WINDOW;
     // size-attenuated points balloon at near-zero depth: hop over the lens zone
-    if(md.s > -1.5 && md.s < 1.5) md.s = 1.5;
+    if(md.s > -1.5 && md.s < 1.5) md.s = -1.5;
     placeOnCurve((camDist+md.s)/curveLen, md.r, md.th, _pos);
     microPos[m2*3]=_pos.x; microPos[m2*3+1]=_pos.y; microPos[m2*3+2]=_pos.z;
   }

@@ -320,7 +320,14 @@ wallMat.onBeforeCompile = function(shader){
        'float aAlong = uv.x * uLoopLen;',
        'float dWave = mod(aAlong - uWavePos + uLoopLen*1.5, uLoopLen) - uLoopLen*0.5;',
        'float squeeze = exp(-dWave*dWave/22.0) * uWaveAmp;',
+       'vWaveGlow = exp(-dWave*dWave/40.0) * uWaveAmp;',
        'transformed -= normal * squeeze * 1.15;'].join('\n'));
+  shader.vertexShader = shader.vertexShader.replace('uniform float uLoopLen;',
+      'uniform float uLoopLen;\nvarying float vWaveGlow;');
+  shader.fragmentShader = shader.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vWaveGlow;')
+    .replace('#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(1.0,0.20,0.07) * vWaveGlow * 0.36;');
   wallMat.userData.shader = shader;
 };
 scene.add(new THREE.Mesh(tubeGeo, wallMat));
@@ -825,6 +832,23 @@ function thump(){
   var hp = AC.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900;
   var ng = AC.createGain(); ng.gain.value = 0.05*vigor;
   nb.connect(hp); hp.connect(ng); ng.connect(master); nb.start(t+0.01);
+  // the pulse wave rushing past: a short rising sweep right after the lub
+  var sw = AC.createBufferSource();
+  sw.buffer = (function(){
+    var n = AC.createBuffer(1, AC.sampleRate*0.45, AC.sampleRate);
+    var dd = n.getChannelData(0);
+    for(var i3=0;i3<dd.length;i3++) dd[i3] = Math.random()*2-1;
+    return n;
+  })();
+  var bp = AC.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1.2;
+  bp.frequency.setValueAtTime(350, t+0.08);
+  bp.frequency.exponentialRampToValueAtTime(1700, t+0.42);
+  var sg = AC.createGain();
+  sg.gain.setValueAtTime(0.0001, t+0.08);
+  sg.gain.exponentialRampToValueAtTime(0.09*vigor, t+0.17);
+  sg.gain.exponentialRampToValueAtTime(0.0001, t+0.50);
+  sw.connect(bp); bp.connect(sg); sg.connect(master);
+  sw.start(t+0.08); sw.stop(t+0.52);
   [[0,0.5*vigor,52],[0.16,0.3*vigor,40]].forEach(function(hit){
     var o=AC.createOscillator(), g=AC.createGain();
     o.type='sine';
@@ -972,12 +996,12 @@ function tick(){
   frameAt(u,_N,_B,_T);
   pointAt(u, camera.position);
   var wander = reducedMotion ? 0.5 : 1.0;
-  camera.position.addScaledVector(_N, (Math.sin(t*0.31)*0.6 + Math.sin(t*0.071)*2.8)*wander);
-  camera.position.addScaledVector(_B, (Math.cos(t*0.23)*0.6 + Math.cos(t*0.059)*2.8)*wander);
+  camera.position.addScaledVector(_N, (Math.sin(t*0.31)*0.25 + Math.sin(t*0.071)*0.7)*wander);
+  camera.position.addScaledVector(_B, (Math.cos(t*0.23)*0.25 + Math.cos(t*0.059)*0.7)*wander);
   pointAt(u + 14/curveLen, _look);
   frameAt(u + 14/curveLen, _lookN, _lookB);
-  _look.addScaledVector(_lookN, Math.sin(t*0.19)*1.4);
-  _look.addScaledVector(_lookB, Math.cos(t*0.15)*1.4);
+  _look.addScaledVector(_lookN, Math.sin(t*0.19)*0.8);
+  _look.addScaledVector(_lookB, Math.cos(t*0.15)*0.8);
   if(!lookInit){ _lookSm.copy(_look); lookInit=true; }
   _lookSm.lerp(_look, Math.min(1, dt*1.8));      // the head turns late into bends
   camera.lookAt(_lookSm);
@@ -987,7 +1011,7 @@ function tick(){
   var bankTarget = Math.max(-0.4, Math.min(0.4, -_R.dot(_ax)*0.12));
   bankSm += (bankTarget-bankSm)*Math.min(1, dt*2.5);
   if(!reducedMotion){
-    camera.rotateZ(bankSm + Math.sin(t*0.21)*0.06);
+    camera.rotateZ(bankSm + Math.sin(t*0.21)*0.06 + t*0.045);
   }
   // gaze follows the mouse / device tilt
   lookX += (lookTX-lookX)*Math.min(1, dt*2.5);
@@ -995,7 +1019,7 @@ function tick(){
   camera.rotateY(-lookX*0.30);
   camera.rotateX(-lookY*0.22);
   // velocity widens the view — continuous, never a per-beat pump
-  camera.fov = 74 + Math.min(reducedMotion?6:16, Math.max(0, speedSm-16)*0.55);
+  camera.fov = 80 + Math.min(reducedMotion?6:12, Math.max(0, speedSm-16)*0.5);
   camera.updateProjectionMatrix();
   if(bokehPass && !reducedMotion){
     // heartbeat rack focus: the eye refocuses slightly with each pulse

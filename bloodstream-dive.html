@@ -44,9 +44,9 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 600 : 2400,
+  cells:     isSmall ? 800 : 3400,
   platelets: isSmall ? 60  : 150,
-  micro:     isSmall ? 380 : 1200,
+  micro:     isSmall ? 420 : 1500,
   bokeh:     isSmall ? 10  : 22
 };
 
@@ -547,7 +547,7 @@ for(var ci=0; ci<COUNTS.cells; ci++){
     r: rr, th: Math.random()*Math.PI*2,
     spin:(Math.random()-0.5)*1.6,
     axis:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize(),
-    sc: 0.50+Math.pow(Math.random(),2.2)*0.75,
+    sc: 0.38+Math.pow(Math.random(),2.2)*0.55,
     align: Math.min(0.85, (0.45+Math.random()*0.30)*(0.75+0.5*rr/VESSEL_R)),
     wob: Math.random()*6.283,
     // the camera OVERTAKES the flow: cells stream past, which is what sells speed
@@ -564,7 +564,7 @@ if(cells.instanceColor) cells.instanceColor.needsUpdate = true;
 // regularly looms, fills the frame, and whips past the lens — the scale shock
 for(var hc=0; hc<4; hc++){
   var hd = cellData[hc];
-  hd.sc = 2.1 + hc*0.35;
+  hd.sc = 1.7 + hc*0.3;
   hd.r = 0.6 + hc*0.55;
   hd.th = hc*1.57;
   hd.flow = 0.50;
@@ -574,7 +574,7 @@ for(var hc=0; hc<4; hc++){
 }
 
 // rouleaux: some red cells travel stacked face-to-face like coin rolls
-var STACKS = isSmall ? 6 : 14, STACK_LEN = 5;
+var STACKS = isSmall ? 8 : 20, STACK_LEN = 5;
 var stackStart = COUNTS.cells - STACKS*STACK_LEN;
 for(var sk=0; sk<STACKS; sk++){
   var leadIdx = stackStart + sk*STACK_LEN;
@@ -746,7 +746,7 @@ if(postOK){
       'void main(){',
       '  vec2 c = vUv - 0.5;',
       '  float r2 = dot(c,c);',
-      '  float ca = (0.0035 + uPulse*0.0018) * r2 * 2.0;',
+      '  float ca = (0.0024 + uPulse*0.0014) * r2 * 2.0;',
       // swimming through fluid: a faint refractive wobble on the lens
       '  vec2 wob = vec2(sin(vUv.y*6.0+uTime*0.8), cos(vUv.x*5.0+uTime*0.6))*0.0016*(1.0+uPulse*0.8);',
       '  vec2 uvb = vUv + wob;',
@@ -779,7 +779,7 @@ if(postOK){
       '  col = pow(col, vec3(1.0/2.2));',
       '  float vig = smoothstep(0.9, 0.2, r2*1.7);',
       '  col *= mix(0.58, 1.0, vig);',
-      '  col += (hash(vUv*uRes + vec2(mod(uTime,7.0)*13.0)) - 0.5) * 0.035;',
+      '  col += (hash(vUv*uRes + vec2(mod(uTime,7.0)*13.0)) - 0.5) * 0.026;',
       '  gl_FragColor = vec4(col, 1.0);',
       '}'
     ].join('\n')

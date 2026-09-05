@@ -141,7 +141,17 @@ tilting a phone — steers your gaze around the vessel.
 - An adaptive resolution governor steps quality down (and back up) to hold
   60fps on whatever machine drives the projector.
 - Self-contained single file, same as the explorer: only Three.js comes from
-  a CDN.
+  a CDN. **For talks, use `bloodstream-dive-offline.html`** — identical, but
+  with every script inlined so it runs with no internet at all.
+
+### Showing it in a PowerPoint talk
+
+PowerPoint can't render live 3D, so link out to it: put a hyperlink on a
+slide (Insert → Link) pointing at `bloodstream-dive-offline.html` on the
+laptop. During the slideshow, click it — it opens in the browser; press `F`
+for fullscreen, click once for sound, `Esc` then `Alt+Tab` to return to the
+slides. Alternatively screen-record 30–60 s of it and insert that as a video
+set to start automatically, loop, and play full screen.
 
 ## Notes
 

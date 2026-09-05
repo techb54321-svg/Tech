@@ -185,9 +185,9 @@ var maxAniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
 wallMaps.map.anisotropy = maxAniso;
 wallMaps.normal.anisotropy = maxAniso;
 wallMaps.rough.anisotropy = maxAniso;
-wallMaps.map.repeat.set(46, 2);      // one 1024 tile spans ~28 units along, half the circumference
-wallMaps.normal.repeat.set(46, 2);
-wallMaps.rough.repeat.set(46, 2);
+wallMaps.map.repeat.set(23, 1);      // one 1024 tile spans ~56 units along and the full circumference
+wallMaps.normal.repeat.set(23, 1);
+wallMaps.rough.repeat.set(23, 1);
 
 var TUBE_SEGS = isSmall?700:1200, TUBE_RADIAL = isSmall?20:28;
 var tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGS, VESSEL_R, TUBE_RADIAL, true);
@@ -227,7 +227,7 @@ var tubeGeo = new THREE.TubeGeometry(curve, TUBE_SEGS, VESSEL_R, TUBE_RADIAL, tr
 })();
 var wallMat = new THREE.MeshStandardMaterial({
   map:wallMaps.map, normalMap:wallMaps.normal, roughnessMap:wallMaps.rough,
-  normalScale:new THREE.Vector2(1.8,1.8),
+  normalScale:new THREE.Vector2(1.5,1.5),
   color:0xd8c4c4, roughness:1.0, metalness:0.0,   // slight darkening toward the reference
   emissive:0x090103, side:THREE.BackSide
 });

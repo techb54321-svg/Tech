@@ -1,10 +1,12 @@
-name: Deploy Inside the Sip to GitHub Pages
+name: Deploy site to GitHub Pages
 
-# Builds the WebXR app and publishes it to GitHub Pages on every push to the
-# working branch, so the headset just opens a stable HTTPS link.
+# Publishes the whole repo root (landing page, blood-vessel-simulation.html and
+# the prebuilt sip/ folder) to GitHub Pages. Everything is already static, so
+# there is no build step. Requires Settings → Pages → Source = "GitHub Actions".
+
 on:
   push:
-    branches: [claude/wizardly-noether-ji4obu]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -17,32 +19,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: inside-the-sip
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm ci
-      - run: npm run build
-        env:
-          # Served from https://<user>.github.io/Tech/ — must match the repo name.
-          VITE_BASE: /Tech/
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: inside-the-sip/dist
-
   deploy:
-    needs: build
-    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
     steps:
-      - id: deployment
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

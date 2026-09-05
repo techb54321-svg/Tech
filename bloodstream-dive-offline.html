@@ -1312,7 +1312,7 @@ var isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 ||
               ((navigator.maxTouchPoints||0) > 0 && (window.devicePixelRatio||1) >= 2);
 
 var COUNTS = {
-  cells:     isSmall ? 400 : 1100,
+  cells:     isSmall ? 260 : 650,
   platelets: isSmall ? 60  : 150,
   micro:     isSmall ? 420 : 1500,
   bokeh:     isSmall ? 10  : 22
@@ -1767,7 +1767,7 @@ for(var hc=0; hc<4; hc++){
 }
 
 // rouleaux: some red cells travel stacked face-to-face like coin rolls
-var STACKS = isSmall ? 8 : 20, STACK_LEN = 5;
+var STACKS = isSmall ? 5 : 12, STACK_LEN = 5;
 var stackStart = COUNTS.cells - STACKS*STACK_LEN;
 for(var sk=0; sk<STACKS; sk++){
   var leadIdx = stackStart + sk*STACK_LEN;

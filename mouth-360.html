@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mouth 360 Photo Dome</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html,body { height:100%; overflow:hidden; background:#07030c; color:#f3e9ee;
+    font-family:system-ui,"Segoe UI",Roboto,sans-serif; }
+  #app { position:fixed; inset:0; }
+  canvas { display:block; touch-action:none; }
+
+  #hud { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:10;
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;
+    max-width:calc(100vw - 20px); }
+  .chip { border:1px solid rgba(255,90,120,0.4); background:rgba(20,8,24,0.78);
+    color:#f3e9ee; padding:8px 14px; border-radius:999px; font-size:13px; cursor:pointer;
+    backdrop-filter:blur(8px); transition:all .15s; white-space:nowrap; }
+  .chip:hover { background:rgba(255,90,120,0.25); }
+  .chip.active { background:linear-gradient(90deg,#ff5a78,#ff8da0); color:#1a0008; font-weight:700;
+    border-color:transparent; }
+
+  #vrbtn { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); z-index:10;
+    border:0; border-radius:12px; padding:14px 26px; font-size:16px; font-weight:800;
+    cursor:pointer; color:#04121a; background:linear-gradient(90deg,#3ddc97,#1fb6ff);
+    box-shadow:0 8px 30px rgba(31,182,255,0.35); }
+  #vrbtn:disabled { background:rgba(60,50,60,0.8); color:#9b8a94; cursor:default; box-shadow:none;
+    font-weight:600; font-size:13px; }
+
+  #hint { position:fixed; bottom:74px; left:50%; transform:translateX(-50%); z-index:9;
+    color:#b89aa6; font-size:12px; text-align:center; text-shadow:0 1px 4px #000;
+    max-width:92vw; }
+
+  #back { position:fixed; top:14px; left:14px; z-index:10; text-decoration:none; color:#b89aa6;
+    font-size:13px; background:rgba(20,8,24,0.78); border:1px solid rgba(255,90,120,0.3);
+    padding:8px 12px; border-radius:999px; backdrop-filter:blur(8px); }
+  #back:hover { color:#f3e9ee; }
+
+  #loader { position:fixed; inset:0; z-index:20; display:flex; flex-direction:column; gap:18px;
+    align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 40%, #1a0512, #07030c); transition:opacity .5s; }
+  #loader.hide { opacity:0; pointer-events:none; }
+  #loader .ring { width:54px; height:54px; border-radius:50%; border:4px solid rgba(255,90,120,0.25);
+    border-top-color:#ff5a78; animation:spin 0.9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #loader p { color:#b89aa6; font-size:14px; letter-spacing:0.5px; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./assets/vendor/three/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<a id="back" href="./index.html">← All experiences</a>
+<div id="hud"></div>
+<p id="hint">Drag to look around · scroll to zoom · in VR, pull the trigger to switch scenes</p>
+<button id="vrbtn" disabled>checking VR…</button>
+<div id="loader"><div class="ring"></div><p>Opening the mouth…</p></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+const SCENES = [
+  { label: '👄 Mouth panorama', src: 'assets/mouth-panorama.png',     yaw: -90 },
+  { label: '✨ Healthy',        src: 'assets/mouth-healthy-frame.jpg', yaw: -90 },
+  { label: '🦠 Sugar attack',   src: 'assets/mouth-sugar-frame.jpg',   yaw: -90 },
+];
+const EYE = 1.6;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+document.getElementById('app').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 200);
+camera.position.set(0, EYE, 0);
+scene.add(camera);
+
+// Inside-out sphere the panorama is painted on. Rotating this group also
+// implements VR snap-turn (the camera itself is head-tracked).
+const dome = new THREE.Group();
+dome.position.y = EYE;
+scene.add(dome);
+const sphere = new THREE.Mesh(
+  new THREE.SphereGeometry(40, 64, 32).scale(-1, 1, 1),
+  new THREE.MeshBasicMaterial({ color: 0x000000 })
+);
+dome.add(sphere);
+
+// ---- Scene loading & switching ----
+const loaderEl = document.getElementById('loader');
+const texLoader = new THREE.TextureLoader();
+const textures = [];
+let current = -1;
+
+function applyScene(i) {
+  current = i;
+  const s = SCENES[i];
+  sphere.rotation.y = THREE.MathUtils.degToRad(s.yaw);
+  document.querySelectorAll('.chip').forEach((c, j) => c.classList.toggle('active', j === i));
+  if (textures[i]) {
+    sphere.material.map = textures[i];
+    sphere.material.color.set(0xffffff);
+    sphere.material.needsUpdate = true;
+    loaderEl.classList.add('hide');
+  } else {
+    texLoader.load(s.src, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      textures[i] = t;
+      if (current === i) applyScene(i);   // still the wanted scene
+    });
+  }
+}
+function cycleScene() { applyScene((current + 1) % SCENES.length); }
+
+const hud = document.getElementById('hud');
+SCENES.forEach((s, i) => {
+  const b = document.createElement('button');
+  b.className = 'chip';
+  b.textContent = s.label;
+  b.onclick = () => applyScene(i);
+  hud.appendChild(b);
+});
+applyScene(0);
+// Preload the rest in the background once the first is up.
+texLoader.load(SCENES[1].src, t => { t.colorSpace = THREE.SRGBColorSpace; textures[1] = t; });
+texLoader.load(SCENES[2].src, t => { t.colorSpace = THREE.SRGBColorSpace; textures[2] = t; });
+
+// ---- Desktop / touch look controls ----
+let lon = 0, lat = 0, dragging = false, px = 0, py = 0;
+const el = renderer.domElement;
+el.addEventListener('pointerdown', e => { dragging = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => dragging = false);
+addEventListener('pointermove', e => {
+  if (!dragging || renderer.xr.isPresenting) return;
+  lon -= (e.clientX - px) * 0.16;
+  lat += (e.clientY - py) * 0.16;
+  lat = Math.max(-85, Math.min(85, lat));
+  px = e.clientX; py = e.clientY;
+});
+addEventListener('wheel', e => {
+  camera.fov = Math.max(40, Math.min(95, camera.fov + e.deltaY * 0.04));
+  camera.updateProjectionMatrix();
+}, { passive: true });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---- VR ----
+const vrbtn = document.getElementById('vrbtn');
+let xrSession = null;
+if (navigator.xr) {
+  navigator.xr.isSessionSupported('immersive-vr').then(ok => {
+    if (ok) { vrbtn.disabled = false; vrbtn.textContent = '🥽 ENTER VR'; }
+    else vrbtn.textContent = 'VR not available on this device';
+  }).catch(() => { vrbtn.textContent = 'VR not available on this device'; });
+} else {
+  vrbtn.textContent = 'Open on a Meta Quest for VR';
+}
+vrbtn.onclick = async () => {
+  if (xrSession) { xrSession.end(); return; }
+  try {
+    renderer.xr.setReferenceSpaceType('local-floor');
+    xrSession = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
+    xrSession.addEventListener('end', () => { xrSession = null; vrbtn.textContent = '🥽 ENTER VR'; });
+    await renderer.xr.setSession(xrSession);
+    vrbtn.textContent = 'EXIT VR';
+  } catch (e) { vrbtn.textContent = 'VR blocked — check headset permissions'; }
+};
+
+// Trigger (select) cycles scenes in VR; thumbstick snap-turns for comfort.
+renderer.xr.addEventListener('sessionstart', () => {
+  renderer.xr.getSession().addEventListener('selectend', cycleScene);
+});
+let snapLatch = false;
+function pollSnapTurn() {
+  const session = renderer.xr.getSession();
+  if (!session) return;
+  for (const src of session.inputSources) {
+    const ax = src.gamepad?.axes?.[2] ?? 0;
+    if (Math.abs(ax) > 0.7) {
+      if (!snapLatch) { dome.rotation.y += THREE.MathUtils.degToRad(ax > 0 ? 45 : -45); snapLatch = true; }
+    } else if (Math.abs(ax) < 0.3) snapLatch = false;
+  }
+}
+
+renderer.setAnimationLoop(() => {
+  if (renderer.xr.isPresenting) {
+    pollSnapTurn();
+  } else {
+    const phi = THREE.MathUtils.degToRad(90 - lat);
+    const theta = THREE.MathUtils.degToRad(lon);
+    camera.lookAt(
+      camera.position.x + Math.sin(phi) * Math.sin(theta),
+      camera.position.y + Math.cos(phi),
+      camera.position.z - Math.sin(phi) * Math.cos(theta)
+    );
+  }
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

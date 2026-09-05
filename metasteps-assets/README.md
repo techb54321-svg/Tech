@@ -53,3 +53,13 @@ faces the viewer's starting direction (`-90` for the mouth panoramas).
 
 `tools/vendor/three/` contains the vendored [three.js](https://threejs.org)
 r169 modules used by the builder (MIT license — see `vendor/three/LICENSE`).
+
+### `capture-vessel-360.mjs`
+
+Renders a 360° equirectangular still from INSIDE the running
+`blood-vessel-simulation.html` (cells and all): it serves the repo locally,
+redirects the sim's CDN scripts to a local `three@0.128.0` npm package
+(`npm pack three@0.128.0`, extracted next to the script as `r128/`), hooks the
+renderer, skips the intro, starts Ride mode, then renders six cube faces and
+stitches them. Output: `vessel-360.png` (grade it to taste with ffmpeg).
+

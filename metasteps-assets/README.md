@@ -63,3 +63,19 @@ redirects the sim's CDN scripts to a local `three@0.128.0` npm package
 renderer, skips the intro, starts Ride mode, then renders six cube faces and
 stitches them. Output: `vessel-360.png` (grade it to taste with ffmpeg).
 
+
+### `flat360.mjs` — flat photo → 2:1 for ThingLink
+
+ThingLink's 360 upload requires width >= 2 x height. For a flat photo:
+
+```
+node flat360.mjs photo.png out.jpg dome 104   # project into a 360 canvas (recommended)
+node flat360.mjs photo.png out.jpg crop       # centre-crop to exactly 2:1
+```
+
+`dome` places the photo undistorted in the viewer's forward view (default 104°
+horizontal) on a 4096x2048 equirectangular canvas, filling the periphery with a
+blurred, colour-matched extension of the photo and feathering the join — so it
+passes the 2:1 check *and* looks right in a headset. `crop` just trims to 2:1,
+which is nearly lossless from a 16:9 source (720 -> 640 px) but wraps the flat
+photo around the whole sphere, so it looks stretched in VR.

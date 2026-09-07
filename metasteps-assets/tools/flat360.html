@@ -1,0 +1,80 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>flat to 360</title>
+<style>html,body{margin:0;background:#111}</style></head><body>
+<script>
+const st = (window.__status = { stage: 'start' });
+const q = new URLSearchParams(location.search);
+const SRC = q.get('img'), MODE = q.get('mode') || 'dome';
+const FOV = parseFloat(q.get('fov') || '104');       // horizontal FOV the photo occupies
+const W = 4096, H = 2048;
+
+(async () => {
+ try {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = SRC; });
+  const sw = img.naturalWidth, sh = img.naturalHeight;
+  st.source = sw + 'x' + sh;
+  const out = document.createElement('canvas'); out.width = W; out.height = H;
+  const g = out.getContext('2d');
+
+  if (MODE === 'crop') {
+    // Centre-crop to exactly 2:1, then scale up. Minimal loss from a 16:9 source.
+    const cw = Math.min(sw, sh * 2), ch = cw / 2;
+    g.drawImage(img, (sw - cw) / 2, (sh - ch) / 2, cw, ch, 0, 0, W, H);
+    st.crop = Math.round(cw) + 'x' + Math.round(ch);
+  } else {
+    // 1. Blurred, mirrored surround so the periphery keeps the photo's colours.
+    g.filter = 'blur(90px)';
+    g.drawImage(img, -W * 0.06, -H * 0.06, W * 1.12, H * 1.12);
+    g.filter = 'none';
+    g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(0, 0, W, H);
+
+    // 2. Photo projected rectilinearly into the forward view (gnomonic).
+    const src = document.createElement('canvas'); src.width = sw; src.height = sh;
+    src.getContext('2d').drawImage(img, 0, 0);
+    const sd = src.getContext('2d').getImageData(0, 0, sw, sh).data;
+
+    const fovH = FOV * Math.PI / 180;
+    const f = (sw / 2) / Math.tan(fovH / 2);              // focal length in source px
+    const halfLon = fovH / 2;
+    const halfLat = Math.atan((sh / 2) / f);
+    const i0 = Math.floor((0.5 - halfLon / (2 * Math.PI)) * W) - 2;
+    const i1 = Math.ceil((0.5 + halfLon / (2 * Math.PI)) * W) + 2;
+    const j0 = Math.floor((0.5 - halfLat / Math.PI) * H) - 2;
+    const j1 = Math.ceil((0.5 + halfLat / Math.PI) * H) + 2;
+    const bw = i1 - i0, bh = j1 - j0;
+    const layer = new Uint8ClampedArray(bw * bh * 4);
+
+    for (let j = j0; j < j1; j++) {
+      const lat = Math.PI / 2 - ((j + 0.5) / H) * Math.PI;
+      const sy = Math.sin(lat), rxz = Math.cos(lat);
+      for (let i = i0; i < i1; i++) {
+        const lon = ((i + 0.5) / W) * 2 * Math.PI - Math.PI;
+        const dx = rxz * Math.sin(lon), dy = sy, dz = -rxz * Math.cos(lon);
+        const t = -dz;                                   // forward = -Z
+        if (t <= 0.001) continue;
+        const px = sw / 2 + (dx / t) * f;
+        const py = sh / 2 - (dy / t) * f;
+        if (px < 0 || py < 0 || px >= sw - 1 || py >= sh - 1) continue;
+        // bilinear sample
+        const x0 = px | 0, y0 = py | 0, fx = px - x0, fy = py - y0;
+        const oi = ((j - j0) * bw + (i - i0)) * 4;
+        for (let c = 0; c < 3; c++) {
+          const a = sd[(y0 * sw + x0) * 4 + c], b = sd[(y0 * sw + x0 + 1) * 4 + c];
+          const cc = sd[((y0 + 1) * sw + x0) * 4 + c], d2 = sd[((y0 + 1) * sw + x0 + 1) * 4 + c];
+          layer[oi + c] = (a * (1 - fx) + b * fx) * (1 - fy) + (cc * (1 - fx) + d2 * fx) * fy;
+        }
+        // feather the outer 14% of the frame so it melts into the blur
+        const ex = Math.min(px, sw - 1 - px) / (sw * 0.14);
+        const ey = Math.min(py, sh - 1 - py) / (sh * 0.14);
+        layer[oi + 3] = 255 * Math.max(0, Math.min(1, Math.min(ex, ey)));
+      }
+    }
+    const lc = document.createElement('canvas'); lc.width = bw; lc.height = bh;
+    lc.getContext('2d').putImageData(new ImageData(layer, bw, bh), 0, 0);
+    g.drawImage(lc, i0, j0);
+    st.frustum = bw + 'x' + bh;
+  }
+  st.url = out.toDataURL('image/jpeg', 0.92);
+  st.stage = 'done';
+ } catch (e) { st.stage = 'error'; st.error = String(e && e.stack || e); }
+})();
+</script></body></html>

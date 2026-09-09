@@ -1,3 +1,7 @@
+> **Also in this repo:** [`clip-forge/`](clip-forge/) — a browser app that makes
+> 3D-animated social video ads in 3 clicks (pick a template, add text & media,
+> choose a 3D animation, export MP4). See its README to run it.
+
 # 🩸 3D Blood Vessel Explorer
 
 An interactive, fully 3D simulation of the inside of a blood vessel. Fly through

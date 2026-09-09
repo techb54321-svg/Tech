@@ -1,10 +1,11 @@
-name: Deploy Inside the Sip to GitHub Pages
+name: Deploy web apps to GitHub Pages
 
-# Builds the WebXR app and publishes it to GitHub Pages on every push to the
-# working branch, so the headset just opens a stable HTTPS link.
+# Builds both browser apps and publishes them to GitHub Pages:
+#   https://<user>.github.io/Tech/             → Inside the Sip (WebXR)
+#   https://<user>.github.io/Tech/clip-forge/  → Clip Forge (3D video ad maker)
 on:
   push:
-    branches: [claude/wizardly-noether-ji4obu]
+    branches: [claude/wizardly-noether-ji4obu, claude/video-clip-app-g3e6sg]
   workflow_dispatch:
 
 permissions:
@@ -19,23 +20,40 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: inside-the-sip
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm ci
-      - run: npm run build
+
+      - name: Build Inside the Sip
+        working-directory: inside-the-sip
+        run: |
+          npm ci
+          npm run build
         env:
           # Served from https://<user>.github.io/Tech/ — must match the repo name.
           VITE_BASE: /Tech/
+
+      - name: Build Clip Forge
+        working-directory: clip-forge
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_BASE: /Tech/clip-forge/
+
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp -r inside-the-sip/dist/. site/
+          mkdir -p site/clip-forge
+          cp -r clip-forge/dist/. site/clip-forge/
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: inside-the-sip/dist
+          path: site
 
   deploy:
     needs: build

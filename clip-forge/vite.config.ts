@@ -1,0 +1,11 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// Served from /<repo>/clip-forge/ when deployed to GitHub Pages; the deploy
+// workflow sets VITE_BASE. Local dev uses '/'.
+export default defineConfig({
+  base: process.env.VITE_BASE || '/',
+  plugins: [react()],
+  server: { host: '0.0.0.0', port: 5174 },
+  preview: { host: '0.0.0.0', port: 4174 },
+})

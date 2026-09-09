@@ -2,14 +2,23 @@ import type { Font } from 'three/examples/jsm/loaders/FontLoader.js'
 import type { Project } from '../types'
 import { formatOf } from '../types'
 import { drawBackground, type MediaSource } from './background'
+import { averageColor, buildMaps, removeBackground } from './cutout'
 import { Scene3D, type PictureMedia } from './scene3d'
 import { drawText, type TextBounds } from './text'
 
+export type CutoutStatus =
+  | { state: 'none' }
+  | { state: 'working' }
+  | { state: 'auto'; coverage: number }
+  | { state: 'manual' }
+  | { state: 'failed' }
+  | { state: 'video' }
+
 /**
  * Composites one frame of a project at time `t` onto a 2D canvas:
- *   background → 3D animation layer → text layers → logo.
- * Rendering is a pure function of `t`, so the exporter can step through
- * frames at any speed and get identical output to the live preview.
+ *   backdrop → 3D (breakout + sticker) → text → logo.
+ * Rendering is a pure function of `t`, so the exporter can step through frames
+ * at any speed and get identical output to the live preview.
  */
 export class FrameRenderer {
   readonly canvas: HTMLCanvasElement
@@ -21,7 +30,9 @@ export class FrameRenderer {
   private mediaUrl?: string
   private picture: PictureMedia = {}
   private pictureUrl?: string
-  private cutoutUrl?: string
+  private cutoutSignature = ''
+  /** What happened the last time a cut-out was attempted. */
+  cutoutStatus: CutoutStatus = { state: 'none' }
   /** Text bounds from the last frame (canvas px) — used for hit testing. */
   lastBounds: TextBounds[] = []
 
@@ -30,7 +41,7 @@ export class FrameRenderer {
     this.ctx = this.canvas.getContext('2d', { alpha: false })!
   }
 
-  /** Make sure uploaded media is loaded; resolves when ready to draw. */
+  /** Make sure uploaded media is loaded and the subject is cut out. */
   async prepare(project: Project): Promise<void> {
     const bgc = project.background
     if ((bgc.kind === 'image' || bgc.kind === 'video') && bgc.mediaUrl && bgc.mediaUrl !== this.mediaUrl) {
@@ -39,17 +50,49 @@ export class FrameRenderer {
       if (bgc.kind === 'image') this.media.image = await loadImage(bgc.mediaUrl)
       else this.media.video = await loadVideo(bgc.mediaUrl)
     }
+
     const pic = project.picture
     if (pic.url !== this.pictureUrl) {
       this.pictureUrl = pic.url
       if (this.picture.el instanceof HTMLVideoElement) this.picture.el.pause()
       this.picture.el = undefined
-      if (pic.url) this.picture.el = pic.isVideo ? await loadVideo(pic.url) : await loadImage(pic.url)
+      this.picture.averageColor = undefined
+      if (pic.url) {
+        this.picture.el = pic.isVideo ? await loadVideo(pic.url) : await loadImage(pic.url)
+        try {
+          this.picture.averageColor = averageColor(this.picture.el)
+        } catch {
+          /* a video that has not decoded a frame yet — fine */
+        }
+      }
     }
-    if (pic.cutoutUrl !== this.cutoutUrl) {
-      this.cutoutUrl = pic.cutoutUrl
-      this.picture.cutout = pic.cutoutUrl ? await loadImage(pic.cutoutUrl) : undefined
+
+    // Cut-out: an uploaded transparent PNG wins; otherwise segment the photo.
+    const sig = JSON.stringify([pic.url ?? '', pic.cutoutUrl ?? '', pic.isVideo, pic.autoCutout, pic.cutoutTolerance])
+    if (sig !== this.cutoutSignature) {
+      this.cutoutSignature = sig
+      this.picture.cutout = undefined
+      this.picture.cutoutKey = sig
+      this.cutoutStatus = { state: 'none' }
+      if (pic.cutoutUrl) {
+        const img = await loadImage(pic.cutoutUrl)
+        if (img.naturalWidth > 0) {
+          this.picture.cutout = buildMaps(img)
+          this.cutoutStatus = { state: 'manual' }
+        }
+      } else if (pic.isVideo && pic.url) {
+        this.cutoutStatus = { state: 'video' }
+      } else if (pic.autoCutout && pic.url && this.picture.el instanceof HTMLImageElement && this.picture.el.naturalWidth > 0) {
+        const maps = removeBackground(this.picture.el, pic.cutoutTolerance)
+        if (maps) {
+          this.picture.cutout = maps
+          this.cutoutStatus = { state: 'auto', coverage: maps.coverage }
+        } else {
+          this.cutoutStatus = { state: 'failed' }
+        }
+      }
     }
+
     if (project.logo.url !== this.logoUrl) {
       this.logoUrl = project.logo.url
       this.logoImg = undefined

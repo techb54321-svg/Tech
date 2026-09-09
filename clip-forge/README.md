@@ -7,8 +7,8 @@ browser. No account, no upload, no video-editing skills.
 
 1. **Pick a template** (sales, real estate, hiring, restaurant, events, …)
 2. **Upload your picture** — a product shot, listing photo, dish, portrait, or
-   a short video. Optionally add the same picture with its background removed
-   so the subject bursts out past the frame edges.
+   a short video. The subject is cut out of the background automatically, in
+   your browser, with no model download and nothing uploaded anywhere.
 3. **Choose the screen and the breakout** — 9 devices (phone, tablet, laptop,
    monitor, TV, picture frame, polaroid, billboard, glowing portal) × 6
    breakout motions (pop, slide up & out, flip, peel, zoom at you, stay on
@@ -23,7 +23,8 @@ seconds, ready for TikTok, Reels, Shorts, Facebook, Instagram, LinkedIn or X.
 | --- | --- |
 | Templates | 17 done-for-you templates across 10 categories, plus "start from scratch" |
 | Formats | 9:16 story/reel, 1:1 square, 4:5 portrait, 16:9 landscape (all 1080p) |
-| Breakout picture | Photo or video on a 3D device, 9 devices, 6 breakout motions, 4 camera moves, adjustable pop distance / size / delay / device colour, real cast shadows onto the screen and floor, optional cut-out subject layer, drag to place |
+| Breakout picture | Photo or video on a 3D device, 9 devices, 6 breakout motions, 4 camera moves, adjustable pop distance / size / thickness / delay / device colour, drag to place |
+| Subject cut-out | Automatic in-browser background removal, adjustable strength, or bring your own transparent PNG |
 | Backdrop | 16 gradient presets, solid colour, your own photo (with slow Ken-Burns zoom) or video, blur & darken |
 | Text | Unlimited layers, 5 font styles, pill backgrounds, outline, shadow, 6 entrance animations, auto-fit to width, drag to place |
 | 3D stickers | Optional extras: 19 procedural objects (3D headline, coin, confetti, mascot, rocket …) with 9 motions, two brand colours, matte / metallic finish |
@@ -49,6 +50,30 @@ npm run preview
 Set `VITE_BASE=/some/sub/path/` at build time if you host it under a sub-path
 (the GitHub Pages workflow in this repo does this).
 
+## What makes the pop look real
+
+A flat plane sliding forward reads as a sticker. Four things turn it into an
+object leaving a screen:
+
+- **The subject, not a rectangle.** The background is removed by growing it
+  inward from the photo's borders in perceptual Lab colour, following smooth
+  gradients (skies, studio sweeps) but stopping at strong edges. Only the
+  largest island survives, so stray fragments never float beside the subject.
+- **Real volume.** The subject's silhouette is turned into a distance field and
+  inflated along a spherical-cap profile into a front and a back shell, with a
+  normal map derived from the same height. It is lit, it turns, and it has a
+  believable thickness instead of a paper edge.
+- **A shadow where it counts.** The key light sits nearly head-on so the
+  subject's shadow lands back on the glass it just left. That shadow, not the
+  motion, is what tells the eye how far out the subject is.
+- **A lens that looms.** A 42° lens close to the subject means travelling
+  toward the camera grows it fast and splays its near edges. A long lens would
+  flatten the one cue the whole effect depends on.
+
+At rest the subject is an exact unlit copy of the on-screen pixels with zero
+inflation, so the moment it starts to lift is seamless; lighting fades in and
+the emissive copy fades down as it inflates, keeping brightness constant.
+
 ## How it works
 
 Everything is a pure function of time `t`, so the live preview and the export
@@ -61,7 +86,8 @@ src/
   engine/
     background.ts       – gradients, cover-fit photo/video, Ken Burns, dim/blur
     text.ts             – canvas text: wrapping, auto-fit, pills, entrances
-    breakout.ts         – the breakout rig: device mockups, picture planes, pop-out poses
+    cutout.ts           – background removal + inflation height / normal maps
+    breakout.ts         – the breakout rig: device mockups, the inflated subject, pop-out poses
     animations.ts       – 19 procedural THREE.js sticker objects (no downloaded models)
     motions.ts          – 9 sticker motion presets (bounce, drop, spin-in, swing, …)
     scene3d.ts          – transparent WebGL layer: camera moves, lights, env map, shadows
@@ -88,8 +114,10 @@ in-memory object URLs and never uploaded anywhere.
 
 ## Ideas for next steps
 
-- Automatic background removal in the browser so the cut-out layer needs no
-  extra upload
+- A learned segmentation model for photos with busy backgrounds, where colour
+  segmentation gives up
+- Depth estimation so the subject's real shape drives the relief instead of a
+  uniform inflation
 - Background music / voice-over track muxed into the MP4
 - More templates + a "Brand kit" that recolours every template at once
 - Shareable project files (export / import JSON)

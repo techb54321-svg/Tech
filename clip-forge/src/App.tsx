@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Font } from 'three/examples/jsm/loaders/FontLoader.js'
 import { loadFont } from './engine/animations'
-import { FrameRenderer } from './engine/renderer'
+import { FrameRenderer, type CutoutStatus } from './engine/renderer'
 import { warmFonts } from './engine/text'
 import { instantiate, TEMPLATES } from './templates'
 import type { Project, Template } from './types'
@@ -28,6 +28,10 @@ function loadDraft(): Project | null {
     if (p.picture.url?.startsWith('blob:')) p.picture.url = undefined
     if (p.picture.cutoutUrl?.startsWith('blob:')) p.picture.cutoutUrl = undefined
     if (typeof p.animation.enabled !== 'boolean') p.animation.enabled = false
+    if (typeof p.picture.autoCutout !== 'boolean') p.picture.autoCutout = true
+    if (typeof p.picture.cutoutTolerance !== 'number') p.picture.cutoutTolerance = 0.28
+    if (typeof p.picture.depth !== 'number') p.picture.depth = 0.5
+    if (p.picture.popDistance > 1.6) p.picture.popDistance = 0.55
     return p
   } catch {
     return null
@@ -41,6 +45,7 @@ export default function App() {
   const [draft] = useState<Project | null>(() => loadDraft())
   const [tab, setTab] = useState<Tab>('picture')
   const [selection, setSelection] = useState<Selection>({ kind: null })
+  const [cutout, setCutout] = useState<CutoutStatus>({ state: 'none' })
   const [exporting, setExporting] = useState(false)
   const [busy, setBusy] = useState(false)
   const renderer = useMemo(() => new FrameRenderer(), [])
@@ -161,8 +166,17 @@ export default function App() {
         </button>
       </header>
       <div className="workspace">
-        <Preview project={project} renderer={renderer} font={font} selection={selection} setSelection={setSelection} update={update} frozen={busy} />
-        <Inspector project={project} tab={tab} setTab={setTab} selection={selection} setSelection={setSelection} update={update} />
+        <Preview
+          project={project}
+          renderer={renderer}
+          font={font}
+          selection={selection}
+          setSelection={setSelection}
+          update={update}
+          frozen={busy}
+          onCutoutStatus={setCutout}
+        />
+        <Inspector project={project} tab={tab} setTab={setTab} selection={selection} setSelection={setSelection} update={update} cutout={cutout} />
       </div>
       {exporting && <ExportDialog project={project} renderer={renderer} font={font} onClose={() => setExporting(false)} onBusy={setBusy} />}
     </div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Font } from 'three/examples/jsm/loaders/FontLoader.js'
-import type { FrameRenderer } from '../engine/renderer'
+import type { CutoutStatus, FrameRenderer } from '../engine/renderer'
 import type { Project } from '../types'
 import { formatOf } from '../types'
 import type { Selection } from './Inspector'
@@ -14,11 +14,12 @@ interface Props {
   update: (fn: (p: Project) => Project) => void
   /** true while an export owns the renderer */
   frozen: boolean
+  onCutoutStatus: (s: CutoutStatus) => void
 }
 
 type Drag = { kind: 'text' | 'animation' | 'picture'; id?: string; dx: number; dy: number; moved: boolean }
 
-export function Preview({ project, renderer, font, selection, setSelection, update, frozen }: Props) {
+export function Preview({ project, renderer, font, selection, setSelection, update, frozen, onCutoutStatus }: Props) {
   const displayRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const projectRef = useRef(project)
@@ -55,11 +56,26 @@ export function Preview({ project, renderer, font, selection, setSelection, upda
   useEffect(() => {
     let alive = true
     setReady(false)
-    renderer.prepare(project).then(() => alive && setReady(true))
+    onCutoutStatus({ state: 'working' })
+    renderer.prepare(project).then(() => {
+      if (!alive) return
+      setReady(true)
+      onCutoutStatus(renderer.cutoutStatus)
+    })
     return () => {
       alive = false
     }
-  }, [renderer, project.background.mediaUrl, project.background.kind, project.logo.url, project.picture.url, project.picture.cutoutUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    renderer,
+    project.background.mediaUrl,
+    project.background.kind,
+    project.logo.url,
+    project.picture.url,
+    project.picture.cutoutUrl,
+    project.picture.autoCutout,
+    project.picture.cutoutTolerance,
+  ])
 
   useEffect(() => {
     renderer.playVideo(playing && !frozen)

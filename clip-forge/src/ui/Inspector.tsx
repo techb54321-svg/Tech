@@ -1,4 +1,5 @@
 import { ANIMATIONS } from '../engine/animations'
+import type { CutoutStatus } from '../engine/renderer'
 import { GRADIENTS, gradientCss } from '../engine/background'
 import { MOTIONS } from '../engine/motions'
 import { FONT_STACKS } from '../engine/text'
@@ -14,6 +15,7 @@ export interface Selection {
 }
 
 interface Props {
+  cutout: CutoutStatus
   project: Project
   tab: Tab
   setTab: (t: Tab) => void
@@ -22,7 +24,7 @@ interface Props {
   update: (fn: (p: Project) => Project) => void
 }
 
-export function Inspector({ project, tab, setTab, selection, setSelection, update }: Props) {
+export function Inspector({ project, tab, setTab, selection, setSelection, update, cutout }: Props) {
   return (
     <aside className="inspector">
       <Segmented
@@ -37,7 +39,9 @@ export function Inspector({ project, tab, setTab, selection, setSelection, updat
         ]}
       />
       <div className="inspector-body">
-        {tab === 'picture' && <PictureTab pic={project.picture} duration={project.duration} set={(b) => update((p) => ({ ...p, picture: { ...p.picture, ...b } }))} />}
+        {tab === 'picture' && (
+          <PictureTab pic={project.picture} duration={project.duration} cutout={cutout} set={(b) => update((p) => ({ ...p, picture: { ...p.picture, ...b } }))} />
+        )}
         {tab === 'background' && <BackgroundTab bg={project.background} set={(b) => update((p) => ({ ...p, background: { ...p.background, ...b } }))} />}
         {tab === 'text' && <TextTab project={project} selection={selection} setSelection={setSelection} update={update} />}
         {tab === 'animation' && <AnimationTab anim={project.animation} set={(a) => update((p) => ({ ...p, animation: { ...p.animation, ...a } }))} />}
@@ -49,7 +53,39 @@ export function Inspector({ project, tab, setTab, selection, setSelection, updat
 
 // --- Picture (the breakout) ----------------------------------------------------
 
-function PictureTab({ pic, duration, set }: { pic: PictureLayer; duration: number; set: (b: Partial<PictureLayer>) => void }) {
+function cutoutLine(status: CutoutStatus, pic: PictureLayer): { text: string; tone: 'ok' | 'warn' | 'info' } {
+  if (!pic.url) return { text: 'Upload a picture to start. A demo image is shown until you do.', tone: 'info' }
+  switch (status.state) {
+    case 'working':
+      return { text: 'Finding the subject…', tone: 'info' }
+    case 'manual':
+      return { text: 'Using your cut-out PNG. The subject is inflated into a solid body.', tone: 'ok' }
+    case 'auto':
+      return { text: `Subject cut out automatically (${Math.round(status.coverage * 100)}% of the photo). It leaves the screen as a lit, shadow-casting solid.`, tone: 'ok' }
+    case 'failed':
+      return {
+        text: 'Could not separate a subject from this background. The whole photo leaves the screen as a print instead — try a higher strength, or upload a cut-out PNG below.',
+        tone: 'warn',
+      }
+    case 'video':
+      return { text: 'Videos play on the screen and leave it as a print. For a cut-out subject, use a photo.', tone: 'info' }
+    default:
+      return { text: 'Auto cut-out is off — the whole photo leaves the screen as a print.', tone: 'info' }
+  }
+}
+
+function PictureTab({
+  pic,
+  duration,
+  cutout,
+  set,
+}: {
+  pic: PictureLayer
+  duration: number
+  cutout: CutoutStatus
+  set: (b: Partial<PictureLayer>) => void
+}) {
+  const line = cutoutLine(cutout, pic)
   return (
     <>
       <FilePick
@@ -58,8 +94,27 @@ function PictureTab({ pic, duration, set }: { pic: PictureLayer; duration: numbe
         onFile={(f) => set({ url: URL.createObjectURL(f), isVideo: f.type.startsWith('video') })}
       />
       <p className="hint">
-        This is the flat picture that comes out of the screen. Product shots, listings, food, portraits — anything works. It never leaves your browser.
+        The subject of this picture is what comes out of the screen. Product shots, listings, food, portraits — anything with a
+        reasonably clean background works best. Nothing is uploaded anywhere.
       </p>
+      <div className={`status status-${line.tone}`}>{line.text}</div>
+      {!pic.cutoutUrl && !pic.isVideo && (
+        <>
+          <Toggle label="Cut the subject out automatically" value={pic.autoCutout} onChange={(v) => set({ autoCutout: v })} />
+          {pic.autoCutout && (
+            <Slider
+              label="Cut-out strength (higher removes more background)"
+              value={pic.cutoutTolerance}
+              min={0.1}
+              max={0.95}
+              step={0.05}
+              onChange={(v) => set({ cutoutTolerance: v })}
+              format={(v) => `${Math.round(v * 100)}%`}
+            />
+          )}
+        </>
+      )}
+      <Slider label="Subject thickness" value={pic.depth} min={0} max={1} onChange={(v) => set({ depth: v })} format={(v) => (v < 0.05 ? 'flat' : `${Math.round(v * 100)}%`)} />
       <Field label="2 · Screen it comes out of">
         <div className="device-grid">
           {DEVICES.map((d) => (
@@ -72,15 +127,15 @@ function PictureTab({ pic, duration, set }: { pic: PictureLayer; duration: numbe
       </Field>
       <Select label="3 · Breakout motion" value={pic.motion} options={BREAKOUT_MOTIONS.map((m) => ({ value: m.id, label: `${m.label} — ${m.hint}` }))} onChange={(motion) => set({ motion })} />
       <Select label="Camera" value={pic.camera} options={CAMERA_MOVES.map((c) => ({ value: c.id, label: c.label }))} onChange={(camera) => set({ camera })} />
-      <Slider label="How far it comes out" value={pic.popDistance} min={0.3} max={2} step={0.05} onChange={(v) => set({ popDistance: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Slider label="How far it comes at you" value={pic.popDistance} min={0.15} max={1.6} step={0.05} onChange={(v) => set({ popDistance: v })} format={(v) => `${v.toFixed(2)}×`} />
       <Slider label="Size" value={pic.scale} min={0.12} max={0.7} onChange={(v) => set({ scale: v })} format={(v) => `${Math.round(v * 100)}%`} />
       <Slider label="Delay before breakout" value={pic.delay} min={0} max={Math.max(0.5, duration - 2)} step={0.05} onChange={(v) => set({ delay: v })} format={(v) => `${v.toFixed(2)}s`} />
       <ColorInput label="Device / frame colour" value={pic.frameColor} onChange={(c) => set({ frameColor: c })} />
-      <Field label="Optional: cut-out subject" hint="Same photo, background removed">
+      <Field label="Optional: your own cut-out" hint="Same photo, background removed">
         <FilePick label={pic.cutoutUrl ? 'Replace cut-out PNG…' : 'Upload a transparent PNG…'} accept="image/png,image/webp" onFile={(f) => set({ cutoutUrl: URL.createObjectURL(f) })} />
       </Field>
       <p className="hint">
-        For the classic “bursts out of the frame” look, upload the same photo with its background removed (e.g. from remove.bg). The subject then pops out past the edges while the rest stays on screen.
+        Use this when the automatic cut-out struggles — a transparent PNG from any background remover gives the cleanest edges.
       </p>
       {pic.cutoutUrl && (
         <button type="button" className="btn ghost" onClick={() => set({ cutoutUrl: undefined })}>
@@ -141,7 +196,7 @@ function BackgroundTab({ bg, set }: { bg: Background; set: (b: Partial<Backgroun
 
 // --- Text --------------------------------------------------------------------
 
-function TextTab({ project, selection, setSelection, update }: Omit<Props, 'tab' | 'setTab'>) {
+function TextTab({ project, selection, setSelection, update }: Omit<Props, 'tab' | 'setTab' | 'cutout'>) {
   const selected = project.texts.find((t) => t.id === selection.id) ?? project.texts[0]
   const setLayer = (id: string, patch: Partial<TextLayer>) =>
     update((p) => ({ ...p, texts: p.texts.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))

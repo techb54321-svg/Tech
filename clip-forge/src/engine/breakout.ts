@@ -4,27 +4,52 @@ import type { BreakoutMotionId, DeviceId, PictureLayer } from '../types'
 import { easeInOutCubic, easeOutBack, easeOutCubic, easeOutQuint, window01 } from './easing'
 
 // ---------------------------------------------------------------------------
-// The "breakout" effect: a flat picture on a screen inside a 3D scene that
-// comes out of the screen towards the viewer.
+// The breakout rig: a device with the picture on its screen, and the subject
+// that leaves that screen and comes at the camera.
 //
-// Everything is built in "screen units": the screen is centred on the origin
-// in the XY plane, faces +Z and is exactly 1 unit tall. The renderer scales
-// the whole group to the user's chosen size.
+// Built in "screen units": the screen is centred on the origin in the XY
+// plane, faces +Z and is exactly 1 unit tall. The renderer scales the whole
+// group to the size the user picked.
+//
+// The subject is not a plane. Its alpha silhouette is inflated along a
+// spherical-cap height map into a front and back shell, so it has real volume,
+// takes real light through a derived normal map, and casts a real shadow back
+// onto the screen it came out of. At rest the inflation is zero and the
+// subject sits exactly on top of the on-screen picture, so the moment it
+// starts to lift is seamless.
 // ---------------------------------------------------------------------------
 
+export interface CutoutCanvases {
+  color: HTMLCanvasElement
+  height: HTMLCanvasElement
+  normal: HTMLCanvasElement
+}
+
 export interface PictureTextures {
-  /** Full picture (image or video) */
+  /** Full picture (image or video) shown on the screen */
   picture: THREE.Texture
   /** Picture aspect ratio (w / h) */
   aspect: number
-  /** Optional background-removed version of the same picture */
-  cutout?: THREE.Texture
+  /** Subject cut-out + relief maps, when one could be produced */
+  cutout?: CutoutCanvases
 }
 
 export interface BreakoutBuilt {
   object: THREE.Object3D
-  /** World-space half height of the whole device, for floor placement */
+  /** Lowest point of the device, in screen units, for floor placement */
   bottomY: number
+  /** Outer half-width / half-height of the device front face */
+  outerW: number
+  outerH: number
+  /** 0..1 — how far the subject has left the screen, for the screen light */
+  progress: number
+  /**
+   * The subject is the *whole* picture, so it hangs past the screen edges.
+   * These planes hide the overhang until it starts to emerge; the scene
+   * pushes them outwards as `clipRelease` grows.
+   */
+  clipPlanes: THREE.Plane[]
+  clipRelease: number
   update: (t: number) => void
   dispose: () => void
 }
@@ -43,7 +68,9 @@ const SCREEN_ASPECT: Record<DeviceId, number | null> = {
 }
 
 const ENTER = 0.7
-const POP = 1.1
+const POP = 1.15
+/** Subject mesh resolution. Higher = smoother inflation silhouette. */
+const SEG = 144
 
 interface PicPose {
   x: number
@@ -53,22 +80,22 @@ interface PicPose {
   ry: number
   rz: number
   scale: number
-  /** 0..1 — how far along the breakout is (drives screen dimming) */
+  /** 0..1 — how far along the breakout is */
   out: number
 }
 
-/** How much the picture grows once it is fully out (1 = no growth). */
-const GROW = 0.28
-
-function pose(id: BreakoutMotionId, t: number, start: number, D: number, grow = GROW): PicPose {
+function pose(id: BreakoutMotionId, t: number, start: number, D: number, grow: number): PicPose {
   const p = window01(t, start, POP)
   const idle = Math.max(0, t - start - POP)
   const s: PicPose = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, scale: 1, out: p }
-  // Shared idle motion once the picture is out: gentle hover + tilt.
+  // Once it is out, keep it alive: a slow hover and turn so the viewer reads
+  // the volume from changing highlights rather than a frozen cut-out.
   const hover = () => {
-    s.y += Math.sin(idle * 1.4) * 0.025
-    s.rx += Math.sin(idle * 1.1) * 0.035
-    s.ry += Math.sin(idle * 0.8) * 0.06
+    s.y += Math.sin(idle * 1.25) * 0.022
+    s.z += Math.sin(idle * 0.9) * 0.02
+    s.rx += Math.sin(idle * 1.0) * 0.035
+    s.ry += Math.sin(idle * 0.72) * 0.07
+    s.rz += Math.cos(idle * 0.85) * 0.015
   }
   switch (id) {
     case 'none':
@@ -78,50 +105,53 @@ function pose(id: BreakoutMotionId, t: number, start: number, D: number, grow = 
       const e = easeOutBack(p)
       s.z = D * e
       s.scale = 1 + grow * e
-      s.rx = -0.1 * e
-      s.ry = 0.14 * e
-      s.y = 0.04 * e
+      s.y = 0.12 * e
+      s.rx = -0.2 * e
+      s.ry = 0.22 * e
       if (p >= 1) hover()
       break
     }
     case 'slideUp': {
-      const a = easeInOutCubic(Math.min(1, p / 0.5)) // 0..0.5: rise out of the top
-      const b = easeOutBack(Math.max(0, (p - 0.5) / 0.5)) // 0.5..1: come forward and down
-      s.y = 1.15 * a - 1.12 * b
-      s.z = D * b + 0.02 * a
+      const a = easeInOutCubic(Math.min(1, p / 0.45)) // rise out of the top
+      const b = easeOutBack(Math.max(0, (p - 0.45) / 0.55)) // then come forward
+      s.y = 0.85 * a - 0.72 * b
+      s.z = D * b + 0.06 * a
       s.scale = 1 + grow * b
-      s.rx = -0.1 * b
-      s.ry = 0.12 * b
+      s.rx = -0.18 * b
+      s.ry = 0.16 * b
       if (p >= 1) hover()
       break
     }
     case 'flip': {
-      const e = easeInOutCubic(p)
-      s.z = D * easeOutCubic(p)
-      s.ry = Math.PI * 2 * e
-      s.scale = 1 + grow * easeOutCubic(p)
-      s.rx = -0.08 * p
+      const e = easeOutCubic(p)
+      s.z = D * e
+      s.ry = Math.PI * 2 * easeInOutCubic(p)
+      s.scale = 1 + grow * e
+      s.y = 0.1 * e
+      s.rx = -0.16 * e
       if (p >= 1) hover()
       break
     }
     case 'peel': {
-      // First lifts the top edge away from the screen, then floats forward.
+      // The top edge lifts off the glass first, then the whole body floats out.
       const lift = Math.sin(Math.min(1, p) * Math.PI)
       const e = easeOutCubic(p)
-      s.rx = -0.75 * lift
-      s.y = 0.45 * lift * 0.5 + 0.06 * e
-      s.z = D * e + 0.3 * lift
+      s.rx = -0.85 * lift - 0.12 * e
+      s.y = 0.3 * lift + 0.08 * e
+      s.z = D * e + 0.25 * lift
       s.scale = 1 + grow * e
-      s.ry = 0.12 * e
+      s.ry = 0.14 * e
       if (p >= 1) hover()
       break
     }
     case 'zoom': {
       const e = easeOutQuint(p)
-      const over = Math.sin(Math.min(1, p) * Math.PI) * 0.6 // fly past, then settle
+      const over = Math.sin(Math.min(1, p) * Math.PI) * 0.75 // fly past, settle back
       s.z = D * e + over
-      s.scale = 1 + grow * e + over * 0.2
-      s.rz = -0.06 * over
+      s.scale = 1 + grow * e + over * 0.12
+      s.y = 0.08 * e
+      s.rx = -0.1 * e
+      s.rz = -0.05 * over
       if (p >= 1) hover()
       break
     }
@@ -163,6 +193,37 @@ function coverCrop(tex: THREE.Texture, imgAspect: number, targetAspect: number):
   return t
 }
 
+/**
+ * When a subject will pop out, the screen must show the whole picture — a
+ * centre crop would hide half the subject at rest and then reveal it out of
+ * nowhere. Fit the picture inside the screen and fill the leftover with a
+ * blurred, darkened copy of itself, the way social apps pillar-box a photo.
+ */
+function containScreenCanvas(img: CanvasImageSource, imgW: number, imgH: number, aspect: number, fit: { w: number; h: number }) {
+  const H = 1200
+  const c = document.createElement('canvas')
+  c.height = H
+  c.width = Math.max(1, Math.round(H * aspect))
+  const ctx = c.getContext('2d')!
+  // blurred cover fill
+  const cover = Math.max(c.width / imgW, c.height / imgH) * 1.15
+  ctx.filter = `blur(${Math.round(H * 0.05)}px)`
+  ctx.drawImage(img, (c.width - imgW * cover) / 2, (c.height - imgH * cover) / 2, imgW * cover, imgH * cover)
+  ctx.filter = 'none'
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'
+  ctx.fillRect(0, 0, c.width, c.height)
+  // the picture itself, contained
+  const dw = (fit.w / aspect) * c.width
+  const dh = fit.h * c.height
+  ctx.drawImage(img, (c.width - dw) / 2, (c.height - dh) / 2, dw, dh)
+  return c
+}
+
+/** Size of the picture when fitted inside a W x 1 screen. */
+function containFit(pa: number, W: number) {
+  return pa > W ? { w: W, h: W / pa } : { w: pa, h: 1 }
+}
+
 function disposeTree(root: THREE.Object3D) {
   root.traverse((n) => {
     const m = n as THREE.Mesh
@@ -174,8 +235,8 @@ function disposeTree(root: THREE.Object3D) {
 }
 
 /**
- * Build the device + picture rig for a layer. `textures` must already be
- * loaded. Returns an object 1 screen-height tall centred on the screen.
+ * Build the device + subject rig. `textures` must already be loaded. Returns
+ * an object 1 screen-height tall, centred on the screen.
  */
 export function buildBreakout(layer: PictureLayer, textures: PictureTextures): BreakoutBuilt {
   const root = new THREE.Group()
@@ -186,6 +247,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
   const body = material(layer.frameColor)
   const dark = material('#0b0b0f', { metalness: 0.2, roughness: 0.6 })
   let bottomY = -0.5
+  let outerW = W
+  let outerH = 1
 
   // --- device body ---------------------------------------------------------
   switch (layer.device) {
@@ -200,6 +263,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       cam.position.set(0, 0.5 + bezel / 2, 0.002)
       device.add(cam)
       bottomY = -0.5 - bezel
+      outerW = W + bezel * 2
+      outerH = 1 + bezel * 2
       break
     }
     case 'laptop': {
@@ -219,6 +284,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       pad.position.set(0, -0.5 - bezel + 0.001, 0.72)
       device.add(pad)
       bottomY = -0.5 - bezel - 0.035
+      outerW = W + bezel * 2
+      outerH = 1 + bezel * 2
       break
     }
     case 'monitor': {
@@ -233,6 +300,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       foot.position.set(0, -0.5 - bezel - 0.33, 0.02)
       device.add(foot)
       bottomY = -0.5 - bezel - 0.345
+      outerW = W + bezel * 2
+      outerH = 1 + bezel * 2
       break
     }
     case 'tv': {
@@ -246,6 +315,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
         device.add(leg)
       }
       bottomY = -0.5 - bezel - 0.05
+      outerW = W + bezel * 2
+      outerH = 1 + bezel * 2
       break
     }
     case 'frame': {
@@ -268,6 +339,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       right.position.x = ow / 2 - fw / 2
       device.add(top, bot, left, right)
       bottomY = -oh / 2
+      outerW = ow
+      outerH = oh
       break
     }
     case 'polaroid': {
@@ -275,6 +348,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       card.position.set(0, -0.14, -0.007)
       device.add(card)
       bottomY = -0.14 - 0.69
+      outerW = W + 0.1
+      outerH = 1.38
       break
     }
     case 'billboard': {
@@ -288,6 +363,8 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
         device.add(post)
       }
       bottomY = -0.54 - 0.85
+      outerW = W + 0.08
+      outerH = 1.08
       break
     }
     case 'portal': {
@@ -303,99 +380,217 @@ export function buildBreakout(layer: PictureLayer, textures: PictureTextures): B
       v2.position.x = W / 2 + th / 2
       device.add(h, h2, v, v2)
       bottomY = -0.5 - th
+      outerW = W + th * 2
+      outerH = 1 + th * 2
       break
     }
   }
 
-  // --- screen: the picture at rest -----------------------------------------
-  const screenTex = SCREEN_ASPECT[layer.device] === null ? textures.picture : coverCrop(textures.picture, textures.aspect, aspect)
+  // --- the screen: the picture at rest -------------------------------------
+  const cutSrc = textures.cutout?.color
+  const stillImage = textures.picture.image as HTMLImageElement | HTMLCanvasElement | undefined
+  const imgW = stillImage ? (stillImage as HTMLImageElement).naturalWidth || stillImage.width : 0
+  const imgH = stillImage ? (stillImage as HTMLImageElement).naturalHeight || stillImage.height : 0
+  const fit = containFit(textures.aspect, W)
+  const containable = !!cutSrc && !!stillImage && imgW > 0 && imgH > 0 && Math.abs(textures.aspect - aspect) > 0.01
+  let ownedScreen: THREE.Texture | null = null
+  let screenTex: THREE.Texture
+  if (containable) {
+    const c = containScreenCanvas(stillImage!, imgW, imgH, aspect, fit)
+    ownedScreen = new THREE.CanvasTexture(c)
+    ownedScreen.colorSpace = THREE.SRGBColorSpace
+    screenTex = ownedScreen
+  } else {
+    screenTex = SCREEN_ASPECT[layer.device] === null ? textures.picture : coverCrop(textures.picture, textures.aspect, aspect)
+  }
   const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false })
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(W, 1), screenMat)
   screen.position.z = 0.001
   device.add(screen)
-  // Shadow catcher on top of the screen so the popped-out picture casts onto it.
-  const screenShadow = new THREE.Mesh(new THREE.PlaneGeometry(W, 1), new THREE.ShadowMaterial({ opacity: 0.4, transparent: true }))
-  screenShadow.position.z = 0.002
-  screenShadow.receiveShadow = true
-  device.add(screenShadow)
+  // Catches the subject's shadow across the whole device front, screen and
+  // bezel alike — this is the single strongest cue that the subject is really
+  // hovering in front of the device.
+  const frontShadow = new THREE.Mesh(new THREE.PlaneGeometry(outerW * 1.02, outerH * 1.02), new THREE.ShadowMaterial({ opacity: 0.38, transparent: true }))
+  frontShadow.position.z = 0.0025
+  frontShadow.receiveShadow = true
+  device.add(frontShadow)
   // Glossy overlay for environment reflections on glass.
   if (!['frame', 'polaroid', 'portal', 'billboard'].includes(layer.device)) {
     const gloss = new THREE.Mesh(
       new THREE.PlaneGeometry(W, 1),
-      new THREE.MeshPhysicalMaterial({ color: '#ffffff', transparent: true, opacity: 0.08, roughness: 0.05, metalness: 0.9, clearcoat: 1, envMapIntensity: 1.5 }),
+      new THREE.MeshPhysicalMaterial({ color: '#ffffff', transparent: true, opacity: 0.07, roughness: 0.05, metalness: 0.9, clearcoat: 1, envMapIntensity: 1.5 }),
     )
-    gloss.position.z = 0.003
+    gloss.position.z = 0.004
     device.add(gloss)
   }
 
-  // --- the picture that comes out ------------------------------------------
-  const pic = new THREE.Group()
-  root.add(pic)
-  const picMesh = new THREE.Mesh(new THREE.PlaneGeometry(W, 1), new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false, side: THREE.DoubleSide }))
-  picMesh.castShadow = true
-  pic.add(picMesh)
-  // Thin white edge so the flat picture reads as a physical card once it is out.
-  const edge = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.03, 1 + 0.03), new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false, side: THREE.DoubleSide, transparent: true, opacity: 0 }))
-  edge.position.z = -0.001
-  pic.add(edge)
-  const picShadow = new THREE.Mesh(new THREE.PlaneGeometry(W, 1), new THREE.ShadowMaterial({ opacity: 0.35, transparent: true }))
-  picShadow.position.z = 0.001
-  picShadow.receiveShadow = true
-  pic.add(picShadow)
+  // --- what comes out ------------------------------------------------------
+  const emerging = new THREE.Group()
+  root.add(emerging)
+  const ownedTextures: THREE.Texture[] = []
+  // Right, left, top, bottom. Constants are filled in per frame by the scene,
+  // which knows where the screen ends up in world space.
+  const clipPlanes = [
+    new THREE.Plane(new THREE.Vector3(-1, 0, 0), 1),
+    new THREE.Plane(new THREE.Vector3(1, 0, 0), 1),
+    new THREE.Plane(new THREE.Vector3(0, -1, 0), 1),
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), 1),
+  ]
 
-  let cut: THREE.Mesh | null = null
+  let setInflate: (p: number) => void = () => undefined
+  const hasSubject = !!textures.cutout
+
   if (textures.cutout) {
-    const cutTex = SCREEN_ASPECT[layer.device] === null ? textures.cutout : coverCrop(textures.cutout, textures.aspect, aspect)
-    cut = new THREE.Mesh(
-      new THREE.PlaneGeometry(W, 1),
-      new THREE.MeshBasicMaterial({ map: cutTex, toneMapped: false, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide }),
-    )
-    cut.castShadow = true
-    ;(cut as THREE.Mesh).customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: cutTex, alphaTest: 0.35 })
-    root.add(cut)
+    // The subject is the whole picture, not the part the screen crops to: a
+    // wide product on a tall phone has to be able to hang past the bezel once
+    // it is out. Size the plane so the region the screen shows lines up
+    // exactly with the screen, and let the rest overhang.
+    // Contained on screen: the subject is exactly the picture the viewer can
+    // already see. Cover-cropped: the subject is the full picture, which hangs
+    // past the bezel once the clip releases.
+    const pa = textures.aspect
+    const subW = containable ? fit.w : pa >= aspect ? pa : aspect
+    const subH = containable ? fit.h : pa >= aspect ? 1 : aspect / pa
+
+    const colorTex = new THREE.CanvasTexture(textures.cutout.color)
+    colorTex.colorSpace = THREE.SRGBColorSpace
+    const heightTex = new THREE.CanvasTexture(textures.cutout.height)
+    const normalTex = new THREE.CanvasTexture(textures.cutout.normal)
+    ownedTextures.push(colorTex, heightTex, normalTex)
+
+    const geo = new THREE.PlaneGeometry(subW, subH, SEG, SEG)
+    const frontMat = new THREE.MeshStandardMaterial({
+      map: colorTex,
+      alphaTest: 0.5,
+      roughness: 0.72,
+      metalness: 0,
+      normalMap: normalTex,
+      normalScale: new THREE.Vector2(0, 0),
+      displacementMap: heightTex,
+      displacementScale: 0,
+      // At rest the subject is pure emissive, i.e. an exact unlit copy of the
+      // screen pixels. As it inflates, lighting fades in and emissive fades
+      // down, so the same pixels gain real form without changing brightness.
+      emissiveMap: colorTex,
+      emissive: new THREE.Color(1, 1, 1),
+      emissiveIntensity: 1,
+      color: new THREE.Color(0, 0, 0),
+      envMapIntensity: 0.45,
+      clippingPlanes: clipPlanes,
+    })
+    const front = new THREE.Mesh(geo, frontMat)
+    front.castShadow = true
+    front.receiveShadow = true
+    front.frustumCulled = false // displacement pushes verts past the bounds
+    const depthMat = new THREE.MeshDepthMaterial({
+      depthPacking: THREE.RGBADepthPacking,
+      map: colorTex,
+      alphaTest: 0.5,
+      displacementMap: heightTex,
+      displacementScale: 0,
+    })
+    depthMat.clippingPlanes = clipPlanes
+    front.customDepthMaterial = depthMat
+    emerging.add(front)
+
+    const backMat = frontMat.clone()
+    backMat.side = THREE.BackSide
+    backMat.displacementScale = 0
+    backMat.envMapIntensity = 0.25
+    const back = new THREE.Mesh(geo, backMat)
+    back.castShadow = false
+    back.frustumCulled = false
+    back.visible = false
+    emerging.add(back)
+
+    const thickness = 0.12 + layer.depth * 0.5
+    setInflate = (p: number) => {
+      const e = Math.min(1, Math.max(0, p))
+      frontMat.displacementScale = thickness * e
+      frontMat.normalScale.set(e, e)
+      frontMat.color.setScalar(0.6 * e)
+      frontMat.emissiveIntensity = 1 - 0.52 * e
+      depthMat.displacementScale = thickness * e
+      backMat.displacementScale = -thickness * 0.55 * e
+      backMat.normalScale.set(e, e)
+      backMat.color.setScalar(0.3 * e)
+      backMat.emissiveIntensity = (1 - 0.52 * e) * 0.45
+      back.visible = e > 0.03
+    }
+    setInflate(0)
+  } else {
+    // No subject mask (a video, or segmentation declined): the whole picture
+    // leaves the screen as a physical print with real thickness.
+    const t = 0.016
+    const paper = new THREE.MeshStandardMaterial({ color: '#f7f7f4', roughness: 0.85, metalness: 0 })
+    const face = new THREE.MeshStandardMaterial({
+      map: screenTex,
+      roughness: 0.62,
+      metalness: 0,
+      emissiveMap: screenTex,
+      emissive: new THREE.Color(1, 1, 1),
+      emissiveIntensity: 1,
+      color: new THREE.Color(0, 0, 0),
+    })
+    const cardGeo = new THREE.BoxGeometry(W, 1, t)
+    const card = new THREE.Mesh(cardGeo, [paper, paper, paper, paper, face, paper])
+    card.castShadow = true
+    card.receiveShadow = true
+    card.position.z = t / 2
+    emerging.add(card)
+    setInflate = (p: number) => {
+      const e = Math.min(1, Math.max(0, p))
+      face.color.setScalar(0.62 * e)
+      face.emissiveIntensity = 1 - 0.5 * e
+    }
+    setInflate(0)
   }
 
   const D = layer.popDistance
-
-  const update = (t: number) => {
-    // Device entrance
-    const e = easeOutBack(window01(t, 0, ENTER))
-    device.scale.setScalar(Math.max(0.0001, e))
-    device.position.y = (1 - easeOutCubic(window01(t, 0, ENTER))) * -0.25
-    device.visible = e > 0.001
-    // Picture breakout
-    const start = ENTER + layer.delay
-    // With a cut-out subject, the full picture only nudges off the screen and
-    // the subject does the real breakout — the classic "bursts out of the
-    // frame" look.
-    const s = cut ? pose(layer.motion, t, start, D * 0.18, 0.05) : pose(layer.motion, t, start, D)
-    pic.visible = t >= 0 && device.visible && layer.motion !== 'none'
-    if (layer.motion === 'none') {
-      screenMat.color.setScalar(1)
-    } else {
-      pic.position.set(s.x, s.y, 0.004 + s.z)
-      pic.rotation.set(s.rx, s.ry, s.rz)
-      pic.scale.setScalar(s.scale * e)
-      ;(edge.material as THREE.MeshBasicMaterial).opacity = Math.min(1, s.out * 1.5)
-      // Dim the screen copy as the picture leaves it so the pop reads clearly.
-      screenMat.color.setScalar(1 - 0.5 * s.out)
-      if (cut) {
-        const c = pose(layer.motion, t, start + 0.1, D, GROW + 0.12)
-        cut.visible = pic.visible
-        cut.position.set(c.x, c.y, 0.008 + c.z)
-        cut.rotation.set(c.rx, c.ry, c.rz)
-        cut.scale.setScalar(c.scale * e)
-      }
-    }
-  }
-  update(0)
-  return {
+  // A cut-out subject already reads as 3D, so it needs less scaling; a flat
+  // card leans on growth to sell the approach.
+  const GROW = hasSubject ? 0.16 : 0.3
+  const built: BreakoutBuilt = {
     object: root,
     bottomY,
-    update,
+    outerW,
+    outerH,
+    progress: 0,
+    clipPlanes,
+    clipRelease: 0,
+    update: () => undefined,
     dispose: () => {
       disposeTree(root)
+      ownedTextures.forEach((t) => t.dispose())
       if (screenTex !== textures.picture) screenTex.dispose()
+      ownedScreen?.dispose()
     },
   }
+
+  built.update = (t: number) => {
+    const enter = window01(t, 0, ENTER)
+    const e = easeOutBack(enter)
+    device.scale.setScalar(Math.max(0.0001, e))
+    device.position.y = (1 - easeOutCubic(enter)) * -0.25
+    device.visible = e > 0.001
+
+    const start = ENTER + layer.delay
+    const s = pose(layer.motion, t, start, D, GROW)
+    built.progress = s.out
+    built.clipRelease = Math.min(1, s.out / 0.16)
+    emerging.visible = device.visible && layer.motion !== 'none'
+    if (!emerging.visible) {
+      screenMat.color.setScalar(1)
+      return
+    }
+    emerging.position.set(s.x, s.y, 0.005 + s.z)
+    emerging.rotation.set(s.rx, s.ry, s.rz)
+    emerging.scale.setScalar(s.scale * e)
+    setInflate(s.out)
+    // Fade the copy left behind on the screen so the eye follows the one that
+    // left. A cut-out only removes the subject, so the fade is gentler.
+    screenMat.color.setScalar(1 - (hasSubject ? 0.28 : 0.55) * s.out)
+  }
+  built.update(0)
+  return built
 }

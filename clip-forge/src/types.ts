@@ -114,6 +114,12 @@ export interface PictureLayer {
   /** Optional PNG of the same picture with the background removed. It pops
    *  out further than the picture so the subject bursts past the frame. */
   cutoutUrl?: string
+  /** Cut the subject out of the photo automatically on upload */
+  autoCutout: boolean
+  /** 0..1 — how aggressively the background is removed */
+  cutoutTolerance: number
+  /** 0..1 — how much the cut-out subject is inflated into a solid body */
+  depth: number
   device: DeviceId
   motion: BreakoutMotionId
   camera: CameraMoveId

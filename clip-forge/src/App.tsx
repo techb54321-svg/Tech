@@ -23,6 +23,11 @@ function loadDraft(): Project | null {
       if (p.background.kind === 'image' || p.background.kind === 'video') p.background.kind = 'gradient'
     }
     if (p.logo.url?.startsWith('blob:')) p.logo.url = undefined
+    // Drafts saved by older versions
+    if (!p.picture) p.picture = instantiate(TEMPLATES[0]).picture
+    if (p.picture.url?.startsWith('blob:')) p.picture.url = undefined
+    if (p.picture.cutoutUrl?.startsWith('blob:')) p.picture.cutoutUrl = undefined
+    if (typeof p.animation.enabled !== 'boolean') p.animation.enabled = false
     return p
   } catch {
     return null
@@ -34,7 +39,7 @@ export default function App() {
   const [fontError, setFontError] = useState<string | null>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [draft] = useState<Project | null>(() => loadDraft())
-  const [tab, setTab] = useState<Tab>('text')
+  const [tab, setTab] = useState<Tab>('picture')
   const [selection, setSelection] = useState<Selection>({ kind: null })
   const [exporting, setExporting] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -116,6 +121,7 @@ export default function App() {
   useEffect(() => {
     if (selection.kind === 'text') setTab('text')
     if (selection.kind === 'animation') setTab('animation')
+    if (selection.kind === 'picture') setTab('picture')
   }, [selection])
 
   const pick = (t: Template) => {
@@ -123,7 +129,7 @@ export default function App() {
     future.current = []
     setProject(instantiate(t))
     setSelection({ kind: null })
-    setTab('text')
+    setTab('picture')
   }
 
   if (fontError) return <div className="boot error">Could not load the 3D font: {fontError}</div>

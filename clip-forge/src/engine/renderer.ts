@@ -2,7 +2,7 @@ import type { Font } from 'three/examples/jsm/loaders/FontLoader.js'
 import type { Project } from '../types'
 import { formatOf } from '../types'
 import { drawBackground, type MediaSource } from './background'
-import { Scene3D } from './scene3d'
+import { Scene3D, type PictureMedia } from './scene3d'
 import { drawText, type TextBounds } from './text'
 
 /**
@@ -19,6 +19,9 @@ export class FrameRenderer {
   private logoImg?: HTMLImageElement
   private logoUrl?: string
   private mediaUrl?: string
+  private picture: PictureMedia = {}
+  private pictureUrl?: string
+  private cutoutUrl?: string
   /** Text bounds from the last frame (canvas px) — used for hit testing. */
   lastBounds: TextBounds[] = []
 
@@ -33,59 +36,45 @@ export class FrameRenderer {
     if ((bgc.kind === 'image' || bgc.kind === 'video') && bgc.mediaUrl && bgc.mediaUrl !== this.mediaUrl) {
       this.mediaUrl = bgc.mediaUrl
       this.media = {}
-      if (bgc.kind === 'image') {
-        const img = new Image()
-        img.src = bgc.mediaUrl
-        await img.decode().catch(() => undefined)
-        this.media.image = img
-      } else {
-        const v = document.createElement('video')
-        v.src = bgc.mediaUrl
-        v.muted = true
-        v.playsInline = true
-        v.preload = 'auto'
-        await new Promise<void>((res) => {
-          v.onloadeddata = () => res()
-          v.onerror = () => res()
-        })
-        this.media.video = v
-      }
+      if (bgc.kind === 'image') this.media.image = await loadImage(bgc.mediaUrl)
+      else this.media.video = await loadVideo(bgc.mediaUrl)
+    }
+    const pic = project.picture
+    if (pic.url !== this.pictureUrl) {
+      this.pictureUrl = pic.url
+      if (this.picture.el instanceof HTMLVideoElement) this.picture.el.pause()
+      this.picture.el = undefined
+      if (pic.url) this.picture.el = pic.isVideo ? await loadVideo(pic.url) : await loadImage(pic.url)
+    }
+    if (pic.cutoutUrl !== this.cutoutUrl) {
+      this.cutoutUrl = pic.cutoutUrl
+      this.picture.cutout = pic.cutoutUrl ? await loadImage(pic.cutoutUrl) : undefined
     }
     if (project.logo.url !== this.logoUrl) {
       this.logoUrl = project.logo.url
       this.logoImg = undefined
-      if (project.logo.url) {
-        const img = new Image()
-        img.src = project.logo.url
-        await img.decode().catch(() => undefined)
-        this.logoImg = img
-      }
+      if (project.logo.url) this.logoImg = await loadImage(project.logo.url)
     }
   }
 
-  /** Seek the background video to time t (only needed for exact exports). */
-  async seekVideo(t: number): Promise<void> {
-    const v = this.media.video
-    if (!v || !Number.isFinite(v.duration)) return
-    const target = v.duration > 0 ? t % v.duration : 0
-    if (Math.abs(v.currentTime - target) < 1 / 120) return
-    await new Promise<void>((res) => {
-      const done = () => {
-        v.removeEventListener('seeked', done)
-        res()
-      }
-      v.addEventListener('seeked', done)
-      v.currentTime = target
-      setTimeout(done, 400) // never hang an export on a stuck seek
-    })
+  private videos(): HTMLVideoElement[] {
+    const out: HTMLVideoElement[] = []
+    if (this.media.video) out.push(this.media.video)
+    if (this.picture.el instanceof HTMLVideoElement) out.push(this.picture.el)
+    return out
   }
 
-  /** For live preview: let the video play in real time instead of seeking. */
+  /** Seek every video to time t (only needed for exact exports). */
+  async seekVideo(t: number): Promise<void> {
+    await Promise.all(this.videos().map((v) => seek(v, t)))
+  }
+
+  /** For live preview: let videos play in real time instead of seeking. */
   playVideo(playing: boolean) {
-    const v = this.media.video
-    if (!v) return
-    if (playing) v.play().catch(() => undefined)
-    else v.pause()
+    for (const v of this.videos()) {
+      if (playing) v.play().catch(() => undefined)
+      else v.pause()
+    }
   }
 
   render(project: Project, t: number, font: Font) {
@@ -101,7 +90,7 @@ export class FrameRenderer {
 
     drawBackground(ctx, project.background, this.media, w, h, t, project.duration)
 
-    this.scene.render(project.animation, font, t)
+    this.scene.render(project.picture, this.picture, project.animation, font, t)
     ctx.drawImage(this.scene.canvas, 0, 0, w, h)
 
     this.lastBounds = project.texts.map((layer) => drawText(ctx, layer, w, h, t))
@@ -122,6 +111,42 @@ export class FrameRenderer {
 
   dispose() {
     this.scene.dispose()
-    this.media.video?.pause()
+    for (const v of this.videos()) v.pause()
   }
+}
+
+async function loadImage(url: string): Promise<HTMLImageElement> {
+  const img = new Image()
+  img.src = url
+  await img.decode().catch(() => undefined)
+  return img
+}
+
+async function loadVideo(url: string): Promise<HTMLVideoElement> {
+  const v = document.createElement('video')
+  v.src = url
+  v.muted = true
+  v.loop = true
+  v.playsInline = true
+  v.preload = 'auto'
+  await new Promise<void>((res) => {
+    v.onloadeddata = () => res()
+    v.onerror = () => res()
+  })
+  return v
+}
+
+async function seek(v: HTMLVideoElement, t: number): Promise<void> {
+  if (!Number.isFinite(v.duration)) return
+  const target = v.duration > 0 ? t % v.duration : 0
+  if (Math.abs(v.currentTime - target) < 1 / 120) return
+  await new Promise<void>((res) => {
+    const done = () => {
+      v.removeEventListener('seeked', done)
+      res()
+    }
+    v.addEventListener('seeked', done)
+    v.currentTime = target
+    setTimeout(done, 400) // never hang an export on a stuck seek
+  })
 }

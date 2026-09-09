@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { gradientCss } from '../engine/background'
 import { CATEGORIES, TEMPLATES } from '../templates'
 import type { Template } from '../types'
-import { formatOf } from '../types'
+import { DEVICES, formatOf } from '../types'
 
 export function Gallery({ onPick, hasDraft, onResume }: { onPick: (t: Template) => void; hasDraft: boolean; onResume: () => void }) {
   const [cat, setCat] = useState('All')
@@ -11,9 +11,9 @@ export function Gallery({ onPick, hasDraft, onResume }: { onPick: (t: Template) 
     <main className="gallery">
       <header className="hero">
         <h1>
-          Make viral 3D video ads <span>in 3 clicks</span>
+          Your picture <span>breaks out of the screen</span>
         </h1>
-        <p>Pick a template → add your text &amp; media → choose a 3D animation. Export an MP4 straight from your browser.</p>
+        <p>Upload a flat photo, pick the screen it comes out of, choose a breakout motion. Viral 3D video ads &amp; posts in 3 clicks — exported as MP4 right in your browser.</p>
         {hasDraft && (
           <button type="button" className="btn primary" onClick={onResume}>
             ▶ Resume your last clip
@@ -47,7 +47,10 @@ function TemplateCard({ t, onPick }: { t: Template; onPick: () => void }) {
         <span className="thumb-head" style={{ color: head?.color ?? '#fff' }}>
           {head ? (head.uppercase ? head.text.toUpperCase() : head.text) : ''}
         </span>
-        <span className="thumb-emoji">{t.emoji}</span>
+        <span className="thumb-device">
+          <span className="thumb-screen">{t.emoji}</span>
+          <small>{DEVICES.find((d) => d.id === p.picture.device)?.label}</small>
+        </span>
         {p.texts[p.texts.length - 1]?.boxColor && (
           <span className="thumb-cta" style={{ background: p.texts[p.texts.length - 1].boxColor, color: p.texts[p.texts.length - 1].color }}>
             {p.texts[p.texts.length - 1].text}

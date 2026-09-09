@@ -1,14 +1,18 @@
 # Clip Forge 🎬
 
-Make scroll-stopping **3D animated video ads and social posts in 3 clicks** —
-entirely in your browser. No account, no upload, no video-editing skills.
+**Your flat picture breaks out of the screen.** Upload a photo, put it on a
+3D phone / TV / picture frame, and watch it pop out towards the viewer —
+scroll-stopping video ads and social posts in 3 clicks, entirely in your
+browser. No account, no upload, no video-editing skills.
 
 1. **Pick a template** (sales, real estate, hiring, restaurant, events, …)
-2. **Add your text & media** — edit any text field, drop in your own photo or
-   video, upload a logo
-3. **Choose a 3D animation** — 19 premium-looking procedural 3D objects
-   (3D headline, coin, rocket, mascot, gift box, burger, house, confetti, …)
-   with 9 motion presets
+2. **Upload your picture** — a product shot, listing photo, dish, portrait, or
+   a short video. Optionally add the same picture with its background removed
+   so the subject bursts out past the frame edges.
+3. **Choose the screen and the breakout** — 9 devices (phone, tablet, laptop,
+   monitor, TV, picture frame, polaroid, billboard, glowing portal) × 6
+   breakout motions (pop, slide up & out, flip, peel, zoom at you, stay on
+   screen) × 4 camera moves.
 
 Then hit **Export video** and get an MP4 (H.264) rendered frame-exact in
 seconds, ready for TikTok, Reels, Shorts, Facebook, Instagram, LinkedIn or X.
@@ -19,9 +23,10 @@ seconds, ready for TikTok, Reels, Shorts, Facebook, Instagram, LinkedIn or X.
 | --- | --- |
 | Templates | 17 done-for-you templates across 10 categories, plus "start from scratch" |
 | Formats | 9:16 story/reel, 1:1 square, 4:5 portrait, 16:9 landscape (all 1080p) |
-| Backgrounds | 16 gradient presets, solid colour, your own photo (with slow Ken-Burns zoom) or video, blur & darken |
+| Breakout picture | Photo or video on a 3D device, 9 devices, 6 breakout motions, 4 camera moves, adjustable pop distance / size / delay / device colour, real cast shadows onto the screen and floor, optional cut-out subject layer, drag to place |
+| Backdrop | 16 gradient presets, solid colour, your own photo (with slow Ken-Burns zoom) or video, blur & darken |
 | Text | Unlimited layers, 5 font styles, pill backgrounds, outline, shadow, 6 entrance animations, auto-fit to width, drag to place |
-| 3D layer | 19 animations (7 of them use your own text), 9 motions, two brand colours, matte / metallic finish, drag to place |
+| 3D stickers | Optional extras: 19 procedural objects (3D headline, coin, confetti, mascot, rocket …) with 9 motions, two brand colours, matte / metallic finish |
 | Brand | Logo / watermark in any corner, clip name, 3–20 s duration, 24/30/60 fps |
 | Export | MP4 (H.264) via WebCodecs; VP9/VP8 WebM fallback; MediaRecorder as a last resort. Never leaves your machine |
 | Editing | Undo / redo (Ctrl+Z / Ctrl+Shift+Z), Delete key removes text, autosave draft to localStorage |
@@ -56,10 +61,11 @@ src/
   engine/
     background.ts       – gradients, cover-fit photo/video, Ken Burns, dim/blur
     text.ts             – canvas text: wrapping, auto-fit, pills, entrances
-    animations.ts       – 19 procedural THREE.js objects (no downloaded models)
-    motions.ts          – 9 motion presets (bounce, drop, spin-in, swing, …)
-    scene3d.ts          – transparent WebGL layer: lights, env map, shadows
-    renderer.ts         – compositor: background → 3D → text → logo
+    breakout.ts         – the breakout rig: device mockups, picture planes, pop-out poses
+    animations.ts       – 19 procedural THREE.js sticker objects (no downloaded models)
+    motions.ts          – 9 sticker motion presets (bounce, drop, spin-in, swing, …)
+    scene3d.ts          – transparent WebGL layer: camera moves, lights, env map, shadows
+    renderer.ts         – compositor: backdrop → 3D (breakout + sticker) → text → logo
     exporter.ts         – WebCodecs + mp4-muxer / webm-muxer, MediaRecorder fallback
   ui/                   – React editor (gallery, preview w/ drag, inspector, export)
 ```
@@ -82,6 +88,8 @@ in-memory object URLs and never uploaded anywhere.
 
 ## Ideas for next steps
 
+- Automatic background removal in the browser so the cut-out layer needs no
+  extra upload
 - Background music / voice-over track muxed into the MP4
 - More templates + a "Brand kit" that recolours every template at once
 - Shareable project files (export / import JSON)

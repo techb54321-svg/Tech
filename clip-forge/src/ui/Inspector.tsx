@@ -2,14 +2,14 @@ import { ANIMATIONS } from '../engine/animations'
 import { GRADIENTS, gradientCss } from '../engine/background'
 import { MOTIONS } from '../engine/motions'
 import { FONT_STACKS } from '../engine/text'
-import type { AnimationLayer, Background, FontId, Logo, Project, TextAnim, TextLayer } from '../types'
-import { FORMATS, uid } from '../types'
+import type { AnimationLayer, Background, FontId, Logo, PictureLayer, Project, TextAnim, TextLayer } from '../types'
+import { BREAKOUT_MOTIONS, CAMERA_MOVES, DEVICES, FORMATS, uid } from '../types'
 import { ColorInput, Field, FilePick, Segmented, Select, Slider, Toggle } from './controls'
 
-export type Tab = 'background' | 'text' | 'animation' | 'brand'
+export type Tab = 'picture' | 'background' | 'text' | 'animation' | 'brand'
 
 export interface Selection {
-  kind: 'text' | 'animation' | null
+  kind: 'picture' | 'text' | 'animation' | null
   id?: string
 }
 
@@ -29,19 +29,66 @@ export function Inspector({ project, tab, setTab, selection, setSelection, updat
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'background', label: '🖼 Background' },
+          { value: 'picture', label: '📸 Picture' },
+          { value: 'background', label: '🖼 Backdrop' },
           { value: 'text', label: '✍️ Text' },
-          { value: 'animation', label: '🧊 3D' },
+          { value: 'animation', label: '✨ Sticker' },
           { value: 'brand', label: '🏷 Brand' },
         ]}
       />
       <div className="inspector-body">
+        {tab === 'picture' && <PictureTab pic={project.picture} duration={project.duration} set={(b) => update((p) => ({ ...p, picture: { ...p.picture, ...b } }))} />}
         {tab === 'background' && <BackgroundTab bg={project.background} set={(b) => update((p) => ({ ...p, background: { ...p.background, ...b } }))} />}
         {tab === 'text' && <TextTab project={project} selection={selection} setSelection={setSelection} update={update} />}
         {tab === 'animation' && <AnimationTab anim={project.animation} set={(a) => update((p) => ({ ...p, animation: { ...p.animation, ...a } }))} />}
         {tab === 'brand' && <BrandTab project={project} update={update} />}
       </div>
     </aside>
+  )
+}
+
+// --- Picture (the breakout) ----------------------------------------------------
+
+function PictureTab({ pic, duration, set }: { pic: PictureLayer; duration: number; set: (b: Partial<PictureLayer>) => void }) {
+  return (
+    <>
+      <FilePick
+        label={pic.url ? 'Replace your picture…' : '1 · Upload your photo or video'}
+        accept="image/*,video/*"
+        onFile={(f) => set({ url: URL.createObjectURL(f), isVideo: f.type.startsWith('video') })}
+      />
+      <p className="hint">
+        This is the flat picture that comes out of the screen. Product shots, listings, food, portraits — anything works. It never leaves your browser.
+      </p>
+      <Field label="2 · Screen it comes out of">
+        <div className="device-grid">
+          {DEVICES.map((d) => (
+            <button key={d.id} type="button" className={`anim-tile ${d.id === pic.device ? 'active' : ''}`} title={d.hint} onClick={() => set({ device: d.id })}>
+              <span className="anim-emoji">{d.emoji}</span>
+              <span>{d.label}</span>
+            </button>
+          ))}
+        </div>
+      </Field>
+      <Select label="3 · Breakout motion" value={pic.motion} options={BREAKOUT_MOTIONS.map((m) => ({ value: m.id, label: `${m.label} — ${m.hint}` }))} onChange={(motion) => set({ motion })} />
+      <Select label="Camera" value={pic.camera} options={CAMERA_MOVES.map((c) => ({ value: c.id, label: c.label }))} onChange={(camera) => set({ camera })} />
+      <Slider label="How far it comes out" value={pic.popDistance} min={0.3} max={2} step={0.05} onChange={(v) => set({ popDistance: v })} format={(v) => `${v.toFixed(2)}×`} />
+      <Slider label="Size" value={pic.scale} min={0.12} max={0.7} onChange={(v) => set({ scale: v })} format={(v) => `${Math.round(v * 100)}%`} />
+      <Slider label="Delay before breakout" value={pic.delay} min={0} max={Math.max(0.5, duration - 2)} step={0.05} onChange={(v) => set({ delay: v })} format={(v) => `${v.toFixed(2)}s`} />
+      <ColorInput label="Device / frame colour" value={pic.frameColor} onChange={(c) => set({ frameColor: c })} />
+      <Field label="Optional: cut-out subject" hint="Same photo, background removed">
+        <FilePick label={pic.cutoutUrl ? 'Replace cut-out PNG…' : 'Upload a transparent PNG…'} accept="image/png,image/webp" onFile={(f) => set({ cutoutUrl: URL.createObjectURL(f) })} />
+      </Field>
+      <p className="hint">
+        For the classic “bursts out of the frame” look, upload the same photo with its background removed (e.g. from remove.bg). The subject then pops out past the edges while the rest stays on screen.
+      </p>
+      {pic.cutoutUrl && (
+        <button type="button" className="btn ghost" onClick={() => set({ cutoutUrl: undefined })}>
+          Remove cut-out
+        </button>
+      )}
+      <p className="hint">Drag the device on the preview to move it.</p>
+    </>
   )
 }
 
@@ -189,6 +236,10 @@ function AnimationTab({ anim, set }: { anim: AnimationLayer; set: (a: Partial<An
   const def = ANIMATIONS.find((a) => a.id === anim.kind)
   return (
     <>
+      <Toggle label="Add a 3D sticker on top of the scene" value={anim.enabled} onChange={(v) => set({ enabled: v })} />
+      {!anim.enabled && <p className="hint">Stickers are optional extras: a spinning coin, confetti burst, a 3D headline, a waving mascot…</p>}
+      {anim.enabled && (
+      <>
       <div className="anim-grid">
         {ANIMATIONS.map((a) => (
           <button key={a.id} type="button" className={`anim-tile ${a.id === anim.kind ? 'active' : ''}`} onClick={() => set({ kind: a.id })}>
@@ -210,7 +261,9 @@ function AnimationTab({ anim, set }: { anim: AnimationLayer; set: (a: Partial<An
         <ColorInput label="Accent" value={anim.color2} onChange={(c) => set({ color2: c })} />
       </div>
       <Toggle label="Shiny metallic finish" value={anim.metallic} onChange={(v) => set({ metallic: v })} />
-      <p className="hint">Drag the 3D object on the preview to place it.</p>
+      <p className="hint">Drag the sticker on the preview to place it.</p>
+      </>
+      )}
     </>
   )
 }

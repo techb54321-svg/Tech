@@ -1,4 +1,4 @@
-import type { AnimationLayer, Background, Project, Template, TextLayer } from './types'
+import type { AnimationLayer, Background, PictureLayer, Project, Template, TextLayer } from './types'
 import { uid } from './types'
 
 // ---------------------------------------------------------------------------
@@ -40,6 +40,23 @@ function anim(partial: Partial<AnimationLayer> & { kind: string }): AnimationLay
     color2: '#ff4d6d',
     delay: 0.15,
     metallic: true,
+    enabled: false,
+    ...partial,
+  }
+}
+
+function picture(partial: Partial<PictureLayer> = {}): PictureLayer {
+  return {
+    isVideo: false,
+    device: 'phone',
+    motion: 'pop',
+    camera: 'orbit',
+    x: 0.5,
+    y: 0.5,
+    scale: 0.34,
+    popDistance: 0.7,
+    delay: 0.4,
+    frameColor: '#1b1b22',
     ...partial,
   }
 }
@@ -50,6 +67,7 @@ function project(p: Partial<Project> & { name: string; texts: TextLayer[]; anima
     duration: 8,
     fps: 30,
     background: bg('sunset'),
+    picture: picture(),
     logo: { corner: 'br', size: 0.06 },
     ...p,
   }
@@ -70,7 +88,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Up to 50% off everything in store', y: 0.78, size: 0.045, delay: 0.9 }),
         text({ text: 'SHOP NOW →', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#b3261e', uppercase: true, anim: 'pop', delay: 1.3 }),
       ],
-      animation: anim({ kind: 'text3d', text: '50%\nOFF', motion: 'bounce', y: 0.5, scale: 0.34, color: '#ffd23f', color2: '#ff6b35' }),
+      picture: picture({ device: 'phone', motion: 'pop', camera: 'orbit', scale: 0.34, y: 0.52 }),
+      animation: anim({ enabled: false,  kind: 'text3d', text: '50%\nOFF', motion: 'bounce', y: 0.5, scale: 0.34, color: '#ffd23f', color2: '#ff6b35' }),
     }),
   },
   {
@@ -87,7 +106,8 @@ export const TEMPLATES: Template[] = [
         text({ text: '24 Maple Drive · 4 bed · 3 bath', y: 0.8, size: 0.04, delay: 0.9 }),
         text({ text: 'Just listed — $749,000', y: 0.88, size: 0.042, boxColor: '#0f9d58', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'house', motion: 'drop', y: 0.52, scale: 0.4, color: '#ffffff', color2: '#e63946' }),
+      picture: picture({ device: 'frame', motion: 'peel', camera: 'dolly', scale: 0.32, y: 0.5, frameColor: '#6b4226' }),
+      animation: anim({ enabled: false,  kind: 'house', motion: 'drop', y: 0.52, scale: 0.4, color: '#ffffff', color2: '#e63946' }),
     }),
   },
   {
@@ -104,7 +124,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Senior Designer · Remote · Full time', y: 0.79, size: 0.04, delay: 0.9 }),
         text({ text: 'Apply at yourcompany.com/jobs', y: 0.88, size: 0.036, boxColor: '#ffffff', color: '#0b3d91', delay: 1.2, anim: 'pop' }),
       ],
-      animation: anim({ kind: 'megaphone', motion: 'swing', y: 0.5, scale: 0.42, color: '#ff8a00', color2: '#2b2d42' }),
+      picture: picture({ device: 'laptop', motion: 'slideUp', camera: 'orbit', scale: 0.2, y: 0.52 }),
+      animation: anim({ enabled: false,  kind: 'megaphone', motion: 'swing', y: 0.5, scale: 0.42, color: '#ff8a00', color2: '#2b2d42' }),
     }),
   },
   {
@@ -121,7 +142,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Two patties, smoked cheddar, secret sauce', y: 0.79, size: 0.038, delay: 0.9 }),
         text({ text: 'Order now · $12.90', y: 0.88, size: 0.042, boxColor: '#2b1b12', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'burger', motion: 'drop', y: 0.5, scale: 0.4, color: '#d98e3d', color2: '#5a9c3a', metallic: false }),
+      picture: picture({ device: 'polaroid', motion: 'pop', camera: 'handheld', scale: 0.32, y: 0.48 }),
+      animation: anim({ enabled: false,  kind: 'burger', motion: 'drop', y: 0.5, scale: 0.4, color: '#d98e3d', color2: '#5a9c3a', metallic: false }),
     }),
   },
   {
@@ -138,7 +160,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Faster. Smarter. Yours.', y: 0.79, size: 0.05, font: 'rounded', delay: 0.9 }),
         text({ text: 'Try it free', y: 0.88, size: 0.04, boxColor: '#7c5cff', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'rocket', motion: 'float', y: 0.5, scale: 0.46, color: '#ffffff', color2: '#ff5d73' }),
+      picture: picture({ device: 'phone', motion: 'zoom', camera: 'dolly', scale: 0.34, y: 0.52, popDistance: 0.9 }),
+      animation: anim({ enabled: false,  kind: 'rocket', motion: 'float', y: 0.5, scale: 0.46, color: '#ffffff', color2: '#ff5d73' }),
     }),
   },
   {
@@ -155,7 +178,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Friday 7pm · The Rooftop, 5th Ave', y: 0.79, size: 0.038, delay: 0.9 }),
         text({ text: 'RSVP today', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#c2185b', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'confetti', motion: 'pop', y: 0.5, scale: 0.55, color: '#ffd23f', color2: '#4cc9f0' }),
+      picture: picture({ device: 'billboard', motion: 'pop', camera: 'orbit', scale: 0.17, y: 0.5, frameColor: '#2b2d42' }),
+      animation: anim({ enabled: true, kind: 'confetti', motion: 'pop', y: 0.42, scale: 0.7, delay: 1.6, color: '#ffd23f', color2: '#4cc9f0' }),
     }),
   },
   {
@@ -171,7 +195,8 @@ export const TEMPLATES: Template[] = [
         text({ text: '“Best service I have ever had. They went above and beyond.”', y: 0.76, size: 0.042, font: 'serif', delay: 0.8, maxWidth: 0.8 }),
         text({ text: '— Jamie R., verified customer', y: 0.87, size: 0.032, color: '#d5f5e3', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'star', motion: 'spinIn', y: 0.46, scale: 0.4, color: '#ffd23f', color2: '#ff9f1c' }),
+      picture: picture({ device: 'tablet', motion: 'flip', camera: 'orbit', scale: 0.34, y: 0.5, frameColor: '#e9e9ee' }),
+      animation: anim({ enabled: true, kind: 'star', motion: 'spinIn', x: 0.82, y: 0.3, scale: 0.15, delay: 1.8, color: '#ffd23f', color2: '#ff9f1c' }),
     }),
   },
   {
@@ -188,7 +213,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Doors open Saturday 9am', y: 0.79, size: 0.045, delay: 0.9 }),
         text({ text: '123 Market Street', y: 0.88, size: 0.036, boxColor: '#ffffff', color: '#3d1c8f', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'gift', motion: 'drop', y: 0.5, scale: 0.4, color: '#ff4d6d', color2: '#ffd23f' }),
+      picture: picture({ device: 'tv', motion: 'pop', camera: 'dolly', scale: 0.19, y: 0.52 }),
+      animation: anim({ enabled: false,  kind: 'gift', motion: 'drop', y: 0.5, scale: 0.4, color: '#ff4d6d', color2: '#ffd23f' }),
     }),
   },
   {
@@ -205,7 +231,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'No fees. No minimum spend.', y: 0.79, size: 0.042, delay: 0.9 }),
         text({ text: 'Open an account in 2 minutes', y: 0.88, size: 0.036, boxColor: '#ffd23f', color: '#0b3b25', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'coin', text: '$', motion: 'orbit', y: 0.5, scale: 0.38, color: '#ffd23f', color2: '#d99a00' }),
+      picture: picture({ device: 'phone', motion: 'slideUp', camera: 'orbit', scale: 0.32, y: 0.54 }),
+      animation: anim({ enabled: true, kind: 'coin', text: '$', motion: 'orbit', x: 0.8, y: 0.68, scale: 0.15, delay: 1.8, color: '#ffd23f', color2: '#d99a00' }),
     }),
   },
   {
@@ -222,7 +249,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Unlimited classes · Coaching · Community', y: 0.79, size: 0.036, delay: 0.9 }),
         text({ text: 'First week free', y: 0.88, size: 0.042, boxColor: '#e9ff70', color: '#111111', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'bolt', motion: 'pop', y: 0.5, scale: 0.46, color: '#e9ff70', color2: '#111111' }),
+      picture: picture({ device: 'portal', motion: 'zoom', camera: 'handheld', scale: 0.32, y: 0.5, popDistance: 0.9 }),
+      animation: anim({ enabled: true, kind: 'bolt', motion: 'pop', x: 0.83, y: 0.3, scale: 0.15, delay: 1.8, color: '#e9ff70', color2: '#111111' }),
     }),
   },
   {
@@ -238,7 +266,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Something brilliant is on its way', y: 0.79, size: 0.042, font: 'serif', delay: 0.9 }),
         text({ text: 'Join the waitlist', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#1b1b3a', anim: 'pop', delay: 1.3 }),
       ],
-      animation: anim({ kind: 'diamond', motion: 'orbit', y: 0.5, scale: 0.42, color: '#7ef9ff', color2: '#b388ff' }),
+      picture: picture({ device: 'monitor', motion: 'flip', camera: 'orbit', scale: 0.2, y: 0.5 }),
+      animation: anim({ enabled: true, kind: 'diamond', motion: 'orbit', x: 0.8, y: 0.3, scale: 0.14, delay: 1.8, color: '#7ef9ff', color2: '#b388ff' }),
     }),
   },
   {
@@ -255,7 +284,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'We could not have done it without you', y: 0.8, size: 0.04, delay: 0.9 }),
         text({ text: '@yourbrand', y: 0.88, size: 0.036, boxColor: '#ffffff', color: '#c2185b', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'heart', motion: 'bounce', y: 0.5, scale: 0.4, color: '#ff4d6d', color2: '#ff8fa3' }),
+      picture: picture({ device: 'polaroid', motion: 'peel', camera: 'handheld', scale: 0.32, y: 0.48 }),
+      animation: anim({ enabled: true, kind: 'heart', motion: 'bounce', x: 0.8, y: 0.3, scale: 0.14, delay: 1.8, color: '#ff4d6d', color2: '#ff8fa3' }),
     }),
   },
   {
@@ -272,7 +302,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Mon – Sat · 8am to 6pm', y: 0.79, size: 0.042, delay: 0.9 }),
         text({ text: '88 High Street', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#b3261e', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'pin', motion: 'drop', y: 0.5, scale: 0.42, color: '#ff4d6d', color2: '#ffffff' }),
+      picture: picture({ device: 'frame', motion: 'pop', camera: 'dolly', scale: 0.32, y: 0.5, frameColor: '#f2efe8' }),
+      animation: anim({ enabled: false,  kind: 'pin', motion: 'drop', y: 0.5, scale: 0.42, color: '#ff4d6d', color2: '#ffffff' }),
     }),
   },
   {
@@ -289,23 +320,25 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Free shipping over $50', y: 0.79, size: 0.042, delay: 0.9 }),
         text({ text: 'Shop the drop', y: 0.88, size: 0.04, boxColor: '#111111', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'bag', motion: 'swing', y: 0.5, scale: 0.42, color: '#ffffff', color2: '#ff4d6d' }),
+      picture: picture({ device: 'phone', motion: 'flip', camera: 'orbit', scale: 0.34, y: 0.52, frameColor: '#f4f4f8' }),
+      animation: anim({ enabled: false,  kind: 'bag', motion: 'swing', y: 0.5, scale: 0.42, color: '#ffffff', color2: '#ff4d6d' }),
     }),
   },
   {
     id: 'mascot-hello',
-    name: 'Mascot Says Hi',
+    name: 'Say Hello',
     category: 'Social',
     emoji: '👋',
     project: project({
-      name: 'Mascot Says Hi',
+      name: 'Say Hello',
       background: bg('sky'),
       texts: [
         text({ text: 'HELLO THERE!', y: 0.15, size: 0.08, font: 'rounded', uppercase: true, anim: 'pop' }),
         text({ text: 'Follow us for weekly tips & deals', y: 0.79, size: 0.042, delay: 0.9 }),
         text({ text: '@yourbrand', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#0b3d91', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'mascot', motion: 'bounce', y: 0.5, scale: 0.46, color: '#7c5cff', color2: '#ffd23f', metallic: false }),
+      picture: picture({ device: 'tablet', motion: 'pop', camera: 'orbit', scale: 0.32, y: 0.5 }),
+      animation: anim({ enabled: true, kind: 'mascot', motion: 'bounce', x: 0.8, y: 0.7, scale: 0.2, delay: 1.8, color: '#7c5cff', color2: '#ffd23f', metallic: false }),
     }),
   },
   {
@@ -321,7 +354,8 @@ export const TEMPLATES: Template[] = [
         text({ text: 'Thank you — next batch drops Friday', y: 0.8, size: 0.042, delay: 0.9 }),
         text({ text: 'Get notified', y: 0.88, size: 0.04, boxColor: '#ffffff', color: '#0b3b25', anim: 'pop', delay: 1.2 }),
       ],
-      animation: anim({ kind: 'check', motion: 'pop', y: 0.5, scale: 0.4, color: '#4ade80', color2: '#ffffff' }),
+      picture: picture({ device: 'tv', motion: 'slideUp', camera: 'still', scale: 0.19, y: 0.54 }),
+      animation: anim({ enabled: true, kind: 'check', motion: 'pop', x: 0.8, y: 0.3, scale: 0.14, delay: 1.8, color: '#4ade80', color2: '#ffffff' }),
     }),
   },
   {
@@ -333,7 +367,8 @@ export const TEMPLATES: Template[] = [
       name: 'Untitled clip',
       background: bg('midnight'),
       texts: [text({ text: 'Your headline here', y: 0.15, size: 0.07, font: 'impact', uppercase: true, anim: 'pop' })],
-      animation: anim({ kind: 'text3d', text: 'WOW', motion: 'bounce', y: 0.5, scale: 0.3 }),
+      picture: picture({ device: 'phone', motion: 'pop', camera: 'orbit', scale: 0.34, y: 0.52 }),
+      animation: anim({ enabled: false,  kind: 'text3d', text: 'WOW', motion: 'bounce', y: 0.5, scale: 0.3 }),
     }),
   },
 ]

@@ -16,7 +16,7 @@ interface Props {
   frozen: boolean
 }
 
-type Drag = { kind: 'text' | 'animation'; id?: string; dx: number; dy: number; moved: boolean }
+type Drag = { kind: 'text' | 'animation' | 'picture'; id?: string; dx: number; dy: number; moved: boolean }
 
 export function Preview({ project, renderer, font, selection, setSelection, update, frozen }: Props) {
   const displayRef = useRef<HTMLCanvasElement>(null)
@@ -59,7 +59,7 @@ export function Preview({ project, renderer, font, selection, setSelection, upda
     return () => {
       alive = false
     }
-  }, [renderer, project.background.mediaUrl, project.background.kind, project.logo.url]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [renderer, project.background.mediaUrl, project.background.kind, project.logo.url, project.picture.url, project.picture.cutoutUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     renderer.playVideo(playing && !frozen)
@@ -99,9 +99,13 @@ export function Preview({ project, renderer, font, selection, setSelection, upda
         if (sel.kind === 'text') {
           const b = renderer.lastBounds.find((x) => x.id === sel.id)
           if (b) ctx.strokeRect(b.x, b.y, b.w, b.h)
-        } else {
+        } else if (sel.kind === 'animation') {
           const a = p.animation
           const s = a.scale * f.height
+          ctx.strokeRect(a.x * f.width - s / 2, a.y * f.height - s / 2, s, s)
+        } else {
+          const a = p.picture
+          const s = a.scale * f.height * 1.3
           ctx.strokeRect(a.x * f.width - s / 2, a.y * f.height - s / 2, s, s)
         }
         ctx.restore()
@@ -137,9 +141,17 @@ export function Preview({ project, renderer, font, selection, setSelection, upda
     }
     const a = p.animation
     const half = (a.scale * f.height) / 2
-    if (Math.abs(px - a.x * f.width) <= half && Math.abs(py - a.y * f.height) <= half) {
+    if (a.enabled && Math.abs(px - a.x * f.width) <= half && Math.abs(py - a.y * f.height) <= half) {
       dragRef.current = { kind: 'animation', dx: a.x - pt.x, dy: a.y - pt.y, moved: false }
       setSelection({ kind: 'animation' })
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      return
+    }
+    const pc = p.picture
+    const phalf = (pc.scale * f.height * 1.3) / 2
+    if (Math.abs(px - pc.x * f.width) <= phalf && Math.abs(py - pc.y * f.height) <= phalf) {
+      dragRef.current = { kind: 'picture', dx: pc.x - pt.x, dy: pc.y - pt.y, moved: false }
+      setSelection({ kind: 'picture' })
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
       return
     }
@@ -154,7 +166,8 @@ export function Preview({ project, renderer, font, selection, setSelection, upda
     const ny = Math.min(1, Math.max(0, pt.y + d.dy))
     d.moved = true
     if (d.kind === 'text') update((p) => ({ ...p, texts: p.texts.map((t) => (t.id === d.id ? { ...t, x: nx, y: ny } : t)) }))
-    else update((p) => ({ ...p, animation: { ...p.animation, x: nx, y: ny } }))
+    else if (d.kind === 'animation') update((p) => ({ ...p, animation: { ...p.animation, x: nx, y: ny } }))
+    else update((p) => ({ ...p, picture: { ...p.picture, x: nx, y: ny } }))
   }
 
   const onUp = () => {

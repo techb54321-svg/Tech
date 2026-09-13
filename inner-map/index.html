@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Inside — a map of the body</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="search">
+  <div class="search__field">
+    <svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="M20 20l-3.6-3.6"></path>
+    </svg>
+    <input id="search" type="search" placeholder="Search the body — try sugar, or walking" autocomplete="off" aria-label="Search the body">
+  </div>
+  <div id="results" role="listbox" hidden></div>
+</div>
+
+<div id="scale-label">The valley</div>
+
+<div id="card" hidden>
+  <button id="card-close" type="button" aria-label="Close">×</button>
+  <div class="card__row">
+    <div id="card-thumb" class="card__thumb" aria-hidden="true"></div>
+    <div class="card__text">
+      <h2 id="card-name"></h2>
+      <p id="card-blurb"></p>
+      <span id="card-body"></span>
+    </div>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+  <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+  <button id="recentre" type="button" aria-label="Back to the whole valley">⌂</button>
+</div>
+
+<div class="missing-art-note">
+  <p>The map is running, but the artwork isn't loading. Run <strong>node tools/make-art.mjs</strong> to draw the four levels into the <strong>images</strong> folder. Everything else already works.</p>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script type="module" src="src/map.js"></script>
+</body>
+</html>

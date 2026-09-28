@@ -69,9 +69,11 @@
     $('#cfgName').textContent = config.name;
     if (kind !== 'budget') { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, kind === 'slider' ? 180 : 0); }
     renderRoute(); renderInspectorCost();
-    if (ui.tab === 'budget') renderBudget();
-    if (ui.tab === 'plan') renderPlanDoc();
-    if (ui.tab === 'compare') renderCompare();
+    clearTimeout(changed.r); changed.r = setTimeout(() => {
+      if (ui.tab === 'budget') renderBudget();
+      if (ui.tab === 'plan') renderPlanDoc();
+      if (ui.tab === 'compare') renderCompare();
+    }, 0);
     clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set('uw.current', config), 400);
   }
   function rebuild() {

@@ -530,7 +530,7 @@
       hero = V3(2.4, 1.5, vt);
       eye = { p: [2.2 + tLen * 0.3, vt], look: V3(w, 1.5, vt), y: 1.6 };
       const go = elG('dig_oesophagus'), gpp = elG('dig_proj_peristalsis');
-      const tpc = projCanvas(512, 256); obj.proj.push({ pc: tpc, surface: 'wall', el: 'dig_proj_peristalsis' });
+      const tpc = projCanvas(512, 256); obj.proj.push({ pc: tpc, surface: 'ceiling', el: 'dig_proj_peristalsis' });
       if (on('dig_oesophagus')) {
         const inner = new THREE.Mesh(archGeo(tLen, tr, tcy, 30, 20), on('dig_proj_peristalsis') ? projMat(tpc, 0.9) : Mt.fabricOut);
         inner.position.set(2.2, 0, vt); go.add(tag(inner, on('dig_proj_peristalsis') ? 'dig_proj_peristalsis' : 'dig_oesophagus'));
@@ -541,7 +541,7 @@
       }
       hot('dig_oesophagus', 2.6, 3.0, vt); if (on('dig_oesophagus')) hot('dig_proj_peristalsis', 2.2 + tLen * 0.6, 1.7, vt);
       const gst = elG('dig_stomach');
-      const spc = projCanvas(512, 256); obj.proj.push({ pc: spc, surface: 'wall', el: 'dig_proj_stomach' });
+      const spc = projCanvas(512, 256); obj.proj.push({ pc: spc, surface: 'ceiling', el: 'dig_proj_stomach' });
       const sc = [2.2 + tLen + R0 * 0.75, vt];
       if (on('dig_stomach')) {
         const sin = new THREE.Mesh(new THREE.SphereGeometry(R0, 48, 32, Math.PI * 0.3, Math.PI * 1.4, 0, Math.PI * 0.62), on('dig_proj_stomach') ? projMat(spc, 0.9) : Mt.fabricOut);
@@ -581,7 +581,7 @@
       gm.add(tag(new THREE.Mesh(new THREE.CylinderGeometry(pr_, pr_ + 0.06, printed ? 0.9 : 0.4, 48), Mt.plinth).translateX(w / 2).translateY(printed ? 0.45 : 0.2).translateZ(d / 2), 'heart_model'));
       const hg = heartGroup(mode);
       if (mode === 'projection') {
-        const hpc = projCanvas(512, 256); obj.proj.push({ pc: hpc, surface: 'wall', el: 'heart_model', heartSkin: true });
+        const hpc = projCanvas(512, 256); obj.proj.push({ pc: hpc, surface: 'ceiling', el: 'heart_model', heartSkin: true });
         const skin = new THREE.MeshStandardMaterial({ color: 0xd9d2c7, roughness: 0.7, emissive: 0xffffff, emissiveMap: hpc.tex, emissiveIntensity: 0.85 });
         hg.traverse(o => { if (o.isMesh) o.material = skin; });
       }
@@ -935,7 +935,8 @@
     });
     // hide roofs when looking from above so the rooms read as a cutaway
     const above = camera.position.y > 8.5;
-    W.hemi.intensity = W.hemiBase + (above ? 0.9 : 0);
+    W.hemi.intensity = W.hemiBase + (above ? 1.6 : 0);
+    const fo = materials().fabricOut; if (fo.transparent !== above) { fo.transparent = above; fo.opacity = above ? 0.3 : 1; fo.depthWrite = !above; fo.needsUpdate = true; }
     Object.values(rooms).forEach(o => { o.roof.visible = !above || o.R.h + 1 > camera.position.y; });
     venue.children.forEach(g => { if (g.userData.roofMesh) g.userData.roofMesh.visible = !above; });
     renderer.render(scene, camera);
@@ -988,8 +989,8 @@
   };
   W.viewPose = function (roomId, view) {
     if (view === 'venue' || !rooms[roomId]) {
-      const b = L.bounds, c = V3((b.x0 + b.x1) / 2, 0, (b.z0 + b.z1) / 2), span = Math.max(b.x1 - b.x0, b.z1 - b.z0);
-      return { pos: V3(c.x - span * 0.1, span * 0.95, c.z + span * 0.75), look: c, mode: 'orbit' };
+      const b = L.bounds, c = V3((b.x0 + b.x1) / 2, 0, (b.z0 + b.z1) / 2), span = Math.max(b.x1 - b.x0, b.z1 - b.z0) * Math.max(1, 0.95 / camera.aspect);
+      return { pos: V3(c.x - span * 0.05, span * 0.72, c.z + span * 0.55), look: c, mode: 'orbit' };
     }
     const o = rooms[roomId], Rl = o.R, lw = (u, y, v) => { const p = V3(u, y, v); o.local.localToWorld(p); return p; };
     const w = Rl.w, d = Rl.d;
@@ -1013,7 +1014,7 @@
       return { pos, look: hw, mode: 'orbit' };
     }
     // overview (cutaway from above)
-    const c = V3(Rl.cx, 0.5, Rl.cz), span = Math.max(w, d);
+    const c = V3(Rl.cx, 0.5, Rl.cz), span = Math.max(w, d) * Math.max(1, 1.0 / camera.aspect);
     return { pos: V3(c.x + span * 0.35, span * 1.25 + Rl.h, c.z + span * 0.85), look: c, mode: 'orbit' };
   };
   W.goView = function (roomId, view, instant) {

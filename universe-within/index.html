@@ -45,13 +45,31 @@
         <canvas id="gl" tabindex="0" aria-label="3D model of the exhibition. Drag to look around; arrow keys or W A S D move in eye-level mode."></canvas>
         <div id="hotLayer" class="hot-layer"></div>
         <div class="vp-tl">
+          <div class="seg mode-seg" role="group" aria-label="What the viewport shows">
+            <button id="viewRender" aria-pressed="false" title="Show the concept render for this room (C)">Concept render</button>
+            <button id="view3d" aria-pressed="true" title="Show the 3D model (C)">3D model</button>
+          </div>
           <div class="where"><span id="whereRoom">Whole venue</span> · <span id="whereView">Overview</span></div>
-          <div class="concept-tag">Concept model · illustrative venue · not to certified scale</div>
+          <div class="concept-tag" id="conceptTag">Concept model · illustrative venue · not to certified scale</div>
         </div>
         <div class="vp-tr">
           <button id="typeBtn" class="chip-btn" aria-pressed="false" title="Colour everything by type (T)">Colour by type</button>
           <button id="beamBtn" class="chip-btn" aria-pressed="true">Projector beams</button>
           <button id="hotBtn" class="chip-btn" aria-pressed="true">Hotspots</button>
+          <button id="fsBtn" class="chip-btn" aria-pressed="false" hidden>Full screen</button>
+        </div>
+        <div id="renderStage" class="rstage" role="region" aria-label="Concept render" tabindex="-1" hidden>
+          <div id="rsView" class="rs-view">
+            <div id="rsFit" class="rs-fit" hidden>
+              <div id="rsHots" class="rs-hots"></div>
+              <div id="rsCross" class="rs-cross" hidden></div>
+              <p id="rsMissing" class="rs-missing" hidden></p>
+            </div>
+            <div id="rsEmpty" class="rs-empty" hidden></div>
+          </div>
+          <div id="rsBand" class="rs-band" hidden></div>
+          <div id="rsPanel" class="rs-panel" hidden></div>
+          <p id="rsLive" class="sr" aria-live="polite"></p>
         </div>
         <div id="typeLegend" class="type-legend" hidden></div>
         <div id="caption" class="caption" hidden aria-live="polite"></div>
@@ -220,6 +238,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script src="js/sources.js"></script>
 <script src="js/content.js"></script>
+<script src="js/renders.js"></script>
+<script src="js/render-prompts.js"></script>
 <script src="js/layout.js"></script>
 <script src="js/model.js"></script>
 <script src="js/projections.js"></script>

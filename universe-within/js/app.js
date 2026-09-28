@@ -40,8 +40,11 @@
     tab: 'walk', room: null, sub: 'settings', selEl: null, guided: false, step: 0, auto: false, autoT: 0,
     reduced: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     typeView: false, beams: true, hot: true, view: 'venue', cur: null,
-    clocks: {}, signalTimes: [], pulseUntil: 0, playerOpen: false, pvRoom: null, confirmScenario: null, snapshots: {}
+    clocks: {}, signalTimes: [], pulseUntil: 0, playerOpen: false, pvRoom: null, confirmScenario: null, snapshots: {},
+    // concept renders: viewport mode, chosen render per room, open panel, hotspot edit, delete confirm
+    mode: store.get('uw.viewMode') === 'render' ? 'render' : '3d', stageOn: false, rSel: {}, rPanel: null, rEdit: null, rDel: false, rNotes: false, rBusy: false
   };
+  let glOK = false; // the 3D view started (WebGL available)
   M.ROOM_ORDER.forEach(id => { ui.clocks[id] = { t: 0, playing: true }; });
   const enabledRooms = () => config.rooms.filter(r => r.enabled);
   const roomCfg = id => config.rooms.find(r => r.id === id);
@@ -68,7 +71,7 @@
     budget = M.computeBudget(config);
     $('#cfgName').textContent = config.name;
     if (kind !== 'budget') { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, kind === 'slider' ? 180 : 0); }
-    renderRoute(); renderInspectorCost();
+    renderRoute(); renderInspectorCost(); syncStage();
     clearTimeout(changed.r); changed.r = setTimeout(() => {
       if (ui.tab === 'budget') renderBudget();
       if (ui.tab === 'plan') renderPlanDoc();
@@ -134,15 +137,17 @@
     const m = document.getElementById('vpMarker'); if (!m) return;
     const c = W.camState(); const ang = Math.atan2(Math.cos(c.yaw), Math.sin(c.yaw)) * 180 / Math.PI;
     m.setAttribute('transform', `translate(${c.x.toFixed(2)},${c.z.toFixed(2)}) rotate(${ang.toFixed(1)})`);
-    $$('#planWrap .plan-room').forEach(g => g.classList.toggle('current', g.dataset.room === (ui.cur || ui.room)));
+    $$('#planWrap .plan-room').forEach(g => g.classList.toggle('current', g.dataset.room === focusRoom()));
   }
 
   // ---------- route list (reorder / combine / remove) ----------
   function renderRoute() {
     const en = enabledRooms();
+    // Rebuilding the list would drop keyboard focus: note the focused control so it can be restored
+    const fa = document.activeElement, fk = fa && $('#routeList').contains(fa) ? ['go', 'up', 'down', 'comb', 'rm'].find(k => fa.dataset[k]) : null, fid = fk ? fa.dataset[fk] : null;
     $('#routeList').innerHTML = en.map((r, i) => {
       const last = i === en.length - 1;
-      return `<li class="${(ui.cur || ui.room) === r.id ? 'current' : ''}"><span class="n">${i + 1}</span>
+      return `<li class="${focusRoom() === r.id ? 'current' : ''}"><span class="n">${i + 1}</span>
         <button class="nm" data-go="${r.id}">${esc(roomName(r.id))}</button>
         <span class="acts">
           <button class="icon-btn" data-up="${r.id}" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(M.ROOM_SHORT[r.id])} earlier">↑</button>
@@ -151,6 +156,7 @@
           <button class="icon-btn" data-rm="${r.id}" ${en.length === 1 ? 'disabled' : ''} aria-label="Remove ${esc(M.ROOM_SHORT[r.id])} from the route" title="Remove from route">×</button>
         </span>${r.openToNext && !last ? `<span class="combine-note">Shares one open space with ${esc(M.ROOM_SHORT[en[i + 1].id])}</span>` : ''}</li>`;
     }).join('');
+    if (fk) { const b = $(`#routeList [data-${fk}="${fid}"]`), n = $(`#routeList [data-go="${fid}"]`); const t = b && !b.disabled ? b : n; if (t) t.focus({ preventScroll: true }); }
     const off = config.rooms.filter(r => !r.enabled);
     $('#removedWrap').innerHTML = off.length ? `<div class="removed">Removed: ${off.map(r => `<button class="btn" data-restore="${r.id}">Restore ${esc(M.ROOM_SHORT[r.id])}</button>`).join('')}</div>` : '';
   }
@@ -174,12 +180,26 @@
   function goRoom(id, view, instant) {
     if (id && !roomCfg(id).enabled) return;
     ui.view = view; ui.room = id || ui.room;
-    W.goView(id, view, instant || ui.reduced);
+    // With a concept render on screen the hidden camera jumps, so the 3D view is in step when shown again
+    if (glOK) W.goView(id, view, instant || ui.reduced || renderShown());
     setWhere(id, view);
     if (id) { renderInspector(); }
     $$('#freeBar [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
   }
-  function setWhere(id, view) { $('#whereRoom').textContent = id && view !== 'venue' ? roomName(id) : 'Whole venue'; $('#whereView').textContent = VIEW_LABEL[view] || ''; }
+  function setWhere(id, view) { $('#whereRoom').textContent = id && view !== 'venue' ? roomName(id) : 'Whole venue'; $('#whereView').textContent = VIEW_LABEL[view] || ''; fitWhere(); }
+  // A long room heading wraps short of the display chips (top right) instead of running under them.
+  function fitWhere() {
+    const chips = $$('.vp-tr > *'), els = ['.where', '#conceptTag'].map(s => $(s)).filter(Boolean);
+    els.forEach(el => { el.style.maxWidth = ''; });
+    for (let pass = 0; pass < 2; pass++) { // wrapping makes a line taller, which can meet a lower chip
+      const bs = chips.map(c => c.getBoundingClientRect()).filter(b => b.width);
+      els.forEach(el => {
+        const a = el.getBoundingClientRect(); if (!a.width) return;
+        const lim = bs.filter(b => b.bottom > a.top && b.top < a.bottom && b.left < a.right).reduce((m, b) => Math.min(m, b.left - a.left - 10), Infinity);
+        if (lim < Infinity) el.style.maxWidth = Math.max(140, Math.floor(lim)) + 'px';
+      });
+    }
+  }
   $('#freeBar').addEventListener('click', e => {
     const b = e.target.closest('[data-view]'); if (!b) return;
     const id = ui.cur || ui.room || (enabledRooms()[0] || {}).id;
@@ -252,6 +272,7 @@
     $('#insStrap').textContent = c.strapline || '';
     $('#insRoomSel').innerHTML = enabledRooms().map(x => `<option value="${x.id}" ${x.id === id ? 'selected' : ''}>${esc(roomName(x.id))}</option>`).join('');
     renderSettings(id); renderElements(id); renderPlanning(id);
+    syncStage();
   }
   $('#insRoomSel').addEventListener('change', e => { ui.room = e.target.value; ui.selEl = null; renderInspector(); });
   $$('.subtabs button').forEach(b => b.addEventListener('click', () => setSub(b.dataset.sub)));
@@ -339,7 +360,7 @@
     el.querySelectorAll('[data-show]').forEach(b => b.addEventListener('click', () => selectElement(b.dataset.show, false)));
     el.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => doAction(b.dataset.act)));
     const cl = el.querySelector('[data-close]'); if (cl) cl.addEventListener('click', () => { ui.selEl = null; renderElements(id); });
-    const fly = el.querySelector('[data-fly]'); if (fly) fly.addEventListener('click', () => { const hs = W.hotspots().find(x => x.el === fly.dataset.fly); if (hs) { const p = hs.pos.clone(); W.flyTo(p.clone().add(new THREE.Vector3(2.2, 0.6, 2.2)), p, 'orbit', ui.reduced); ui.view = 'free'; } });
+    const fly = el.querySelector('[data-fly]'); if (fly) fly.addEventListener('click', () => { if (ui.stageOn) setViewMode('3d'); const hs = glOK && W.hotspots().find(x => x.el === fly.dataset.fly); if (hs) { const p = hs.pos.clone(); W.flyTo(p.clone().add(new THREE.Vector3(2.2, 0.6, 2.2)), p, 'orbit', ui.reduced); ui.view = 'free'; } });
   }
   const MODEL_AS = {
     projection: 'Shown as imagery on a surface. Beams trace the projector throw; projectors hang from the trusses.',
@@ -391,6 +412,7 @@
 
   function selectElement(k, fromView) {
     const e = M.EL[k]; if (!e) return;
+    if (fromView && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); // the card opens beside the viewport
     ui.selEl = k; ui.room = e.room; renderInspector(); setSub('elements');
     if (window.innerWidth < 1180 && fromView) $('#sub-elements').scrollIntoView({ behavior: ui.reduced ? 'auto' : 'smooth', block: 'start' });
   }
@@ -399,8 +421,8 @@
   function planningHTML(id, open) {
     const c = C.rooms[id] || {};
     const sec = (title, body, o) => `<details class="pl" ${o ? 'open' : ''}><summary>${title}</summary><div class="body">${body}</div></details>`;
-    let h = '';
-    if (id === 'mouth') h += `<div class="gallery"><figure><img src="assets/mouth-concept-a.jpg" alt="AI-generated concept image of the inside of a mouth, looking towards the throat" loading="lazy"><figcaption>Your concept render A (AI-generated)</figcaption></figure><figure><img src="assets/mouth-concept-b.jpg" alt="Second AI-generated concept image of the oral cavity" loading="lazy"><figcaption>Your concept render B (AI-generated)</figcaption></figure></div><div class="review-flag">Mood and texture reference only. These images place upper molars on the palate and are not anatomically accurate; they need correction before use as projection content.</div>`;
+    // concept renders: thumbnails (refreshed on their own when uploads change) and their review notes
+    let h = `<div class="r-thumbs-wrap" data-thumbs="${id}"${open ? ' data-open' : ''}>${thumbsHTML(id, open)}</div>`;
     h += sec('What visitors see, hear and do', `${c.intro ? `<p>${esc(c.intro)}</p>` : ''}<h4>See</h4>${list(c.see)}<h4>Hear</h4>${list(c.hear)}<h4>Do</h4>${list(c.do)}`, open);
     h += sec('Structures, content and equipment', `<h4>Physical structures</h4>${list(c.physical)}<h4>Digital content</h4>${list(c.digital)}<h4>Equipment</h4>${list(c.equipment)}`, open);
     h += sec('What you could create yourself', list(c.diy), open);
@@ -420,17 +442,21 @@
   }
   function showStep(i) {
     const steps = tourSteps(); ui.step = Math.max(0, Math.min(steps.length - 1, i)); const s = steps[ui.step];
+    // a room's first stop opens on its first concept render
+    if (s.room && steps.findIndex(x => x.room === s.room) === ui.step) delete ui.rSel[s.room];
     goRoom(s.room, s.view); ui.autoT = 0;
     const cap = $('#caption'); cap.hidden = false;
     cap.innerHTML = `<span class="cap-room">${esc(s.room ? roomName(s.room) : 'The Universe Within')}</span>${esc(s.text)}`;
     $('#gCount').textContent = `Stop ${ui.step + 1} of ${steps.length}`;
     $('#gPrev').disabled = ui.step === 0; $('#gNext').disabled = ui.step === steps.length - 1;
     if (s.room) { ui.clocks[s.room].playing = true; }
+    syncStage();
   }
   function setGuided(on) {
     ui.guided = on; $('#modeGuided').setAttribute('aria-pressed', String(on)); $('#modeFree').setAttribute('aria-pressed', String(!on));
     $('#guidedBar').hidden = !on; $('#freeBar').hidden = on; $('#caption').hidden = !on;
     if (on) showStep(ui.step); else { ui.auto = false; $('#gPlay').setAttribute('aria-pressed', 'false'); $('#gPlay').textContent = 'Auto-play'; }
+    syncStage();
   }
   $('#modeGuided').addEventListener('click', () => setGuided(true));
   $('#modeFree').addEventListener('click', () => setGuided(false));
@@ -502,20 +528,20 @@
   }
   $('#soundBtn').addEventListener('click', toggleSound);
   $('#volume').addEventListener('input', e => A.setVolume(Number(e.target.value)));
-  function setReduced(v) { ui.reduced = v; $('#motionBtn').setAttribute('aria-pressed', String(v)); }
+  function setReduced(v) { ui.reduced = v; $('#motionBtn').setAttribute('aria-pressed', String(v)); document.body.classList.toggle('reduced', v); }
   $('#motionBtn').addEventListener('click', () => { setReduced(!ui.reduced); toast(ui.reduced ? 'Reduced motion: jump cuts between views and slower imagery' : 'Full motion'); });
 
   // ---------- display toggles ----------
   $('#typeBtn').addEventListener('click', () => { ui.typeView = !ui.typeView; W.setTypeView(ui.typeView); $('#typeBtn').setAttribute('aria-pressed', String(ui.typeView)); $('#typeLegend').hidden = !ui.typeView; });
   $('#beamBtn').addEventListener('click', () => { ui.beams = !ui.beams; W.setBeams(ui.beams); $('#beamBtn').setAttribute('aria-pressed', String(ui.beams)); });
-  $('#hotBtn').addEventListener('click', () => { ui.hot = !ui.hot; $('#hotBtn').setAttribute('aria-pressed', String(ui.hot)); });
+  $('#hotBtn').addEventListener('click', () => { ui.hot = !ui.hot; $('#hotBtn').setAttribute('aria-pressed', String(ui.hot)); refreshHots(); });
 
   // ---------- tabs ----------
   function setTab(t) {
     ui.tab = t;
     $$('.tabs [role=tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
     ['walk', 'plan', 'budget', 'compare', 'save', 'about'].forEach(k => { $('#pane-' + k).hidden = k !== t; });
-    if (t === 'walk') setTimeout(W.resize, 0);
+    if (t === 'walk') { setTimeout(W.resize, 0); setTimeout(layoutStage, 0); }
     if (t === 'budget') renderBudget();
     if (t === 'plan') renderPlanDoc();
     if (t === 'compare') renderCompare();
@@ -752,6 +778,7 @@
     enabledRooms().forEach((r, i) => {
       const c = C.rooms[r.id] || {}; const e = M.roomEquipment(r); const sum = B.lines.filter(l => l.room === r.id).reduce((s, l) => s + l.amount, 0);
       out.push(`## ${i + 1}. ${roomName(r.id)}`, '', c.strapline ? `_${c.strapline}_` : '', '', c.intro || '', '',
+        `**Concept renders**`, '', rendersMarkdown(r.id), '',
         `**Configuration:** ${r.w} × ${r.d} m, ${r.h} m high; ${r.coverage}% wall projection; model scale ×${r.modelScale}; lighting ${r.light}%${r.openToNext ? '; combined with the next room' : ''}.`, '',
         `**Installations**`, '', M.ELEMENTS.filter(x => x.room === r.id).map(x => `- ${x.name} (${M.KINDS[x.kind].label})${r.elements[x.id] ? '' : ' — switched off'}`).join('\n'), '',
         `**Visitors see**`, '', li(c.see), '', `**Visitors hear**`, '', li(c.hear), '', `**Visitors do**`, '', li(c.do), '',
@@ -765,6 +792,7 @@
     out.push(`## Budget by category (AUD ex GST)`, '', '| Category | One-off | Recurring |', '|---|---:|---:|', ...M.CATS.map(([k, l]) => `| ${l} | ${aud(B.byCat[k].oneoff)} | ${aud(B.byCat[k].recurring)} |`), `| **Total** | **${aud(B.oneoff)}** | **${aud(B.recurring)}** |`, '',
       `GST at ${b.gstRate}% on taxable items: ${aud(B.gst)}. Wages carry no GST. Total including GST: ${aud(B.totalInc)}.`, '',
       `## Expert and technical review list`, '', ...(C.reviewList || []).map(x => `- **${M.ROOM_SHORT[x.room] || x.room}:** ${x.item} — ${x.reviewer}`), '',
+      ...promptStyleMarkdown(),
       `## Sources for sourced and derived figures`, '', ...M.RATES.filter(r => r.src).map(r => { const s = srcById(r.src); return `- ${r.label}: ${r.note}${s ? ` (${s.source}, ${s.url})` : ''}`; }), '');
     return out.filter(x => x !== null).join('\n');
   }
@@ -780,7 +808,7 @@
         <li><strong>Physical installations</strong> (teeth, tongue surface, palate canopy, oesophagus passage, stomach shell, heart, neuron, seating, VR furniture) are simplified procedural models. The heart is a <strong>provisional representation</strong> assembled from basic shapes to show size, placement and build options. It is not an anatomical model; a licensed, anatomist-reviewed model (for example one derived from BodyParts3D, CC BY-SA) should replace it before design sign-off.</li>
         <li><strong>Headset experiences</strong> are shown as the stations, zones and equipment in the room; the flat previews show what a wearer would see.</li>
         <li><strong>Sound</strong> is synthesised live as a sketch of each room's intended sound design and stays muted until you turn it on.</li>
-        <li>The two mouth images are your own AI-generated concept renders from the repository, shown as mood references with a note on their anatomical errors.</li>
+        <li><strong>Concept renders</strong> are the AI-generated images you supplied for the mouth, the digestive hall and the VR studio, shown in the walkthrough's <em>Concept render</em> view with hotspots that open each installation. They are mood and design references, not construction drawings, and each carries review notes where it departs from anatomy or the brief. Rooms without a render show suggested prompts for making one${capOn() ? ', and you can upload new renders to this site' : ''}.</li>
       </ul></div>
       <div class="card"><h2>How to read the model</h2><ul class="bul">
         <li>Use <em>Colour by type</em> to separate projected imagery (amber), physical installations (bone), headset experiences (blue-grey), interactive controls (sage) and sound or AV equipment (grey). Projector beams show where light is thrown and where visitors could cast shadows.</li>
@@ -788,9 +816,607 @@
         <li>The venue layout places rooms in two rows joined by a short corridor. It is a planning diagram, not a survey of a real building.</li>
       </ul></div>
       <div class="card"><h2>Limits and honesty notes</h2><ul class="bul">${hon}</ul></div>
-      <div class="card"><h2>Keyboard</h2><ul class="bul"><li>Tab moves through every control; arrow keys move between the main tabs.</li><li>In the 3D view (click it first): arrow keys or W A S D to walk in eye-level views, Q and E to turn, Shift to walk faster; in overviews, arrow keys orbit and W/S or +/− zoom.</li><li>N and P step through the guided tour; 1–7 jump to a room; T colours by type; M toggles sound; Esc closes the preview.</li></ul></div>
+      <div class="card"><h2>Keyboard</h2><ul class="bul"><li>Tab moves through every control; arrow keys move between the main tabs.</li><li>In the 3D view (click it first): arrow keys or W A S D to walk in eye-level views, Q and E to turn, Shift to walk faster; in overviews, arrow keys orbit and W/S or +/− zoom.</li><li>N and P step through the guided tour; 1–7 jump to a room; C switches between the concept render and the 3D model; T colours by type; M toggles sound; Esc closes the preview.</li><li>When editing hotspots on an uploaded render: focus the render, move the crosshair with the arrow keys (Shift for larger steps) and press Enter to place the chosen installation.</li></ul></div>
       <div class="card"><h2>Australian reference figures</h2><p class="hint">Found by desk research on 28 September 2026 from search-result text naming each page. Confirm each figure on the live page before relying on it.</p><ul class="bul">${srcs}</ul></div>
-      <div class="card"><h2>Credits</h2><p class="hint">3D rendering: Three.js (MIT licence). Typefaces: Cormorant and IBM Plex via Google Fonts (SIL Open Font Licence). All geometry, textures, imagery and sound are generated in the browser for this concept.</p></div>`;
+      <div class="card"><h2>Credits</h2><p class="hint">3D rendering: Three.js (MIT licence). Typefaces: Cormorant and IBM Plex via Google Fonts (SIL Open Font Licence). All geometry, textures, projected imagery and sound are generated in the browser for this concept. The concept renders are AI-generated images you supplied, plus any renders uploaded to this site.</p></div>`;
+  }
+
+  // ---------- concept renders ----------
+  // The walkthrough viewport shows either the 3D model or a concept render of the current room.
+  // Bundled renders come from js/renders.js; uploaded ones (when the page may store assets and
+  // records) come from the db collection 'renders' and are listed after them.
+  const RENDER_TYPES = ['image/jpeg', 'image/png', 'image/webp'], RENDER_MAX = 20 * 1024 * 1024;
+  const TAG_SUPPLIED = 'Concept render · AI-generated · supplied by you · not a construction drawing', TAG_UPLOADED = 'Concept render · AI-generated · uploaded · not a construction drawing';
+  const TAG_3D = $('#conceptTag').textContent, HELP_3D = $('#navHelp').textContent;
+  const HELP_RENDER = 'Concept render: choose a room on the floor plan or route, or press 1–7 · select a hotspot for that installation’s details · Keys: C switches to the 3D model, N/P step through the tour.';
+  const clamp01 = v => Math.min(1, Math.max(0, v));
+  const round4 = v => Math.round(v * 10000) / 10000;
+  const pct = v => Math.round(v * 100) + '%';
+  const mb = n => (n / 1048576).toFixed(n < 10485760 ? 1 : 0) + ' MB';
+  const txt = (v, n) => typeof v === 'string' ? v.trim().slice(0, n) : '';
+  const has = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+  const num = v => typeof v === 'number' && isFinite(v);
+  function cleanHots(arr, room) {
+    return (Array.isArray(arr) ? arr : []).slice(0, 60)
+      .filter(h => h && has(M.EL, h.el) && (!room || M.EL[h.el].room === room) && num(h.x) && num(h.y))
+      .map(h => ({ el: h.el, x: clamp01(h.x), y: clamp01(h.y) }));
+  }
+  const BUNDLED = (window.UW_RENDERS || []).filter(r => r && has(M.ROOM_NAMES, r.room) && typeof r.src === 'string')
+    .map(r => Object.assign({}, r, { key: 'b:' + r.id, bundled: true, hotspots: cleanHots(r.hotspots), reviewNotes: Array.isArray(r.reviewNotes) ? r.reviewNotes : [] }));
+  let uploaded = [];
+  const cap = { assets: null, db: null, blocked: false };
+  function capOn() { return !!(cap.assets && cap.db) && !cap.blocked; } // may upload, edit and delete
+
+  // An uploaded record, checked field by field: shared data is untrusted.
+  function fromDoc(d) {
+    const x = d && d.data ? d.data() : null; if (!x || !has(M.ROOM_NAMES, x.room)) return null;
+    const assetId = /^[A-Za-z0-9_-]{6,80}$/.test(x.assetId || '') ? x.assetId : '';
+    const src = assetId ? '/_blob/' + assetId : (/^\/_blob\/[A-Za-z0-9_-]{6,80}$/.test(x.url || '') ? x.url : '');
+    if (!src) return null;
+    const at = txt(x.createdAt, 40), when = at && !isNaN(Date.parse(at)) ? new Date(at).toLocaleDateString('en-AU') : '';
+    return {
+      key: 'u:' + d.id, docId: d.id, uploaded: true, room: x.room, assetId, src, title: txt(x.title, 120) || 'Uploaded render', caption: txt(x.caption, 600),
+      credit: 'AI-generated concept render uploaded' + (when ? ' on ' + when : ' to this site'), hotspots: cleanHots(x.hotspots, x.room), order: Number(x.order) || 0, createdAt: at,
+      reviewNotes: ['Not yet reviewed. Check anatomy and the brief before relying on this image.']
+    };
+  }
+  function roomRenders(id) { return BUNDLED.filter(r => r.room === id).concat(uploaded.filter(r => r.room === id)); }
+  function curRender(room) {
+    const list = roomRenders(room); let i = list.findIndex(r => r.key === ui.rSel[room]); if (i < 0) i = 0;
+    return { list, i, r: list[i] || null };
+  }
+  function stageRoom() { return inspRoom(); }
+  // Is a concept render (or a room's empty state) on screen instead of the 3D model?
+  function renderShown() {
+    if (!glOK) return true;
+    if (ui.mode !== 'render') return false;
+    if (ui.guided) { const s = tourSteps()[ui.step]; if (!s || !s.room || !roomRenders(s.room).length) return false; }
+    return true;
+  }
+  function focusRoom() { return renderShown() ? stageRoom() : (ui.cur || ui.room); }
+
+  // The suggested-prompt pack from js/render-prompts.js, if it loaded.
+  function promptPack() {
+    const P = window.UW_RENDER_PROMPTS; if (!P || typeof P !== 'object') return null;
+    const s = v => typeof v === 'string' ? v.trim() : '';
+    const rooms = P.rooms && typeof P.rooms === 'object' ? P.rooms : {};
+    return {
+      style: s(P.style), negative: s(P.negative || P.negativePrompt), tips: Array.isArray(P.tips) ? P.tips.filter(t => typeof t === 'string') : [],
+      forRoom: id => (Array.isArray(rooms[id]) ? rooms[id] : []).map((x, i) => typeof x === 'string' ? { view: `View ${i + 1}`, text: x, notes: '' }
+        : x && { view: s(x.view || x.name) || `View ${i + 1}`, text: s(x.prompt || x.text), notes: s(x.notes) }).filter(x => x && x.text)
+    };
+  }
+
+  // ----- mode switch -----
+  function setViewMode(m) {
+    if (m === '3d' && !glOK) { toast('The 3D model is not available in this browser.'); return; }
+    const was = ui.mode, fa = document.activeElement; ui.mode = m; store.set('uw.viewMode', m);
+    if (m === 'render' && was !== 'render') renderFocus();
+    if (m === '3d' && was !== '3d') {
+      endEdit(true); closePanel(); ui.rDel = false;
+      const room = inspRoom(); // carry on in the same room
+      if (!ui.guided && ui.view !== 'venue' && room !== ui.cur && roomCfg(room).enabled) goRoom(room, 'entrance', true);
+    }
+    syncStage();
+    if (m === '3d') setTimeout(W.resize, 0);
+    // Focus was on something now hidden (the 3D canvas, or a control on the stage): move it to what replaced it
+    if (fa && fa !== document.body && (!fa.isConnected || fa.offsetParent === null)) (ui.stageOn ? $('#renderStage') : $('#gl')).focus({ preventScroll: true });
+  }
+  // From the whole-venue overview, open on the first room on the route that has a render.
+  function renderFocus() {
+    if (ui.guided || ui.view !== 'venue' || roomRenders(inspRoom()).length) return;
+    const r = enabledRooms().find(x => roomRenders(x.id).length); if (r) goRoom(r.id, 'entrance', true);
+  }
+  $('#viewRender').addEventListener('click', () => setViewMode('render'));
+  $('#view3d').addEventListener('click', () => setViewMode('3d'));
+
+  // Open a room's render (or its empty state) from a thumbnail or link.
+  function openRender(room, key) {
+    if (!roomCfg(room)) return;
+    if (ui.tab !== 'walk') setTab('walk');
+    if (ui.guided) setGuided(false);
+    if (key) ui.rSel[room] = key; else delete ui.rSel[room];
+    ui.mode = 'render'; store.set('uw.viewMode', 'render');
+    if (roomCfg(room).enabled) goRoom(room, 'entrance', true); else { ui.room = room; renderInspector(); }
+    syncStage();
+    const st = $('#renderStage');
+    if (window.innerWidth < 1180) $('#viewport').scrollIntoView({ block: 'start', behavior: ui.reduced ? 'auto' : 'smooth' });
+    st.focus({ preventScroll: true });
+  }
+  function onThumbClick(e) { const b = e.target.closest('[data-open-render]'); if (b) openRender(b.dataset.openRender, b.dataset.key || null); }
+  $('#sub-planning').addEventListener('click', onThumbClick);
+  $('#planDoc').addEventListener('click', onThumbClick);
+
+  // ----- thumbnails for the inspector's Planning tab and the Room plans tab -----
+  function creditOf(r) { return r.credit || (r.uploaded ? 'AI-generated concept render uploaded to this site' : ''); }
+  function thumbsHTML(id, open) {
+    const list = roomRenders(id);
+    if (!list.length) return `<div class="r-none"><span class="hint">No concept render for this room yet.</span><button type="button" class="btn" data-open-render="${id}">See suggested prompts</button></div>`;
+    let h = `<div class="r-thumbs">${list.map(r => `<button type="button" class="r-thumb" data-open-render="${id}" data-key="${esc(r.key)}" aria-label="${esc(r.title)}, ${esc(creditOf(r))}. Open in the walkthrough">
+      <img src="${esc(r.srcSmall || r.src)}" data-full="${esc(r.src)}" alt="" loading="lazy"${r.w && r.h ? ` width="${Number(r.w)}" height="${Number(r.h)}"` : ''}><span class="t">${esc(r.title)}</span><span class="c">${esc(creditOf(r))}</span></button>`).join('')}</div>`;
+    const noted = list.filter(r => r.bundled && r.reviewNotes.length);
+    if (noted.length) h += `<details class="pl r-notes" ${open ? 'open' : ''}><summary>Render review notes</summary><div class="body">${noted.map(r => `<h4>${esc(r.title)}</h4><ul class="bul">${r.reviewNotes.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`).join('')}<p class="hint">Concept renders are mood and design references, not construction drawings.</p></div></details>`;
+    return h;
+  }
+  function refreshThumbs() { $$('[data-thumbs]').forEach(el => { const open = el.querySelector('details[open]'); el.innerHTML = thumbsHTML(el.dataset.thumbs, el.hasAttribute('data-open')); if (open && el.querySelector('details')) el.querySelector('details').open = true; }); }
+  // A missing small image falls back to the full-size file once.
+  document.addEventListener('error', e => {
+    const t = e.target; if (!t || t.tagName !== 'IMG' || !t.dataset.full) return;
+    if (t.getAttribute('src') !== t.dataset.full) t.src = t.dataset.full; else t.classList.add('broken');
+  }, true);
+
+  // ----- the stage -----
+  let stageKeys = {};
+  function syncStage(force) {
+    const on = renderShown();
+    ui.stageOn = on;
+    $('#viewport').classList.toggle('rmode', on); $('#pane-walk').classList.toggle('rmode', on);
+    $('#renderStage').hidden = !on;
+    $('#viewRender').setAttribute('aria-pressed', String(ui.mode === 'render')); $('#view3d').setAttribute('aria-pressed', String(ui.mode !== 'render'));
+    $('#view3d').disabled = !glOK;
+    $('#caption').hidden = !ui.guided || on;
+    $('#conceptTag').textContent = ui.mode === 'render' && !on ? 'No concept render for this stop yet · showing the 3D model' : TAG_3D;
+    $('#navHelp').textContent = on ? HELP_RENDER : HELP_3D;
+    if (!on) { if (ui.rEdit) endEdit(true); if (ui.rPanel) closePanel(); const had = stageKeys.room; stageKeys = {}; if (had) { renderRoute(); fitWhere(); } return; } // fitWhere: the heading shows again
+    const room = stageRoom(), { list, i, r } = curRender(room);
+    if (ui.rEdit && (!r || ui.rEdit.key !== r.key || !capOn())) endEdit(true);
+    if (ui.rPanel === 'upload' && !capOn()) closePanel();
+    const els = roomCfg(room) ? roomCfg(room).elements : {};
+    const imgKey = r ? r.key + '|' + r.src : 'empty|' + room + '|' + capOn();
+    const hotKey = imgKey + '|' + JSON.stringify(ui.rEdit ? ui.rEdit.hotspots : r && r.hotspots) + '|' + !!ui.rEdit + '|' + JSON.stringify(els);
+    const bandKey = [imgKey, r ? r.title + '|' + r.caption : '', list.length, i, !!ui.rEdit, capOn(), ui.guided ? ui.step : -1, ui.rDel].join('|');
+    if (force || imgKey !== stageKeys.img) buildImage(room, r);
+    if (force || hotKey !== stageKeys.hot) buildHots(room, r);
+    if (force || bandKey !== stageKeys.band) buildBand(room, list, i, r);
+    const moved = room !== stageKeys.room;
+    stageKeys = { img: imgKey, hot: hotKey, band: bandKey, room };
+    if (moved) renderRoute(); // keep the route list's current room in step with the stage
+    if (ui.rPanel === 'upload') $('#rsUpRoom').textContent = roomName(room);
+    $('#rsBand').classList.toggle('compact', !!ui.rPanel); // more room for the image while editing or uploading
+    const fit = $('#rsFit'); fit.classList.toggle('editing', !!ui.rEdit);
+    if (ui.rEdit) { fit.tabIndex = 0; fit.setAttribute('role', 'application'); fit.setAttribute('aria-label', 'Hotspot placement area. Arrow keys move the crosshair, Shift with an arrow moves further, Enter places the chosen installation.'); }
+    else { fit.removeAttribute('tabindex'); fit.removeAttribute('role'); fit.removeAttribute('aria-label'); $('#rsCross').hidden = true; }
+    refreshHots();
+    layoutStage();
+    updateEmptyTour(room);
+  }
+
+  function buildImage(room, r) {
+    const fit = $('#rsFit'), empty = $('#rsEmpty');
+    $('#rsMissing').hidden = true;
+    const old = fit.querySelector('img'); if (old) old.remove();
+    if (!r) { fit.hidden = true; empty.hidden = false; empty.innerHTML = emptyHTML(room); empty.scrollTop = 0; return; }
+    empty.hidden = true; empty.innerHTML = ''; fit.hidden = false;
+    fit.dataset.w = r.w || 16; fit.dataset.h = r.h || 9;
+    const img = document.createElement('img');
+    img.alt = `${r.uploaded ? 'Uploaded AI-generated concept render' : 'AI-generated concept render'}: ${r.title}. ${r.caption || ''}`.trim();
+    img.decoding = 'async';
+    img.addEventListener('load', () => { img.classList.add('ok'); layoutStage(); });
+    img.addEventListener('error', () => {
+      if (img.hasAttribute('srcset')) { img.removeAttribute('srcset'); img.removeAttribute('sizes'); img.src = r.src; return; } // try the full-size file alone
+      const m = $('#rsMissing'); m.hidden = false;
+      m.textContent = r.uploaded ? 'This uploaded image could not be loaded. It may have been deleted.' : `The image file ${r.src} could not be loaded.`;
+    });
+    if (r.srcSmall) { img.srcset = `${r.srcSmall} 960w, ${r.src} ${Math.max(961, Number(r.w) || 2000)}w`; img.sizes = '60vw'; }
+    img.src = r.src;
+    fit.prepend(img);
+  }
+
+  function hotHTML(h, i, room, editing) {
+    const e = M.EL[h.el], inf = elInfo(h.el), k = M.KINDS[e.kind], rc = roomCfg(e.room), on = !rc || !!rc.elements[h.el];
+    const pos = `left:${(h.x * 100).toFixed(2)}%;top:${(h.y * 100).toFixed(2)}%;--kc:${k.colour}`, flip = h.x > 0.62 ? ' flip' : ''; // placeLabels refines the side
+    if (editing) return `<span class="hot edit${flip}" data-x="${h.x}" data-y="${h.y}" style="${pos}"><span class="dot"></span><span class="lab">${esc(inf.name)}</span><button type="button" class="hot-rm" data-rm-hot="${i}" aria-label="Remove the hotspot for ${esc(inf.name)}">×</button></span>`;
+    return `<button type="button" class="hot${flip}${on ? '' : ' off'}" data-hot-el="${h.el}" data-x="${h.x}" data-y="${h.y}" style="${pos}" aria-label="${esc(inf.name)} (${esc(k.label)})${on ? '' : ', switched off in this configuration'} — show details"><span class="dot"></span><span class="lab">${esc(inf.name)}${on ? '' : ' · off'}</span></button>`;
+  }
+  function buildHots(room, r) {
+    const hs = ui.rEdit ? ui.rEdit.hotspots : r ? r.hotspots : [];
+    $('#rsHots').innerHTML = hs.map((h, i) => hotHTML(h, i, room, !!ui.rEdit)).join('');
+  }
+  // Labels: always shown with Hotspots on (on wider screens), otherwise on hover or focus.
+  function refreshHots() {
+    const wide = window.innerWidth > 760;
+    $$('#rsHots .hot').forEach(b => {
+      b.hidden = !ui.rEdit && !ui.hot;
+      b.classList.toggle('sel', !!b.dataset.hotEl && ui.selEl === b.dataset.hotEl);
+      b.classList.toggle('always', !!ui.rEdit || (ui.hot && wide));
+    });
+    placeLabels();
+  }
+  // A label sits right of its dot unless it would run past the stage edge. One that would cover
+  // another label or dot moves to the other side, above or below its dot, or is nudged up or
+  // down, so none is hidden.
+  function placeLabels() {
+    const fit = $('#rsFit'); if (!ui.stageOn || fit.hidden) return;
+    const vw = $('#rsView').clientWidth, fx = parseFloat(fit.style.left) || 0, fy = parseFloat(fit.style.top) || 0, w = fit.offsetWidth, h = fit.offsetHeight;
+    const hs = $$('#rsHots .hot').filter(b => !b.hidden).map(b => ({ b, lab: b.querySelector('.lab'), x: fx + Number(b.dataset.x) * w, y: fy + Number(b.dataset.y) * h }));
+    const busy = []; // dots, remove buttons and placed labels, in stage pixels
+    hs.forEach(o => { busy.push({ l: o.x - 10, r: o.x + 10, t: o.y - 10, b: o.y + 10, o }); if (ui.rEdit) busy.push({ l: o.x + 2, r: o.x + 26, t: o.y - 25, b: o.y - 1, o }); });
+    const hit = (a, q) => a.l < q.r + 2 && q.l < a.r + 2 && a.t < q.b + 2 && q.t < a.b + 2;
+    hs.sort((a, b) => a.x - b.x).forEach(o => {
+      if (!o.lab) return;
+      const lw = o.lab.offsetWidth, lh = o.lab.offsetHeight;
+      const at = (l, t, flip) => ({ l, r: l + lw, t, b: t + lh, flip });
+      const side = (flip, dy) => at(flip ? o.x - 11 - lw : o.x + 11, o.y - 12 + dy, flip);
+      const inside = q => q.l >= -4 && q.r <= vw + 4 && (lh > h || (q.t >= fy - 2 && q.b <= fy + h + 2));
+      const pref = !inside(side(false, 0)) && inside(side(true, 0));
+      const tries = [side(pref, 0), side(!pref, 0), at(o.x - lw / 2, o.y - 12 - lh, false), at(o.x - lw / 2, o.y + 12, false)];
+      [12, -12, 24, -24, 36, -36].forEach(dy => tries.push(side(pref, dy), side(!pref, dy)));
+      const q = tries.find(c => inside(c) && !busy.some(z => z.o !== o && hit(c, z))) || tries[0];
+      o.b.classList.toggle('flip', q.flip);
+      o.lab.style.left = q.flip ? '' : (q.l - o.x + 14) + 'px'; o.lab.style.top = (q.t - o.y + 14) + 'px'; // relative to the 28px hotspot
+      if (o.b.classList.contains('always')) busy.push(Object.assign({ o: null }, q)); // otherwise one label shows at a time
+    });
+  }
+
+  function buildBand(room, list, i, r) {
+    const band = $('#rsBand');
+    band.hidden = !r;
+    if (!r) { band.innerHTML = ''; return; }
+    const step = ui.guided ? tourSteps()[ui.step] : null;
+    const notes = r.reviewNotes || [];
+    const own = r.uploaded && capOn();
+    let acts = '';
+    if (ui.rDel && own) acts = `<span class="confirm">Delete this uploaded render for everyone?</span><button type="button" class="btn danger" data-rs="del-yes">Delete</button><button type="button" class="btn" data-rs="del-no">Keep</button>`;
+    else {
+      if (own) acts += `<button type="button" class="btn" data-rs="edit" aria-pressed="${!!ui.rEdit}">Edit hotspots</button><button type="button" class="btn" data-rs="del">Delete</button>`;
+      if (capOn()) acts += `<button type="button" class="btn" data-rs="upload">Upload a render</button>`;
+    }
+    const nav = list.length > 1 ? `<div class="rs-nav"><button type="button" class="btn" data-rs="prev" ${i === 0 ? 'disabled' : ''}>‹ Previous</button><span class="count">${i + 1} of ${list.length}</span><button type="button" class="btn" data-rs="next" ${i === list.length - 1 ? 'disabled' : ''}>Next ›</button></div>` : '';
+    band.innerHTML = `<div class="rs-info">
+        <div class="rs-head"><span class="rs-room">${esc(roomName(room))}</span><span class="rs-tag">${esc(r.uploaded ? TAG_UPLOADED : TAG_SUPPLIED)}</span></div>
+        ${step && (!step.room || step.room === room) ? `<p class="rs-tour">${esc(step.text)}</p>` : ''}
+        <p class="rs-cap"><strong>${esc(r.title)}</strong>${r.caption ? ' — ' + esc(r.caption) : ''} <span class="rs-credit">${esc(creditOf(r))}</span></p>
+      </div>
+      <div class="rs-bar">
+        ${notes.length ? `<button type="button" class="btn rs-notes-btn" data-rs="notes" aria-expanded="${ui.rNotes}" aria-controls="rsNotes">Review notes (${notes.length})</button>` : ''}
+        ${nav}${acts ? `<div class="rs-acts">${acts}</div>` : ''}
+      </div>
+      ${notes.length ? `<div id="rsNotes" class="rs-notes" ${ui.rNotes ? '' : 'hidden'}><p>Where this render departs from anatomy or the brief:</p><ul class="bul">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>` : ''}
+      <p id="rsBandMsg" class="hint rs-msg" aria-live="polite"></p>`;
+  }
+
+  // Without WebGL the guided tour's stops without a render land here, so the stop's text shows too
+  function updateEmptyTour(room) {
+    const el = $('#rsEmptyTour'); if (!el) return;
+    const s = ui.guided ? tourSteps()[ui.step] : null, t = s && (!s.room || s.room === room) ? s.text : '';
+    el.textContent = t; el.hidden = !t;
+  }
+  function emptyHTML(room) {
+    const P = promptPack(), ps = P ? P.forRoom(room) : [];
+    let h = `<div class="rs-empty-in"><div class="eyebrow">Concept render</div><h3>No concept render for ${esc(roomName(room))} yet</h3><p id="rsEmptyTour" class="rs-tour" hidden></p>`;
+    h += `<p>${ps.length ? `There is no image for this room yet. Make one from a suggested prompt below with the image tool you used for your other renders${capOn() ? ', then upload it here' : ''}.` : 'There is no image for this room yet, and suggested prompts are not available in this copy of the site.'}</p>`;
+    const btns = (capOn() ? '<button type="button" class="btn primary" data-rs="upload">Upload a render</button>' : '') + (glOK ? '<button type="button" class="btn" data-rs="show3d">Show the 3D model</button>' : '');
+    if (btns) h += `<div class="row wrap">${btns}</div>`;
+    if (ps.length) {
+      h += `<h4>Suggested prompts</h4><p class="hint">Copy gives the room prompt followed by the shared style paragraph, ready to paste. Put the avoid list in your image tool’s negative or “avoid” field.</p><ol class="rs-prompts">`;
+      h += ps.map((p, i) => `<li><div class="rs-p-head"><strong>${esc(p.view)}</strong><button type="button" class="btn" data-copy="${i}" data-label="Copy" aria-label="Copy the prompt: ${esc(p.view)}">Copy</button></div><p class="rs-ptext" id="rsP${i}">${esc(p.text)}</p>${p.notes ? `<p class="rs-pcheck"><strong>Check the result:</strong> ${esc(p.notes)}</p>` : ''}</li>`).join('');
+      h += `</ol>`;
+    }
+    if (P && P.style) h += `<div class="rs-p-head"><h4>Shared style</h4><button type="button" class="btn" data-copy="style" data-label="Copy style">Copy style</button></div><p class="rs-ptext" id="rsPstyle">${esc(P.style)}</p>`;
+    if (P && P.negative) h += `<div class="rs-p-head"><h4>Avoid (negative prompt)</h4><button type="button" class="btn" data-copy="neg" data-label="Copy avoid list">Copy avoid list</button></div><p class="rs-ptext" id="rsPneg">${esc(P.negative)}</p>`;
+    if (P && P.tips.length) h += `<details class="pl"><summary>Tips for generating</summary><div class="body"><ul class="bul">${P.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div></details>`;
+    return h + `<p id="rsCopyMsg" class="hint" aria-live="polite"></p></div>`;
+  }
+
+  // Fit the render inside the stage without cropping or distortion (letterboxed), below the
+  // viewport's top controls; hotspots sit in a wrapper exactly the size of the image.
+  function layoutStage() {
+    if (!ui.stageOn) return;
+    const vp = $('#viewport'), vr = vp.getBoundingClientRect(); if (!vr.width) return;
+    let top = 0;
+    ['.vp-tl', '.vp-tr'].forEach(s => { const b = $(s).getBoundingClientRect(); if (b.height) top = Math.max(top, b.bottom - vr.top); });
+    top = Math.round(top + 10);
+    const view = $('#rsView'), fit = $('#rsFit'), flow = getComputedStyle($('#renderStage')).position !== 'absolute';
+    const em = $('#rsEmpty'); em.style.marginTop = flow ? top + 'px' : ''; em.style.top = flow ? '' : top + 'px'; // scrolls below the top controls
+    if (fit.hidden) { view.style.height = ''; return; }
+    const img = fit.querySelector('img');
+    const nw = (img && img.naturalWidth) || Number(fit.dataset.w) || 16, nh = (img && img.naturalHeight) || Number(fit.dataset.h) || 9;
+    const pad = vr.width < 500 ? 8 : 14, aw = Math.max(40, view.clientWidth - pad * 2);
+    // Narrow layouts: the stage grows with the image. Wide layouts: the image fits the space left.
+    const ah = flow ? Math.min(aw * nh / nw, window.innerHeight * 0.78) : Math.max(40, view.clientHeight - top - pad);
+    const s = Math.min(aw / nw, ah / nh), w = Math.max(1, Math.round(nw * s)), h = Math.max(1, Math.round(nh * s));
+    view.style.height = flow ? (top + h + pad) + 'px' : '';
+    fit.style.width = w + 'px'; fit.style.height = h + 'px';
+    fit.style.left = Math.round((view.clientWidth - w) / 2) + 'px';
+    fit.style.top = Math.round(top + (flow ? 0 : (ah - h) / 2)) + 'px';
+    if (img && img.hasAttribute('srcset') && img.getAttribute('sizes') !== w + 'px') img.sizes = w + 'px'; // setting it always would reload the image
+    placeLabels();
+  }
+  let layoutRaf = 0;
+  const queueLayout = () => { cancelAnimationFrame(layoutRaf); layoutRaf = requestAnimationFrame(() => { layoutStage(); refreshHots(); fitWhere(); }); };
+
+  // ----- stage actions -----
+  $('#renderStage').addEventListener('click', e => {
+    const hb = e.target.closest('[data-hot-el]'); if (hb) { selectElement(hb.dataset.hotEl, true); return; }
+    const rm = e.target.closest('[data-rm-hot]'); if (rm) { removeHot(Number(rm.dataset.rmHot), true); return; }
+    const cp = e.target.closest('[data-copy]'); if (cp) { copyPrompt(cp); return; }
+    const a = e.target.closest('[data-rs]'); if (a) { stageAction(a.dataset.rs); return; }
+    if (ui.rEdit && e.target.closest('#rsFit')) {
+      const b = $('#rsFit').getBoundingClientRect();
+      placeHot((e.clientX - b.left) / b.width, (e.clientY - b.top) / b.height);
+    }
+  });
+  function stageAction(act) {
+    const room = stageRoom(), { list, i, r } = curRender(room);
+    if (act === 'prev' || act === 'next') {
+      const j = i + (act === 'next' ? 1 : -1); if (!list[j]) return;
+      ui.rSel[room] = list[j].key; ui.rDel = false; syncStage();
+      const b = $(`#rsBand [data-rs="${act}"]`); if (b && !b.disabled) b.focus(); else { const o = $('#rsBand [data-rs="' + (act === 'next' ? 'prev' : 'next') + '"]'); if (o) o.focus(); }
+    }
+    if (act === 'notes') {
+      ui.rNotes = !ui.rNotes; const n = $('#rsNotes'); if (n) n.hidden = !ui.rNotes;
+      const t = $('#rsBand [data-rs="notes"]'); if (t) t.setAttribute('aria-expanded', String(ui.rNotes));
+    }
+    if (act === 'show3d') setViewMode('3d');
+    if (act === 'upload') openUpload();
+    if (act === 'edit') { if (ui.rEdit) { endEdit(true); syncStage(); } else if (r && r.uploaded) startEdit(r); }
+    if (act === 'del') { ui.rDel = true; syncStage(); const k = $('#rsBand [data-rs="del-no"]'); if (k) k.focus(); }
+    if (act === 'del-no') { ui.rDel = false; syncStage(); const d = $('#rsBand [data-rs="del"]'); if (d) d.focus(); }
+    if (act === 'del-yes') deleteRender(r);
+    if (act === 'up-cancel') { closePanel(); syncStage(); }
+    if (act === 'save-hot') saveHots();
+    if (act === 'cancel-hot') { endEdit(true); syncStage(); }
+  }
+
+  // ----- copying prompts -----
+  function copyPrompt(btn) {
+    const P = promptPack(); if (!P) return; const k = btn.dataset.copy;
+    if (k === 'style') return copyFrom(btn, P.style, $('#rsPstyle'));
+    if (k === 'neg') return copyFrom(btn, P.negative, $('#rsPneg'));
+    const p = P.forRoom(stageRoom())[Number(k)]; if (p) copyFrom(btn, p.text + (P.style ? '\n\n' + P.style : ''), $('#rsP' + k), P.style ? 'Copying was blocked; the prompt is selected. Press Ctrl+C or ⌘C, then copy the shared style below it too.' : '');
+  }
+  async function copyFrom(btn, text, selEl, blocked) {
+    const msg = $('#rsCopyMsg'); let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; }
+    catch (e) { // older route for framed pages where the clipboard API is blocked
+      const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+      ta.remove(); btn.focus();
+    }
+    if (ok) { btn.textContent = 'Copied'; clearTimeout(btn.t); btn.t = setTimeout(() => { btn.textContent = btn.dataset.label; }, 1800); if (msg) msg.textContent = 'Copied to the clipboard.'; return; }
+    if (selEl) { const rg = document.createRange(); rg.selectNodeContents(selEl); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rg); }
+    const m = blocked || 'Copying was blocked; the text is selected. Press Ctrl+C or ⌘C.'; if (msg) msg.textContent = m; toast(m);
+  }
+
+  // ----- runtime capabilities: stored renders -----
+  function capErrCode(e) { return (e && e.code) || 'upstream_error'; }
+  // Retries a call once after a short random delay: for assets only on 'store_unavailable'; for db on
+  // 'unavailable', which db.d.ts says also covers any code it does not name.
+  async function retryOnce(fn, code) {
+    try { return await fn(); }
+    catch (e) { const c = capErrCode(e); if (code === 'unavailable' ? DB_FINAL.includes(c) : c !== code) throw e; await new Promise(res => setTimeout(res, 500 + Math.random() * 700)); return fn(); }
+  }
+  function assetErr(e) {
+    switch (capErrCode(e)) {
+      case 'too_large': return 'That file is over the 20 MB limit. Export a smaller JPEG and try again.';
+      case 'unsupported_type': return 'Only JPEG, PNG and WebP images can be uploaded.';
+      case 'invalid_request': return 'The file could not be read as an image. Export it again as a JPEG and retry.';
+      case 'quota_or_state': return 'This site cannot accept the change right now; its storage may be full. Delete an uploaded render you no longer need, or try a smaller file.';
+      case 'rate_limited': return 'Too many uploads in a short time. Wait a minute, then try again.';
+      case 'upstream_auth': return 'Your sign-in could not be confirmed. Reload the page and try again.';
+      case 'not_granted': case 'capability_disabled': case 'capability_removed': cap.blocked = true; return 'Uploads are not available in this view.';
+      case 'store_unavailable': return 'The storage service is temporarily unavailable. Try again shortly.';
+      default: return 'The upload did not complete. Try again.';
+    }
+  }
+  function dbErr(e) {
+    switch (capErrCode(e)) {
+      case 'invalid_argument': case 'transform_error': cap.blocked = true; return 'The change was not accepted. Your access to this page may not allow editing renders.';
+      case 'resource_exhausted': return 'Too many changes in a short time. Wait a moment, then try again.';
+      case 'quota_exceeded': return 'The site’s record store is full. Delete an uploaded render you no longer need, then try again.';
+      case 'unavailable': return 'Saving is temporarily unavailable. Try again shortly.';
+      case 'revoked': cap.blocked = true; return 'Access to saved renders has ended for this page. Reload to try again.';
+      case 'not_granted': case 'capability_disabled': case 'capability_removed': cap.blocked = true; return 'Saving is not available in this view.';
+      default: return 'The change was not saved. Try again.';
+    }
+  }
+  function onRendersChanged() { syncStage(); refreshThumbs(); }
+  function initCaps() {
+    if (!window.claude || typeof window.claude.use !== 'function') return; // local copies: bundled renders only
+    const use = n => Promise.resolve().then(() => window.claude.use(n)).catch(() => null);
+    Promise.all([use('assets'), use('db')]).then(([a, d]) => {
+      cap.assets = a || null; cap.db = d || null;
+      if (cap.db) subscribeRenders(0);
+      syncStage(); refreshThumbs();
+    });
+  }
+  // One live subscription to the uploaded renders; a stalled bridge ('unavailable') is retried a few times.
+  // Codes db.d.ts names as final for a listener; anything else (a dead bridge, queue_overflow or an
+  // unknown code) counts as 'unavailable', for which a fresh subscription is the recovery.
+  const DB_FINAL = ['invalid_argument', 'resource_exhausted', 'quota_exceeded', 'revoked', 'not_granted', 'capability_disabled', 'capability_removed', 'transform_error'];
+  let rendersUnsub = null;
+  function subscribeRenders(tries) {
+    if (rendersUnsub) { rendersUnsub(); rendersUnsub = null; }
+    try {
+      rendersUnsub = cap.db.collection('renders').onSnapshot(snap => {
+        uploaded = snap.docs.map(fromDoc).filter(Boolean).sort((x, y) => x.order - y.order || String(x.createdAt).localeCompare(String(y.createdAt)));
+        onRendersChanged();
+      }, err => {
+        rendersUnsub = null; // the listener has ended
+        const c = capErrCode(err);
+        if (!DB_FINAL.includes(c) && tries < 3) { setTimeout(() => subscribeRenders(tries + 1), 4000 * (tries + 1)); return; }
+        if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') cap.blocked = true;
+        console.warn('Uploaded renders are unavailable:', c); onRendersChanged();
+      });
+    } catch (e) { cap.db = null; }
+  }
+
+  // ----- upload -----
+  function closePanel() { ui.rPanel = null; const p = $('#rsPanel'); p.hidden = true; p.innerHTML = ''; }
+  function checkFile(f) {
+    if (!f) return 'Choose an image file first.';
+    if (!RENDER_TYPES.includes(f.type)) return `“${f.name}” is not a JPEG, PNG or WebP image.`;
+    if (!f.size) return `“${f.name}” is empty.`;
+    if (f.size > RENDER_MAX) return `“${f.name}” is ${mb(f.size)}. The limit is 20 MB, so export a smaller JPEG and try again.`;
+    return '';
+  }
+  function openUpload() {
+    if (!capOn()) return;
+    endEdit(true); ui.rDel = false; ui.rPanel = 'upload';
+    const p = $('#rsPanel'); p.hidden = false;
+    p.innerHTML = `<form class="rs-form" id="rsUpForm" novalidate>
+      <h3>Upload a render for <span id="rsUpRoom">${esc(roomName(stageRoom()))}</span></h3>
+      <p class="hint">Upload AI-generated concept renders only, as JPEG, PNG or WebP up to 20 MB. Each is stored with this site, shown to everyone who can open it and labelled “Concept render · AI-generated · uploaded”.</p>
+      <div class="row wrap"><label class="btn file">Choose image<input type="file" id="rsFile" accept="image/jpeg,image/png,image/webp"></label><span id="rsFileName" class="hint">No file chosen</span></div>
+      <div class="rs-fields"><label class="stack"><span>Title (optional)</span><input type="text" id="rsTitle" maxlength="120" placeholder="e.g. Stomach chamber, option B"></label>
+      <label class="stack"><span>Caption (optional)</span><input type="text" id="rsCaption" maxlength="400" placeholder="What the render shows"></label></div>
+      <div class="row wrap"><button type="submit" class="btn primary" id="rsUpGo">Upload</button><button type="button" class="btn" data-rs="up-cancel">Cancel</button></div>
+      <p id="rsUpMsg" class="hint" aria-live="polite"></p></form>`;
+    $('#rsFile').addEventListener('change', () => { const f = $('#rsFile').files[0]; $('#rsFileName').textContent = f ? `${f.name} · ${mb(f.size)}` : 'No file chosen'; $('#rsUpMsg').textContent = f ? checkFile(f) : ''; });
+    $('#rsUpForm').addEventListener('submit', e => { e.preventDefault(); uploadRender(); });
+    syncStage(); $('#rsFile').focus();
+  }
+  async function uploadRender() {
+    if (ui.rBusy || !capOn()) return;
+    const f = $('#rsFile').files && $('#rsFile').files[0], msg = $('#rsUpMsg'), room = stageRoom();
+    const bad = checkFile(f); if (bad) { msg.textContent = bad; return; }
+    const busy = v => { ui.rBusy = v; $$('#rsUpForm button, #rsUpForm input').forEach(x => { x.disabled = v; }); };
+    busy(true); msg.textContent = `Uploading “${f.name}” (${mb(f.size)})…`;
+    let res;
+    try { res = await retryOnce(() => cap.assets.upload(f, { type: f.type }), 'store_unavailable'); }
+    catch (e) { busy(false); msg.textContent = assetErr(e); if (!capOn()) syncStage(); return; }
+    msg.textContent = 'Saving the render details…';
+    const order = uploaded.filter(x => x.room === room).reduce((m, x) => Math.max(m, x.order), 0) + 1;
+    const doc = { room, assetId: res.id, title: $('#rsTitle').value.trim().slice(0, 120), caption: $('#rsCaption').value.trim().slice(0, 400), hotspots: [], order, createdAt: new Date().toISOString() };
+    let ref;
+    try { ref = cap.db.collection('renders').doc(); await retryOnce(() => ref.set(doc), 'unavailable'); }
+    catch (e) {
+      const m = dbErr(e);
+      try { await cap.assets.delete(res.id); } catch (e2) { /* nothing points at it; it can be removed later */ }
+      busy(false); msg.textContent = m + ' The image was not kept.'; if (!capOn()) syncStage(); return;
+    }
+    busy(false);
+    const u = fromDoc({ id: ref.id, data: () => doc }); // shown straight away; the live list replaces it
+    if (u && !uploaded.some(x => x.docId === ref.id)) uploaded = uploaded.concat(u);
+    ui.rSel[room] = 'u:' + ref.id; closePanel(); onRendersChanged();
+    toast('Render uploaded. Use “Edit hotspots” to link installations to it.');
+    const eb = $('#rsBand [data-rs="edit"]'); if (eb) eb.focus();
+  }
+
+  // ----- delete an uploaded render: its record first, then its image -----
+  async function deleteRender(r) {
+    if (!r || !r.uploaded || ui.rBusy || !capOn()) return;
+    const msg = () => $('#rsBandMsg');
+    ui.rBusy = true; if (msg()) msg().textContent = 'Deleting…';
+    try { await retryOnce(() => cap.db.doc('renders/' + r.docId).delete(), 'unavailable'); }
+    catch (e) { ui.rBusy = false; const m = dbErr(e); ui.rDel = false; syncStage(); if (msg()) msg().textContent = m; else toast(m); return; }
+    uploaded = uploaded.filter(x => x.docId !== r.docId);
+    let note = '';
+    if (r.assetId) { try { await retryOnce(() => cap.assets.delete(r.assetId), 'store_unavailable'); } catch (e) { note = ` Its image file could not be removed from storage (${capErrCode(e)}).`; } }
+    ui.rBusy = false; ui.rDel = false; delete ui.rSel[r.room];
+    onRendersChanged(); toast('Uploaded render deleted.' + note);
+    const st = $('#renderStage'); if (st) st.focus({ preventScroll: true });
+  }
+
+  // ----- hotspot editor (uploaded renders) -----
+  function startEdit(r) {
+    if (!capOn()) return;
+    closePanel(); ui.rDel = false;
+    const els = M.ELEMENTS.filter(e => e.room === r.room);
+    const firstFree = els.find(e => !r.hotspots.some(h => h.el === e.id)) || els[0];
+    ui.rEdit = { key: r.key, docId: r.docId, room: r.room, hotspots: r.hotspots.map(h => Object.assign({}, h)), dirty: false, saving: false, cx: 0.5, cy: 0.5, el: firstFree ? firstFree.id : '' };
+    ui.rPanel = 'edit';
+    const p = $('#rsPanel'); p.hidden = false;
+    p.innerHTML = `<div class="rs-form">
+      <h3>Edit hotspots · ${esc(r.title)}</h3>
+      <div class="rs-edit-row"><label class="rs-elsel"><span>Installation to place</span><select id="rsElSel">${els.map(e => `<option value="${e.id}" ${e.id === ui.rEdit.el ? 'selected' : ''}>${esc(elInfo(e.id).name)}</option>`).join('')}</select></label>
+      <p class="hint">Click the render to place it; placing it again moves it. Keyboard: focus the render, move the crosshair with the arrow keys (Shift for larger steps), then press Enter.</p></div>
+      <ul id="rsHList" class="rs-hlist" aria-label="Hotspots on this render"></ul>
+      <div class="row wrap"><button type="button" class="btn primary" data-rs="save-hot" id="rsSaveHot">Save hotspots</button><button type="button" class="btn" data-rs="cancel-hot">Cancel</button><span id="rsEditMsg" class="hint" aria-live="polite"></span></div></div>`;
+    $('#rsElSel').addEventListener('change', e => { if (ui.rEdit) ui.rEdit.el = e.target.value; });
+    $('#rsHList').addEventListener('click', e => { const b = e.target.closest('[data-rm-hot]'); if (b) { e.stopPropagation(); removeHot(Number(b.dataset.rmHot), false); } });
+    renderEditList(); syncStage();
+    $('#rsFit').focus({ preventScroll: true }); showCross(true);
+  }
+  function endEdit(discard) {
+    if (!ui.rEdit) return;
+    if (discard && ui.rEdit.dirty) toast('Unsaved hotspot changes discarded');
+    ui.rEdit = null; if (ui.rPanel === 'edit') closePanel();
+  }
+  function renderEditList() {
+    const E = ui.rEdit, ul = $('#rsHList'); if (!E || !ul) return;
+    ul.innerHTML = E.hotspots.length ? E.hotspots.map((h, i) => { const k = M.KINDS[M.EL[h.el].kind]; return `<li><span class="kdot" style="background:${k.colour}"></span>${esc(elInfo(h.el).name)} <span class="mono" title="Across, down">${pct(h.x)}, ${pct(h.y)}</span><button type="button" class="icon-btn" data-rm-hot="${i}" aria-label="Remove the hotspot for ${esc(elInfo(h.el).name)}">×</button></li>`; }).join('')
+      : '<li class="hint">No hotspots yet.</li>';
+    const s = $('#rsSaveHot'); if (s) s.disabled = E.saving || !E.dirty;
+  }
+  function showCross(on) {
+    const E = ui.rEdit, c = $('#rsCross'); if (!E) { c.hidden = true; return; }
+    c.hidden = !on; c.style.left = (E.cx * 100) + '%'; c.style.top = (E.cy * 100) + '%';
+  }
+  function placeHot(x, y) {
+    const E = ui.rEdit; if (!E || !E.el || E.saving) return;
+    const h = { el: E.el, x: round4(clamp01(x)), y: round4(clamp01(y)) };
+    const j = E.hotspots.findIndex(q => q.el === E.el); if (j >= 0) E.hotspots[j] = h; else E.hotspots.push(h);
+    E.dirty = true; E.cx = h.x; E.cy = h.y;
+    renderEditList(); syncStage(); showCross(document.activeElement === $('#rsFit'));
+    const m = `${elInfo(E.el).name} placed ${pct(h.x)} across, ${pct(h.y)} down. Save to keep it.`;
+    $('#rsEditMsg').textContent = m;
+  }
+  function removeHot(i, fromImage) {
+    const E = ui.rEdit; if (!E || !E.hotspots[i] || E.saving) return;
+    const name = elInfo(E.hotspots[i].el).name; E.hotspots.splice(i, 1); E.dirty = true;
+    renderEditList(); syncStage();
+    $('#rsEditMsg').textContent = `${name} removed. Save to keep the change.`;
+    if (fromImage) $('#rsFit').focus({ preventScroll: true }); else { const n = $('#rsHList [data-rm-hot]'); (n || $('#rsElSel')).focus(); }
+  }
+  async function saveHots() {
+    const E = ui.rEdit; if (!E || E.saving || !capOn()) return;
+    if (!uploaded.some(x => x.docId === E.docId)) { $('#rsEditMsg').textContent = 'This render has been deleted, so the hotspots cannot be saved.'; return; }
+    E.saving = true; renderEditList(); $('#rsEditMsg').textContent = 'Saving…';
+    const hotspots = E.hotspots.map(h => ({ el: h.el, x: h.x, y: h.y }));
+    try { await retryOnce(() => cap.db.doc('renders/' + E.docId).update({ hotspots }), 'unavailable'); }
+    catch (e) { E.saving = false; const m = dbErr(e); renderEditList(); if (!capOn()) { toast(m); endEdit(false); syncStage(); } else $('#rsEditMsg').textContent = m; return; }
+    const u = uploaded.find(x => x.docId === E.docId); if (u) u.hotspots = hotspots.map(h => Object.assign({}, h));
+    ui.rEdit = null; closePanel(); syncStage(); toast('Hotspots saved');
+    const eb = $('#rsBand [data-rs="edit"]'); if (eb) eb.focus();
+  }
+  $('#rsFit').addEventListener('keydown', e => {
+    const E = ui.rEdit; if (!E) return;
+    const st = e.shiftKey ? 0.05 : 0.01;
+    const mv = { ArrowLeft: [-st, 0], ArrowRight: [st, 0], ArrowUp: [0, -st], ArrowDown: [0, st] }[e.key];
+    if (mv) {
+      e.preventDefault(); E.cx = round4(clamp01(E.cx + mv[0])); E.cy = round4(clamp01(E.cy + mv[1])); showCross(true);
+      $('#rsLive').textContent = `Crosshair ${pct(E.cx)} across, ${pct(E.cy)} down`;
+    } else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); placeHot(E.cx, E.cy); $('#rsLive').textContent = $('#rsEditMsg').textContent; }
+  });
+  $('#rsFit').addEventListener('focus', () => { if (ui.rEdit) showCross(true); });
+  $('#rsFit').addEventListener('blur', () => showCross(false));
+
+  // ----- full screen (where the browser and frame allow it) -----
+  const fsOK = !!(document.fullscreenEnabled && $('#viewport').requestFullscreen);
+  $('#fsBtn').hidden = !fsOK;
+  $('#fsBtn').addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else $('#viewport').requestFullscreen().catch(() => toast('Full screen is not available here'));
+  });
+  document.addEventListener('fullscreenchange', () => {
+    const on = document.fullscreenElement === $('#viewport');
+    $('#fsBtn').setAttribute('aria-pressed', String(on)); $('#fsBtn').textContent = on ? 'Exit full screen' : 'Full screen';
+    queueLayout();
+  });
+
+  function initRenders() {
+    if (!glOK) { ui.mode = 'render'; $('#view3d').title = 'The 3D model is not available in this browser'; }
+    if (ui.mode === 'render') renderFocus();
+    window.addEventListener('resize', queueLayout);
+    if (window.ResizeObserver) new ResizeObserver(queueLayout).observe($('#rsView'));
+    syncStage(true); renderRoute();
+    initCaps();
+  }
+  function rendersMarkdown(id) {
+    const list = roomRenders(id);
+    if (!list.length) {
+      const P = promptPack(), p = P && P.forRoom(id)[0];
+      return 'No concept render yet.' + (p ? ` First suggested prompt (${p.view}): ${p.text}` : '');
+    }
+    return list.map(r => [`- ${r.title} — ${creditOf(r)}${r.bundled ? ` (file: ${r.src.split('/').pop()})` : ' (stored with the site)'}`]
+      .concat((r.reviewNotes || []).map(n => `  - Review note: ${n}`)).join('\n')).join('\n');
+  }
+  function promptStyleMarkdown() {
+    const P = promptPack(); if (!P || !(P.style || P.negative)) return [];
+    return [`## Concept render prompts`, '', 'Rooms without a concept render list a suggested prompt above. Add this shared style paragraph after it, and give the avoid list to the image tool as its negative prompt. Label every result as an AI concept render, not a final design.', '',
+      ...(P.style ? [`**Shared style:** ${P.style}`, ''] : []), ...(P.negative ? [`**Avoid:** ${P.negative}`, ''] : [])];
   }
 
   // ---------- keyboard ----------
@@ -798,11 +1424,13 @@
     if (e.key === 'Escape' && ui.playerOpen) { closePlayer(); return; }
     const tag = (e.target.tagName || '').toLowerCase();
     if (['input', 'select', 'textarea'].includes(tag) || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest && e.target.closest('#rsPanel, #rsFit.editing, #rsHots .hot.edit')) return; // the upload form and hotspot editor keep their keys
     if (ui.tab !== 'walk') return;
     const k = e.key.toLowerCase();
     if (k === 'n') { if (!ui.guided) setGuided(true); else showStep(ui.step + 1); }
     else if (k === 'p' && ui.guided) showStep(ui.step - 1);
-    else if (k === 't') $('#typeBtn').click();
+    else if (k === 't') { if (!ui.stageOn) $('#typeBtn').click(); }
+    else if (k === 'c') setViewMode(ui.mode === 'render' ? '3d' : 'render');
     else if (k === 'm') toggleSound();
     else if (/^[1-7]$/.test(k)) { const r = enabledRooms()[Number(k) - 1]; if (r) goRoom(r.id, 'entrance'); }
   });
@@ -819,11 +1447,11 @@
       if (cur !== ui.cur) {
         ui.cur = cur;
         if (cur && !ui.guided) { ui.room = cur; renderInspector(); }
+        else if (!ui.room) renderInspector(); // it was showing the camera's room: keep it, the render and the route list in step
         renderRoute();
         if (ui.view === 'free' || ui.view === 'eye' || ui.view === 'entrance') setWhere(cur, ui.view);
       }
-      W.update(dt, now, cur, ui.reduced); W.perf(dt);
-      updateHotspots();
+      if (!ui.stageOn) { W.update(dt, now, cur, ui.reduced); W.perf(dt); updateHotspots(); } // a concept render covers the 3D view: skip drawing it
       markT += dt; if (markT > 0.1) { markT = 0; updateMarker(); }
       if (ui.guided && ui.auto) { ui.autoT += dt; if (ui.autoT > (ui.reduced ? 16 : 11)) { if (ui.step < tourSteps().length - 1) showStep(ui.step + 1); else { ui.auto = false; $('#gPlay').setAttribute('aria-pressed', 'false'); $('#gPlay').textContent = 'Auto-play'; } } }
     }
@@ -837,7 +1465,7 @@
   // ---------- start ----------
   function start() {
     renderPlanLegend();
-    try { W.init($('#gl')); } catch (e) { $('#loading').textContent = 'This browser could not start the 3D view (WebGL is unavailable). The planning, budget and export tools still work.'; renderInspector(); renderRoute(); return; }
+    try { W.init($('#gl')); glOK = true; } catch (e) { $('#loading').textContent = 'This browser could not start the 3D view (WebGL is unavailable). The planning, budget and export tools still work.'; renderInspector(); renderRoute(); return; }
     W.build(config); renderPlan(); buildHotspots(); renderRoute(); renderInspector(); setReduced(ui.reduced);
     goRoom(null, 'venue', true);
     $('#cfgName').textContent = config.name;
@@ -848,5 +1476,6 @@
   }
   if (!window.THREE) { $('#loading').textContent = 'The 3D library did not load. Check your connection and reload; the other tabs still work.'; renderInspector(); renderRoute(); renderPlanLegend(); }
   else start();
-  window.UW_APP = { get config() { return config; }, ui, goRoom, setTab, budget: () => budget, applyScenario, planMarkdown };
+  initRenders();
+  window.UW_APP = { get config() { return config; }, ui, goRoom, setTab, budget: () => budget, applyScenario, planMarkdown, setViewMode, openRender, roomRenders, syncStage, layoutStage, setGuided, showStep };
 })();

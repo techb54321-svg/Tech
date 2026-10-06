@@ -22,6 +22,8 @@ const CELL: Record<OccurrenceStatus | 'private', { sym: string; tone: string }> 
   help_requested: { sym: '!', tone: 'err' },
   no_response: { sym: '○', tone: 'neutral' },
   private: { sym: '🔒', tone: 'muted' },
+  said_yes: { sym: 'Y', tone: 'ok' },
+  said_no: { sym: 'N', tone: 'neutral' },
 }
 
 const dayLabel = (d: string) => {
@@ -128,7 +130,7 @@ export function WeekGrid({ info }: { info: FamilyInfo }) {
             </table>
           </div>
           <p className="small muted legend">
-            ✓ done or reported taken · ? not sure · ! asked for help · ⏱ postponed · – declined · ○ no answer · 🔒
+            ✓ done or reported taken · Y / N said yes or no to an outing · ? not sure · ! asked for help · ⏱ postponed · – declined · ○ no answer · 🔒
             private · blank: not scheduled. Medication answers are reported by {info.settings.parentName}, not verified.
           </p>
         </>

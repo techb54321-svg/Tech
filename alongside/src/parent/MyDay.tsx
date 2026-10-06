@@ -11,6 +11,7 @@ import { formatInstantTime, formatTime12, localTimeHM, zonedTimeToInstant } from
 import type { DayItem, MessageStatus, ParentToday, ResponseAction } from '../../shared/types'
 import { CallButton, H1, Listen, ParentScreen, Photo } from './common'
 import { liveStatus } from './ParentApp'
+import { CarLine, YesNo } from './Events'
 
 type ReminderItem = Extract<DayItem, { type: 'reminder' }>
 
@@ -147,20 +148,21 @@ export function MyDay({
   // Opened from a Home tile before it is due: show what and when, nothing to answer yet.
   const requested = itemKey ? today.items.find((i) => i.key === itemKey) : undefined
   if (requested && !(requested.type === 'reminder' && liveStatus(requested, Date.now()) === 'due')) {
-    return <Preview item={requested} today={today} />
+    return <Preview item={requested} today={today} reload={reload} />
   }
   if (!current) return <NothingNow today={today} />
 
   const r = current.reminder
   const time = formatTime12(r.time)
   const startsLater = Date.now() < zonedTimeToInstant(current.occurrenceDate, r.time, today.timeZone).getTime()
-  const question = r.question
+  const question = r.ask ? `${r.title} today?` : r.question
   const spoken = [question ?? (startsLater ? `Coming up at ${time}` : `${r.title}, now`), r.title, r.location, r.notes].filter(Boolean).join('. ')
 
   return (
     <ParentScreen>
-      <ItemHead kind={r.kind} time={time} title={r.title} />
+      <ItemHead kind={r.kind} time={time} title={r.title} subtitle={r.subtitle} />
       <Photo url={r.photoUrl} alt={`Photo for ${r.title}`} />
+      <CarLine r={r} />
       {question ? (
         <p className="p-question">{question}</p>
       ) : (
@@ -193,6 +195,11 @@ export function MyDay({
             <Answer item={current} action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Not yet" />
             <Answer item={current} action="not_today" busy={busy} onClick={answer} className="plain" Icon={Ban} text="No, not today" />
           </>
+        ) : r.ask ? (
+          <>
+            <Answer item={current} action="yes" busy={busy} onClick={answer} className="green" Icon={Check} text="YES" />
+            <Answer item={current} action="no" busy={busy} onClick={answer} className="plain" Icon={Ban} text="NO" />
+          </>
         ) : (
           <Answer item={current} action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Okay" />
         )}
@@ -207,7 +214,7 @@ export function MyDay({
 }
 
 /** The coloured top of each item: what it is, when, and its name. */
-function ItemHead({ kind, time, title }: { kind: keyof typeof KIND | 'lift'; time: string; title: string }) {
+function ItemHead({ kind, time, title, subtitle }: { kind: keyof typeof KIND | 'lift'; time: string; title: string; subtitle?: string }) {
   const { label, Icon } = kind === 'lift' ? { label: 'Lift', Icon: Car } : KIND[kind]
   return (
     <div className={`item-head kind-${kind}`}>
@@ -220,6 +227,7 @@ function ItemHead({ kind, time, title }: { kind: keyof typeof KIND | 'lift'; tim
       {/* Smaller than the clock above, and labelled, so there is only one "now" on screen. */}
       <p className="item-time">at {time}</p>
       <H1>{title}</H1>
+      {subtitle && <p className="item-subtitle">{subtitle}</p>}
     </div>
   )
 }
@@ -255,7 +263,7 @@ function Answer({
   )
 }
 
-function Preview({ item, today }: { item: DayItem; today: ParentToday }) {
+function Preview({ item, today, reload }: { item: DayItem; today: ParentToday; reload: () => void }) {
   const navigate = useNavigate()
   const time = formatTime12(timeOf(item))
   const r = item.type === 'reminder' ? item.reminder : null
@@ -264,9 +272,11 @@ function Preview({ item, today }: { item: DayItem; today: ParentToday }) {
   const line = finished ? 'You have done this today.' : `Today at ${time}.`
   return (
     <ParentScreen>
-      <ItemHead kind={r ? r.kind : 'lift'} time={time} title={titleOf(item)} />
+      <ItemHead kind={r ? r.kind : 'lift'} time={time} title={titleOf(item)} subtitle={r?.subtitle} />
       <Photo url={r?.photoUrl ?? null} alt={`Photo for ${titleOf(item)}`} />
-      <p className="p-question">{line}</p>
+      <p className="p-question">{r?.ask && !finished ? `${r.title} today?` : line}</p>
+      {r && <CarLine r={r} />}
+      {r?.ask && item.type === 'reminder' && <YesNo item={item} onAnswered={reload} />}
       {item.type === 'lift' && <p className="p-detail">{item.lift.details}</p>}
       {r?.location && (
         <p className="p-detail">
@@ -465,6 +475,7 @@ function AckView({
           </div>
         </div>
       )
+    case 'no':
     case 'not_today':
       return (
         <div className="ack" role="status">
@@ -472,7 +483,7 @@ function AckView({
             <Check aria-hidden="true" />
           </div>
           <H1>Okay</H1>
-          <p className="p-body">Not today. That’s fine.</p>
+          <p className="p-body">{ack.action === 'no' ? 'You said NO. That’s fine.' : 'Not today. That’s fine.'}</p>
           <div className="btn-stack">{nextButton}</div>
         </div>
       )

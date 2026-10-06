@@ -9,6 +9,8 @@ import { questionFor } from '../shared/questions.js'
 import type {
   ArrangedLift,
   Contact,
+  SharedPhoto,
+  Song,
   DayItem,
   Destination,
   Reminder,
@@ -135,6 +137,12 @@ interface ReminderRow {
   location: string
   notes: string
   question: string
+  subtitle: string
+  pickup_time: string | null
+  return_time: string | null
+  car_colour: string
+  car_note: string
+  ask: number
   remind_minutes_before: number
   share_responses: number
   med_confirmed_at: string | null
@@ -152,6 +160,12 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   location: r.location,
   notes: r.notes,
   question: r.question ?? '',
+  subtitle: r.subtitle ?? '',
+  pickupTime: r.pickup_time ?? null,
+  returnTime: r.return_time ?? null,
+  carColour: r.car_colour ?? '',
+  carNote: r.car_note ?? '',
+  ask: !!r.ask,
   remindMinutesBefore: r.remind_minutes_before,
   shareResponses: !!r.share_responses,
   medScheduleConfirmedAt: r.med_confirmed_at,
@@ -186,17 +200,27 @@ export function saveReminder(
   // The schedule confirmation is renewed on every save of a medication reminder.
   const medAt = isMed ? now : null
   const medBy = isMed ? byName : null
+  // Transport and invitation details apply to outings and appointments only.
+  const outing = input.kind === 'appointment' || input.kind === 'social'
+  const extras = [
+    outing ? (input.subtitle ?? '') : '',
+    outing ? (input.pickupTime ?? null) : null,
+    outing ? (input.returnTime ?? null) : null,
+    outing ? (input.carColour ?? '') : '',
+    outing ? (input.carNote ?? '') : '',
+    outing && input.ask ? 1 : 0,
+  ] as const
   if (id) {
     const r = db
       .prepare(
         `UPDATE reminders SET kind=?, title=?, time=?, start_date=?, repeat=?, end_date=?, location=?, notes=?, question=?,
-           remind_minutes_before=?, share_responses=?, med_confirmed_at=?, med_confirmed_by=?, updated_at=?
+           subtitle=?, pickup_time=?, return_time=?, car_colour=?, car_note=?, ask=?, remind_minutes_before=?, share_responses=?, med_confirmed_at=?, med_confirmed_by=?, updated_at=?
          WHERE id=? AND household_id=? AND deleted_at IS NULL`,
       )
       .run(
         input.kind, input.title, input.time, input.startDate, input.repeat,
-        input.repeat === 'daily' ? input.endDate : null,
-        input.location, input.notes, input.question ?? '', input.remindMinutesBefore, input.shareResponses ? 1 : 0,
+        input.repeat === 'daily' ? (input.endDate ?? null) : null,
+        input.location ?? '', input.notes ?? '', input.question ?? '', ...extras, input.remindMinutesBefore ?? 0, input.shareResponses ? 1 : 0,
         medAt, medBy, now, id, hid,
       )
     return r.changes > 0 ? id : null
@@ -204,12 +228,13 @@ export function saveReminder(
   const newId = randomUUID()
   db.prepare(
     `INSERT INTO reminders (id, household_id, kind, title, time, start_date, repeat, end_date, location, notes, question,
+       subtitle, pickup_time, return_time, car_colour, car_note, ask,
        remind_minutes_before, share_responses, med_confirmed_at, med_confirmed_by, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     newId, hid, input.kind, input.title, input.time, input.startDate, input.repeat,
     input.repeat === 'daily' ? input.endDate : null,
-    input.location, input.notes, input.question ?? '', input.remindMinutesBefore, input.shareResponses ? 1 : 0,
+    input.location ?? '', input.notes ?? '', input.question ?? '', ...extras, input.remindMinutesBefore ?? 0, input.shareResponses ? 1 : 0,
     medAt, medBy, now, now,
   )
   return newId
@@ -304,6 +329,8 @@ export function parentDayItems(db: DB, h: HouseholdRow, date: string, now = new 
       reminder: {
         id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes,
         photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
+        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, carNote: r.carNote,
+        ask: r.ask,
       },
       occurrenceDate: date,
       status: st.status,
@@ -377,4 +404,25 @@ export function deleteContact(db: DB, hid: string, id: string): boolean {
   const ok = db.prepare('DELETE FROM contacts WHERE id=? AND household_id=?').run(id, hid).changes > 0
   if (ok) deleteMedia(db, hid, 'contact', id)
   return ok
+}
+
+// ---- photos and songs ---------------------------------------------------------
+
+export function listPhotos(db: DB, hid: string, today: string): SharedPhoto[] {
+  const media = mediaUrls(db, hid)
+  const rows = db
+    .prepare('SELECT id, caption, show_date FROM photos WHERE household_id=? AND show_date <= ? ORDER BY show_date DESC, created_at DESC LIMIT 30')
+    .all(hid, today) as unknown as Array<{ id: string; caption: string; show_date: string }>
+  return rows
+    .map((r) => ({ id: r.id, caption: r.caption, showDate: r.show_date, url: media.get(`photo:${r.id}:photo`) ?? '' }))
+    .filter((p) => p.url)
+}
+
+export function listSongs(db: DB, hid: string): Song[] {
+  const media = mediaUrls(db, hid)
+  const rows = db.prepare('SELECT id, title FROM songs WHERE household_id=? ORDER BY created_at').all(hid) as unknown as Array<{
+    id: string
+    title: string
+  }>
+  return rows.map((r) => ({ ...r, url: media.get(`song:${r.id}:audio`) ?? '' })).filter((s) => s.url)
 }

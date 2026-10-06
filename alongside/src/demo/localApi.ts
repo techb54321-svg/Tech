@@ -12,7 +12,9 @@ import {
   demoDestinations,
   demoContacts,
   demoDueNow,
-  demoLaterToday,
+  demoOutingsToday,
+  demoPhotos,
+  demoSongs,
   demoLift,
   demoReminderPhotos,
   demoReminders,
@@ -20,13 +22,16 @@ import {
 } from '../../shared/demoSeed'
 import { demoMedia } from '../../shared/demoMedia'
 import { questionFor } from '../../shared/questions'
-import type { Contact, DayItem, Destination, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
+import type { Contact, DayItem, Destination, SharedPhoto, Song, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
 import {
   arrangedLiftSchema,
   clientRequestId,
   contactSchema,
   destinationSchema,
   mediaSchema,
+  photoSchema,
+  SONG_MAX_BYTES,
+  songSchema,
   PHOTO_MAX_BYTES,
   PHOTO_TYPES,
   reminderSchema,
@@ -72,8 +77,11 @@ interface Trip {
   clientRequestId: string | null
   deleted?: boolean
 }
+/** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
+const DEMO_VERSION = 3
+
 interface State {
-  version: 1
+  version: number
   householdId: string
   settings: SettingsInput
   destinations: Destination[]
@@ -84,6 +92,8 @@ interface State {
   /** "owner:id:kind" → data URL */
   media: Record<string, string>
   contacts: Array<{ id: string; name: string; phone: string }>
+  photos: Array<{ id: string; caption: string; showDate: string }>
+  songs: Array<{ id: string; title: string }>
 }
 
 const KEY = 'alongside.static-demo'
@@ -94,15 +104,48 @@ function load(): State | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      memory = JSON.parse(raw) as State
-      memory.media ??= {} // saved by an earlier version of the preview
-      memory.contacts ??= []
+      const saved = JSON.parse(raw) as State
+      if (saved.version === DEMO_VERSION) {
+        upgrade(saved) // fill in anything missing, never crash on old data
+        memory = saved
+      } else {
+        // An older demonstration: start a fresh one with today's content.
+        localStorage.removeItem(KEY)
+        return createDemo()
+      }
     }
   } catch {
     /* storage unavailable: keep in memory only */
   }
   return memory
 }
+/** Fill in anything an older version of the preview did not save, so it never crashes on old data. */
+function upgrade(s: State) {
+  s.media ??= {}
+  s.contacts ??= []
+  s.photos ??= []
+  s.songs ??= []
+  s.help ??= []
+  s.trips ??= []
+  s.responses ??= []
+  s.destinations ??= []
+  s.reminders = (s.reminders ?? []).map((r) => ({
+    ...r,
+    location: r.location ?? '',
+    notes: r.notes ?? '',
+    question: r.question ?? '',
+    subtitle: r.subtitle ?? '',
+    pickupTime: r.pickupTime ?? null,
+    returnTime: r.returnTime ?? null,
+    carColour: r.carColour ?? '',
+    carNote: r.carNote ?? '',
+    ask: r.ask ?? false,
+    remindMinutesBefore: r.remindMinutesBefore ?? 0,
+    photoUrl: null,
+    voiceUrl: null,
+  }))
+}
+
 /** Returns false when the browser refused to store it (it is then kept for this visit only). */
 function save(s: State): boolean {
   memory = s
@@ -134,8 +177,9 @@ function parse<S extends ZodTypeAny>(schema: S, body: unknown): z.infer<S> {
   }
 }
 
-function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder & { deleted?: boolean } {
+function toReminder(id: string, input: z.input<typeof reminderSchema>): Reminder & { deleted?: boolean } {
   const med = input.kind === 'medication'
+  const outing = input.kind === 'appointment' || input.kind === 'social'
   return {
     id,
     kind: input.kind,
@@ -143,11 +187,17 @@ function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder
     time: input.time,
     startDate: input.startDate,
     repeat: input.repeat,
-    endDate: input.repeat === 'daily' ? input.endDate : null,
-    location: input.location,
-    notes: input.notes,
+    endDate: input.repeat === 'daily' ? (input.endDate ?? null) : null,
+    location: input.location ?? '',
+    notes: input.notes ?? '',
     question: input.question ?? '',
-    remindMinutesBefore: input.remindMinutesBefore,
+    subtitle: outing ? (input.subtitle ?? '') : '',
+    pickupTime: outing ? (input.pickupTime ?? null) : null,
+    returnTime: outing ? (input.returnTime ?? null) : null,
+    carColour: outing ? (input.carColour ?? '') : '',
+    carNote: outing ? (input.carNote ?? '') : '',
+    ask: outing && !!input.ask,
+    remindMinutesBefore: input.remindMinutesBefore ?? 0,
     shareResponses: input.shareResponses,
     medScheduleConfirmedAt: med ? nowIso() : null,
     medScheduleConfirmedBy: med ? DEMO_FAMILY_NAME : null,
@@ -166,6 +216,13 @@ const contacts = (s: State): Contact[] => [
   { id: s.householdId, name: s.settings.contactName, phone: s.settings.contactPhone ?? '', photoUrl: s.media[`contact:${s.householdId}:photo`] ?? null, main: true },
   ...s.contacts.map((c) => ({ ...c, photoUrl: s.media[`contact:${c.id}:photo`] ?? null, main: false })),
 ]
+const photos = (s: State, upTo: string): SharedPhoto[] =>
+  s.photos
+    .filter((p) => p.showDate <= upTo && s.media[`photo:${p.id}:photo`])
+    .sort((a, b) => (a.showDate < b.showDate ? 1 : -1))
+    .map((p) => ({ ...p, url: s.media[`photo:${p.id}:photo`] }))
+const songs = (s: State): Song[] =>
+  s.songs.filter((x) => s.media[`song:${x.id}:audio`]).map((x) => ({ ...x, url: s.media[`song:${x.id}:audio`] }))
 const destinations = (s: State): Destination[] => s.destinations.map((d) => ({ ...d, photoUrl: s.media[`destination:${d.id}:photo`] ?? null }))
 
 function createDemo(): State {
@@ -173,7 +230,7 @@ function createDemo(): State {
   const tz = demoSettings.timeZone
   const today = localDateISO(now, tz)
   const s: State = {
-    version: 1,
+    version: DEMO_VERSION,
     householdId: uuid(),
     settings: { ...demoSettings },
     destinations: demoDestinations.map((d) => ({ id: uuid(), ...d, photoUrl: null })),
@@ -183,6 +240,8 @@ function createDemo(): State {
     trips: [],
     media: {},
     contacts: demoContacts.map((c) => ({ id: uuid(), ...c })),
+    photos: [],
+    songs: [],
   }
   const ids: Record<string, string> = {}
   for (const r of demoReminders(today)) {
@@ -191,11 +250,20 @@ function createDemo(): State {
   }
   const dueNow = demoDueNow(now, tz)
   if (dueNow) s.reminders.push(toReminder(uuid(), dueNow))
-  const later = demoLaterToday(now, tz)
-  if (later) {
+  for (const o of demoOutingsToday(now, tz)) {
     const id = uuid()
-    s.reminders.push(toReminder(id, later))
-    s.media[`reminder:${id}:photo`] = demoMedia.gym
+    s.reminders.push(toReminder(id, o.input))
+    s.media[`reminder:${id}:photo`] = demoMedia[o.picture]
+  }
+  for (const p of demoPhotos(today)) {
+    const id = uuid()
+    s.photos.push({ id, caption: p.caption, showDate: p.showDate })
+    s.media[`photo:${id}:photo`] = demoMedia[p.picture]
+  }
+  for (const song of demoSongs) {
+    const id = uuid()
+    s.songs.push({ id, title: song.title })
+    s.media[`song:${id}:audio`] = demoMedia[song.picture]
   }
   s.media[`contact:${s.householdId}:photo`] = demoMedia.anna
   s.media[`contact:${s.contacts[0].id}:photo`] = demoMedia.sarah
@@ -229,7 +297,8 @@ function parentItems(s: State, date: string): DayItem[] {
     const st = occurrenceStatus(r, date, s.settings.timeZone, latest, now)
     items.push({
       type: 'reminder', key: `${r.id}:${date}`,
-      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question) },
+      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
+        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, carNote: r.carNote, ask: r.ask },
       occurrenceDate: date, status: st.status, snoozeUntil: st.snoozeUntil,
       dueAt: dueAt(r, date, s.settings.timeZone).toISOString(), answeredAt: latest?.createdAt ?? null, t: r.time,
     })
@@ -302,6 +371,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     const out: ParentToday = {
       demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
       items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s),
+      photos: photos(s, date), songs: songs(s),
       tomorrow: tomorrow
         ? tomorrow.type === 'reminder'
           ? { title: tomorrow.reminder.title, time: tomorrow.reminder.time }
@@ -317,7 +387,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     if (dup) return { action: dup.action, snoozeUntil: dup.snoozeUntil, messageStatus: null, duplicate: true } as T
     const rem = reminders(s).find((r) => r.id === input.reminderId)
     if (!rem) throw new ApiError(404, 'This reminder was removed by family.')
-    const allowed = rem.kind === 'medication' ? ['taken', 'later', 'not_sure'] : ['done', 'later', 'need_help', 'not_today']
+    const allowed = rem.kind === 'medication' ? ['taken', 'later', 'not_sure'] : rem.ask ? ['yes', 'no', 'need_help'] : ['done', 'later', 'need_help', 'not_today']
     if (!allowed.includes(input.action)) throw new ApiError(400, 'That answer does not apply to this reminder.')
     const t = today(s)
     if (input.occurrenceDate !== t && input.occurrenceDate !== addDaysISO(t, -1)) throw new ApiError(400, 'Only today’s reminders can be answered.')
@@ -463,6 +533,36 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     }
     return { days, rows: [...rows.values()].sort((a, b) => (a.time < b.time ? -1 : 1)) } as T
   }
+  if (rest === '/photos' && method === 'GET') return photos(s, '9999-12-31') as T
+  if (rest === '/photos' && method === 'POST') {
+    const p = parse(photoSchema, body)
+    const id = uuid()
+    s.photos.push({ id, caption: p.caption, showDate: p.showDate })
+    save(s)
+    return { id } as T
+  }
+  mm = rest.match(/^\/photos\/(.+)$/)
+  if (mm && method === 'DELETE') {
+    s.photos = s.photos.filter((p) => p.id !== mm![1])
+    delete s.media[`photo:${mm[1]}:photo`]
+    save(s)
+    return { ok: true } as T
+  }
+  if (rest === '/songs' && method === 'GET') return songs(s) as T
+  if (rest === '/songs' && method === 'POST') {
+    if (s.songs.length >= 10) throw new ApiError(400, 'Up to 10 songs. Remove one first.')
+    const id = uuid()
+    s.songs.push({ id, title: parse(songSchema, body).title })
+    save(s)
+    return { id } as T
+  }
+  mm = rest.match(/^\/songs\/(.+)$/)
+  if (mm && method === 'DELETE') {
+    s.songs = s.songs.filter((x) => x.id !== mm![1])
+    delete s.media[`song:${mm[1]}:audio`]
+    save(s)
+    return { ok: true } as T
+  }
   if (rest === '/contacts' && method === 'POST') {
     if (s.contacts.length >= 5) throw new ApiError(400, 'Keep it to a few people so the Home screen stays simple (up to 5 more).')
     const id = uuid()
@@ -482,16 +582,21 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     save(s)
     return { ok: true } as T
   }
-  mm = rest.match(/^\/media\/(reminder|destination|contact)\/([^/]+)\/(photo|voice)$/)
+  mm = rest.match(/^\/media\/(reminder|destination|contact|photo|song)\/([^/]+)\/(photo|voice|audio)$/)
   if (mm) {
     const [, owner, ownerId, kind] = mm
-    if (owner !== 'reminder' && kind !== 'photo') throw new ApiError(400, 'Places and people can have a photo only')
+    const fits = owner === 'song' ? kind === 'audio' : owner === 'reminder' ? kind !== 'audio' : kind === 'photo'
+    if (!fits) throw new ApiError(400, 'That kind of file does not belong here')
     const exists =
       owner === 'reminder'
         ? reminders(s).some((r) => r.id === ownerId)
         : owner === 'destination'
           ? s.destinations.some((d) => d.id === ownerId)
-          : ownerId === s.householdId || s.contacts.some((c) => c.id === ownerId)
+          : owner === 'photo'
+            ? s.photos.some((p) => p.id === ownerId)
+            : owner === 'song'
+              ? s.songs.some((x) => x.id === ownerId)
+              : ownerId === s.householdId || s.contacts.some((c) => c.id === ownerId)
     if (!exists) throw new ApiError(404, 'That item no longer exists.')
     const key = `${owner}:${ownerId}:${kind}`
     if (method === 'DELETE') delete s.media[key]
@@ -501,7 +606,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
       const allowed: readonly string[] = kind === 'photo' ? PHOTO_TYPES : VOICE_TYPES
       if (!allowed.includes(mime)) throw new ApiError(400, kind === 'photo' ? 'Use a JPEG, PNG or WebP photo.' : 'That sound format is not supported.')
       const bytes = Math.floor(((dataUrl.length - dataUrl.indexOf(',') - 1) * 3) / 4)
-      if (bytes > (kind === 'photo' ? PHOTO_MAX_BYTES : VOICE_MAX_BYTES)) throw new ApiError(400, 'That file is too large.')
+      if (bytes > (kind === 'photo' ? PHOTO_MAX_BYTES : kind === 'audio' ? SONG_MAX_BYTES : VOICE_MAX_BYTES)) throw new ApiError(400, 'That file is too large.')
       s.media[key] = dataUrl
     }
     if (!save(s)) {

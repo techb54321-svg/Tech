@@ -70,3 +70,88 @@ export function OutingPicture() {
     </svg>
   )
 }
+
+export const CAR_FILL: Record<string, { fill: string; name: string }> = {
+  red: { fill: '#dc2626', name: 'Red' },
+  blue: { fill: '#2563eb', name: 'Blue' },
+  white: { fill: '#f8fafc', name: 'White' },
+  silver: { fill: '#b8c0cc', name: 'Silver' },
+  black: { fill: '#111827', name: 'Black' },
+  green: { fill: '#16a34a', name: 'Green' },
+  yellow: { fill: '#facc15', name: 'Yellow' },
+  orange: { fill: '#f97316', name: 'Orange' },
+  purple: { fill: '#7c3aed', name: 'Purple' },
+  brown: { fill: '#92400e', name: 'Brown' },
+}
+
+/** A car drawn in the colour of the car that is coming. The colour is always written next to it too. */
+export function CarIcon({ colour }: { colour: string }) {
+  const fill = CAR_FILL[colour]?.fill ?? '#94a3b8'
+  return (
+    <svg viewBox="0 0 120 64" aria-hidden="true" className="car-icon">
+      <path d="M14 40 L26 18 Q30 12 38 12 L82 12 Q90 12 94 18 L106 40 Z" fill={fill} stroke="#1f2937" strokeWidth="3" />
+      <rect x="6" y="34" width="108" height="18" rx="8" fill={fill} stroke="#1f2937" strokeWidth="3" />
+      <path d="M34 34 L40 20 L58 20 L58 34 Z" fill="#bae6fd" stroke="#1f2937" strokeWidth="2" />
+      <path d="M64 34 L64 20 L80 20 L88 34 Z" fill="#bae6fd" stroke="#1f2937" strokeWidth="2" />
+      <circle cx="32" cy="52" r="10" fill="#1f2937" /><circle cx="32" cy="52" r="4" fill="#cbd5e1" />
+      <circle cx="88" cy="52" r="10" fill="#1f2937" /><circle cx="88" cy="52" r="4" fill="#cbd5e1" />
+    </svg>
+  )
+}
+
+export function MusicPicture() {
+  return (
+    <svg viewBox="0 0 160 120" aria-hidden="true">
+      <rect width="160" height="120" fill="#fce7f3" />
+      <circle cx="80" cy="60" r="40" fill="#db2777" />
+      <circle cx="80" cy="60" r="12" fill="#fce7f3" />
+      <path d="M118 22 L118 70" stroke="#7c3aed" strokeWidth="6" strokeLinecap="round" />
+      <path d="M118 22 L140 30" stroke="#7c3aed" strokeWidth="6" strokeLinecap="round" />
+      <ellipse cx="111" cy="72" rx="10" ry="8" fill="#7c3aed" />
+      <path d="M30 30 L30 66" stroke="#2563eb" strokeWidth="6" strokeLinecap="round" />
+      <ellipse cx="23" cy="68" rx="10" ry="8" fill="#2563eb" />
+    </svg>
+  )
+}
+
+export function PhotosPicture() {
+  return (
+    <svg viewBox="0 0 160 120" aria-hidden="true">
+      <rect width="160" height="120" fill="#e0f2fe" />
+      <rect x="30" y="22" width="100" height="76" rx="8" fill="#fff" stroke="#0369a1" strokeWidth="5" transform="rotate(-6 80 60)" />
+      <circle cx="62" cy="50" r="10" fill="#facc15" />
+      <path d="M40 88 L68 60 L88 78 L102 66 L122 88 Z" fill="#16a34a" />
+    </svg>
+  )
+}
+
+/** A default picture for an outing without a photo, chosen from its title. */
+export function pictureForTitle(title: string) {
+  const t = title.toLowerCase()
+  if (/coffee|caf[eé]|tea|lunch|dinner/.test(t)) return <CoffeePicture />
+  if (/shop|market|groceries|woolworths|coles/.test(t)) return <ShoppingPicture />
+  return <OutingPicture />
+}
+
+export function CoffeePicture() {
+  return (
+    <svg viewBox="0 0 160 120" aria-hidden="true">
+      <rect width="160" height="120" fill="#fde7c8" />
+      <ellipse cx="80" cy="96" rx="48" ry="9" fill="#fff" stroke="#78350f" strokeWidth="3" />
+      <path d="M48 44 L112 44 L106 90 Q80 98 54 90 Z" fill="#fff" stroke="#78350f" strokeWidth="3" />
+      <path d="M112 54 Q132 54 128 70 Q124 84 106 82" fill="none" stroke="#78350f" strokeWidth="5" />
+      <path d="M66 34 Q60 24 68 14 M84 32 Q78 22 86 12" stroke="#a8a29e" strokeWidth="4" fill="none" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+export function ShoppingPicture() {
+  return (
+    <svg viewBox="0 0 160 120" aria-hidden="true">
+      <rect width="160" height="120" fill="#dcfce7" />
+      <path d="M44 40 L116 40 L110 104 L50 104 Z" fill="#16a34a" stroke="#14532d" strokeWidth="3" />
+      <path d="M62 40 Q62 18 80 18 Q98 18 98 40" fill="none" stroke="#14532d" strokeWidth="5" />
+      <circle cx="68" cy="58" r="8" fill="#ef4444" /><circle cx="88" cy="56" r="9" fill="#facc15" /><rect x="94" y="48" width="10" height="20" fill="#f97316" />
+    </svg>
+  )
+}

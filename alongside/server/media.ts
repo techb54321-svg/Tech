@@ -4,10 +4,11 @@
 import type { DB } from './db.js'
 import { nowIso } from './db.js'
 import { HttpError } from './http.js'
-import { PHOTO_MAX_BYTES, PHOTO_TYPES, VOICE_MAX_BYTES, VOICE_TYPES } from '../shared/validation.js'
+import { PHOTO_MAX_BYTES, PHOTO_TYPES, SONG_MAX_BYTES, VOICE_MAX_BYTES, VOICE_TYPES } from '../shared/validation.js'
 
-export type OwnerType = 'reminder' | 'destination' | 'contact'
-export type MediaKind = 'photo' | 'voice'
+export type OwnerType = 'reminder' | 'destination' | 'contact' | 'photo' | 'song'
+/** photo: a picture; voice: a short family message; audio: a song. */
+export type MediaKind = 'photo' | 'voice' | 'audio'
 
 const startsWith = (b: Buffer, sig: number[], at = 0) => sig.every((x, i) => b[at + i] === x)
 const ascii = (b: Buffer, at: number, s: string) => b.subarray(at, at + s.length).toString('latin1') === s
@@ -46,9 +47,12 @@ export function decodeMedia(kind: MediaKind, dataUrl: string): { mime: string; d
     throw new HttpError(400, kind === 'photo' ? 'Use a JPEG, PNG or WebP photo.' : 'That sound format is not supported.')
   }
   const data = Buffer.from(m[3], 'base64')
-  const max = kind === 'photo' ? PHOTO_MAX_BYTES : VOICE_MAX_BYTES
+  const max = kind === 'photo' ? PHOTO_MAX_BYTES : kind === 'audio' ? SONG_MAX_BYTES : VOICE_MAX_BYTES
   if (data.length > max) {
-    throw new HttpError(400, kind === 'photo' ? 'That photo is too large.' : 'That message is too long. Keep it under a minute.')
+    throw new HttpError(
+      400,
+      kind === 'photo' ? 'That photo is too large.' : kind === 'audio' ? 'That song file is too large (12 MB at most).' : 'That message is too long. Keep it under a minute.',
+    )
   }
   if (!looksLike(mime, data)) throw new HttpError(400, 'That file does not look like a real photo or sound file.')
   return { mime, data }

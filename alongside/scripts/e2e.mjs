@@ -233,7 +233,7 @@ for (const v of WIDTHS) {
   await shot(page, v.name, '01-home')
   // Home: the day and time, a greeting, picture tiles and the quiet family link.
   const tiles = await page.locator('.tiles .tile-label').allTextContents()
-  for (const want of ['My day', 'Call Anna', 'Call Sarah', 'Taxi', 'Puzzles']) check(tiles.includes(want), `${v.name}/home: no "${want}" tile (${tiles.join(', ')})`)
+  for (const want of ['My day', 'Call Anna', 'Call Sarah', 'Taxi', 'Puzzles', 'Photos', 'Music']) check(tiles.includes(want), `${v.name}/home: no "${want}" tile (${tiles.join(', ')})`)
   check((await page.locator('.tiles .tile .tile-pic').count()) === tiles.length, `${v.name}/home: a tile has no picture`)
 
   const med = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack, lunch slot.' })
@@ -314,15 +314,15 @@ for (const v of WIDTHS) {
   await page.getByRole('heading', { name: 'Call Anna' }).waitFor()
   await shot(page, v.name, '15-call-demo')
 
-  // Today's event tile opens what and when, with nothing to answer yet.
+  // Today's outing cards open what and when, with nothing to answer yet.
   await page.goto(BASE + '/#/')
-  const eventTile = page.locator('.tile.t-teal')
-  if (await eventTile.count()) {
-    const label = (await eventTile.locator('.tile-label').textContent()).trim()
-    await eventTile.click()
+  const eventCard = page.locator('.event-card a.event-main').first()
+  if (await eventCard.count()) {
+    const label = (await eventCard.locator('.event-title').textContent()).trim()
+    await eventCard.click()
     await page.getByRole('heading', { name: label }).waitFor()
     await shot(page, v.name, '16-event-preview')
-  } else notes.push(`${v.name}: no event later today, so the event tile was not checked`)
+  } else notes.push(`${v.name}: no outing later today, so the outing cards were not checked`)
 
   // Puzzles: solve a word search by tapping letters.
   await page.goto(BASE + '/#/')
@@ -381,13 +381,17 @@ step('Text at 200%')
   const kb = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
   await page.goto(BASE + '/#/')
   await page.locator('main h1').waitFor()
-  await page.keyboard.press('Tab')
-  const first = await page.evaluate(() => {
-    const el = document.activeElement
-    const s = getComputedStyle(el)
-    return { text: el.textContent.trim(), outline: s.outlineStyle, width: s.outlineWidth }
-  })
-  check(first.text === 'My day', `keyboard: first Tab lands on "${first.text}"`)
+  // Tab through today's outing cards to the "My day" tile.
+  let first = { text: '' }
+  for (let i = 0; i < 12 && first.text !== 'My day'; i++) {
+    await page.keyboard.press('Tab')
+    first = await page.evaluate(() => {
+      const el = document.activeElement
+      const s = getComputedStyle(el)
+      return { text: el.textContent.trim(), outline: s.outlineStyle, width: s.outlineWidth }
+    })
+  }
+  check(first.text === 'My day', `keyboard: could not Tab to "My day" (last: "${first.text}")`)
   check(first.outline !== 'none' && parseFloat(first.width) >= 3, `keyboard: focus outline not visible (${first.outline} ${first.width})`)
   await page.screenshot({ path: join(shotsDir, '390', '30-keyboard-focus.png') })
   await page.keyboard.press('Enter')
@@ -493,11 +497,15 @@ step('In-app reminder comes forward')
   await page.goto(BASE + '/')
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
   await page.getByRole('link', { name: 'My day' }).waitFor()
+  // Only this test's reminder: demo items that happen to fall due now would make the check depend on the time of day.
+  const hidIn = await householdId(page)
+  const all = (await (await page.request.get(`${BASE}/api/family/${hidIn}`)).json()).reminders
+  for (const r of all) await page.request.delete(`${BASE}/api/family/${hidIn}/reminders/${r.id}`, { headers: { 'X-Alongside': '1' } })
   await addDue(page, { title: 'Drink some water', question: 'Have you had a glass of water?', minutes: 3 })
   await page.reload()
   await page.getByRole('link', { name: 'My day' }).waitFor()
   await page.clock.runFor(30000)
-  check(!page.url().includes('#/day'), 'in-app: jumped away from Home before the reminder was due')
+  check(!page.url().includes('#/day'), `in-app: jumped away from Home before the reminder was due (${decodeURIComponent(page.url())}: ${await page.locator('main h1').textContent()})`)
   await page.clock.fastForward(4 * 60000)
   await page.clock.runFor(16000)
   await page.getByText('Have you had a glass of water?').waitFor({ timeout: 5000 }).catch(() => {})
@@ -605,6 +613,72 @@ step('Real (non-demo)')
   await par.close()
 }
 
+
+// ---------------------------------------------------------------- outings, YES / NO, photos, music
+step('Outings, YES / NO, photos and music')
+{
+  const { ctx, page } = await newDemo({ width: 390, height: 844 })
+  const hid = await householdId(page)
+  // An invitation and a class with transport, due later today whatever the time.
+  const later = sydney(60)
+  for (const data of [
+    { kind: 'social', title: 'Coffee with Jean', ask: true, notes: 'At the Feathers.', pickupTime: later.time, carColour: 'red', carNote: 'Sue the carer' },
+    { kind: 'social', title: 'Swimming', subtitle: 'Aqua aerobics', notes: 'Bring a towel.', pickupTime: later.time, returnTime: later.time, carColour: 'green', carNote: 'Anna is driving' },
+  ]) {
+    await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
+      headers: { 'X-Alongside': '1' },
+      data: { time: sydney(75).time, startDate: later.date, repeat: 'none', endDate: null, location: '', question: '', remindMinutesBefore: 30, shareResponses: true, medScheduleConfirmed: false, ...data },
+    })
+  }
+  await page.reload()
+  const swim = page.locator('.event-card', { hasText: 'Swimming' })
+  await swim.waitFor()
+  check(await swim.getByText('Aqua aerobics').isVisible(), 'outing: detail not shown on the card')
+  check(await swim.getByText('Green car · Anna is driving').isVisible(), 'outing: car colour and driver not written on the card')
+  check(await swim.getByText(/^Pick up /).isVisible() && await swim.getByText(/^Home /).isVisible(), 'outing: pick-up and home times missing')
+  const coffee = page.locator('.event-card', { hasText: 'Coffee with Jean today?' })
+  await coffee.getByRole('button', { name: 'YES' }).click()
+  await coffee.getByText('You said YES.').waitFor()
+  await shot(page, '390', '60-home-outings')
+  await page.goto(BASE + '/#/family')
+  const row = await page.locator('li', { hasText: 'Coffee with Jean' }).first().textContent()
+  check(row.includes('Said yes'), `family: invitation answer shown as "${row}"`)
+
+  // Photos: today's photo with its caption.
+  await page.goto(BASE + '/#/')
+  await page.getByRole('link', { name: /Photos/ }).click()
+  await page.getByRole('heading', { name: 'Today’s photo' }).waitFor()
+  check(await page.locator('img.day-photo').evaluate((i) => i.complete && i.naturalWidth > 0), 'photos: photo did not load')
+  check(await page.getByText('Lily at the beach on Sunday').isVisible(), 'photos: caption missing')
+  await shot(page, '390', '61-photo')
+  await page.getByRole('button', { name: 'Another photo' }).click()
+  await page.getByRole('heading', { name: 'Yesterday’s photo' }).waitFor()
+
+  // Music: one big Play button.
+  await page.goto(BASE + '/#/')
+  await page.getByRole('link', { name: 'Music' }).click()
+  await page.getByText('Twinkle, Twinkle, Little Star').waitFor()
+  await shot(page, '390', '62-music')
+  await page.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Stop' }).or(page.getByText('This device could not play the song.')).first().waitFor()
+  check(await page.getByRole('button', { name: 'Stop' }).isVisible(), 'music: the song did not start')
+
+  // Family: add a photo of the day, and see the outing fields.
+  const bytes = await (await page.request.get(BASE + (await today(page)).photos[0].url)).body()
+  await page.goto(BASE + '/#/family/media')
+  await page.locator('#ph-file').setInputFiles({ name: 'grandkids.jpg', mimeType: 'image/jpeg', buffer: bytes })
+  await page.getByLabel('A few words about it').fill('The grandchildren')
+  await page.getByRole('button', { name: 'Add photo' }).click()
+  await page.getByText('Photo added for today.').waitFor()
+  await shot(page, '390', '63-family-photos-music', { parent: false })
+  await page.goto(BASE + '/#/family/reminders')
+  await page.getByRole('button', { name: 'Add a reminder' }).click()
+  await page.getByRole('button', { name: 'Gym class' }).click()
+  await page.getByLabel('Detail in big letters (optional)').fill('Pilates')
+  await page.getByText('Blue', { exact: true }).click()
+  await shot(page, '390', '64-family-outing-form', { parent: false })
+  await ctx.close()
+}
 
 // ---------------------------------------------------------------- photos, voice, templates, week
 step('Photos, voice and week')

@@ -95,6 +95,70 @@ const gym = `
   <rect x="40" y="290" width="70" height="40" rx="8" fill="#0f766e"/><rect x="530" y="290" width="70" height="40" rx="8" fill="#0f766e"/>
 </svg>`
 
+const coffee = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#fde7c8"/>
+  <rect y="300" width="${W}" height="120" fill="#a16207"/>
+  <text x="320" y="70" text-anchor="middle" font-family="Georgia" font-weight="700" font-size="40" fill="#7c2d12">The Feathers Café</text>
+  <ellipse cx="320" cy="300" rx="170" ry="26" fill="#fff" stroke="#78350f" stroke-width="4"/>
+  <path d="M220 160 L420 160 L400 290 Q320 312 240 290 Z" fill="#fff" stroke="#78350f" stroke-width="5"/>
+  <path d="M420 190 Q480 190 470 235 Q460 270 405 262" fill="none" stroke="#78350f" stroke-width="12"/>
+  <ellipse cx="320" cy="162" rx="100" ry="14" fill="#92400e"/>
+  <path d="M280 130 Q270 105 285 85 M320 125 Q308 100 322 78 M360 130 Q350 105 365 85" stroke="#a8a29e" stroke-width="6" fill="none" stroke-linecap="round"/>
+</svg>`
+const lily = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#7dd3fc"/>
+  <circle cx="530" cy="80" r="50" fill="#fde047"/>
+  <rect y="220" width="${W}" height="70" fill="#0ea5e9"/>
+  <path d="M0 230 Q80 215 160 230 T320 230 T480 230 T640 230" stroke="#fff" stroke-width="6" fill="none"/>
+  <rect y="280" width="${W}" height="140" fill="#fde68a"/>
+  <circle cx="300" cy="190" r="40" fill="#f2c9a0"/>
+  <path d="M258 180 Q262 140 300 140 Q340 140 342 180 Q330 160 300 160 Q272 160 258 180 Z" fill="#facc15"/>
+  <circle cx="287" cy="192" r="5" fill="#1f2937"/><circle cx="313" cy="192" r="5" fill="#1f2937"/>
+  <path d="M287 208 Q300 220 313 208" stroke="#9f1239" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M260 235 L340 235 L360 330 L240 330 Z" fill="#ec4899"/>
+  <path d="M262 245 L215 205" stroke="#f2c9a0" stroke-width="14" stroke-linecap="round"/>
+  <path d="M338 245 L380 290" stroke="#f2c9a0" stroke-width="14" stroke-linecap="round"/>
+  <path d="M380 290 L420 250 L440 300 Z" fill="#ef4444"/>
+  <rect x="420" y="320" width="60" height="40" fill="#f97316"/><path d="M415 320 L485 320 L475 300 L425 300 Z" fill="#fb923c"/>
+</svg>`
+const garden = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#e0f2fe"/>
+  <rect y="250" width="${W}" height="170" fill="#86efac"/>
+  ${[0, 1, 2, 3, 4, 5].map((i) => `<path d="M${70 + i * 100} 330 L${70 + i * 100} 240" stroke="#15803d" stroke-width="8"/>
+    <circle cx="${70 + i * 100}" cy="225" r="34" fill="${['#f43f5e', '#f59e0b', '#a855f7', '#ec4899', '#ef4444', '#facc15'][i]}"/>
+    <circle cx="${70 + i * 100}" cy="225" r="12" fill="#fef9c3"/>`).join('')}
+  <text x="320" y="70" text-anchor="middle" font-family="Arial" font-weight="700" font-size="34" fill="#166534">Anna’s roses are out</text>
+</svg>`
+
+/** "Twinkle, Twinkle, Little Star" (traditional), synthesised as a small WAV. */
+function twinkleWav() {
+  const rate = 11025
+  const notes = 'C C G G A A G- F F E E D D C- G G F F E E D- G G F F E E D- C C G G A A G- F F E E D D C-'.split(' ')
+  const freq = { C: 261.63, D: 293.66, E: 329.63, F: 349.23, G: 392.0, A: 440.0 }
+  const beat = 0.42
+  const samples = []
+  for (const n of notes) {
+    const len = (n.endsWith('-') ? 2 : 1) * beat
+    const f = freq[n[0]]
+    const count = Math.floor(len * rate)
+    for (let i = 0; i < count; i++) {
+      const t = i / rate
+      const env = Math.min(1, t / 0.02) * Math.exp(-2.2 * t) // soft piano-like decay
+      const v = env * (0.6 * Math.sin(2 * Math.PI * f * t) + 0.25 * Math.sin(4 * Math.PI * f * t) + 0.1 * Math.sin(6 * Math.PI * f * t))
+      samples.push(Math.round(128 + 90 * v))
+    }
+  }
+  const data = Buffer.from(samples)
+  const h = Buffer.alloc(44)
+  h.write('RIFF', 0); h.writeUInt32LE(36 + data.length, 4); h.write('WAVE', 8); h.write('fmt ', 12)
+  h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(1, 22); h.writeUInt32LE(rate, 24)
+  h.writeUInt32LE(rate, 28); h.writeUInt16LE(1, 32); h.writeUInt16LE(8, 34); h.write('data', 36); h.writeUInt32LE(data.length, 40)
+  return 'data:audio/wav;base64,' + Buffer.concat([h, data]).toString('base64')
+}
+
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: W, height: H } })
 const out = {}
@@ -106,6 +170,9 @@ for (const [name, svg] of Object.entries({
   anna: portrait('#fde68a', '#f2c9a0', '#7c2d12', '#2563eb', true),
   sarah: portrait('#c7d2fe', '#d9a37a', '#e5e7eb', '#db2777', false),
   gym,
+  coffee,
+  lily,
+  garden,
 })) {
   await page.setContent(`<style>html,body{margin:0}svg{display:block;width:${W}px;height:${H}px}</style>${svg}`)
   const buf = await page.screenshot({ type: 'jpeg', quality: 78 })
@@ -113,6 +180,8 @@ for (const [name, svg] of Object.entries({
   console.log(name, Math.round(buf.length / 1024) + ' KB')
 }
 await browser.close()
+out.song = twinkleWav()
+console.log('song', Math.round((out.song.length * 0.75) / 1024) + ' KB')
 writeFileSync(
   new URL('../shared/demoMedia.ts', import.meta.url),
   `// Generated by scripts/make-demo-media.mjs: illustrations standing in for the photos a family would take.\n` +

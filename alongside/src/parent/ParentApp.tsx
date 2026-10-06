@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ApiError, useOnDataChanged } from '../api'
+import { api, ApiError, STATIC_DEMO, useOnDataChanged } from '../api'
 import { useNavigate, useScreenFocus } from '../route'
-import { formatTime12, greetingFor, localDateISO, localTimeHM } from '../../shared/time'
+import { greetingFor, localDateISO, localTimeHM } from '../../shared/time'
 import type { DayItem, ParentToday } from '../../shared/types'
 import { ClockBar, H1, ParentScreen, TimeZoneContext, telHref } from './common'
-import { CalendarPicture, OutingPicture, PuzzlePicture, TaxiPicture } from './illustrations'
+import { CalendarPicture, MusicPicture, PhotosPicture, PuzzlePicture, TaxiPicture } from './illustrations'
+import { EventCard, todaysEvents } from './Events'
+import { MusicScreen, PhotoScreen } from './PhotosMusic'
 import { WordSearch } from './WordSearch'
 import { MyDay } from './MyDay'
 import { Lift } from './Lift'
@@ -131,11 +133,23 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
         <main className="p-main">
           {loadError ? (
             <>
-              <H1>Can’t connect</H1>
-              <p className="p-body">Please check the internet.</p>
+              <H1>{STATIC_DEMO ? 'Something went wrong' : 'Can’t connect'}</H1>
+              <p className="p-body">{STATIC_DEMO ? loadError : 'Please check the internet.'}</p>
               <button className="big-btn blue medium" onClick={load}>
                 Try again
               </button>
+              {STATIC_DEMO && (
+                <button
+                  className="big-btn plain medium"
+                  onClick={async () => {
+                    await api('POST', '/api/demo/start').catch(() => undefined)
+                    setLoadError('')
+                    load()
+                  }}
+                >
+                  Start the demonstration again
+                </button>
+              )}
             </>
           ) : (
             <p className="p-body" aria-busy="true">
@@ -154,8 +168,10 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
   }
   if (route.startsWith('/lift')) return <Lift today={today} route={route} />
   if (route === '/puzzles') return <WordSearch parentName={today.parentName} />
+  if (route === '/photos') return <PhotoScreen today={today} />
+  if (route === '/music') return <MusicScreen today={today} />
   if (route === '/call') return <CallScreen today={today} who={new URLSearchParams(query).get('who') ?? 'contact'} />
-  return <Home today={today} offline={!!loadError} />
+  return <Home today={today} offline={!!loadError} reload={load} />
   }
 }
 
@@ -184,20 +200,6 @@ function KeepAwake({ on }: { on: boolean }) {
     }
   }, [on])
   return null
-}
-
-/** The next appointment, outing or lift today, for its own Home tile. */
-function todaysEvent(today: ParentToday): DayItem | null {
-  const hm = localTimeHM(new Date(new Date().getTime() - 30 * 60000), today.timeZone)
-  return (
-    today.items.find((i) =>
-      i.type === 'lift'
-        ? i.lift.time >= hm
-        : (i.reminder.kind === 'appointment' || i.reminder.kind === 'social') &&
-          i.reminder.time >= hm &&
-          !['done', 'not_today'].includes(i.status),
-    ) ?? null
-  )
 }
 
 function Tile({
@@ -235,13 +237,12 @@ function Tile({
   )
 }
 
-function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
+function Home({ today, offline, reload }: { today: ParentToday; offline: boolean; reload: () => void }) {
   useScreenFocus('home')
   const navigate = useNavigate()
   const now = new Date()
-  const event = todaysEvent(today)
-  const eventPic =
-    event?.type === 'reminder' && event.reminder.photoUrl ? <img src={event.reminder.photoUrl} alt="" /> : event?.type === 'lift' ? <TaxiPicture /> : <OutingPicture />
+  const events = todaysEvents(today)
+  const photo = today.photos[0]
   return (
     <div className="p-wrap p-home">
       <ClockBar />
@@ -249,17 +250,15 @@ function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
         <H1>
           {greetingFor(now, today.timeZone)}, {today.parentName}
         </H1>
+        {events.length > 0 && (
+          <section className="events" aria-label="Today">
+            {events.map((e) => (
+              <EventCard key={e.key} item={e} reload={reload} />
+            ))}
+          </section>
+        )}
         <nav className="tiles" aria-label="Main choices">
           <Tile colour="t-blue" picture={<CalendarPicture />} label="My day" href="#/day" />
-          {event && (
-            <Tile
-              colour="t-teal"
-              picture={eventPic}
-              label={event.type === 'reminder' ? event.reminder.title : `Lift to ${event.lift.destinationLabel}`}
-              sub={`Today ${formatTime12(event.type === 'reminder' ? event.reminder.time : event.lift.time)}`}
-              href={`#/day/${encodeURIComponent(event.key)}`}
-            />
-          )}
           {today.contacts.map((c) => {
             const pic = c.photoUrl ? <img src={c.photoUrl} alt="" /> : <span className="tile-initial">{c.name.slice(0, 1)}</span>
             const who = c.main ? 'contact' : c.id
@@ -272,6 +271,14 @@ function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
           })}
           <Tile colour="t-yellow" picture={<TaxiPicture />} label="Taxi" href="#/lift" />
           <Tile colour="t-orange" picture={<PuzzlePicture />} label="Puzzles" href="#/puzzles" />
+          <Tile
+            colour="t-sky"
+            picture={photo ? <img src={photo.url} alt="" /> : <PhotosPicture />}
+            label="Photos"
+            sub={photo && photo.showDate === today.date ? 'Today’s photo' : undefined}
+            href="#/photos"
+          />
+          {today.songs.length > 0 && <Tile colour="t-pink" picture={<MusicPicture />} label="Music" href="#/music" />}
         </nav>
         <footer className="p-footer">
           <a className="quiet-link" href="#/family">

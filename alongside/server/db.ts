@@ -135,9 +135,9 @@ CREATE TABLE IF NOT EXISTS help_requests (
 -- Family photos and voice messages attached to reminders and places.
 CREATE TABLE IF NOT EXISTS media (
   household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-  owner_type TEXT NOT NULL CHECK (owner_type IN ('reminder','destination','contact')),
+  owner_type TEXT NOT NULL CHECK (owner_type IN ('reminder','destination','contact','photo','song')),
   owner_id TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('photo','voice')),
+  kind TEXT NOT NULL CHECK (kind IN ('photo','voice','audio')),
   mime TEXT NOT NULL,
   data BLOB NOT NULL,
   updated_at TEXT NOT NULL,
@@ -152,6 +152,21 @@ CREATE TABLE IF NOT EXISTS contacts (
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
   sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
+
+-- Photos the family shares ("today's photo") and songs they upload.
+CREATE TABLE IF NOT EXISTS photos (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  caption TEXT NOT NULL DEFAULT '',
+  show_date TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS songs (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 
@@ -182,6 +197,12 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['households', 'auto_speak', 'INTEGER NOT NULL DEFAULT 0'],
   ['households', 'keep_awake', 'INTEGER NOT NULL DEFAULT 0'],
   ['reminders', 'question', "TEXT NOT NULL DEFAULT ''"],
+  ['reminders', 'subtitle', "TEXT NOT NULL DEFAULT ''"],
+  ['reminders', 'pickup_time', 'TEXT'],
+  ['reminders', 'return_time', 'TEXT'],
+  ['reminders', 'car_colour', "TEXT NOT NULL DEFAULT ''"],
+  ['reminders', 'car_note', "TEXT NOT NULL DEFAULT ''"],
+  ['reminders', 'ask', 'INTEGER NOT NULL DEFAULT 0'],
 ]
 
 export function openDb(file: string): DB {
@@ -190,7 +211,7 @@ export function openDb(file: string): DB {
   db.exec(SCHEMA)
   // Older databases: allow contact photos in the media table (SQLite cannot alter a CHECK).
   const mediaSql = (db.prepare("SELECT sql FROM sqlite_master WHERE name='media'").get() as { sql: string }).sql
-  if (!mediaSql.includes("'contact'")) {
+  if (!mediaSql.includes("'song'")) {
     db.exec(`BEGIN;
       ALTER TABLE media RENAME TO media_old;
       ${SCHEMA.slice(SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media'), SCHEMA.indexOf(');', SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media')) + 2)}

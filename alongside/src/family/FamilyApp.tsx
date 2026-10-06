@@ -8,11 +8,13 @@ import { FamilyReminders } from './FamilyReminders'
 import { FamilyLifts } from './FamilyLifts'
 import { FamilySetup, TimeZoneSelect } from './FamilySetup'
 import { FamilyAccess } from './FamilyAccess'
+import { FamilyMedia } from './FamilyMedia'
 
 const TABS = [
   { path: '/family', label: 'Today' },
   { path: '/family/reminders', label: 'Reminders' },
   { path: '/family/lifts', label: 'Lifts' },
+  { path: '/family/media', label: 'Photos & music' },
   { path: '/family/setup', label: 'Setup' },
   { path: '/family/access', label: 'Access' },
 ]
@@ -144,6 +146,8 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
           <FamilyReminders info={info} refresh={refresh} />
         ) : tab.path === '/family/lifts' ? (
           <FamilyLifts info={info} />
+        ) : tab.path === '/family/media' ? (
+          <FamilyMedia info={info} />
         ) : tab.path === '/family/setup' ? (
           <FamilySetup info={info} refresh={refresh} />
         ) : tab.path === '/family/access' ? (

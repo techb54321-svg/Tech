@@ -13,7 +13,9 @@ import {
   demoDestinations,
   demoContacts,
   demoDueNow,
-  demoLaterToday,
+  demoOutingsToday,
+  demoPhotos,
+  demoSongs,
   demoLift,
   demoReminderPhotos,
   demoReminders,
@@ -49,12 +51,22 @@ export function createDemo(db: DB, now = new Date()) {
     for (const r of demoReminders(today)) ids[r.key] = saveReminder(db, hid, r.input, DEMO_FAMILY_NAME)!
     const dueNow = demoDueNow(now, DEMO_TZ)
     if (dueNow) saveReminder(db, hid, dueNow, DEMO_FAMILY_NAME)
-    const later = demoLaterToday(now, DEMO_TZ)
-    const put = (owner: 'reminder' | 'contact', id: string, pic: keyof typeof demoMedia) => {
+    const put = (owner: 'reminder' | 'contact' | 'photo', id: string, pic: Exclude<keyof typeof demoMedia, 'song'>) => {
       const img = decodeMedia('photo', demoMedia[pic])
       saveMedia(db, hid, owner, id, 'photo', img.mime, img.data)
     }
-    if (later) put('reminder', saveReminder(db, hid, later, DEMO_FAMILY_NAME)!, 'gym')
+    for (const o of demoOutingsToday(now, DEMO_TZ)) put('reminder', saveReminder(db, hid, o.input, DEMO_FAMILY_NAME)!, o.picture)
+    for (const p of demoPhotos(today)) {
+      const id = randomUUID()
+      db.prepare('INSERT INTO photos (id, household_id, caption, show_date, created_at) VALUES (?,?,?,?,?)').run(id, hid, p.caption, p.showDate, nowIso())
+      put('photo', id, p.picture)
+    }
+    for (const s of demoSongs) {
+      const id = randomUUID()
+      db.prepare('INSERT INTO songs (id, household_id, title, created_at) VALUES (?,?,?,?)').run(id, hid, s.title, nowIso())
+      const audio = decodeMedia('audio', demoMedia[s.picture])
+      saveMedia(db, hid, 'song', id, 'audio', audio.mime, audio.data)
+    }
     put('contact', hid, 'anna')
     put('contact', addContact(db, hid, demoContacts[0]), 'sarah')
     demoDestinations.forEach((d, i) => {

@@ -163,6 +163,23 @@ This replaces the original brief's Previous/Next browsing, which asks too much o
   "now" on screen.
 - Tapping today's appointment tile before it is due shows what and when, with nothing to answer yet.
 
+### Sixth round: outings, YES / NO, photos and music
+
+- **Today's outings appear on Home automatically**, as big cards, from what the carer enters as an appointment or
+  social activity. Each card shows:
+  - the title and a detail in capitals (e.g. **Gym class / PILATES**), the time and short notes ("No mat needed.")
+  - **pick-up and home times** beside a **car drawn in the car's colour**, with the colour and driver written too
+    ("Blue car · Anna is driving"), so colour is never the only cue
+  - with "Ask if they would like to go" ticked: "**Coffee at the Feathers today?**" with big **YES** / **NO**
+    buttons. The answer stays highlighted, can be changed, and shows in the family area as "Said yes" / "Said no".
+- **Photos tile**: the carer adds a photo of the day with a caption (Family setup → Photos & music). The tile
+  shows it, and "Another photo" goes back through earlier ones.
+- **Music tile**: one big **Play** / **Stop** button for a song the carer uploaded (MP3/M4A/WAV, up to 12 MB).
+  Audio is served with byte ranges so it plays on iPhone and iPad.
+- **Fix for "Can't connect" in the online preview**: demonstration data saved by an older version is now upgraded
+  when it loads. Unexpected errors say what happened and offer "Start the demonstration again".
+- The demo song is "Twinkle, Twinkle, Little Star" (a traditional tune), synthesised by `scripts/make-demo-media.mjs`.
+
 ## Integrations and their limits
 
 The integrations live in `server/integrations/`.

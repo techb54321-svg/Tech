@@ -10,6 +10,8 @@ import {
   addDestination,
   deleteContact,
   listContacts,
+  listPhotos,
+  listSongs,
   updateContact,
   createHousehold,
   deleteDestination,
@@ -29,6 +31,8 @@ import {
   codeSchema,
   contactSchema,
   mediaSchema,
+  photoSchema,
+  songSchema,
   destinationSchema,
   reminderSchema,
   settingsSchema,
@@ -302,6 +306,69 @@ export function familyRoutes(deps: Deps) {
     }),
   )
 
+  // Photos the family shares, shown on the parent's "Photos" tile.
+  r.post(
+    '/:hid/photos',
+    member,
+    h((req, res) => {
+      const p = parse(photoSchema, req.body)
+      const id = randomUUID()
+      db.prepare('INSERT INTO photos (id, household_id, caption, show_date, created_at) VALUES (?,?,?,?,?)').run(
+        id, req.householdId!, p.caption, p.showDate, nowIso(),
+      )
+      res.status(201).json({ id })
+    }),
+  )
+  r.get(
+    '/:hid/photos',
+    member,
+    h((req, res) => {
+      const hh = getHousehold(db, req.householdId!)
+      // Family sees future-dated photos too.
+      res.json(listPhotos(db, hh.id, '9999-12-31'))
+    }),
+  )
+  r.delete(
+    '/:hid/photos/:id',
+    member,
+    h((req, res) => {
+      const c = db.prepare('DELETE FROM photos WHERE id=? AND household_id=?').run(String(req.params.id), req.householdId!).changes
+      if (!c) throw new HttpError(404, 'Already removed.')
+      deleteMedia(db, req.householdId!, 'photo', String(req.params.id))
+      res.json({ ok: true })
+    }),
+  )
+  // Songs for the parent's "Music" tile.
+  r.get(
+    '/:hid/songs',
+    member,
+    h((req, res) => {
+      res.json(listSongs(db, req.householdId!))
+    }),
+  )
+  r.post(
+    '/:hid/songs',
+    member,
+    h((req, res) => {
+      const count = (db.prepare('SELECT COUNT(*) n FROM songs WHERE household_id=?').get(req.householdId!) as { n: number }).n
+      if (count >= 10) throw new HttpError(400, 'Up to 10 songs. Remove one first.')
+      const s = parse(songSchema, req.body)
+      const id = randomUUID()
+      db.prepare('INSERT INTO songs (id, household_id, title, created_at) VALUES (?,?,?,?)').run(id, req.householdId!, s.title, nowIso())
+      res.status(201).json({ id })
+    }),
+  )
+  r.delete(
+    '/:hid/songs/:id',
+    member,
+    h((req, res) => {
+      const c = db.prepare('DELETE FROM songs WHERE id=? AND household_id=?').run(String(req.params.id), req.householdId!).changes
+      if (!c) throw new HttpError(404, 'Already removed.')
+      deleteMedia(db, req.householdId!, 'song', String(req.params.id))
+      res.json({ ok: true })
+    }),
+  )
+
   /** A seven-day grid of shared answers, ending on `end` (default today). */
   r.get(
     '/:hid/week',
@@ -348,18 +415,24 @@ export function familyRoutes(deps: Deps) {
   function parseMediaPath(p: Record<string, unknown>) {
     return parse(
       z
-        .object({ owner: z.enum(['reminder', 'destination', 'contact']), ownerId: z.string().uuid(), kind: z.enum(['photo', 'voice']) })
-        .refine((v) => v.owner === 'reminder' || v.kind === 'photo', 'Places and people can have a photo only'),
+        .object({
+          owner: z.enum(['reminder', 'destination', 'contact', 'photo', 'song']),
+          ownerId: z.string().uuid(),
+          kind: z.enum(['photo', 'voice', 'audio']),
+        })
+        .refine(
+          (v) =>
+            v.owner === 'song' ? v.kind === 'audio' : v.owner === 'reminder' ? v.kind !== 'audio' : v.kind === 'photo',
+          'That kind of file does not belong here',
+        ),
       p,
     )
   }
-  function ensureOwner(hid: string, owner: 'reminder' | 'destination' | 'contact', id: string) {
+  function ensureOwner(hid: string, owner: 'reminder' | 'destination' | 'contact' | 'photo' | 'song', id: string) {
+    const table = { reminder: 'reminders', destination: 'destinations', contact: 'contacts', photo: 'photos', song: 'songs' }[owner]
     const ok =
-      owner === 'reminder'
-        ? db.prepare('SELECT 1 FROM reminders WHERE id=? AND household_id=? AND deleted_at IS NULL').get(id, hid)
-        : owner === 'destination'
-          ? db.prepare('SELECT 1 FROM destinations WHERE id=? AND household_id=?').get(id, hid)
-          : id === hid || db.prepare('SELECT 1 FROM contacts WHERE id=? AND household_id=?').get(id, hid)
+      (owner === 'contact' && id === hid) ||
+      db.prepare(`SELECT 1 FROM ${table} WHERE id=? AND household_id=?${owner === 'reminder' ? ' AND deleted_at IS NULL' : ''}`).get(id, hid)
     if (!ok) throw new HttpError(404, 'That item no longer exists.')
   }
 

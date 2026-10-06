@@ -17,6 +17,16 @@ export interface Reminder {
   notes: string
   /** Family's wording of the question; blank means the default for this kind. */
   question: string
+  /** Outings/appointments: a short detail shown large (e.g. "Pilates"). */
+  subtitle: string
+  pickupTime: string | null
+  returnTime: string | null
+  /** Colour of the car picking them up ('' if none). */
+  carColour: string
+  /** E.g. "Anna driving". */
+  carNote: string
+  /** Ask "… today?" with YES / NO. */
+  ask: boolean
   /** Show the in-app prompt this many minutes early (appointments). */
   remindMinutesBefore: number
   /** The parent has agreed that family may see their responses. */
@@ -31,7 +41,7 @@ export interface Reminder {
 }
 
 /** What the parent tapped. "taken" is only ever *reported* taken. */
-export type ResponseAction = 'done' | 'taken' | 'later' | 'not_sure' | 'need_help' | 'not_today'
+export type ResponseAction = 'done' | 'taken' | 'later' | 'not_sure' | 'need_help' | 'not_today' | 'yes' | 'no'
 
 export interface ResponseRecord {
   reminderId: string
@@ -50,6 +60,9 @@ export type OccurrenceStatus =
   | 'not_sure'
   | 'help_requested'
   | 'not_today'
+  /** Answered an invitation ("Coffee at the Feathers today?"). */
+  | 'said_yes'
+  | 'said_no'
   /** Time has passed with no answer. For medication this means "not confirmed". */
   | 'no_response'
 
@@ -83,11 +96,23 @@ export interface Contact {
   main: boolean
 }
 
+export interface SharedPhoto {
+  id: string
+  url: string
+  caption: string
+  showDate: string
+}
+export interface Song {
+  id: string
+  title: string
+  url: string
+}
+
 export type DayItem =
   | {
       type: 'reminder'
       key: string
-      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl'> & {
+      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl' | 'subtitle' | 'pickupTime' | 'returnTime' | 'carColour' | 'carNote' | 'ask'> & {
         /** The question to ask, or null for information-only items (appointments, outings). */
         question: string | null
       }
@@ -128,6 +153,9 @@ export interface ParentToday {
   items: DayItem[]
   /** People to call, main family contact first. */
   contacts: Contact[]
+  /** Photos from family, newest first (today's first when there is one). */
+  photos: SharedPhoto[]
+  songs: Song[]
   /** The first thing tomorrow, for the end-of-day screen. */
   tomorrow: { title: string; time: string } | null
   destinations: Destination[]

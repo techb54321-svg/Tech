@@ -2,6 +2,8 @@
 import { z } from 'zod'
 import { isValidTimeZone } from './time.js'
 
+export const CAR_COLOURS = ['red', 'blue', 'white', 'silver', 'black', 'green', 'yellow', 'orange', 'purple', 'brown'] as const
+
 const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use a date like 2026-10-06')
 const timeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use a time like 08:30')
 const text = (max: number) => z.string().trim().max(max)
@@ -48,6 +50,15 @@ export const reminderSchema = z
     notes: text(300),
     /** The plain question the parent is asked, e.g. "Have you had your shower?" Blank = a sensible default. */
     question: text(80).default(''),
+    /** Outings and appointments: a short detail shown large, e.g. "Pilates". */
+    subtitle: text(30).default(''),
+    /** Transport for outings and appointments. */
+    pickupTime: timeStr.nullable().default(null),
+    returnTime: timeStr.nullable().default(null),
+    carColour: z.enum(['', ...CAR_COLOURS]).default(''),
+    carNote: text(60).default(''),
+    /** Ask "… today?" with YES / NO instead of just telling. */
+    ask: z.boolean().default(false),
     remindMinutesBefore: z.number().int().min(0).max(240),
     shareResponses: z.boolean(),
     /** Must be true to save a medication reminder. */
@@ -65,6 +76,13 @@ export const reminderSchema = z
       ctx.addIssue({ code: 'custom', path: ['endDate'], message: 'End date is before the start date' })
     }
   })
+
+export const photoSchema = z.object({
+  caption: text(80),
+  showDate: dateStr,
+})
+export const songSchema = z.object({ title: text(60).min(1, 'Enter the song’s name') })
+export const SONG_MAX_BYTES = 12 * 1024 * 1024
 
 export const contactSchema = z.object({
   name: text(30).min(1, 'Enter a name'),
@@ -85,7 +103,7 @@ export const responseSchema = z.object({
   clientRequestId,
   reminderId: z.string().uuid(),
   occurrenceDate: dateStr,
-  action: z.enum(['done', 'taken', 'later', 'not_sure', 'need_help', 'not_today']),
+  action: z.enum(['done', 'taken', 'later', 'not_sure', 'need_help', 'not_today', 'yes', 'no']),
 })
 
 export const tripDestinationSchema = z.object({
@@ -122,11 +140,11 @@ export const VOICE_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg'
 export const mediaSchema = z.object({
   dataUrl: z
     .string()
-    .max(1_500_000, 'That file is too large')
+    .max(17_000_000, 'That file is too large')
     .regex(/^data:[a-z]+\/[a-z0-9.+-]+(;[a-z]+=[^;,]+)*;base64,[A-Za-z0-9+/=]+$/, 'Choose a photo or sound file'),
 })
 
 export type SettingsInput = z.input<typeof settingsSchema>
 export type DestinationInput = z.infer<typeof destinationSchema>
-export type ReminderInput = z.infer<typeof reminderSchema>
+export type ReminderInput = z.input<typeof reminderSchema>
 export type ArrangedLiftInput = z.infer<typeof arrangedLiftSchema>

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import { PhotoPicker, VoicePicker, type MediaChange } from './media'
 import { questionFor } from '../../shared/questions'
+import { CAR_FILL } from '../parent/illustrations'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
 import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
@@ -16,6 +17,12 @@ type Draft = {
   location: string
   notes: string
   question: string
+  subtitle: string
+  pickupTime: string
+  returnTime: string
+  carColour: string
+  carNote: string
+  ask: boolean
   remindMinutesBefore: number
   shareResponses: boolean
   medScheduleConfirmed: boolean
@@ -31,6 +38,9 @@ const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { not
   { kind: 'routine', title: 'Bins out', time: '18:30', repeat: 'none', question: 'Have you put the bins out?' },
   { kind: 'appointment', title: 'Doctor', time: '10:00', repeat: 'none', notes: 'Bring your Medicare card.' },
   { kind: 'social', title: 'Visit from family', time: '14:00', repeat: 'none' },
+  { kind: 'social', title: 'Gym class', time: '10:00', repeat: 'none', notes: 'No mat needed.' },
+  { kind: 'social', title: 'Coffee at the Feathers', time: '11:00', repeat: 'none' },
+  { kind: 'social', title: 'Shopping', time: '10:00', repeat: 'none', notes: 'Bring your shopping bags.' },
 ]
 
 const GROUP_LABEL = { appointment: 'Appointments', social: 'Social activities', routine: 'Daily routines', medication: 'Medication' } as const
@@ -45,6 +55,12 @@ const blank = (today: string): Draft => ({
   location: '',
   notes: '',
   question: '',
+  subtitle: '',
+  pickupTime: '',
+  returnTime: '',
+  carColour: '',
+  carNote: '',
+  ask: false,
   remindMinutesBefore: 60,
   shareResponses: false,
   medScheduleConfirmed: false,
@@ -60,6 +76,12 @@ const fromReminder = (r: Reminder): Draft => ({
   location: r.location,
   notes: r.notes,
   question: r.question,
+  subtitle: r.subtitle,
+  pickupTime: r.pickupTime ?? '',
+  returnTime: r.returnTime ?? '',
+  carColour: r.carColour,
+  carNote: r.carNote,
+  ask: r.ask,
   remindMinutesBefore: r.remindMinutesBefore,
   shareResponses: r.shareResponses,
   // Editing a medication reminder requires confirming the schedule again.
@@ -215,6 +237,8 @@ function ReminderForm({
         e.preventDefault()
         const body = {
           ...d,
+          pickupTime: d.pickupTime || null,
+          returnTime: d.returnTime || null,
           endDate: d.repeat === 'daily' && d.endDate ? d.endDate : null,
           remindMinutesBefore: d.kind === 'appointment' || d.kind === 'social' ? d.remindMinutesBefore : 0,
         }
@@ -358,6 +382,47 @@ function ReminderForm({
           </Field>
         )}
       </div>
+      {(d.kind === 'appointment' || d.kind === 'social') && (
+        <fieldset className="field plain-fieldset outing-box">
+          <legend className="label">Shown on {parent}’s Home screen today</legend>
+          <Field id="rf-sub" label="Detail in big letters (optional)" hint="e.g. PILATES or WOOLWORTHS" error={act.fields.subtitle}>
+            <input id="rf-sub" value={d.subtitle} maxLength={30} onChange={(e) => set('subtitle', e.target.value)} />
+          </Field>
+          <label className="check">
+            <input type="checkbox" checked={d.ask} onChange={(e) => set('ask', e.target.checked)} />
+            <span>
+              <strong>Ask {parent} if they would like to go</strong>
+              <br />
+              <span className="small muted">
+                Shows “{d.title || 'Coffee at the Feathers'} today?” with big YES and NO buttons. You will see the answer here.
+              </span>
+            </span>
+          </label>
+          <div className="two-col">
+            <Field id="rf-pick" label="Pick-up time (optional)" error={act.fields.pickupTime}>
+              <input id="rf-pick" type="time" value={d.pickupTime} onChange={(e) => set('pickupTime', e.target.value)} />
+            </Field>
+            <Field id="rf-ret" label="Home again (optional)" error={act.fields.returnTime}>
+              <input id="rf-ret" type="time" value={d.returnTime} onChange={(e) => set('returnTime', e.target.value)} />
+            </Field>
+          </div>
+          <div className="field">
+            <span className="label" id="rf-car-l">Colour of the car (optional)</span>
+            <div className="swatches" role="radiogroup" aria-labelledby="rf-car-l">
+              {['', ...Object.keys(CAR_FILL)].map((c) => (
+                <label key={c || 'none'} className={`swatch${d.carColour === c ? ' on' : ''}`}>
+                  <input type="radio" name="car" className="visually-hidden" checked={d.carColour === c} onChange={() => set('carColour', c)} />
+                  {c ? <span className="swatch-dot" style={{ background: CAR_FILL[c].fill }} /> : null}
+                  {c ? CAR_FILL[c].name : 'None'}
+                </label>
+              ))}
+            </div>
+          </div>
+          <Field id="rf-carnote" label="Who is driving (optional)" hint="e.g. “Anna is driving” or “Sue the carer”" error={act.fields.carNote}>
+            <input id="rf-carnote" value={d.carNote} maxLength={60} onChange={(e) => set('carNote', e.target.value)} />
+          </Field>
+        </fieldset>
+      )}
       {!med && (
         <Field id="rf-loc" label="Where (optional)" error={act.fields.location}>
           <input id="rf-loc" value={d.location} maxLength={200} onChange={(e) => set('location', e.target.value)} />

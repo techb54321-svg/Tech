@@ -31,7 +31,14 @@ export function createApp(deps: Deps, opts: { staticDir?: string } = {}) {
   // Small bodies everywhere, except photo and voice uploads.
   const smallJson = express.json({ limit: '50kb' })
   const mediaJson = express.json({ limit: '2mb' })
-  app.use('/api', (req, res, next) => (/^\/family\/[^/]+\/media\//.test(req.path) ? mediaJson : smallJson)(req, res, next))
+  const songJson = express.json({ limit: '17mb' }) // a 12 MB song, base64-encoded
+  app.use('/api', (req, res, next) =>
+    (/^\/family\/[^/]+\/media\/song\//.test(req.path) ? songJson : /^\/family\/[^/]+\/media\//.test(req.path) ? mediaJson : smallJson)(
+      req,
+      res,
+      next,
+    ),
+  )
   // CSRF protection: state-changing API calls must carry a custom header,
   // which browsers only allow same-origin pages to send.
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {

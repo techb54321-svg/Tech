@@ -49,16 +49,44 @@ export function demoDueNow(now: Date, tz: string): ReminderInput | null {
   }
 }
 
-/** A class later today, so Home always has a "today" tile to show. */
-export function demoLaterToday(now: Date, tz: string): ReminderInput | null {
-  const at = new Date(Math.ceil((now.getTime() + 90 * 60000) / (15 * 60000)) * 15 * 60000)
-  if (localDateISO(at, tz) !== localDateISO(now, tz)) return null
-  return {
-    kind: 'social', title: 'Gym class', time: localTimeHM(at, tz), startDate: localDateISO(now, tz), repeat: 'none',
-    endDate: null, location: 'Wattleton Community Hall', notes: 'Wear your comfy shoes.', question: '',
-    remindMinutesBefore: 60, shareResponses: true, medScheduleConfirmed: false,
-  }
+/**
+ * Outings later today, so Home always shows event tiles: a Pilates class with
+ * pick-up times and a blue car, coffee the person is asked about (YES / NO),
+ * and shopping. Anything that would fall after midnight is left out.
+ */
+export function demoOutingsToday(now: Date, tz: string): Array<{ input: ReminderInput; picture: 'gym' | 'coffee' | 'shops' }> {
+  const slot = (mins: number) => new Date(Math.ceil((now.getTime() + mins * 60000) / (15 * 60000)) * 15 * 60000)
+  const hm = (d: Date, delta = 0) => localTimeHM(new Date(d.getTime() + delta * 60000), tz)
+  const today = localDateISO(now, tz)
+  const base = { startDate: today, repeat: 'none' as const, endDate: null, question: '', remindMinutesBefore: 60, shareResponses: true, medScheduleConfirmed: false }
+  const out: Array<{ input: ReminderInput; picture: 'gym' | 'coffee' | 'shops'; at: Date }> = []
+  const gym = slot(90)
+  out.push({ at: gym, picture: 'gym', input: { ...base, kind: 'social', title: 'Gym class', subtitle: 'Pilates', time: hm(gym),
+    location: 'Wattleton Community Hall', notes: 'No mat needed.', pickupTime: hm(gym, -30), returnTime: hm(gym, 75),
+    carColour: 'blue', carNote: 'Anna is driving' } })
+  const coffee = slot(180)
+  out.push({ at: coffee, picture: 'coffee', input: { ...base, kind: 'social', title: 'Coffee at the Feathers', time: hm(coffee),
+    location: 'The Feathers Café, 2 Main Street', notes: 'With Jean.', pickupTime: hm(coffee, -15), returnTime: hm(coffee, 90),
+    carColour: 'red', carNote: 'Sue the carer', ask: true } })
+  const shop = slot(270)
+  out.push({ at: shop, picture: 'shops', input: { ...base, kind: 'social', title: 'Shopping', subtitle: 'Woolworths', time: hm(shop),
+    location: 'Wattleton Village Shops', notes: 'Bring your shopping bags.', pickupTime: hm(shop, -15), returnTime: hm(shop, 60),
+    carColour: 'silver', carNote: 'Sue the carer' } })
+  // Keep only outings whose whole trip stays today.
+  return out
+    .filter((o) => localDateISO(new Date(o.at.getTime() + 90 * 60000), tz) === today)
+    .map(({ input, picture }) => ({ input, picture }))
 }
+
+/** Photos from family for the "Photos" tile. */
+export function demoPhotos(today: string) {
+  return [
+    { caption: 'Lily at the beach on Sunday', showDate: today, picture: 'lily' as const },
+    { caption: 'Anna’s roses are out', showDate: addDaysISO(today, -1), picture: 'garden' as const },
+  ]
+}
+
+export const demoSongs = [{ title: 'Twinkle, Twinkle, Little Star', picture: 'song' as const }]
 
 /** More people to call from Home (ACMA fictional numbers, never dialled in the demo). */
 export const demoContacts = [{ name: 'Sarah', phone: '0491 570 158' }]

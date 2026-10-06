@@ -11,7 +11,10 @@ function statusTone(s: OccurrenceStatus | 'private', medication: boolean) {
   switch (s) {
     case 'done':
     case 'reported_taken':
+    case 'said_yes':
       return 'ok'
+    case 'said_no':
+      return 'neutral'
     case 'help_requested':
     case 'not_sure':
       return 'err'

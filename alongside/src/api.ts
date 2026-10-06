@@ -34,7 +34,14 @@ export async function api<T = unknown>(method: string, path: string, body?: unkn
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   if (STATIC_DEMO) {
     const { localApi } = await import('./demo/localApi')
-    return localApi<T>(method, path, body)
+    try {
+      return await localApi<T>(method, path, body)
+    } catch (e) {
+      if (e instanceof ApiError) throw e
+      // A bug or unreadable saved data: say so plainly instead of blaming the connection.
+      console.error(e)
+      throw new ApiError(500, 'The demonstration hit a problem. Start it again to reset it.')
+    }
   }
   let res: Response
   try {

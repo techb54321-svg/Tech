@@ -25,9 +25,8 @@ import type { MessageStatus, ParentToday } from '../../shared/types.js'
 import { clientRequestId, responseSchema, tripDestinationSchema } from '../../shared/validation.js'
 import { uberDeepLink } from '../integrations/transport.js'
 
-const OTHER_ACTIONS = new Set(['done', 'later', 'need_help', 'not_today'])
-/** "Coffee at the Feathers today?" YES / NO, or ask for help. */
-const INVITE_ACTIONS = new Set(['yes', 'no', 'need_help'])
+// Outings just show on the day; YES / NO answers (from an earlier version) are no longer taken.
+const ACTIONS = new Set(['done', 'later', 'need_help', 'not_today'])
 
 export function parentRoutes(deps: Deps) {
   const { db } = deps
@@ -49,7 +48,7 @@ export function parentRoutes(deps: Deps) {
         autoSpeak: !!hh.auto_speak,
         keepAwake: !!hh.keep_awake,
         tomorrow: firstItemOn(db, hh, addDaysISO(date, 1)),
-        contacts: listContacts(db, hh),
+        contacts: listContacts(db, hh, true),
         photos: listPhotos(db, hh.id, date),
         songs: listSongs(db, hh.id),
         date,
@@ -116,8 +115,7 @@ export function parentRoutes(deps: Deps) {
       }
       const rem = getReminder(db, hh.id, input.reminderId)
       if (!rem) throw new HttpError(404, 'This reminder was removed by family.')
-      const allowed = rem.ask ? INVITE_ACTIONS : OTHER_ACTIONS
-      if (!allowed.has(input.action)) throw new HttpError(400, 'That answer does not apply to this reminder.')
+      if (!ACTIONS.has(input.action)) throw new HttpError(400, 'That answer does not apply to this reminder.')
       const now = deps.now()
       const today = todayFor(hh, now)
       if (input.occurrenceDate !== today && input.occurrenceDate !== addDaysISO(today, -1)) {

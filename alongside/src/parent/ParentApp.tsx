@@ -93,7 +93,7 @@ export function ParentApp({ onSignedOut }: { path: string; onSignedOut: () => Pr
       <div className={`tod tod-${part}`}>
         <KeepAwake on={!!today?.keepAwake} />
         {today ? (
-          <Home today={today} offline={!!loadError} reload={load} />
+          <Home today={today} offline={!!loadError} />
         ) : (
           <div className="p-wrap">
             <main className="p-main">
@@ -157,7 +157,7 @@ function KeepAwake({ on }: { on: boolean }) {
   return null
 }
 
-function Home({ today, offline, reload }: { today: ParentToday; offline: boolean; reload: () => void }) {
+function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
   useScreenFocus('home')
   return (
     <div className="p-wrap p-home">
@@ -166,7 +166,7 @@ function Home({ today, offline, reload }: { today: ParentToday; offline: boolean
         <H1>
           {greetingFor(new Date(), today.timeZone)}, {today.parentName}
         </H1>
-        <Board today={today} reload={reload} offline={offline} />
+        <Board today={today} offline={offline} />
       </main>
     </div>
   )

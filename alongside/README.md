@@ -82,7 +82,7 @@ Access is enforced on the server:
 | --- | --- |
 | Parent board: one screen of flat colour tiles, day and time in big letters, quiet Family setup link | Working |
 | Due-now questions answered on their tile: **Yes / Not yet / No / Help**, with read aloud or the family's voice message | Working |
-| Today's outings as tiles (detail, time, notes, car colour, pick-up and home times; **YES / NO** when asked) | Working |
+| Today's outings appear as tiles on their day (detail, time, notes, car colour, pick-up and home times), with nothing to answer | Working |
 | "Later" = 20 minutes, explained after tapping | Working |
 | Daily repeats in the household time zone, including daylight saving; each day's answer is separate | Working (tested) |
 | Private routines: answers hidden from family unless the parent agreed; sharing is snapshotted per answer | Working (tested) |
@@ -243,7 +243,7 @@ database file and keep it.
     of water?"), the family's photo or voice message if any, and **Yes / Not yet / No / Help**. After an answer the
     tile turns green with a short thank-you for a few seconds, then goes.
   - **Today's outings**: full-width tiles with an icon (gym, coffee, shopping, doctor), the detail in capitals
-    (PILATES), the time, notes and the car strip. "… today?" outings have **YES / NO** on the tile.
+    (PILATES), the time, notes and the car strip. (The "… today?" YES / NO question was removed in the ninth round.)
   - **Call** tiles with the person's photo, **Taxi** and **Puzzles**, the **photo of the day** (tap for another) and
     **Music** (tap to play or stop, "Another song").
   - **Taxi** and **Puzzles** open in place as a full-width tile with a **Close** button, and close themselves after
@@ -257,6 +257,27 @@ database file and keep it.
   Only the car's colour and the pick-up and home times are shown. A driver name sent by an older app is ignored.
 - **Harder word search**: an **8 × 8** grid with **six** words that run across, down or **diagonally**, and may
   cross where they share a letter. A word counts wherever it is spelled in a straight line, tapped in any order.
+
+### Ninth round: one person to call, no questions about outings, a grown-up look
+
+- **Only "Call Sarah".** A new family setting, "Show a 'Call Anna' tile" (Family setup), hides the family
+  contact's own Call tile. The demonstration has it off, so Margaret sees **Call Sarah** only. Help requests
+  still go to Anna. A real household keeps the tile unless the family turns it off.
+- **Outings just show up on their day.** "Coffee at the Feathers" is a plain tile with the time, notes and car;
+  there is no "today?" and no YES / NO. The family form no longer offers "Ask if they would like to go", and the
+  server ignores that option from an older app and no longer takes YES / NO answers. Earlier "Said yes / no"
+  answers still show in the family's history.
+- **Not childish.**
+  - Call tiles use a plain phone icon instead of cartoon faces. A real photo the family adds is still shown, as a
+    simple square.
+  - The cartoon car drawing is now a plain colour square next to "BLUE CAR".
+  - The demo photos are quiet scenes (a beach, a rose garden) with no cartoon people or writing.
+  - The demo song is a short original piano piece instead of "Twinkle, Twinkle, Little Star".
+  - The word search says "Found: GALAH." and "All six words found, Margaret." (no sparkles or exclamation
+    marks).
+  - The outing pictures and cartoon portraits are no longer part of the demonstration.
+- **Fix:** with enlarged text, the grid could grow a thin extra column. Columns are now worked out from the
+  board's width and text size.
 
 ## Project layout
 

@@ -29,6 +29,7 @@ export interface HouseholdRow {
   sms_alerts: number
   auto_speak: number
   keep_awake: number
+  call_contact: number
   is_demo: number
   created_at: string
 }
@@ -50,6 +51,7 @@ export function settingsOf(h: HouseholdRow): Required<SettingsInput> & { isDemo:
     smsAlerts: !!h.sms_alerts,
     autoSpeak: !!h.auto_speak,
     keepAwake: !!h.keep_awake,
+    callContact: h.call_contact !== 0,
     isDemo: !!h.is_demo,
   }
 }
@@ -58,7 +60,7 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
   const id = randomUUID()
   db.prepare(
     `INSERT INTO households (id, parent_name, time_zone, contact_name, contact_phone, pharmacy_name,
-       pharmacy_phone, sms_alerts, auto_speak, keep_awake, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+       pharmacy_phone, sms_alerts, auto_speak, keep_awake, call_contact, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     s.parentName,
@@ -70,6 +72,7 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
     s.smsAlerts ? 1 : 0,
     s.autoSpeak ? 1 : 0,
     s.keepAwake ? 1 : 0,
+    s.callContact === false ? 0 : 1,
     isDemo ? 1 : 0,
     nowIso(),
   )
@@ -79,9 +82,9 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
 export function updateSettings(db: DB, id: string, s: SettingsInput) {
   db.prepare(
     `UPDATE households SET parent_name=?, time_zone=?, contact_name=?, contact_phone=?, pharmacy_name=?,
-       pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=? WHERE id=?`,
+       pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=?, call_contact=? WHERE id=?`,
   ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName ?? '', s.pharmacyPhone ?? '', s.smsAlerts ? 1 : 0,
-    s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, id)
+    s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, s.callContact === false ? 0 : 1, id)
 }
 
 // ---- destinations ---------------------------------------------------------
@@ -162,7 +165,6 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   pickupTime: r.pickup_time ?? null,
   returnTime: r.return_time ?? null,
   carColour: r.car_colour ?? '',
-  ask: !!r.ask,
   remindMinutesBefore: r.remind_minutes_before,
   shareResponses: !!r.share_responses,
   photoUrl: media.get(`reminder:${r.id}:photo`) ?? null,
@@ -204,7 +206,7 @@ export function saveReminder(
     outing ? (input.returnTime ?? null) : null,
     outing ? (input.carColour ?? '') : '',
     '', // car_note: no longer used (who drives is not shown)
-    outing && input.ask ? 1 : 0,
+    0, // ask: outings are no longer asked as YES / NO questions
   ] as const
   if (id) {
     const r = db
@@ -326,7 +328,6 @@ export function parentDayItems(db: DB, h: HouseholdRow, date: string, now = new 
         id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes,
         photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
         subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour,
-        ask: r.ask,
       },
       occurrenceDate: date,
       status: st.status,
@@ -373,14 +374,19 @@ export function firstItemOn(db: DB, h: HouseholdRow, date: string): { title: str
 
 // ---- people to call ---------------------------------------------------------
 
-/** Main family contact first (photo stored under the household id), then the others. */
-export function listContacts(db: DB, h: HouseholdRow): Contact[] {
+/**
+ * Main family contact first (photo stored under the household id), then the others.
+ * For the parent's screen the family contact is left out if the family turned their Call tile off.
+ */
+export function listContacts(db: DB, h: HouseholdRow, forParent = false): Contact[] {
   const media = mediaUrls(db, h.id)
   const rows = db
     .prepare('SELECT id, name, phone FROM contacts WHERE household_id=? ORDER BY sort, created_at')
     .all(h.id) as unknown as Array<{ id: string; name: string; phone: string }>
   return [
-    { id: h.id, name: h.contact_name, phone: h.contact_phone, photoUrl: media.get(`contact:${h.id}:photo`) ?? null, main: true },
+    ...(forParent && h.call_contact === 0
+      ? []
+      : [{ id: h.id, name: h.contact_name, phone: h.contact_phone, photoUrl: media.get(`contact:${h.id}:photo`) ?? null, main: true }]),
     ...rows.map((r) => ({ ...r, photoUrl: media.get(`contact:${r.id}:photo`) ?? null, main: false })),
   ]
 }

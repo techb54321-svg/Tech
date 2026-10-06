@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS trips (
 const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['households', 'auto_speak', 'INTEGER NOT NULL DEFAULT 0'],
   ['households', 'keep_awake', 'INTEGER NOT NULL DEFAULT 0'],
+  ['households', 'call_contact', 'INTEGER NOT NULL DEFAULT 1'],
   ['reminders', 'question', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'subtitle', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'pickup_time', 'TEXT'],

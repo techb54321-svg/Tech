@@ -116,7 +116,7 @@ async function inspect(page, label, { parent = true } = {}) {
         if (!visible(el)) return
         if (px(el) < 24 || (px(el) < 32 && el.closest('.ftile').getBoundingClientRect().width > 220)) out.small.push(`tile label ${px(el)}px: ${el.textContent.trim().slice(0, 20)}`)
       })
-      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail').forEach((el) => {
+      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail, .board-bar').forEach((el) => {
         if (!visible(el)) return
         const words = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
         const rg = document.createRange()
@@ -276,7 +276,7 @@ async function solveWordSearch(page) {
     if (!cells) return
     // Tap in a scrambled order: any order works.
     for (const x of [...cells].reverse()) await page.locator('.ws-cell').nth(x).click()
-    if (words.indexOf(word) < words.length - 1) await page.getByText(`Yes! You found ${word}.`).waitFor()
+    if (words.indexOf(word) < words.length - 1) await page.getByText(`Found: ${word}.`).waitFor()
   }
   return diagonals
 }
@@ -290,7 +290,12 @@ for (const v of WIDTHS) {
   await shot(page, v.name, '01-home')
   // One board of flat colour tiles: no "My day", nothing that opens another screen.
   const labels = (await page.locator('.board .tlabel').allTextContents()).map((t) => t.trim())
-  for (const want of ['Call Anna', 'Call Sarah', 'Taxi', 'Puzzles', 'Music']) check(labels.includes(want), `${v.name}/home: no "${want}" tile (${labels.join(', ')})`)
+  for (const want of ['Call Sarah', 'Taxi', 'Puzzles', 'Music']) check(labels.includes(want), `${v.name}/home: no "${want}" tile (${labels.join(', ')})`)
+  check(!labels.includes('Call Anna'), `${v.name}/home: "Call Anna" shown although family turned it off`)
+  // Outings just show; nothing asks "… today?" with YES / NO.
+  check((await page.locator('.yn-row').count()) === 0 && !labels.some((l) => /today\?$/i.test(l)), `${v.name}/home: an outing is asked as a question`)
+  // Grown-up look: no cartoon faces or drawings on the board.
+  check((await page.locator('.board img.tface').count()) === 0, `${v.name}/home: a cartoon face is shown on a call tile`)
   check((await page.locator('.board .photo-tile img.tphoto').count()) === 1, `${v.name}/home: no photo tile`)
   check((await page.getByText('My day', { exact: true }).count()) === 0, `${v.name}/home: "My day" still shown`)
   check((await page.locator('.board a[href^="#/"]:not(.board-bar)').count()) === 0, `${v.name}/home: a tile links to another screen`)
@@ -358,8 +363,8 @@ for (const v of WIDTHS) {
   await page.getByRole('button', { name: 'Taxi' }).waitFor()
   check(onHome(page), `${v.name}: taxi moved to ${page.url()}`)
 
-  await page.getByRole('button', { name: 'Call Anna' }).click()
-  await page.getByText(/This is a demo, so no call is made\. Number: 0491 570/).waitFor()
+  await page.getByRole('button', { name: 'Call Sarah' }).click()
+  await page.getByText(/This is a demo, so no call is made\. Number: 0491 570 158/).waitFor()
   await shot(page, v.name, '15-call-demo')
 
   // Puzzles: the harder 8 × 8 word search, solved on its tile.
@@ -367,7 +372,7 @@ for (const v of WIDTHS) {
   await page.locator('.ws-grid').waitFor()
   await shot(page, v.name, '17-puzzle')
   if ((await solveWordSearch(page)) > 0) sawDiagonal = true
-  await page.getByText('Well done, Margaret!').waitFor()
+  await page.getByText('All six words found, Margaret.').waitFor()
   await shot(page, v.name, '18-puzzle-done')
   await page.getByRole('button', { name: 'Close word search' }).click()
   check(onHome(page), `${v.name}: puzzle moved to ${page.url()}`)
@@ -394,7 +399,7 @@ step('Text at 200%')
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
   const big = () => page.addStyleTag({ content: 'html{font-size:200% !important}' })
   await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
-  await addDue(page, { kind: 'social', title: 'Coffee at the Feathers', notes: 'With Jean.', extra: { ask: true, pickupTime: sydney(20).time, returnTime: sydney(120).time, carColour: 'red' } })
+  await addDue(page, { kind: 'social', title: 'Coffee at the Feathers', notes: 'With Jean.', extra: { pickupTime: sydney(20).time, returnTime: sydney(120).time, carColour: 'red' } })
   await homeAgain(page)
   await big()
   await shot(page, 'text-200', '01-home')
@@ -483,6 +488,13 @@ step('Text at 200%')
   step('Family: change contact')
   await page.goto(BASE + '/#/family/setup')
   await page.getByLabel('Family contact name').fill('Tom')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page.getByText('Saved.', { exact: true }).waitFor()
+  await homeAgain(page)
+  check((await page.getByRole('button', { name: 'Call Tom' }).count()) === 0, 'family: Call Tom shown while the family contact tile is off')
+  // Turning the family contact's tile on shows it.
+  await page.goto(BASE + '/#/family/setup')
+  await page.getByLabel('Show a “Call Tom” tile').check()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await page.getByText('Saved.', { exact: true }).waitFor()
   await homeAgain(page)
@@ -620,7 +632,7 @@ step('Real (non-demo)')
   await pp.screenshot({ path: join(shotsDir, '390', '40-pair-device.png'), fullPage: true })
   await pp.getByRole('button', { name: 'Connect' }).click()
   await pp.getByRole('heading', { name: /Joan/ }).waitFor()
-  check(!(await pp.locator('body').textContent()).includes('Demonstration'), 'real account: home shows demonstration label')
+  check(!(await pp.locator('.board-bar').innerText()).includes('Demo'), 'real account: home shows demonstration label')
   await pp.getByRole('link', { name: /Family setup/ }).click()
   await pp.getByRole('heading', { name: 'Family sign in' }).waitFor()
   const hid = await fp.evaluate(async () => (await (await fetch('/api/auth/me')).json()).family.households[0].id)
@@ -630,18 +642,18 @@ step('Real (non-demo)')
   await par.close()
 }
 
-// ---------------------------------------------------------------- outings, YES / NO, photos, music
-step('Outings, YES / NO, photos and music')
+// ---------------------------------------------------------------- outings, photos, music
+step('Outings, photos and music')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
   const hid = await householdId(page)
-  // An invitation and a class with transport, due later today whatever the time.
+  // Coffee and a class with transport, later today whatever the time.
   const later = sydney(60)
   for (const data of [
     { kind: 'social', title: 'Coffee with Jean', ask: true, notes: 'At the Feathers.', pickupTime: later.time, carColour: 'red', carNote: 'Sue the carer' },
     { kind: 'social', title: 'Swimming', subtitle: 'Aqua aerobics', notes: 'Bring a towel.', pickupTime: later.time, returnTime: sydney(120).time, carColour: 'green', carNote: 'Anna is driving' },
   ]) {
-    // carNote is sent as an older app would; it must be ignored and never shown.
+    // "ask" and "carNote" are sent as an older app would; both must be ignored.
     await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
       headers: { 'X-Alongside': '1' },
       data: { time: sydney(75).time, startDate: later.date, repeat: 'none', endDate: null, location: '', question: '', remindMinutesBefore: 30, shareResponses: true, ...data },
@@ -654,20 +666,16 @@ step('Outings, YES / NO, photos and music')
   check(await swim.getByText('Green car').isVisible(), 'outing: car colour not written on the tile')
   check(!/driving|Sue|Anna/i.test(await swim.textContent()), 'outing: who is driving is shown')
   check(await swim.getByText(/^Pick up /).isVisible() && await swim.getByText(/^Home /).isVisible(), 'outing: pick-up and home times missing')
-  const coffee = page.locator('.event-tile', { hasText: 'Coffee with Jean today?' })
-  await coffee.getByRole('button', { name: 'YES' }).click()
-  await coffee.getByText('You said YES.').waitFor()
-  check(onHome(page), `outing: answering moved to ${page.url()}`)
+  const coffee = page.locator('.event-tile', { hasText: 'Coffee with Jean' })
+  check(await coffee.getByText('At the Feathers.').isVisible(), 'outing: coffee tile missing its notes')
+  check((await coffee.getByRole('button').count()) === 0 && !(await coffee.textContent()).includes('today?'), 'outing: coffee is asked as a YES / NO question')
   await shot(page, '390', '60-home-outings')
-  await page.goto(BASE + '/#/family')
-  const row = await page.locator('li', { hasText: 'Coffee with Jean' }).first().textContent()
-  check(row.includes('Said yes'), `family: invitation answer shown as "${row}"`)
 
   // Photo tile: today's photo with its caption; a tap shows another.
   await homeAgain(page)
   const photo = page.locator('.photo-tile')
   check(await photo.locator('img.tphoto').evaluate((i) => i.complete && i.naturalWidth > 0), 'photos: photo did not load')
-  check(await photo.getByText('Lily at the beach on Sunday').isVisible(), 'photos: caption missing')
+  check(await photo.getByText('Sunday at Wattleton beach').isVisible(), 'photos: caption missing')
   const firstCaption = await photo.locator('.tphoto-caption').textContent()
   await photo.click()
   await page.waitForTimeout(200)
@@ -676,8 +684,9 @@ step('Outings, YES / NO, photos and music')
 
   // Music tile: tap to play the family's song.
   const music = page.locator('.music-tile')
-  check(await music.getByText('Traditional').isVisible(), 'music: singer not shown')
-  await music.getByRole('button', { name: /Play Twinkle, Twinkle, Little Star/ }).click()
+  check(await music.getByText('Demo recording').isVisible(), 'music: singer not shown')
+  check(!/Twinkle/.test(await page.locator('body').innerText()), 'music: nursery rhyme still in the demo')
+  await music.getByRole('button', { name: /Play Quiet piano/ }).click()
   await music.getByText('Playing').or(page.getByText('This device could not play the song.')).first().waitFor()
   check(await music.getByText('Playing').isVisible(), 'music: the song did not start')
   await shot(page, '390', '62-music-playing')
@@ -696,7 +705,7 @@ step('Outings, YES / NO, photos and music')
   await shot(page, '390', '65-family-song-picker', { parent: false })
   await homeAgain(page)
   await page.locator('.music-tile').getByRole('button', { name: 'Another song' }).click()
-  await page.locator('.music-tile').getByText('Can’t Help Falling in Love').or(page.locator('.music-tile').getByText('Twinkle, Twinkle, Little Star')).first().waitFor()
+  await page.locator('.music-tile').getByText('Can’t Help Falling in Love').or(page.locator('.music-tile').getByText('Quiet piano')).first().waitFor()
 
   // Family: add a photo of the day, and see the outing fields.
   const bytes = await (await page.request.get(BASE + (await today(page)).photos[0].url)).body()

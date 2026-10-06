@@ -118,6 +118,17 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
           </span>
         </label>
         <label className="check">
+          <input type="checkbox" checked={s.callContact !== false} onChange={(e) => set('callContact', e.target.checked)} />
+          <span>
+            <strong>Show a “Call {s.contactName || 'family contact'}” tile</strong>
+            <br />
+            <span className="small muted">
+              Turn this off if {s.parentName || 'they'} should only see the other people to call (People to call, below).
+              Help requests still go to {s.contactName || 'the family contact'}.
+            </span>
+          </span>
+        </label>
+        <label className="check">
           <input type="checkbox" checked={!!s.keepAwake} onChange={(e) => set('keepAwake', e.target.checked)} />
           <span>
             <strong>Keep the screen on while Alongside is open</strong>
@@ -343,7 +354,8 @@ function People({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
       <h2 id="pp-h">People to call</h2>
       <p className="small muted">
         Each person becomes a “Call …” picture on {parent}’s Home screen. A clear, recent photo of their face helps most.
-        The first person is the family contact above, who is also asked when {parent} needs help.
+        The first person is the family contact above, who is also asked when {parent} needs help. Their tile can be
+        turned off above (“Show a … tile”).
       </p>
       <ErrorBanner error={del.error} onRetry={del.retry} />
       <ul className="list">

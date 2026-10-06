@@ -2,7 +2,7 @@
 // running across, down or diagonally (top-left to bottom-right). Tap the
 // letters of a word in any order. No timer, no score.
 import { useMemo, useState } from 'react'
-import { Check, RotateCcw, Sparkles } from 'lucide-react'
+import { Check, RotateCcw } from 'lucide-react'
 
 const THEMES = [
   { name: 'garden', words: ['ROSE', 'TREE', 'SEED', 'LEAF', 'SOIL', 'BIRD', 'TULIP', 'DAISY', 'HEDGE', 'SPADE', 'LAWN', 'PANSY'] },
@@ -110,9 +110,8 @@ export function WordSearchGame({ parentName }: { parentName: string }) {
   if (done) {
     return (
       <div className="ws-done" role="status">
-        <Sparkles aria-hidden="true" className="ws-done-icon" />
-        <p className="ws-done-title">Well done, {parentName}!</p>
-        <p className="ws-done-sub">You found all six words.</p>
+        <Check aria-hidden="true" className="ws-done-icon" />
+        <p className="ws-done-title">All six words found, {parentName}.</p>
         <button type="button" className="tile-btn" onClick={another}>
           <RotateCcw aria-hidden="true" /> Another puzzle
         </button>
@@ -155,7 +154,7 @@ export function WordSearchGame({ parentName }: { parentName: string }) {
         })}
       </div>
       <p className="ws-status" role="status">
-        {justFound ? `Yes! You found ${justFound}.` : selected.length ? `${selected.length} letter${selected.length === 1 ? '' : 's'} picked.` : ' '}
+        {justFound ? `Found: ${justFound}.` : selected.length ? `${selected.length} letter${selected.length === 1 ? '' : 's'} picked.` : ' '}
       </p>
       {selected.length > 0 && (
         <button type="button" className="tile-btn small" onClick={() => setSelected([])}>

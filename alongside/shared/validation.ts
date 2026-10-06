@@ -29,6 +29,8 @@ export const settingsSchema = z.object({
   autoSpeak: z.boolean().default(false),
   /** Ask the device to keep the screen on while Alongside is open. */
   keepAwake: z.boolean().default(false),
+  /** Show a "Call …" tile for the family contact (they may prefer only the other people). */
+  callContact: z.boolean().default(true),
 })
 
 export const destinationSchema = z.object({
@@ -58,8 +60,6 @@ export const reminderSchema = z
     pickupTime: timeStr.nullable().default(null),
     returnTime: timeStr.nullable().default(null),
     carColour: z.enum(['', ...CAR_COLOURS]).default(''),
-    /** Ask "… today?" with YES / NO instead of just telling. */
-    ask: z.boolean().default(false),
     remindMinutesBefore: z.number().int().min(0).max(240),
     shareResponses: z.boolean(),
     /** Ignored; accepted so older clients keep working. */

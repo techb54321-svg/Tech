@@ -11,6 +11,7 @@ export interface FamilyInfo {
     smsAlerts: boolean
     autoSpeak: boolean
     keepAwake: boolean
+    callContact: boolean
     isDemo: boolean
   }
   today: string

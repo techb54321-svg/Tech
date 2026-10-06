@@ -55,7 +55,7 @@ export function createDemo(db: DB, now = new Date()) {
       const img = decodeMedia('photo', demoMedia[pic])
       saveMedia(db, hid, owner, id, 'photo', img.mime, img.data)
     }
-    for (const o of demoOutingsToday(now, DEMO_TZ)) put('reminder', saveReminder(db, hid, o.input, DEMO_FAMILY_NAME)!, o.picture)
+    for (const o of demoOutingsToday(now, DEMO_TZ)) saveReminder(db, hid, o.input, DEMO_FAMILY_NAME)
     for (const p of demoPhotos(today)) {
       const id = randomUUID()
       db.prepare('INSERT INTO photos (id, household_id, caption, show_date, created_at) VALUES (?,?,?,?,?)').run(id, hid, p.caption, p.showDate, nowIso())
@@ -67,8 +67,7 @@ export function createDemo(db: DB, now = new Date()) {
       const audio = decodeMedia('audio', demoMedia[s.picture])
       saveMedia(db, hid, 'song', id, 'audio', audio.mime, audio.data)
     }
-    put('contact', hid, 'anna')
-    put('contact', addContact(db, hid, demoContacts[0]), 'sarah')
+    addContact(db, hid, demoContacts[0])
     demoDestinations.forEach((d, i) => {
       const id = addDestination(db, hid, d)
       const img = decodeMedia('photo', demoMedia[demoDestinationPhotos[i]])

@@ -28,7 +28,7 @@ import { api, ApiError, newRequestId } from '../api'
 import { formatTime12, localTimeHM } from '../../shared/time'
 import { uberDeepLink } from '../../shared/uber'
 import type { DayItem, Destination, MessageStatus, ParentToday, ResponseAction } from '../../shared/types'
-import { CAR_FILL, CarIcon } from './illustrations'
+import { CAR_FILL } from './illustrations'
 import { liveStatus } from './ParentApp'
 import { WordSearchGame } from './WordSearch'
 import { stopSpeaking } from '../speech'
@@ -227,7 +227,7 @@ function CarStrip({ r }: { r: ReminderItem['reminder'] }) {
   const colour = r.carColour ? CAR_FILL[r.carColour]?.name : ''
   return (
     <div className="car-strip">
-      {r.carColour && <CarIcon colour={r.carColour} />}
+      {r.carColour && <span className="car-swatch" style={{ background: CAR_FILL[r.carColour]?.fill }} aria-hidden="true" />}
       <div className="car-strip-words">
         {colour && <span className="car-colour">{colour} car</span>}
         {r.pickupTime && <span>Pick up {formatTime12(r.pickupTime)}</span>}
@@ -237,9 +237,8 @@ function CarStrip({ r }: { r: ReminderItem['reminder'] }) {
   )
 }
 
-function EventTile({ item, reload }: { item: DayItem; reload: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+/** An outing or appointment today: it simply shows, with nothing to answer. */
+function EventTile({ item }: { item: DayItem }) {
   if (item.type === 'lift') {
     const l = item.lift
     return (
@@ -252,55 +251,14 @@ function EventTile({ item, reload }: { item: DayItem; reload: () => void }) {
   }
   const r = item.reminder
   const Icon = eventIcon(r.title, r.kind)
-  const status = liveStatus(item, Date.now())
-  const chosen = status === 'said_yes' ? 'yes' : status === 'said_no' ? 'no' : null
-  async function say(action: 'yes' | 'no') {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    try {
-      await respond(item as ReminderItem, action, newRequestId())
-      reload()
-    } catch (e) {
-      setError(e instanceof ApiError && e.status && e.status < 500 ? e.message : 'That didn’t save. Please try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
   return (
     <Tile colour={r.kind === 'appointment' ? 't-blue' : 't-teal'} label={r.title} className="event-tile">
       <Icon className="ticon" aria-hidden="true" />
-      <p className="tlabel">{r.ask ? `${r.title} today?` : r.title}</p>
+      <p className="tlabel">{r.title}</p>
       {r.subtitle && <p className="tdetail">{r.subtitle}</p>}
       <p className="tsub strong">{formatTime12(r.time)}</p>
       {r.notes && <p className="tsub">{r.notes}</p>}
       <CarStrip r={r} />
-      {r.ask && (
-        <div className="yn-row" role="group" aria-label={`${r.title} today?`}>
-          {(['yes', 'no'] as const).map((a) => (
-            <button
-              key={a}
-              type="button"
-              className={`tile-btn ${a === 'yes' ? 'yes' : ''}${chosen === a ? ' chosen' : ''}`}
-              aria-pressed={chosen === a}
-              disabled={busy}
-              onClick={() => say(a)}
-            >
-              {a === 'yes' ? <Check aria-hidden="true" /> : <X aria-hidden="true" />} {a.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      )}
-      {chosen && (
-        <p className="tsub said" role="status">
-          You said {chosen.toUpperCase()}.
-        </p>
-      )}
-      {error && (
-        <p className="tile-error" role="alert">
-          {error}
-        </p>
-      )}
     </Tile>
   )
 }
@@ -557,14 +515,26 @@ function TaxiPanel({ today, onClose }: { today: ParentToday; onClose: () => void
 
 // ---------------------------------------------------------------- the board
 
-/** How many columns the board's grid has right now (2 on phones, 3 on tablets). */
+/**
+ * How many columns the board's grid has right now: 2 on phones, 3 on tablets, 1 with very large text.
+ * Worked out the same way as the CSS (a column is at least 8.25rem), rather than read back from the
+ * grid, which would also count any extra column a stretched tile had created.
+ */
 function useColumns(ref: RefObject<HTMLDivElement | null>) {
   const [cols, setCols] = useState(2)
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    const measure = () => setCols(Math.max(1, getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length))
+    const measure = () => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
+      const width = el.clientWidth
+      const most = el.closest('.pane') || window.matchMedia('(max-width: 699px)').matches ? 2 : 3
+      const gap = 3
+      const min = Math.max(8.25 * rem, (width - (most - 1) * gap) / most - 0.5)
+      setCols(Math.max(1, Math.min(most, Math.floor((width + gap) / (min + gap)))))
+    }
     measure()
+    // The board's height changes with the text size too, so this also catches enlarged text.
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
@@ -572,7 +542,7 @@ function useColumns(ref: RefObject<HTMLDivElement | null>) {
   return cols
 }
 
-export function Board({ today, reload, offline }: { today: ParentToday; reload: () => void; offline: boolean }) {
+export function Board({ today, offline }: { today: ParentToday; offline: boolean }) {
   const [open, setOpen] = useState<null | 'taxi' | 'puzzle'>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
@@ -630,7 +600,7 @@ export function Board({ today, reload, offline }: { today: ParentToday; reload: 
       ))}
       {events.map((e) => (
         <div role="listitem" className="cell event" key={e.key}>
-          <EventTile item={e} reload={reload} />
+          <EventTile item={e} />
         </div>
       ))}
       {today.contacts.map((c) => (
@@ -674,7 +644,7 @@ export function Board({ today, reload, offline }: { today: ParentToday; reload: 
       )}
       <div role="listitem" className="cell wide">
         <a className="board-bar" href="#/family">
-          Family setup{today.demo ? ' · Demonstration' : ''}
+          Family setup{today.demo ? ' · Demo' : ''}
           {offline ? ' · Offline' : ''}
         </a>
       </div>

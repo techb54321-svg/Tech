@@ -78,7 +78,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 5
+const DEMO_VERSION = 6
 
 interface State {
   version: number
@@ -138,7 +138,6 @@ function upgrade(s: State) {
     pickupTime: r.pickupTime ?? null,
     returnTime: r.returnTime ?? null,
     carColour: r.carColour ?? '',
-    ask: r.ask ?? false,
     remindMinutesBefore: r.remindMinutesBefore ?? 0,
     photoUrl: null,
     voiceUrl: null,
@@ -193,7 +192,6 @@ function toReminder(id: string, input: z.input<typeof reminderSchema>): Reminder
     pickupTime: outing ? (input.pickupTime ?? null) : null,
     returnTime: outing ? (input.returnTime ?? null) : null,
     carColour: outing ? (input.carColour ?? '') : '',
-    ask: outing && !!input.ask,
     remindMinutesBefore: input.remindMinutesBefore ?? 0,
     shareResponses: input.shareResponses,
     photoUrl: null,
@@ -207,8 +205,8 @@ const withMedia = (s: State, r: Reminder): Reminder => ({
   photoUrl: s.media[`reminder:${r.id}:photo`] ?? null,
   voiceUrl: s.media[`reminder:${r.id}:voice`] ?? null,
 })
-const contacts = (s: State): Contact[] => [
-  { id: s.householdId, name: s.settings.contactName, phone: s.settings.contactPhone ?? '', photoUrl: s.media[`contact:${s.householdId}:photo`] ?? null, main: true },
+const contacts = (s: State, forParent = false): Contact[] => [
+  ...(forParent && s.settings.callContact === false ? [] : [{ id: s.householdId, name: s.settings.contactName, phone: s.settings.contactPhone ?? '', photoUrl: s.media[`contact:${s.householdId}:photo`] ?? null, main: true }]),
   ...s.contacts.map((c) => ({ ...c, photoUrl: s.media[`contact:${c.id}:photo`] ?? null, main: false })),
 ]
 const photos = (s: State, upTo: string): SharedPhoto[] =>
@@ -246,9 +244,7 @@ function createDemo(): State {
   const dueNow = demoDueNow(now, tz)
   if (dueNow) s.reminders.push(toReminder(uuid(), dueNow))
   for (const o of demoOutingsToday(now, tz)) {
-    const id = uuid()
-    s.reminders.push(toReminder(id, o.input))
-    s.media[`reminder:${id}:photo`] = demoMedia[o.picture]
+    s.reminders.push(toReminder(uuid(), o.input))
   }
   for (const p of demoPhotos(today)) {
     const id = uuid()
@@ -260,8 +256,6 @@ function createDemo(): State {
     s.songs.push({ id, title: song.title, artist: song.artist })
     s.media[`song:${id}:audio`] = demoMedia[song.picture]
   }
-  s.media[`contact:${s.householdId}:photo`] = demoMedia.anna
-  s.media[`contact:${s.contacts[0].id}:photo`] = demoMedia.sarah
   for (const [key, pic] of Object.entries(demoReminderPhotos)) s.media[`reminder:${ids[key]}:photo`] = demoMedia[pic]
   s.destinations.forEach((d, i) => (s.media[`destination:${d.id}:photo`] = demoMedia[demoDestinationPhotos[i]]))
   s.trips.push({
@@ -293,7 +287,7 @@ function parentItems(s: State, date: string): DayItem[] {
     items.push({
       type: 'reminder', key: `${r.id}:${date}`,
       reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
-        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, ask: r.ask },
+        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour },
       occurrenceDate: date, status: st.status, snoozeUntil: st.snoozeUntil,
       dueAt: dueAt(r, date, s.settings.timeZone).toISOString(), answeredAt: latest?.createdAt ?? null, t: r.time,
     })
@@ -365,7 +359,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     const tomorrow = parentItems(s, addDaysISO(date, 1))[0]
     const out: ParentToday = {
       demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
-      items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s),
+      items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s, true),
       photos: photos(s, date), songs: songs(s),
       tomorrow: tomorrow
         ? tomorrow.type === 'reminder'
@@ -382,7 +376,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     if (dup) return { action: dup.action, snoozeUntil: dup.snoozeUntil, messageStatus: null, duplicate: true } as T
     const rem = reminders(s).find((r) => r.id === input.reminderId)
     if (!rem) throw new ApiError(404, 'This reminder was removed by family.')
-    const allowed = rem.ask ? ['yes', 'no', 'need_help'] : ['done', 'later', 'need_help', 'not_today']
+    const allowed = ['done', 'later', 'need_help', 'not_today']
     if (!allowed.includes(input.action)) throw new ApiError(400, 'That answer does not apply to this reminder.')
     const t = today(s)
     if (input.occurrenceDate !== t && input.occurrenceDate !== addDaysISO(t, -1)) throw new ApiError(400, 'Only today’s reminders can be answered.')
@@ -435,7 +429,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   const rest = m[2] ?? ''
   if (method === 'GET' && rest === '') {
     return {
-      id: s.householdId, settings: { autoSpeak: false, keepAwake: false, ...s.settings, isDemo: true }, today: today(s), destinations: destinations(s),
+      id: s.householdId, settings: { autoSpeak: false, keepAwake: false, callContact: true, ...s.settings, isDemo: true }, today: today(s), destinations: destinations(s),
       reminders: reminders(s), contacts: contacts(s), devices: [{ id: 'demo-device', label: 'This browser (demonstration)', createdAt: nowIso(), lastSeenAt: nowIso() }],
       members: [{ name: DEMO_FAMILY_NAME, email: null }],
       integrations: {

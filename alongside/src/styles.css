@@ -1330,7 +1330,7 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .tsub.strong { font-weight: 700; }
 .tkicker { font-size: 1.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 .tpic { width: min(100%, 16rem); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 0.6rem; border: 4px solid #fff; }
-.tface { width: 6.5rem; height: 6.5rem; border-radius: 50%; object-fit: cover; border: 5px solid #fff; flex: none; }
+.tface { width: 6rem; height: 6rem; border-radius: 0.4rem; object-fit: cover; border: 2px solid rgba(255, 255, 255, 0.85); flex: none; }
 
 .t-orange { background: #c2410c; }
 .t-green { background: #15803d; }
@@ -1365,7 +1365,6 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .tile-btn svg { width: 1.9rem; height: 1.9rem; flex: none; stroke-width: 2.5; }
 .tile-btn.yes { color: #14532d; }
 .tile-btn.yes svg { color: #15803d; }
-.tile-btn.chosen { outline: 5px solid #fde047; outline-offset: 2px; background: #fefce8; }
 .tile-btn[disabled] { opacity: 0.6; cursor: progress; }
 .tile-btn.small { min-height: 3.2rem; font-size: 1.375rem; }
 .tile-btn.small svg { width: 1.5rem; height: 1.5rem; }
@@ -1423,7 +1422,6 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
   font-size: 1.5rem;
   font-weight: 700;
 }
-.tsub.said { background: #fff; color: #1b1a19; border-radius: 0.6rem; padding: 0.2rem 0.7rem; }
 
 /* Car: a car drawn in its colour, with the colour and times written. No driver. */
 .car-strip {
@@ -1438,7 +1436,7 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
   padding: 0.45rem 0.8rem;
   max-width: 100%;
 }
-.car-strip .car-icon { width: 3.6rem; }
+.car-swatch { width: 2.6rem; height: 2.6rem; border-radius: 0.4rem; border: 3px solid #1b1a19; flex: none; }
 .car-strip-words { display: flex; flex-direction: column; text-align: left; font-size: 1.5rem; font-weight: 700; line-height: 1.25; }
 .car-colour { text-transform: uppercase; letter-spacing: 0.05em; }
 

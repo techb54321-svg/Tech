@@ -23,30 +23,29 @@ describe('outings on Home', () => {
       pickupTime: '13:30', returnTime: '15:15', carColour: 'blue',
     }))
     const r = (await parent.get('/api/parent/today')).json.items[0].reminder
-    expect(r).toMatchObject({ subtitle: 'Pilates', pickupTime: '13:30', returnTime: '15:15', carColour: 'blue', ask: false })
+    expect(r).toMatchObject({ subtitle: 'Pilates', pickupTime: '13:30', returnTime: '15:15', carColour: 'blue' })
     expect(r).not.toHaveProperty('carNote')
     expect((await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', carColour: 'tartan' }))).status).toBe(400)
     expect((await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', pickupTime: '25:00' }))).status).toBe(400)
     // Routines never carry transport details.
-    const id = (await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Shower', carColour: 'red', ask: true }))).json.id
+    const id = (await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Shower', carColour: 'red' }))).json.id
     const shower = (await family.get(`/api/family/${hid}`)).json.reminders.find((x: { id: string }) => x.id === id)
-    expect(shower).toMatchObject({ carColour: '', ask: false })
+    expect(shower).toMatchObject({ carColour: '' })
   })
 
-  it('records YES / NO for an invitation; other answers do not apply', async () => {
+  it('shows an outing on its day without asking a question; YES / NO is not taken', async () => {
     const { base } = await setup()
     const { family, parent, hid } = await household(base)
+    // "ask" sent by an older family app is ignored.
     const id = (await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', title: 'Coffee at the Feathers', time: '11:00', repeat: 'none', ask: true }))).json.id
-    const say = (action: string) =>
-      parent.post('/api/parent/responses', { clientRequestId: randomUUID(), reminderId: id, occurrenceDate: '2026-10-06', action })
-    expect((await say('done')).status).toBe(400)
-    expect((await say('yes')).status).toBe(201)
-    expect((await family.get(`/api/family/${hid}/day`)).json.statuses[0].status).toBe('said_yes')
-    expect((await say('no')).status).toBe(201)
-    expect((await family.get(`/api/family/${hid}/day`)).json.statuses[0].status).toBe('said_no')
-    // An ordinary outing cannot be answered yes / no.
-    const plain = (await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', title: 'Lunch', repeat: 'none' }))).json.id
-    expect((await parent.post('/api/parent/responses', { clientRequestId: randomUUID(), reminderId: plain, occurrenceDate: '2026-10-06', action: 'yes' })).status).toBe(400)
+    const item = (await parent.get('/api/parent/today')).json.items.find((i: { reminder?: { id: string } }) => i.reminder?.id === id)
+    expect(item.reminder.title).toBe('Coffee at the Feathers')
+    expect(item.reminder).not.toHaveProperty('ask')
+    expect(item.reminder.question).toBeNull()
+    for (const action of ['yes', 'no']) {
+      const r = await parent.post('/api/parent/responses', { clientRequestId: randomUUID(), reminderId: id, occurrenceDate: '2026-10-06', action })
+      expect(r.status).toBe(400)
+    }
   })
 })
 

@@ -17,7 +17,7 @@ export function Showcase({ me }: { me: Me }) {
           <h1 tabIndex={-1}>Alongside, side by side</h1>
           <p>
             Left: what {parent} sees on the phone, all on one screen. Right: what {family} sees in the family area. Answer a
-            question on a tile, tap YES or NO, or ask for a lift with Taxi, and watch {family}’s side update. Everything here is
+            question on a tile or ask for a lift with Taxi, and watch {family}’s side update. Everything here is
             fictional.
           </p>
         </div>

@@ -21,7 +21,6 @@ type Draft = {
   pickupTime: string
   returnTime: string
   carColour: string
-  ask: boolean
   remindMinutesBefore: number
   shareResponses: boolean
 }
@@ -55,7 +54,6 @@ const blank = (today: string): Draft => ({
   pickupTime: '',
   returnTime: '',
   carColour: '',
-  ask: false,
   remindMinutesBefore: 60,
   shareResponses: false,
 })
@@ -74,7 +72,6 @@ const fromReminder = (r: Reminder): Draft => ({
   pickupTime: r.pickupTime ?? '',
   returnTime: r.returnTime ?? '',
   carColour: r.carColour,
-  ask: r.ask,
   remindMinutesBefore: r.remindMinutesBefore,
   shareResponses: r.shareResponses,
 })
@@ -361,16 +358,6 @@ function ReminderForm({
           <Field id="rf-sub" label="Detail in big letters (optional)" hint="e.g. PILATES or WOOLWORTHS" error={act.fields.subtitle}>
             <input id="rf-sub" value={d.subtitle} maxLength={30} onChange={(e) => set('subtitle', e.target.value)} />
           </Field>
-          <label className="check">
-            <input type="checkbox" checked={d.ask} onChange={(e) => set('ask', e.target.checked)} />
-            <span>
-              <strong>Ask {parent} if they would like to go</strong>
-              <br />
-              <span className="small muted">
-                Shows “{d.title || 'Coffee at the Feathers'} today?” with big YES and NO buttons. You will see the answer here.
-              </span>
-            </span>
-          </label>
           <div className="two-col">
             <Field id="rf-pick" label="Pick-up time (optional)" error={act.fields.pickupTime}>
               <input id="rf-pick" type="time" value={d.pickupTime} onChange={(e) => set('pickupTime', e.target.value)} />

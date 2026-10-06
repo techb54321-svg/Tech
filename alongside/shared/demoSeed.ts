@@ -49,6 +49,20 @@ export function demoDueNow(now: Date, tz: string): ReminderInput | null {
   }
 }
 
+/** A class later today, so Home always has a "today" tile to show. */
+export function demoLaterToday(now: Date, tz: string): ReminderInput | null {
+  const at = new Date(Math.ceil((now.getTime() + 90 * 60000) / (15 * 60000)) * 15 * 60000)
+  if (localDateISO(at, tz) !== localDateISO(now, tz)) return null
+  return {
+    kind: 'social', title: 'Gym class', time: localTimeHM(at, tz), startDate: localDateISO(now, tz), repeat: 'none',
+    endDate: null, location: 'Wattleton Community Hall', notes: 'Wear your comfy shoes.', question: '',
+    remindMinutesBefore: 60, shareResponses: true, medScheduleConfirmed: false,
+  }
+}
+
+/** More people to call from Home (ACMA fictional numbers, never dialled in the demo). */
+export const demoContacts = [{ name: 'Sarah', phone: '0491 570 158' }]
+
 /** Which demo items carry an illustration (see shared/demoMedia.ts). */
 export const demoReminderPhotos: Record<string, 'tablets' | 'medical'> = { morningMeds: 'tablets', eveningMeds: 'tablets', doctor: 'medical' }
 export const demoDestinationPhotos: Array<'medical' | 'shops' | 'home'> = ['medical', 'shops', 'home']

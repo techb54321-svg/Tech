@@ -10,7 +10,9 @@ import {
   DEMO_FAMILY_NAME,
   demoDestinationPhotos,
   demoDestinations,
+  demoContacts,
   demoDueNow,
+  demoLaterToday,
   demoLift,
   demoReminderPhotos,
   demoReminders,
@@ -18,10 +20,11 @@ import {
 } from '../../shared/demoSeed'
 import { demoMedia } from '../../shared/demoMedia'
 import { questionFor } from '../../shared/questions'
-import type { DayItem, Destination, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
+import type { Contact, DayItem, Destination, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
 import {
   arrangedLiftSchema,
   clientRequestId,
+  contactSchema,
   destinationSchema,
   mediaSchema,
   PHOTO_MAX_BYTES,
@@ -80,6 +83,7 @@ interface State {
   trips: Trip[]
   /** "owner:id:kind" → data URL */
   media: Record<string, string>
+  contacts: Array<{ id: string; name: string; phone: string }>
 }
 
 const KEY = 'alongside.static-demo'
@@ -92,6 +96,7 @@ function load(): State | null {
     if (raw) {
       memory = JSON.parse(raw) as State
       memory.media ??= {} // saved by an earlier version of the preview
+      memory.contacts ??= []
     }
   } catch {
     /* storage unavailable: keep in memory only */
@@ -157,6 +162,10 @@ const withMedia = (s: State, r: Reminder): Reminder => ({
   photoUrl: s.media[`reminder:${r.id}:photo`] ?? null,
   voiceUrl: s.media[`reminder:${r.id}:voice`] ?? null,
 })
+const contacts = (s: State): Contact[] => [
+  { id: s.householdId, name: s.settings.contactName, phone: s.settings.contactPhone ?? '', photoUrl: s.media[`contact:${s.householdId}:photo`] ?? null, main: true },
+  ...s.contacts.map((c) => ({ ...c, photoUrl: s.media[`contact:${c.id}:photo`] ?? null, main: false })),
+]
 const destinations = (s: State): Destination[] => s.destinations.map((d) => ({ ...d, photoUrl: s.media[`destination:${d.id}:photo`] ?? null }))
 
 function createDemo(): State {
@@ -173,6 +182,7 @@ function createDemo(): State {
     help: [],
     trips: [],
     media: {},
+    contacts: demoContacts.map((c) => ({ id: uuid(), ...c })),
   }
   const ids: Record<string, string> = {}
   for (const r of demoReminders(today)) {
@@ -181,6 +191,14 @@ function createDemo(): State {
   }
   const dueNow = demoDueNow(now, tz)
   if (dueNow) s.reminders.push(toReminder(uuid(), dueNow))
+  const later = demoLaterToday(now, tz)
+  if (later) {
+    const id = uuid()
+    s.reminders.push(toReminder(id, later))
+    s.media[`reminder:${id}:photo`] = demoMedia.gym
+  }
+  s.media[`contact:${s.householdId}:photo`] = demoMedia.anna
+  s.media[`contact:${s.contacts[0].id}:photo`] = demoMedia.sarah
   for (const [key, pic] of Object.entries(demoReminderPhotos)) s.media[`reminder:${ids[key]}:photo`] = demoMedia[pic]
   s.destinations.forEach((d, i) => (s.media[`destination:${d.id}:photo`] = demoMedia[demoDestinationPhotos[i]]))
   s.trips.push({
@@ -283,7 +301,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     const tomorrow = parentItems(s, addDaysISO(date, 1))[0]
     const out: ParentToday = {
       demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
-      items: parentItems(s, date), destinations: destinations(s),
+      items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s),
       tomorrow: tomorrow
         ? tomorrow.type === 'reminder'
           ? { title: tomorrow.reminder.title, time: tomorrow.reminder.time }
@@ -353,7 +371,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   if (method === 'GET' && rest === '') {
     return {
       id: s.householdId, settings: { autoSpeak: false, keepAwake: false, ...s.settings, isDemo: true }, today: today(s), destinations: destinations(s),
-      reminders: reminders(s), devices: [{ id: 'demo-device', label: 'This browser (demonstration)', createdAt: nowIso(), lastSeenAt: nowIso() }],
+      reminders: reminders(s), contacts: contacts(s), devices: [{ id: 'demo-device', label: 'This browser (demonstration)', createdAt: nowIso(), lastSeenAt: nowIso() }],
       members: [{ name: DEMO_FAMILY_NAME, email: null }],
       integrations: {
         sms: { configured: false, name: 'Twilio SMS' }, transport: null, uberHandoff: true,
@@ -445,10 +463,35 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     }
     return { days, rows: [...rows.values()].sort((a, b) => (a.time < b.time ? -1 : 1)) } as T
   }
-  mm = rest.match(/^\/media\/(reminder|destination)\/([^/]+)\/(photo|voice)$/)
+  if (rest === '/contacts' && method === 'POST') {
+    if (s.contacts.length >= 5) throw new ApiError(400, 'Keep it to a few people so the Home screen stays simple (up to 5 more).')
+    const id = uuid()
+    s.contacts.push({ id, ...parse(contactSchema, body) })
+    save(s)
+    return { id } as T
+  }
+  mm = rest.match(/^\/contacts\/(.+)$/)
+  if (mm) {
+    const i = s.contacts.findIndex((c) => c.id === mm![1])
+    if (i < 0) throw new ApiError(404, 'That person is no longer in the list.')
+    if (method === 'PUT') s.contacts[i] = { id: mm[1], ...parse(contactSchema, body) }
+    else if (method === 'DELETE') {
+      s.contacts.splice(i, 1)
+      delete s.media[`contact:${mm[1]}:photo`]
+    }
+    save(s)
+    return { ok: true } as T
+  }
+  mm = rest.match(/^\/media\/(reminder|destination|contact)\/([^/]+)\/(photo|voice)$/)
   if (mm) {
     const [, owner, ownerId, kind] = mm
-    const exists = owner === 'reminder' ? reminders(s).some((r) => r.id === ownerId) : s.destinations.some((d) => d.id === ownerId)
+    if (owner !== 'reminder' && kind !== 'photo') throw new ApiError(400, 'Places and people can have a photo only')
+    const exists =
+      owner === 'reminder'
+        ? reminders(s).some((r) => r.id === ownerId)
+        : owner === 'destination'
+          ? s.destinations.some((d) => d.id === ownerId)
+          : ownerId === s.householdId || s.contacts.some((c) => c.id === ownerId)
     if (!exists) throw new ApiError(404, 'That item no longer exists.')
     const key = `${owner}:${ownerId}:${kind}`
     if (method === 'DELETE') delete s.media[key]

@@ -6,7 +6,7 @@ import { nowIso } from './db.js'
 import { HttpError } from './http.js'
 import { PHOTO_MAX_BYTES, PHOTO_TYPES, VOICE_MAX_BYTES, VOICE_TYPES } from '../shared/validation.js'
 
-export type OwnerType = 'reminder' | 'destination'
+export type OwnerType = 'reminder' | 'destination' | 'contact'
 export type MediaKind = 'photo' | 'voice'
 
 const startsWith = (b: Buffer, sig: number[], at = 0) => sig.every((x, i) => b[at + i] === x)

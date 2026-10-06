@@ -135,13 +135,24 @@ CREATE TABLE IF NOT EXISTS help_requests (
 -- Family photos and voice messages attached to reminders and places.
 CREATE TABLE IF NOT EXISTS media (
   household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-  owner_type TEXT NOT NULL CHECK (owner_type IN ('reminder','destination')),
+  owner_type TEXT NOT NULL CHECK (owner_type IN ('reminder','destination','contact')),
   owner_id TEXT NOT NULL,
   kind TEXT NOT NULL CHECK (kind IN ('photo','voice')),
   mime TEXT NOT NULL,
   data BLOB NOT NULL,
   updated_at TEXT NOT NULL,
   PRIMARY KEY (owner_type, owner_id, kind)
+);
+
+-- More people the parent can call from the Home screen (the main family
+-- contact lives on the household).
+CREATE TABLE IF NOT EXISTS contacts (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
 );
 
 -- Transport records are kept by kind so that a request, a hand-off, a
@@ -177,6 +188,16 @@ export function openDb(file: string): DB {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
   db.exec(SCHEMA)
+  // Older databases: allow contact photos in the media table (SQLite cannot alter a CHECK).
+  const mediaSql = (db.prepare("SELECT sql FROM sqlite_master WHERE name='media'").get() as { sql: string }).sql
+  if (!mediaSql.includes("'contact'")) {
+    db.exec(`BEGIN;
+      ALTER TABLE media RENAME TO media_old;
+      ${SCHEMA.slice(SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media'), SCHEMA.indexOf(');', SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media')) + 2)}
+      INSERT INTO media SELECT * FROM media_old;
+      DROP TABLE media_old;
+      COMMIT;`)
+  }
   for (const [table, column, ddl] of ADDED_COLUMNS) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
     if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)

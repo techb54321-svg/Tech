@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CalendarDays, Car, Moon, Sun, Sunrise } from 'lucide-react'
 import { api, ApiError, useOnDataChanged } from '../api'
 import { useNavigate, useScreenFocus } from '../route'
-import { formatLongDate, greetingFor, localDateISO, localTimeHM } from '../../shared/time'
+import { formatTime12, greetingFor, localDateISO, localTimeHM } from '../../shared/time'
 import type { DayItem, ParentToday } from '../../shared/types'
-import { CallButton, H1, ParentScreen, telHref } from './common'
+import { ClockBar, H1, ParentScreen, TimeZoneContext, telHref } from './common'
+import { CalendarPicture, OutingPicture, PuzzlePicture, TaxiPicture } from './illustrations'
+import { WordSearch } from './WordSearch'
 import { MyDay } from './MyDay'
 import { Lift } from './Lift'
 import { chime } from '../speech'
@@ -114,11 +115,13 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
 
   const part = dayPart(new Date(), today?.timeZone ?? 'Australia/Sydney')
   return (
-    <div className={`tod tod-${part}`}>
-      <KeepAwake on={!!today?.keepAwake} />
-      <IdleHome path={path} />
-      {screen()}
-    </div>
+    <TimeZoneContext.Provider value={today?.timeZone ?? 'Australia/Sydney'}>
+      <div className={`tod tod-${part}`}>
+        <KeepAwake on={!!today?.keepAwake} />
+        <IdleHome path={path} />
+        {screen()}
+      </div>
+    </TimeZoneContext.Provider>
   )
 
   function screen() {
@@ -150,10 +153,8 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
     return <MyDay today={today} itemKey={key} reload={load} autoPlayKey={autoPlayKey} clearAutoPlay={clearAutoPlay} />
   }
   if (route.startsWith('/lift')) return <Lift today={today} route={route} />
-  if (route === '/call') {
-    const who = new URLSearchParams(query).get('who') === 'pharmacy' ? 'pharmacy' : 'contact'
-    return <CallScreen today={today} who={who} />
-  }
+  if (route === '/puzzles') return <WordSearch parentName={today.parentName} />
+  if (route === '/call') return <CallScreen today={today} who={new URLSearchParams(query).get('who') ?? 'contact'} />
   return <Home today={today} offline={!!loadError} />
   }
 }
@@ -185,30 +186,92 @@ function KeepAwake({ on }: { on: boolean }) {
   return null
 }
 
+/** The next appointment, outing or lift today, for its own Home tile. */
+function todaysEvent(today: ParentToday): DayItem | null {
+  const hm = localTimeHM(new Date(new Date().getTime() - 30 * 60000), today.timeZone)
+  return (
+    today.items.find((i) =>
+      i.type === 'lift'
+        ? i.lift.time >= hm
+        : (i.reminder.kind === 'appointment' || i.reminder.kind === 'social') &&
+          i.reminder.time >= hm &&
+          !['done', 'not_today'].includes(i.status),
+    ) ?? null
+  )
+}
+
+function Tile({
+  colour,
+  picture,
+  label,
+  sub,
+  href,
+  onClick,
+}: {
+  colour: string
+  picture: React.ReactNode
+  label: string
+  sub?: string
+  href?: string
+  onClick?: () => void
+}) {
+  const body = (
+    <span className="tile-inner">
+      <span className="tile-pic">{picture}</span>
+      <span className="tile-words">
+        <span className="tile-label">{label}</span>
+        {sub && <span className="tile-sub">{sub}</span>}
+      </span>
+    </span>
+  )
+  return href ? (
+    <a className={`tile ${colour}`} href={href} onClick={onClick}>
+      {body}
+    </a>
+  ) : (
+    <button type="button" className={`tile ${colour}`} onClick={onClick}>
+      {body}
+    </button>
+  )
+}
+
 function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
   useScreenFocus('home')
+  const navigate = useNavigate()
   const now = new Date()
-  const date = localDateISO(now, today.timeZone)
+  const event = todaysEvent(today)
+  const eventPic =
+    event?.type === 'reminder' && event.reminder.photoUrl ? <img src={event.reminder.photoUrl} alt="" /> : event?.type === 'lift' ? <TaxiPicture /> : <OutingPicture />
   return (
     <div className="p-wrap p-home">
+      <ClockBar />
       <main className="p-main">
         <H1>
           {greetingFor(now, today.timeZone)}, {today.parentName}
         </H1>
-        <p className="p-date greeting">
-          <TimeOfDayIcon part={dayPart(now, today.timeZone)} />
-          <span className="date-text">{formatLongDate(date)}</span>
-        </p>
-        <nav className="p-home-buttons" aria-label="Main choices">
-          <a className="big-btn blue" href="#/day">
-            <CalendarDays aria-hidden="true" />
-            <span>My day</span>
-          </a>
-          <a className="big-btn purple" href="#/lift">
-            <Car aria-hidden="true" />
-            <span>Get a lift</span>
-          </a>
-          <CallButton who="contact" name={today.contactName} phone={today.contactPhone} demo={today.demo} />
+        <nav className="tiles" aria-label="Main choices">
+          <Tile colour="t-blue" picture={<CalendarPicture />} label="My day" href="#/day" />
+          {event && (
+            <Tile
+              colour="t-teal"
+              picture={eventPic}
+              label={event.type === 'reminder' ? event.reminder.title : `Lift to ${event.lift.destinationLabel}`}
+              sub={`Today ${formatTime12(event.type === 'reminder' ? event.reminder.time : event.lift.time)}`}
+              href={`#/day/${encodeURIComponent(event.key)}`}
+            />
+          )}
+          {today.contacts.map((c) => {
+            const pic = c.photoUrl ? <img src={c.photoUrl} alt="" /> : <span className="tile-initial">{c.name.slice(0, 1)}</span>
+            const who = c.main ? 'contact' : c.id
+            // A real number opens the phone's dialler; the demonstration never dials.
+            return today.demo || !c.phone ? (
+              <Tile key={c.id} colour="t-green" picture={pic} label={`Call ${c.name}`} onClick={() => navigate(`/call?who=${who}`)} />
+            ) : (
+              <Tile key={c.id} colour="t-green" picture={pic} label={`Call ${c.name}`} href={telHref(c.phone)} onClick={() => navigate(`/call?who=${who}`)} />
+            )
+          })}
+          <Tile colour="t-yellow" picture={<TaxiPicture />} label="Taxi" href="#/lift" />
+          <Tile colour="t-orange" picture={<PuzzlePicture />} label="Puzzles" href="#/puzzles" />
         </nav>
         <footer className="p-footer">
           <a className="quiet-link" href="#/family">
@@ -221,10 +284,11 @@ function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
   )
 }
 
-function CallScreen({ today, who }: { today: ParentToday; who: 'contact' | 'pharmacy' }) {
+function CallScreen({ today, who }: { today: ParentToday; who: string }) {
   useScreenFocus(who)
-  const name = who === 'pharmacy' ? today.pharmacyName || 'the pharmacy' : today.contactName
-  const phone = who === 'pharmacy' ? today.pharmacyPhone : today.contactPhone
+  const person = who === 'contact' ? today.contacts.find((c) => c.main) : today.contacts.find((c) => c.id === who)
+  const name = who === 'pharmacy' ? today.pharmacyName || 'the pharmacy' : person?.name ?? today.contactName
+  const phone = who === 'pharmacy' ? today.pharmacyPhone : person?.phone ?? today.contactPhone
   return (
     <ParentScreen>
       <H1>Call {name}</H1>
@@ -255,16 +319,6 @@ type DayPart = 'morning' | 'afternoon' | 'evening'
 function dayPart(now: Date, tz: string): DayPart {
   const h = Number(localTimeHM(now, tz).slice(0, 2))
   return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
-}
-
-/** A picture of the time of day (sunrise, sun, moon) that helps orientation without more words. */
-function TimeOfDayIcon({ part }: { part: DayPart }) {
-  const Icon = part === 'morning' ? Sunrise : part === 'afternoon' ? Sun : Moon
-  return (
-    <span className={`tod-icon tod-icon-${part}`} aria-hidden="true">
-      <Icon />
-    </span>
-  )
 }
 
 const IDLE_MS = 5 * 60000

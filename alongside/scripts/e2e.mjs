@@ -97,8 +97,14 @@ async function inspect(page, label, { parent = true } = {}) {
         if (!visible(el)) return
         if (el.getBoundingClientRect().height < 88) out.small.push(`button height ${el.getBoundingClientRect().height}: ${el.textContent.trim()}`)
       })
-      document.querySelectorAll('.p-home .big-btn').forEach((el) => el.getBoundingClientRect().height < 100 && out.small.push('home button < 100px'))
+      document.querySelectorAll('.tile').forEach((el) => el.getBoundingClientRect().height < 140 && out.small.push('home tile < 140px'))
+      document.querySelectorAll('.tile-label').forEach((el) => px(el) < 32 && out.small.push(`tile label ${px(el)}px`))
       document.querySelectorAll('main h1').forEach((el) => px(el) < 40 && out.small.push(`h1 ${px(el)}px`))
+      // The day and time, in big letters, on every parent screen.
+      const day = document.querySelector('.clock-day')
+      const time = document.querySelector('.clock-time')
+      if (!day || !time) out.small.push('no day and time shown')
+      else if (px(day) < 32 || px(time) < 40) out.small.push(`day/time too small: ${px(day)}/${px(time)}`)
       document.querySelectorAll('.p-body, .p-detail, .p-date, .status').forEach((el) => visible(el) && px(el) < 24 && out.small.push(`body ${px(el)}px: ${el.textContent.trim().slice(0, 30)}`))
       // WCAG contrast of button text against its background.
       const lum = (c) => {
@@ -108,7 +114,7 @@ async function inspect(page, label, { parent = true } = {}) {
         })
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
       }
-      document.querySelectorAll('.big-btn, .home-btn, .small-btn').forEach((el) => {
+      document.querySelectorAll('.big-btn, .home-btn, .small-btn, .tile').forEach((el) => {
         if (!visible(el) || el.disabled) return
         const s = getComputedStyle(el)
         let bg = s.backgroundColor
@@ -195,22 +201,40 @@ async function answerAllDue(page) {
   }
 }
 
+/** Find each word across or down in the grid and tap its letters, checking the found-word feedback. */
+async function solveWordSearch(page) {
+  const words = (await page.locator('.ws-words li').allTextContents()).map((w) => w.replace(/[^A-Z]/g, ''))
+  for (const word of words) {
+    const letters = (await page.locator('.ws-cell').allTextContents()).map((l) => l.trim())
+    const n = 6
+    let cells = null
+    for (let r = 0; r < n && !cells; r++)
+      for (let c = 0; c < n && !cells; c++)
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+          const idx = [...word].map((_, i) => (r + dr * i) * n + (c + dc * i))
+          if (r + dr * (word.length - 1) < n && c + dc * (word.length - 1) < n && idx.every((x, i) => letters[x] === word[i])) {
+            cells = idx
+            break
+          }
+        }
+    check(!!cells, `puzzle: could not find ${word}`)
+    if (!cells) return
+    // Tap in a scrambled order: any order works.
+    for (const x of [...cells].reverse()) await page.locator('.ws-cell').nth(x).click()
+    if (words.indexOf(word) < words.length - 1) await page.getByText(`Yes! You found ${word}.`).waitFor()
+  }
+}
+
 // ---------------------------------------------------------------- screens at each width
 for (const v of WIDTHS) {
   step('width ' + v.name)
   const { ctx, page } = await newDemo({ width: v.width, height: v.height })
 
   await shot(page, v.name, '01-home')
-  // Home contains only greeting, date, three buttons and the quiet link.
-  const home = await page.evaluate(() => ({
-    controls: [...document.querySelectorAll('main a, main button')].map((e) => e.textContent.trim()),
-    headings: document.querySelectorAll('main h1').length,
-    paragraphs: [...document.querySelectorAll('main p')].map((p) => p.className),
-    order: [...document.querySelectorAll('.p-home-buttons > *')].map((e) => e.textContent.trim()),
-  }))
-  check(home.controls.length === 4, `${v.name}/home: expected 4 controls, got ${home.controls.join(', ')}`)
-  check(home.headings === 1 && home.paragraphs.length === 1, `${v.name}/home: unexpected extra content`)
-  check(home.order.join('|') === 'My day|Get a lift|Call Anna', `${v.name}/home: button order ${home.order.join('|')}`)
+  // Home: the day and time, a greeting, picture tiles and the quiet family link.
+  const tiles = await page.locator('.tiles .tile-label').allTextContents()
+  for (const want of ['My day', 'Call Anna', 'Call Sarah', 'Taxi', 'Puzzles']) check(tiles.includes(want), `${v.name}/home: no "${want}" tile (${tiles.join(', ')})`)
+  check((await page.locator('.tiles .tile .tile-pic').count()) === tiles.length, `${v.name}/home: a tile has no picture`)
 
   const med = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack, lunch slot.' })
   const routine = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
@@ -263,7 +287,7 @@ for (const v of WIDTHS) {
 
   // Lift flow
   await page.goto(BASE + '/#/')
-  await page.getByRole('link', { name: 'Get a lift' }).click()
+  await page.getByRole('link', { name: 'Taxi' }).click()
   await page.getByRole('heading', { name: 'Where to?' }).waitFor()
   await shot(page, v.name, '10-lift-where')
   await page.getByRole('button', { name: 'Somewhere else' }).click()
@@ -289,6 +313,25 @@ for (const v of WIDTHS) {
   await page.getByRole('button', { name: 'Call Anna' }).click()
   await page.getByRole('heading', { name: 'Call Anna' }).waitFor()
   await shot(page, v.name, '15-call-demo')
+
+  // Today's event tile opens what and when, with nothing to answer yet.
+  await page.goto(BASE + '/#/')
+  const eventTile = page.locator('.tile.t-teal')
+  if (await eventTile.count()) {
+    const label = (await eventTile.locator('.tile-label').textContent()).trim()
+    await eventTile.click()
+    await page.getByRole('heading', { name: label }).waitFor()
+    await shot(page, v.name, '16-event-preview')
+  } else notes.push(`${v.name}: no event later today, so the event tile was not checked`)
+
+  // Puzzles: solve a word search by tapping letters.
+  await page.goto(BASE + '/#/')
+  await page.getByRole('link', { name: 'Puzzles' }).click()
+  await page.getByRole('heading', { name: 'Word search' }).waitFor()
+  await shot(page, v.name, '17-puzzle')
+  await solveWordSearch(page)
+  await page.getByRole('heading', { name: 'Well done, Margaret!' }).waitFor()
+  await shot(page, v.name, '18-puzzle-done')
 
   for (const [path, name] of [
     ['/family', '20-family-today'],
@@ -417,6 +460,16 @@ step('Text at 200%')
   await page.getByText('Saved.', { exact: true }).waitFor()
   await page.goto(BASE + '/#/')
   await page.getByRole('button', { name: 'Call Tom' }).waitFor()
+
+  step('Family: add someone to call')
+  await page.goto(BASE + '/#/family/setup')
+  await page.getByRole('button', { name: 'Add someone to call' }).click()
+  await page.getByLabel('Name on the button').fill('Ruth')
+  await page.getByLabel('Phone number').fill('0491 570 159')
+  await page.locator('section', { hasText: 'People to call' }).getByRole('button', { name: 'Save', exact: true }).click()
+  await page.locator('li', { hasText: 'Ruth' }).waitFor()
+  await page.goto(BASE + '/#/')
+  await page.getByRole('button', { name: 'Call Ruth' }).waitFor()
 
   step('Failed family save')
   await page.goto(BASE + '/#/family/setup')
@@ -623,7 +676,7 @@ step('Side by side')
   await page.getByRole('button', { name: 'See both screens side by side' }).click()
   const phone = page.getByRole('region', { name: 'Margaret’s phone' })
   const fam = page.getByRole('region', { name: 'Anna’s family area' })
-  await phone.getByRole('link', { name: 'Get a lift' }).click()
+  await phone.getByRole('link', { name: 'Taxi' }).click()
   await phone.getByRole('button', { name: 'Shops' }).click()
   await phone.getByRole('button', { name: 'Ask Anna for a lift' }).click()
   await phone.getByRole('heading', { name: 'Request saved' }).waitFor()

@@ -74,6 +74,15 @@ export interface ArrangedLift {
   enteredByName: string
 }
 
+/** Someone the parent can call from Home. The main contact is the family contact used for help. */
+export interface Contact {
+  id: string
+  name: string
+  phone: string
+  photoUrl: string | null
+  main: boolean
+}
+
 export type DayItem =
   | {
       type: 'reminder'
@@ -117,6 +126,8 @@ export interface ParentToday {
   date: string
   now: string
   items: DayItem[]
+  /** People to call, main family contact first. */
+  contacts: Contact[]
   /** The first thing tomorrow, for the end-of-day screen. */
   tomorrow: { title: string; time: string } | null
   destinations: Destination[]

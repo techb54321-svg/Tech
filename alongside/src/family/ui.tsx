@@ -17,6 +17,7 @@ export interface FamilyInfo {
   }
   today: string
   destinations: import('../../shared/types').Destination[]
+  contacts: import('../../shared/types').Contact[]
   reminders: import('../../shared/types').Reminder[]
   devices: Array<{ id: string; label: string; createdAt: string; lastSeenAt: string | null }>
   members: Array<{ name: string; email: string | null }>

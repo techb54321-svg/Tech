@@ -6,7 +6,11 @@ import { nowIso, tx } from '../db.js'
 import { newPairingCode, requireFamily, requireMember, sha256 } from '../auth.js'
 import { HttpError, h, parse } from '../http.js'
 import {
+  addContact,
   addDestination,
+  deleteContact,
+  listContacts,
+  updateContact,
   createHousehold,
   deleteDestination,
   deleteReminder,
@@ -23,6 +27,7 @@ import {
 import {
   arrangedLiftSchema,
   codeSchema,
+  contactSchema,
   mediaSchema,
   destinationSchema,
   reminderSchema,
@@ -104,6 +109,7 @@ export function familyRoutes(deps: Deps) {
         settings: settingsOf(hh),
         today: todayFor(hh, deps.now()),
         destinations: listDestinations(db, hid),
+        contacts: listContacts(db, hh),
         reminders: listReminders(db, hid),
         devices,
         members,
@@ -269,6 +275,33 @@ export function familyRoutes(deps: Deps) {
     }),
   )
 
+  r.post(
+    '/:hid/contacts',
+    member,
+    h((req, res) => {
+      const count = (db.prepare('SELECT COUNT(*) n FROM contacts WHERE household_id=?').get(req.householdId!) as { n: number }).n
+      if (count >= 5) throw new HttpError(400, 'Keep it to a few people so the Home screen stays simple (up to 5 more).')
+      res.status(201).json({ id: addContact(db, req.householdId!, parse(contactSchema, req.body)) })
+    }),
+  )
+  r.put(
+    '/:hid/contacts/:id',
+    member,
+    h((req, res) => {
+      if (!updateContact(db, req.householdId!, String(req.params.id), parse(contactSchema, req.body)))
+        throw new HttpError(404, 'That person is no longer in the list.')
+      res.json({ ok: true })
+    }),
+  )
+  r.delete(
+    '/:hid/contacts/:id',
+    member,
+    h((req, res) => {
+      if (!deleteContact(db, req.householdId!, String(req.params.id))) throw new HttpError(404, 'Already removed.')
+      res.json({ ok: true })
+    }),
+  )
+
   /** A seven-day grid of shared answers, ending on `end` (default today). */
   r.get(
     '/:hid/week',
@@ -315,16 +348,18 @@ export function familyRoutes(deps: Deps) {
   function parseMediaPath(p: Record<string, unknown>) {
     return parse(
       z
-        .object({ owner: z.enum(['reminder', 'destination']), ownerId: z.string().uuid(), kind: z.enum(['photo', 'voice']) })
-        .refine((v) => !(v.owner === 'destination' && v.kind === 'voice'), 'Places can have a photo only'),
+        .object({ owner: z.enum(['reminder', 'destination', 'contact']), ownerId: z.string().uuid(), kind: z.enum(['photo', 'voice']) })
+        .refine((v) => v.owner === 'reminder' || v.kind === 'photo', 'Places and people can have a photo only'),
       p,
     )
   }
-  function ensureOwner(hid: string, owner: 'reminder' | 'destination', id: string) {
+  function ensureOwner(hid: string, owner: 'reminder' | 'destination' | 'contact', id: string) {
     const ok =
       owner === 'reminder'
         ? db.prepare('SELECT 1 FROM reminders WHERE id=? AND household_id=? AND deleted_at IS NULL').get(id, hid)
-        : db.prepare('SELECT 1 FROM destinations WHERE id=? AND household_id=?').get(id, hid)
+        : owner === 'destination'
+          ? db.prepare('SELECT 1 FROM destinations WHERE id=? AND household_id=?').get(id, hid)
+          : id === hid || db.prepare('SELECT 1 FROM contacts WHERE id=? AND household_id=?').get(id, hid)
     if (!ok) throw new HttpError(404, 'That item no longer exists.')
   }
 

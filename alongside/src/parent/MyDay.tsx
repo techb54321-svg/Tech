@@ -144,6 +144,11 @@ export function MyDay({
       </ParentScreen>
     )
   }
+  // Opened from a Home tile before it is due: show what and when, nothing to answer yet.
+  const requested = itemKey ? today.items.find((i) => i.key === itemKey) : undefined
+  if (requested && !(requested.type === 'reminder' && liveStatus(requested, Date.now()) === 'due')) {
+    return <Preview item={requested} today={today} />
+  }
   if (!current) return <NothingNow today={today} />
 
   const r = current.reminder
@@ -212,7 +217,8 @@ function ItemHead({ kind, time, title }: { kind: keyof typeof KIND | 'lift'; tim
         </span>
         {label}
       </p>
-      <p className="p-time">{time}</p>
+      {/* Smaller than the clock above, and labelled, so there is only one "now" on screen. */}
+      <p className="item-time">at {time}</p>
       <H1>{title}</H1>
     </div>
   )
@@ -246,6 +252,40 @@ function Answer({
       <Icon aria-hidden="true" />
       <span>{busy === action ? 'Saving…' : text}</span>
     </button>
+  )
+}
+
+function Preview({ item, today }: { item: DayItem; today: ParentToday }) {
+  const navigate = useNavigate()
+  const time = formatTime12(timeOf(item))
+  const r = item.type === 'reminder' ? item.reminder : null
+  const status = item.type === 'reminder' ? liveStatus(item, Date.now()) : null
+  const finished = status === 'done' || status === 'reported_taken'
+  const line = finished ? 'You have done this today.' : `Today at ${time}.`
+  return (
+    <ParentScreen>
+      <ItemHead kind={r ? r.kind : 'lift'} time={time} title={titleOf(item)} />
+      <Photo url={r?.photoUrl ?? null} alt={`Photo for ${titleOf(item)}`} />
+      <p className="p-question">{line}</p>
+      {item.type === 'lift' && <p className="p-detail">{item.lift.details}</p>}
+      {r?.location && (
+        <p className="p-detail">
+          <MapPin aria-hidden="true" />
+          <span>{r.location}</span>
+        </p>
+      )}
+      {r?.notes && <p className="p-detail">{r.notes}</p>}
+      <Listen text={[titleOf(item), line, r?.location, r?.notes].filter(Boolean).join('. ')} voiceUrl={r?.voiceUrl ?? null} name={today.contactName} />
+      <div className="btn-stack">
+        <a className="big-btn blue medium" href="#/">
+          <House aria-hidden="true" />
+          <span>Home</span>
+        </a>
+        <button type="button" className="small-btn plan-btn" onClick={() => navigate('/day/plan')}>
+          <ListChecks aria-hidden="true" /> See today’s plan
+        </button>
+      </div>
+    </ParentScreen>
   )
 }
 

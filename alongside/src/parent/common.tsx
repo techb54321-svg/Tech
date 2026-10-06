@@ -1,13 +1,50 @@
 import type { ReactNode } from 'react'
-import { AudioLines, House, Phone, Volume2, Square } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { AudioLines, House, Moon, Phone, Square, Sun, Sunrise, Volume2 } from 'lucide-react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { formatTime12, localTimeHM } from '../../shared/time'
 import { canSpeak, speak, stopSpeaking } from '../speech'
 import { useNavigate } from '../route'
 
-/** Shell for every parent screen after Home: a clearly labelled Home button, then one task. */
+/** The household's time zone, for the clock shown on every parent screen. */
+export const TimeZoneContext = createContext('Australia/Sydney')
+
+/**
+ * The day and time in big letters at the top of every screen: a constant,
+ * calm answer to "what day is it, and is it morning or afternoon?"
+ */
+export function ClockBar() {
+  const tz = useContext(TimeZoneContext)
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 10000)
+    return () => clearInterval(t)
+  }, [])
+  const weekday = new Intl.DateTimeFormat('en-AU', { timeZone: tz, weekday: 'long' }).format(now)
+  const date = new Intl.DateTimeFormat('en-AU', { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now)
+  const hour = Number(localTimeHM(now, tz).slice(0, 2))
+  const part = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
+  const Icon = part === 'morning' ? Sunrise : part === 'afternoon' ? Sun : Moon
+  return (
+    <div className={`clockbar clock-${part}`} role="group" aria-label="Today">
+      <span className="clock-icon" aria-hidden="true">
+        <Icon />
+      </span>
+      <div className="clock-text">
+        <p className="clock-day">
+          {weekday} <span className="clock-part">{part}</span>
+        </p>
+        <p className="clock-time">{formatTime12(localTimeHM(now, tz))}</p>
+        <p className="clock-date">{date}</p>
+      </div>
+    </div>
+  )
+}
+
+/** Shell for every parent screen after Home: the day and time, a clearly labelled Home button, then one task. */
 export function ParentScreen({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
     <div className="p-wrap">
+      <ClockBar />
       <header className="p-top">
         <a className="home-btn" href="#/">
           <House aria-hidden="true" />
@@ -142,7 +179,8 @@ export function CallButton({
   className = 'big-btn green',
   label,
 }: {
-  who: 'contact' | 'pharmacy'
+  /** 'contact' (main family contact), 'pharmacy', or another contact's id. */
+  who: string
   name: string
   phone: string
   demo: boolean

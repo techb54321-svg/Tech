@@ -66,6 +66,11 @@ export const reminderSchema = z
     }
   })
 
+export const contactSchema = z.object({
+  name: text(30).min(1, 'Enter a name'),
+  phone: phone.refine((v) => v !== '', 'Enter a phone number'),
+})
+
 export const arrangedLiftSchema = z.object({
   date: dateStr,
   time: timeStr,

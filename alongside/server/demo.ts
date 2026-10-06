@@ -4,14 +4,16 @@
 import { randomUUID } from 'node:crypto'
 import type { DB } from './db.js'
 import { nowIso, tx } from './db.js'
-import { addDestination, createHousehold, saveReminder, todayFor, getHousehold } from './store.js'
+import { addContact, addDestination, createHousehold, saveReminder, todayFor, getHousehold } from './store.js'
 import { createSession } from './auth.js'
 import { localDateISO, zonedTimeToInstant } from '../shared/time.js'
 import {
   DEMO_FAMILY_NAME,
   demoDestinationPhotos,
   demoDestinations,
+  demoContacts,
   demoDueNow,
+  demoLaterToday,
   demoLift,
   demoReminderPhotos,
   demoReminders,
@@ -47,6 +49,14 @@ export function createDemo(db: DB, now = new Date()) {
     for (const r of demoReminders(today)) ids[r.key] = saveReminder(db, hid, r.input, DEMO_FAMILY_NAME)!
     const dueNow = demoDueNow(now, DEMO_TZ)
     if (dueNow) saveReminder(db, hid, dueNow, DEMO_FAMILY_NAME)
+    const later = demoLaterToday(now, DEMO_TZ)
+    const put = (owner: 'reminder' | 'contact', id: string, pic: keyof typeof demoMedia) => {
+      const img = decodeMedia('photo', demoMedia[pic])
+      saveMedia(db, hid, owner, id, 'photo', img.mime, img.data)
+    }
+    if (later) put('reminder', saveReminder(db, hid, later, DEMO_FAMILY_NAME)!, 'gym')
+    put('contact', hid, 'anna')
+    put('contact', addContact(db, hid, demoContacts[0]), 'sarah')
     demoDestinations.forEach((d, i) => {
       const id = addDestination(db, hid, d)
       const img = decodeMedia('photo', demoMedia[demoDestinationPhotos[i]])

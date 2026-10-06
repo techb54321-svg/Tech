@@ -62,10 +62,51 @@ const home = `
   <circle cx="110" cy="290" r="40" fill="#16a34a"/><rect x="104" y="300" width="12" height="50" fill="#78350f"/>
 </svg>`
 
+// Friendly illustrated portraits stand in for family photos.
+const portrait = (bg, skin, hair, top, longHair) => `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="${bg}"/>
+  <circle cx="540" cy="70" r="90" fill="#ffffff" opacity="0.25"/>
+  <circle cx="90" cy="380" r="120" fill="#ffffff" opacity="0.2"/>
+  <path d="M170 420 C170 320 240 280 320 280 C400 280 470 320 470 420 Z" fill="${top}"/>
+  ${longHair ? `<path d="M222 190 C215 110 260 70 320 70 C380 70 425 110 418 190 L430 300 L210 300 Z" fill="${hair}"/>` : ''}
+  <rect x="295" y="235" width="50" height="50" rx="16" fill="${skin}"/>
+  <ellipse cx="320" cy="180" rx="82" ry="95" fill="${skin}"/>
+  <path d="M238 165 C236 100 280 78 320 78 C368 78 406 104 402 165 C380 128 340 118 300 128 C276 134 252 146 238 165 Z" fill="${hair}"/>
+  <circle cx="290" cy="185" r="8" fill="#1f2937"/><circle cx="350" cy="185" r="8" fill="#1f2937"/>
+  <path d="M290 222 Q320 248 350 222" stroke="#9f1239" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="268" cy="212" r="12" fill="#fb7185" opacity="0.35"/><circle cx="372" cy="212" r="12" fill="#fb7185" opacity="0.35"/>
+</svg>`
+const gym = `
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+  <rect width="${W}" height="${H}" fill="#ccfbf1"/>
+  <rect y="330" width="${W}" height="90" fill="#fcd34d"/>
+  <text x="320" y="70" text-anchor="middle" font-family="Arial" font-weight="700" font-size="30" fill="#115e59">GENTLE EXERCISE CLASS</text>
+  ${[0, 1, 2].map((i) => {
+    const x = 160 + i * 160
+    const c = ['#db2777', '#2563eb', '#7c3aed'][i]
+    return `<circle cx="${x}" cy="140" r="30" fill="#f2c9a0"/>
+      <rect x="${x - 30}" y="175" width="60" height="90" rx="22" fill="${c}"/>
+      <path d="M${x - 28} 190 L${x - 75} 125" stroke="${c}" stroke-width="18" stroke-linecap="round"/>
+      <path d="M${x + 28} 190 L${x + 75} 125" stroke="${c}" stroke-width="18" stroke-linecap="round"/>
+      <path d="M${x - 15} 262 L${x - 25} 330" stroke="#334155" stroke-width="18" stroke-linecap="round"/>
+      <path d="M${x + 15} 262 L${x + 25} 330" stroke="#334155" stroke-width="18" stroke-linecap="round"/>`
+  }).join('')}
+  <rect x="40" y="290" width="70" height="40" rx="8" fill="#0f766e"/><rect x="530" y="290" width="70" height="40" rx="8" fill="#0f766e"/>
+</svg>`
+
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: W, height: H } })
 const out = {}
-for (const [name, svg] of Object.entries({ tablets: blister, medical: building, shops, home })) {
+for (const [name, svg] of Object.entries({
+  tablets: blister,
+  medical: building,
+  shops,
+  home,
+  anna: portrait('#fde68a', '#f2c9a0', '#7c2d12', '#2563eb', true),
+  sarah: portrait('#c7d2fe', '#d9a37a', '#e5e7eb', '#db2777', false),
+  gym,
+})) {
   await page.setContent(`<style>html,body{margin:0}svg{display:block;width:${W}px;height:${H}px}</style>${svg}`)
   const buf = await page.screenshot({ type: 'jpeg', quality: 78 })
   out[name] = 'data:image/jpeg;base64,' + buf.toString('base64')

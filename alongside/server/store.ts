@@ -8,6 +8,7 @@ import { localDateISO } from '../shared/time.js'
 import { questionFor } from '../shared/questions.js'
 import type {
   ArrangedLift,
+  Contact,
   DayItem,
   Destination,
   Reminder,
@@ -345,4 +346,35 @@ export function firstItemOn(db: DB, h: HouseholdRow, date: string): { title: str
     ...arrangedLiftsOn(db, h.id, date).map((l) => ({ title: `Lift to ${l.destinationLabel}`, time: l.time })),
   ].sort((a, b) => (a.time < b.time ? -1 : 1))
   return candidates[0] ?? null
+}
+
+// ---- people to call ---------------------------------------------------------
+
+/** Main family contact first (photo stored under the household id), then the others. */
+export function listContacts(db: DB, h: HouseholdRow): Contact[] {
+  const media = mediaUrls(db, h.id)
+  const rows = db
+    .prepare('SELECT id, name, phone FROM contacts WHERE household_id=? ORDER BY sort, created_at')
+    .all(h.id) as unknown as Array<{ id: string; name: string; phone: string }>
+  return [
+    { id: h.id, name: h.contact_name, phone: h.contact_phone, photoUrl: media.get(`contact:${h.id}:photo`) ?? null, main: true },
+    ...rows.map((r) => ({ ...r, photoUrl: media.get(`contact:${r.id}:photo`) ?? null, main: false })),
+  ]
+}
+
+export function addContact(db: DB, hid: string, c: { name: string; phone: string }): string {
+  const id = randomUUID()
+  const sort = (db.prepare('SELECT COALESCE(MAX(sort),0)+1 AS n FROM contacts WHERE household_id=?').get(hid) as { n: number }).n
+  db.prepare('INSERT INTO contacts (id, household_id, name, phone, sort, created_at) VALUES (?,?,?,?,?,?)').run(id, hid, c.name, c.phone, sort, nowIso())
+  return id
+}
+
+export function updateContact(db: DB, hid: string, id: string, c: { name: string; phone: string }): boolean {
+  return db.prepare('UPDATE contacts SET name=?, phone=? WHERE id=? AND household_id=?').run(c.name, c.phone, id, hid).changes > 0
+}
+
+export function deleteContact(db: DB, hid: string, id: string): boolean {
+  const ok = db.prepare('DELETE FROM contacts WHERE id=? AND household_id=?').run(id, hid).changes > 0
+  if (ok) deleteMedia(db, hid, 'contact', id)
+  return ok
 }

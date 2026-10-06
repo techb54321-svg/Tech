@@ -148,6 +148,21 @@ All colours still pass the 4.5:1 text-contrast check in the browser tests.
 
 This replaces the original brief's Previous/Next browsing, which asks too much of someone with memory loss.
 
+### Fifth round: picture tiles, puzzles, and the day and time everywhere
+
+- **Home is a set of picture tiles**: My day, today's appointment or outing (for example "Gym class, Today 6:45 pm"),
+  **Call …** for each person (with their photo), **Taxi** and **Puzzles**. Phones show two across, or one per row with
+  the picture beside the words on narrow screens and with large text. Tablets show three across.
+- **People to call** (Family setup → Setup): the family contact plus up to five more, each with a photo.
+- **Word search** (Puzzles), made for someone living with dementia:
+  - a 6 × 6 grid with big letters and four everyday words on one theme
+  - words run across or down only, and the letters can be tapped in any order
+  - no timer or score, and "Another puzzle" when finished
+- **The day and time in big letters at the top of every parent screen**: "Tuesday evening", "5:16 pm" and the date,
+  with a sun or moon. On reminders, the reminder's own time is smaller and reads "at 5:13 pm", so there is only one
+  "now" on screen.
+- Tapping today's appointment tile before it is due shows what and when, with nothing to answer yet.
+
 ## Integrations and their limits
 
 The integrations live in `server/integrations/`.

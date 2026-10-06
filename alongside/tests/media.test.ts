@@ -63,6 +63,27 @@ describe('photos and voice messages', () => {
   })
 })
 
+describe('people to call', () => {
+  it('lists the family contact first, then others, with photos only for the household', async () => {
+    const { base } = await setup()
+    const { family, parent, hid } = await household(base)
+    const sarah = (await family.post(`/api/family/${hid}/contacts`, { name: 'Sarah', phone: '0491 570 158' })).json.id
+    expect((await family.post(`/api/family/${hid}/contacts`, { name: '', phone: '1' })).status).toBe(400)
+    expect((await family.put(`/api/family/${hid}/media/contact/${sarah}/photo`, { dataUrl: jpeg })).status).toBe(200)
+    expect((await family.put(`/api/family/${hid}/media/contact/${hid}/photo`, { dataUrl: jpeg })).status).toBe(200)
+    expect((await family.put(`/api/family/${hid}/media/contact/${sarah}/voice`, { dataUrl: webm })).status).toBe(400)
+    const c = (await parent.get('/api/parent/today')).json.contacts
+    expect(c.map((x: { name: string; main: boolean }) => [x.name, x.main])).toEqual([['Anna', true], ['Sarah', false]])
+    expect(c[1].photoUrl).toMatch(`/api/media/${hid}/contact/${sarah}/photo`)
+    const other = await household(base, 'other@example.com')
+    expect((await other.family.put(`/api/family/${hid}/contacts/${sarah}`, { name: 'X', phone: '0491 570 158' })).status).toBe(404)
+    expect((await other.family.get(c[1].photoUrl)).status).toBe(404)
+    expect((await parent.post(`/api/family/${hid}/contacts`, { name: 'Y', phone: '0491 570 159' })).status).toBe(401)
+    expect((await family.del(`/api/family/${hid}/contacts/${sarah}`)).status).toBe(200)
+    expect((await parent.get('/api/parent/today')).json.contacts).toHaveLength(1)
+  })
+})
+
 describe('plain questions', () => {
   it('asks a plain question: default for medication, family wording for routines, none for appointments', async () => {
     const { base } = await setup()

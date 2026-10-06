@@ -42,6 +42,7 @@ export function FamilySetup({ info, refresh }: { info: FamilyInfo; refresh: () =
   return (
     <>
       <SettingsForm info={info} refresh={refresh} />
+      <People info={info} refresh={refresh} />
       <Places info={info} refresh={refresh} />
       <Sharing info={info} />
       <Delivery info={info} />
@@ -330,6 +331,119 @@ function Delivery({ info }: { info: FamilyInfo }) {
         changes.
       </p>
       </>
+      )}
+    </section>
+  )
+}
+
+type PersonEdit = { id: string | null; main: boolean; name: string; phone: string; current: string | null; photo: MediaChange; savedId?: string }
+
+/** The people shown as "Call …" tiles on the parent's Home screen. */
+function People({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
+  const [edit, setEdit] = useState<PersonEdit | null>(null)
+  const act = useAction()
+  const del = useAction()
+  const parent = info.settings.parentName
+  return (
+    <section className="card" aria-labelledby="pp-h">
+      <h2 id="pp-h">People to call</h2>
+      <p className="small muted">
+        Each person becomes a “Call …” picture on {parent}’s Home screen. A clear, recent photo of their face helps most.
+        The first person is the family contact above, who is also asked when {parent} needs help.
+      </p>
+      <ErrorBanner error={del.error} onRetry={del.retry} />
+      <ul className="list">
+        {info.contacts.map((c) => (
+          <li key={c.id}>
+            <span>
+              {c.photoUrl ? <img className="thumb-sm" src={c.photoUrl} alt="" /> : null}
+              <strong>{c.name}</strong> · {c.phone || 'no number yet'}
+              {c.main && <span className="pill info"> Family contact</span>}
+            </span>
+            <span className="row">
+              <button
+                className="btn secondary"
+                onClick={() => setEdit({ id: c.id, main: c.main, name: c.name, phone: c.phone, current: c.photoUrl, photo: undefined })}
+              >
+                {c.main ? 'Photo' : 'Edit'}
+              </button>
+              {!c.main && (
+                <ConfirmButton
+                  label="Remove"
+                  confirmLabel="Yes, remove"
+                  question={`Remove ${c.name}?`}
+                  disabled={del.busy}
+                  onConfirm={async () => {
+                    await del.run(() => api('DELETE', `/api/family/${info.id}/contacts/${c.id}`), refresh)
+                  }}
+                />
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {edit ? (
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const ed = edit
+            await act.run(
+              async () => {
+                let target = ed.id ?? ed.savedId
+                if (!ed.main) {
+                  const body = { name: ed.name, phone: ed.phone }
+                  if (target) await api('PUT', `/api/family/${info.id}/contacts/${target}`, body)
+                  else target = ed.savedId = (await api<{ id: string }>('POST', `/api/family/${info.id}/contacts`, body)).id
+                }
+                if (ed.photo !== undefined) {
+                  const url = `/api/family/${info.id}/media/contact/${target}/photo`
+                  await (ed.photo === null ? api('DELETE', url) : api('PUT', url, { dataUrl: ed.photo })).catch((err) => {
+                    throw new ApiError(err instanceof ApiError ? err.status : 0, `Saved, but the photo was not: ${err instanceof Error ? err.message : ''}`)
+                  })
+                }
+              },
+              async () => {
+                setEdit(null)
+                await refresh()
+              },
+            )
+          }}
+        >
+          <h3>{edit.main ? `Photo of ${edit.name}` : edit.id ? `Edit ${edit.name}` : 'Add someone to call'}</h3>
+          {!edit.main && (
+            <div className="two-col">
+              <Field id="pp-name" label="Name on the button" hint="Short, e.g. “Sarah”" error={act.fields.name}>
+                <input id="pp-name" value={edit.name} maxLength={30} onChange={(e) => setEdit({ ...edit, name: e.target.value })} required />
+              </Field>
+              <Field id="pp-phone" label="Phone number" error={act.fields.phone}>
+                <input id="pp-phone" type="tel" value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} required />
+              </Field>
+            </div>
+          )}
+          <PhotoPicker
+            id="pp-photo"
+            current={edit.current}
+            change={edit.photo}
+            onChange={(photo) => setEdit({ ...edit, photo })}
+            hint="A clear photo of their face."
+          />
+          <ErrorBanner error={act.error} onRetry={act.retry} />
+          <div className="row">
+            <button className="btn" disabled={act.busy}>
+              {act.busy ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" className="btn secondary" onClick={() => setEdit(null)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div>
+          <button className="btn" onClick={() => setEdit({ id: null, main: false, name: '', phone: '', current: null, photo: undefined })}>
+            Add someone to call
+          </button>
+        </div>
       )}
     </section>
   )

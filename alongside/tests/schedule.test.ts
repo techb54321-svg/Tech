@@ -81,31 +81,23 @@ describe('occurrences', () => {
     expect(occurrenceStatus(daily, '2026-10-06', SYD, later, new Date('2026-10-05T21:26:00Z')).status).toBe('due')
   })
 
-  it('an unanswered reminder becomes "no response", which for medication reads "not confirmed"', () => {
+  it('an unanswered reminder becomes "no response" once its time has well passed', () => {
     const st = occurrenceStatus(daily, '2026-10-06', SYD, null, new Date('2026-10-06T02:00:00Z')).status
     expect(st).toBe('no_response')
-    expect(familyStatusLabel('medication', st)).toMatch(/Not confirmed/)
+    expect(familyStatusLabel('routine', st)).toBe('No answer')
   })
 
-  it('"Not sure" is never treated as taken', () => {
-    const r: ResponseRecord = {
-      reminderId: 'r',
-      occurrenceDate: '2026-10-06',
-      action: 'not_sure',
-      snoozeUntil: null,
-      createdAt: '2026-10-05T21:05:00Z',
-    }
-    const st = occurrenceStatus(daily, '2026-10-06', SYD, r, new Date('2026-10-05T21:06:00Z')).status
-    expect(st).toBe('not_sure')
-    expect(familyStatusLabel('medication', st)).toBe('Not sure — not confirmed')
-    expect(familyStatusLabel('medication', 'reported_taken')).toBe('Reported taken (not verified)')
+  it('YES / NO answers to an invitation are recorded as such', () => {
+    const r = (action: 'yes' | 'no'): ResponseRecord => ({ reminderId: 'r', occurrenceDate: '2026-10-06', action, snoozeUntil: null, createdAt: '2026-10-05T21:05:00Z' })
+    expect(occurrenceStatus(daily, '2026-10-06', SYD, r('yes'), new Date('2026-10-05T21:06:00Z')).status).toBe('said_yes')
+    expect(occurrenceStatus(daily, '2026-10-06', SYD, r('no'), new Date('2026-10-05T21:06:00Z')).status).toBe('said_no')
   })
 
   it('the latest answer for that day wins', () => {
     const rs: ResponseRecord[] = [
-      { reminderId: 'r', occurrenceDate: 'd', action: 'not_sure', snoozeUntil: null, createdAt: '2026-10-05T21:05:00Z' },
-      { reminderId: 'r', occurrenceDate: 'd', action: 'taken', snoozeUntil: null, createdAt: '2026-10-05T21:30:00Z' },
+      { reminderId: 'r', occurrenceDate: 'd', action: 'later', snoozeUntil: null, createdAt: '2026-10-05T21:05:00Z' },
+      { reminderId: 'r', occurrenceDate: 'd', action: 'done', snoozeUntil: null, createdAt: '2026-10-05T21:30:00Z' },
     ]
-    expect(latestResponse(rs, 'r', 'd')?.action).toBe('taken')
+    expect(latestResponse(rs, 'r', 'd')?.action).toBe('done')
   })
 })

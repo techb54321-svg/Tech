@@ -179,7 +179,7 @@ export function CallButton({
   className = 'big-btn green',
   label,
 }: {
-  /** 'contact' (main family contact), 'pharmacy', or another contact's id. */
+  /** 'contact' (main family contact) or another contact's id. */
   who: string
   name: string
   phone: string

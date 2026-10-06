@@ -85,15 +85,14 @@ describe('people to call', () => {
 })
 
 describe('plain questions', () => {
-  it('asks a plain question: default for medication, family wording for routines, none for appointments', async () => {
+  it('asks a plain question: family wording or a default for routines, none for appointments', async () => {
     const { base } = await setup()
     const { family, parent, hid } = await household(base)
-    await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets', time: '08:00', medScheduleConfirmed: true }))
     await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Shower', time: '09:00', question: 'Have you had your shower?' }))
     await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Walk', time: '10:00' }))
     await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'appointment', title: 'Dr Chen', time: '11:00', repeat: 'none' }))
     const q = (await parent.get('/api/parent/today')).json.items.map((i: { reminder: { question: string | null } }) => i.reminder.question)
-    expect(q).toEqual(['Have you taken your morning tablets?', 'Have you had your shower?', 'Have you done this?', null])
+    expect(q).toEqual(['Have you had your shower?', 'Have you done this?', null])
     expect((await family.post(`/api/family/${hid}/reminders`, reminder({ question: 'x'.repeat(81) }))).status).toBe(400)
   })
 })
@@ -102,16 +101,16 @@ describe('week view and day extras', () => {
   it('returns seven days of shared statuses and keeps private routines private', async () => {
     const { base, clock } = await setup()
     const { family, parent, hid } = await household(base)
-    const med = (await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Tablets', time: '08:00', startDate: '2026-10-01', medScheduleConfirmed: true }))).json.id
+    const med = (await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Tablets', time: '08:00', startDate: '2026-10-01' }))).json.id
     await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Shower', startDate: '2026-10-01', shareResponses: false }))
-    await parent.post('/api/parent/responses', { clientRequestId: randomUUID(), reminderId: med, occurrenceDate: '2026-10-06', action: 'taken' })
+    await parent.post('/api/parent/responses', { clientRequestId: randomUUID(), reminderId: med, occurrenceDate: '2026-10-06', action: 'done' })
     clock.advance(0)
     const w = (await family.get(`/api/family/${hid}/week`)).json
     expect(w.days).toEqual(['2026-09-30', '2026-10-01', '2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06'])
     const tablets = w.rows.find((r: { title: string }) => r.title === 'Tablets')
     expect(tablets.cells['2026-09-30']).toBeUndefined()
     expect(tablets.cells['2026-10-05']).toBe('no_response')
-    expect(tablets.cells['2026-10-06']).toBe('reported_taken')
+    expect(tablets.cells['2026-10-06']).toBe('done')
     const shower = w.rows.find((r: { title: string }) => r.title === 'Shower')
     expect(Object.values(shower.cells).every((v) => v === 'private')).toBe(true)
     expect((await parent.get(`/api/family/${hid}/week`)).status).toBe(401)
@@ -120,14 +119,14 @@ describe('week view and day extras', () => {
   it('tells the parent what tomorrow starts with, and carries the hands-free settings', async () => {
     const { base } = await setup()
     const { family, parent, hid } = await household(base)
-    await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Morning tablets', kind: 'medication', time: '08:00', medScheduleConfirmed: true }))
+    await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Morning walk', time: '08:00' }))
     await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Bingo', kind: 'social', time: '14:00', repeat: 'none', startDate: '2026-10-07' }))
     await family.put(`/api/family/${hid}/settings`, {
       parentName: 'Margaret', timeZone: 'Australia/Sydney', contactName: 'Anna', contactPhone: '', pharmacyName: '', pharmacyPhone: '',
       smsAlerts: false, autoSpeak: true, keepAwake: true,
     })
     const t = (await parent.get('/api/parent/today')).json
-    expect(t.tomorrow).toEqual({ title: 'Morning tablets', time: '08:00' })
+    expect(t.tomorrow).toEqual({ title: 'Morning walk', time: '08:00' })
     expect(t.autoSpeak).toBe(true)
     expect(t.keepAwake).toBe(true)
   })

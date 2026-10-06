@@ -7,19 +7,17 @@ import { ErrorBanner, fmtDateTime, useAction, type FamilyInfo } from './ui'
 import { messageLabel, useDay, type DayData } from './day'
 import { WeekGrid } from './WeekGrid'
 
-function statusTone(s: OccurrenceStatus | 'private', medication: boolean) {
+function statusTone(s: OccurrenceStatus | 'private') {
   switch (s) {
     case 'done':
-    case 'reported_taken':
     case 'said_yes':
       return 'ok'
     case 'said_no':
       return 'neutral'
     case 'help_requested':
-    case 'not_sure':
       return 'err'
     case 'no_response':
-      return medication ? 'warn' : 'neutral'
+      return 'neutral'
     case 'due':
     case 'snoozed':
       return 'warn'
@@ -69,9 +67,8 @@ export function FamilyToday({ info }: { info: FamilyInfo }) {
               <li key={s.reminderId}>
                 <span>
                   <strong>{formatTime12(s.time)}</strong> {s.title}
-                  {s.kind === 'medication' && <span className="muted small"> · medication</span>}
                 </span>
-                <span className={`pill ${statusTone(s.status, s.kind === 'medication')}`}>
+                <span className={`pill ${statusTone(s.status)}`}>
                   {s.status === 'private'
                     ? 'Private — answers not shared'
                     : familyStatusLabel(s.kind, s.status) +
@@ -82,9 +79,6 @@ export function FamilyToday({ info }: { info: FamilyInfo }) {
             ))}
           </ul>
         )}
-        <p className="small muted">
-          Medication answers are what {info.settings.parentName} reported in the app. They are not verified.
-        </p>
       </section>
       <WeekGrid info={info} />
     </>

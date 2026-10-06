@@ -65,8 +65,8 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
     s.timeZone,
     s.contactName,
     s.contactPhone,
-    s.pharmacyName,
-    s.pharmacyPhone,
+    s.pharmacyName ?? '',
+    s.pharmacyPhone ?? '',
     s.smsAlerts ? 1 : 0,
     s.autoSpeak ? 1 : 0,
     s.keepAwake ? 1 : 0,
@@ -80,7 +80,7 @@ export function updateSettings(db: DB, id: string, s: SettingsInput) {
   db.prepare(
     `UPDATE households SET parent_name=?, time_zone=?, contact_name=?, contact_phone=?, pharmacy_name=?,
        pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=? WHERE id=?`,
-  ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName, s.pharmacyPhone, s.smsAlerts ? 1 : 0,
+  ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName ?? '', s.pharmacyPhone ?? '', s.smsAlerts ? 1 : 0,
     s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, id)
 }
 
@@ -145,8 +145,6 @@ interface ReminderRow {
   ask: number
   remind_minutes_before: number
   share_responses: number
-  med_confirmed_at: string | null
-  med_confirmed_by: string | null
 }
 
 const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
@@ -168,8 +166,6 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   ask: !!r.ask,
   remindMinutesBefore: r.remind_minutes_before,
   shareResponses: !!r.share_responses,
-  medScheduleConfirmedAt: r.med_confirmed_at,
-  medScheduleConfirmedBy: r.med_confirmed_by,
   photoUrl: media.get(`reminder:${r.id}:photo`) ?? null,
   voiceUrl: media.get(`reminder:${r.id}:voice`) ?? null,
 })
@@ -177,13 +173,14 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
 export function listReminders(db: DB, hid: string): Reminder[] {
   const media = mediaUrls(db, hid)
   return (db
-    .prepare('SELECT * FROM reminders WHERE household_id = ? AND deleted_at IS NULL ORDER BY time, title')
+    // Medication reminders from earlier versions are hidden, not deleted.
+    .prepare("SELECT * FROM reminders WHERE household_id = ? AND deleted_at IS NULL AND kind != 'medication' ORDER BY time, title")
     .all(hid) as unknown as ReminderRow[]).map((r) => toReminder(r, media))
 }
 
 export function getReminder(db: DB, hid: string, id: string): Reminder | null {
   const r = db
-    .prepare('SELECT * FROM reminders WHERE id = ? AND household_id = ? AND deleted_at IS NULL')
+    .prepare("SELECT * FROM reminders WHERE id = ? AND household_id = ? AND deleted_at IS NULL AND kind != 'medication'")
     .get(id, hid) as ReminderRow | undefined
   return r ? toReminder(r, mediaUrls(db, hid)) : null
 }
@@ -196,10 +193,10 @@ export function saveReminder(
   id?: string,
 ): string | null {
   const now = nowIso()
-  const isMed = input.kind === 'medication'
-  // The schedule confirmation is renewed on every save of a medication reminder.
-  const medAt = isMed ? now : null
-  const medBy = isMed ? byName : null
+  // Alongside no longer handles medication; these columns stay empty.
+  const medAt = null
+  const medBy = null
+  void byName
   // Transport and invitation details apply to outings and appointments only.
   const outing = input.kind === 'appointment' || input.kind === 'social'
   const extras = [
@@ -420,9 +417,10 @@ export function listPhotos(db: DB, hid: string, today: string): SharedPhoto[] {
 
 export function listSongs(db: DB, hid: string): Song[] {
   const media = mediaUrls(db, hid)
-  const rows = db.prepare('SELECT id, title FROM songs WHERE household_id=? ORDER BY created_at').all(hid) as unknown as Array<{
+  const rows = db.prepare('SELECT id, title, artist FROM songs WHERE household_id=? ORDER BY created_at').all(hid) as unknown as Array<{
     id: string
     title: string
+    artist: string
   }>
   return rows.map((r) => ({ ...r, url: media.get(`song:${r.id}:audio`) ?? '' })).filter((s) => s.url)
 }

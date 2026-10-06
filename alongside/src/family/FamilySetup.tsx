@@ -90,12 +90,6 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
         <Field id="st-cp" label="Family contact phone" error={act.fields.contactPhone}>
           <input id="st-cp" type="tel" value={s.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} autoComplete="tel" />
         </Field>
-        <Field id="st-pn" label="Pharmacy name (optional)" hint="Offered when the answer to a medication reminder is “Not sure”" error={act.fields.pharmacyName}>
-          <input id="st-pn" value={s.pharmacyName} onChange={(e) => set('pharmacyName', e.target.value)} />
-        </Field>
-        <Field id="st-pp" label="Pharmacy phone (optional)" error={act.fields.pharmacyPhone}>
-          <input id="st-pp" type="tel" value={s.pharmacyPhone} onChange={(e) => set('pharmacyPhone', e.target.value)} />
-        </Field>
       </div>
       <label className="check">
         <input type="checkbox" checked={s.smsAlerts} onChange={(e) => set('smsAlerts', e.target.checked)} />

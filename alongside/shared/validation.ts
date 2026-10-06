@@ -21,8 +21,9 @@ export const settingsSchema = z.object({
   timeZone: timeZoneSchema,
   contactName: text(40).min(1, 'Enter a name'),
   contactPhone: phone,
-  pharmacyName: text(60),
-  pharmacyPhone: phone,
+  // Kept for older clients and data; no longer shown anywhere.
+  pharmacyName: text(60).default(''),
+  pharmacyPhone: phone.default(''),
   smsAlerts: z.boolean(),
   /** Play or read a reminder aloud when it comes up on screen. */
   autoSpeak: z.boolean().default(false),
@@ -40,7 +41,8 @@ export const destinationSchema = z.object({
 
 export const reminderSchema = z
   .object({
-    kind: z.enum(['appointment', 'social', 'routine', 'medication']),
+    // No medication: Alongside does not manage medicines.
+    kind: z.enum(['appointment', 'social', 'routine'], { message: 'Choose appointment, social activity or daily routine' }),
     title: text(60).min(1, 'Enter a short title'),
     time: timeStr,
     startDate: dateStr,
@@ -61,17 +63,10 @@ export const reminderSchema = z
     ask: z.boolean().default(false),
     remindMinutesBefore: z.number().int().min(0).max(240),
     shareResponses: z.boolean(),
-    /** Must be true to save a medication reminder. */
-    medScheduleConfirmed: z.boolean(),
+    /** Ignored; accepted so older clients keep working. */
+    medScheduleConfirmed: z.boolean().optional(),
   })
   .superRefine((v, ctx) => {
-    if (v.kind === 'medication' && !v.medScheduleConfirmed) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['medScheduleConfirmed'],
-        message: 'Confirm this matches the existing, verified medication schedule',
-      })
-    }
     if (v.endDate && v.endDate < v.startDate) {
       ctx.addIssue({ code: 'custom', path: ['endDate'], message: 'End date is before the start date' })
     }
@@ -81,7 +76,7 @@ export const photoSchema = z.object({
   caption: text(80),
   showDate: dateStr,
 })
-export const songSchema = z.object({ title: text(60).min(1, 'Enter the song’s name') })
+export const songSchema = z.object({ title: text(60).min(1, 'Enter the song’s name'), artist: text(60).default('') })
 export const SONG_MAX_BYTES = 12 * 1024 * 1024
 
 export const contactSchema = z.object({
@@ -103,7 +98,7 @@ export const responseSchema = z.object({
   clientRequestId,
   reminderId: z.string().uuid(),
   occurrenceDate: dateStr,
-  action: z.enum(['done', 'taken', 'later', 'not_sure', 'need_help', 'not_today', 'yes', 'no']),
+  action: z.enum(['done', 'later', 'need_help', 'not_today', 'yes', 'no']),
 })
 
 export const tripDestinationSchema = z.object({

@@ -11,8 +11,8 @@ export const demoSettings: SettingsInput = {
   timeZone: 'Australia/Sydney',
   contactName: 'Anna',
   contactPhone: '0491 570 156',
-  pharmacyName: 'Banksia Pharmacy',
-  pharmacyPhone: '0491 570 157',
+  pharmacyName: '',
+  pharmacyPhone: '',
   smsAlerts: false,
 }
 
@@ -23,14 +23,12 @@ export const demoDestinations: DestinationInput[] = [
 ]
 
 export function demoReminders(today: string): Array<{ key: string; input: ReminderInput }> {
-  const base = { endDate: null, location: '', notes: '', question: '', remindMinutesBefore: 0, medScheduleConfirmed: false }
+  const base = { endDate: null, location: '', notes: '', question: '', remindMinutesBefore: 0 }
   return [
-    { key: 'morningMeds', input: { ...base, kind: 'medication', title: 'Morning tablets', time: '08:00', startDate: today, repeat: 'daily', notes: 'From the blister pack, morning slot.', shareResponses: true, medScheduleConfirmed: true } },
     { key: 'shower', input: { ...base, kind: 'routine', title: 'Shower', time: '09:00', startDate: today, repeat: 'daily', question: 'Have you had your shower?', shareResponses: false } },
     { key: 'doctor', input: { ...base, kind: 'appointment', title: 'Dr Chen', time: '10:30', startDate: today, repeat: 'none', location: 'Banksia Road Medical Centre, 12 Banksia Road', notes: 'Bring your Medicare card.', remindMinutesBefore: 60, shareResponses: true } },
     { key: 'lunch', input: { ...base, kind: 'social', title: 'Lunch with Jean', time: '12:30', startDate: today, repeat: 'none', location: 'Wattleton Village Café', shareResponses: true } },
     { key: 'walk', input: { ...base, kind: 'routine', title: 'Short walk', time: '15:00', startDate: today, repeat: 'daily', question: 'Have you been for your walk?', shareResponses: true } },
-    { key: 'eveningMeds', input: { ...base, kind: 'medication', title: 'Evening tablets', time: '18:00', startDate: today, repeat: 'daily', notes: 'From the blister pack, evening slot.', shareResponses: true, medScheduleConfirmed: true } },
     { key: 'bingo', input: { ...base, kind: 'social', title: 'Bingo at the club', time: '14:00', startDate: addDaysISO(today, 2), repeat: 'none', location: 'Wattleton Bowling Club', shareResponses: true } },
   ]
 }
@@ -45,7 +43,7 @@ export function demoDueNow(now: Date, tz: string): ReminderInput | null {
   return {
     kind: 'routine', title: 'Glass of water', time: localTimeHM(at, tz), startDate: localDateISO(now, tz), repeat: 'none',
     endDate: null, location: '', notes: '', question: 'Have you had a glass of water?', remindMinutesBefore: 0,
-    shareResponses: true, medScheduleConfirmed: false,
+    shareResponses: true,
   }
 }
 
@@ -58,7 +56,7 @@ export function demoOutingsToday(now: Date, tz: string): Array<{ input: Reminder
   const slot = (mins: number) => new Date(Math.ceil((now.getTime() + mins * 60000) / (15 * 60000)) * 15 * 60000)
   const hm = (d: Date, delta = 0) => localTimeHM(new Date(d.getTime() + delta * 60000), tz)
   const today = localDateISO(now, tz)
-  const base = { startDate: today, repeat: 'none' as const, endDate: null, question: '', remindMinutesBefore: 60, shareResponses: true, medScheduleConfirmed: false }
+  const base = { startDate: today, repeat: 'none' as const, endDate: null, question: '', remindMinutesBefore: 60, shareResponses: true }
   const out: Array<{ input: ReminderInput; picture: 'gym' | 'coffee' | 'shops'; at: Date }> = []
   const gym = slot(90)
   out.push({ at: gym, picture: 'gym', input: { ...base, kind: 'social', title: 'Gym class', subtitle: 'Pilates', time: hm(gym),
@@ -86,13 +84,13 @@ export function demoPhotos(today: string) {
   ]
 }
 
-export const demoSongs = [{ title: 'Twinkle, Twinkle, Little Star', picture: 'song' as const }]
+export const demoSongs = [{ title: 'Twinkle, Twinkle, Little Star', artist: 'Traditional', picture: 'song' as const }]
 
 /** More people to call from Home (ACMA fictional numbers, never dialled in the demo). */
 export const demoContacts = [{ name: 'Sarah', phone: '0491 570 158' }]
 
 /** Which demo items carry an illustration (see shared/demoMedia.ts). */
-export const demoReminderPhotos: Record<string, 'tablets' | 'medical'> = { morningMeds: 'tablets', eveningMeds: 'tablets', doctor: 'medical' }
+export const demoReminderPhotos: Record<string, 'medical'> = { doctor: 'medical' }
 export const demoDestinationPhotos: Array<'medical' | 'shops' | 'home'> = ['medical', 'shops', 'home']
 
 export const demoLift = {

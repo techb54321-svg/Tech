@@ -1,6 +1,7 @@
 // Types shared by the server and the browser.
 
-export type ReminderKind = 'appointment' | 'social' | 'routine' | 'medication'
+// Alongside does not handle medication: there is no medication reminder type.
+export type ReminderKind = 'appointment' | 'social' | 'routine'
 export type Repeat = 'none' | 'daily'
 
 export interface Reminder {
@@ -31,17 +32,14 @@ export interface Reminder {
   remindMinutesBefore: number
   /** The parent has agreed that family may see their responses. */
   shareResponses: boolean
-  /** Medication only: when and by whom the schedule match was confirmed. */
-  medScheduleConfirmedAt: string | null
-  medScheduleConfirmedBy: string | null
   /** Optional family photo (e.g. the blister pack, the doctor, the entrance). */
   photoUrl: string | null
   /** Optional voice message recorded by family. */
   voiceUrl: string | null
 }
 
-/** What the parent tapped. "taken" is only ever *reported* taken. */
-export type ResponseAction = 'done' | 'taken' | 'later' | 'not_sure' | 'need_help' | 'not_today' | 'yes' | 'no'
+/** What the parent tapped. */
+export type ResponseAction = 'done' | 'later' | 'need_help' | 'not_today' | 'yes' | 'no'
 
 export interface ResponseRecord {
   reminderId: string
@@ -55,15 +53,13 @@ export type OccurrenceStatus =
   | 'upcoming'
   | 'due'
   | 'done'
-  | 'reported_taken'
   | 'snoozed'
-  | 'not_sure'
   | 'help_requested'
   | 'not_today'
   /** Answered an invitation ("Coffee at the Feathers today?"). */
   | 'said_yes'
   | 'said_no'
-  /** Time has passed with no answer. For medication this means "not confirmed". */
+  /** Time has passed with no answer. */
   | 'no_response'
 
 export interface Destination {
@@ -105,6 +101,7 @@ export interface SharedPhoto {
 export interface Song {
   id: string
   title: string
+  artist: string
   url: string
 }
 
@@ -143,8 +140,6 @@ export interface ParentToday {
   parentName: string
   contactName: string
   contactPhone: string
-  pharmacyName: string
-  pharmacyPhone: string
   timeZone: string
   autoSpeak: boolean
   keepAwake: boolean

@@ -163,7 +163,6 @@ const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: W, height: H } })
 const out = {}
 for (const [name, svg] of Object.entries({
-  tablets: blister,
   medical: building,
   shops,
   home,

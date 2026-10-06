@@ -33,8 +33,6 @@ export function latestResponse(
 
 const ACTION_STATUS: Record<Exclude<ResponseRecord['action'], 'later'>, OccurrenceStatus> = {
   done: 'done',
-  taken: 'reported_taken',
-  not_sure: 'not_sure',
   need_help: 'help_requested',
   not_today: 'not_today',
   yes: 'said_yes',
@@ -70,27 +68,22 @@ export function occurrenceStatus(
 
 /** Statuses for which the parent has finished with the item. */
 export function isSettled(s: OccurrenceStatus): boolean {
-  return s === 'done' || s === 'reported_taken' || s === 'not_today' || s === 'said_no'
+  return s === 'done' || s === 'not_today' || s === 'said_no'
 }
 
 export const LATER_MINUTES = 20
 
-/** Wording family members see. Never says "taken" without "reported". */
-export function familyStatusLabel(kind: Reminder['kind'], s: OccurrenceStatus): string {
-  const med = kind === 'medication'
+/** Wording family members see. */
+export function familyStatusLabel(_kind: Reminder['kind'], s: OccurrenceStatus): string {
   switch (s) {
     case 'upcoming':
       return 'Not yet due'
     case 'due':
-      return med ? 'Due — not confirmed' : 'Due — no answer yet'
+      return 'Due — no answer yet'
     case 'done':
       return 'Marked done'
-    case 'reported_taken':
-      return 'Reported taken (not verified)'
     case 'snoozed':
       return 'Postponed'
-    case 'not_sure':
-      return 'Not sure — not confirmed'
     case 'help_requested':
       return 'Asked for help'
     case 'not_today':
@@ -100,6 +93,6 @@ export function familyStatusLabel(kind: Reminder['kind'], s: OccurrenceStatus): 
     case 'said_no':
       return 'Said no'
     case 'no_response':
-      return med ? 'Not confirmed (no answer)' : 'No answer'
+      return 'No answer'
   }
 }

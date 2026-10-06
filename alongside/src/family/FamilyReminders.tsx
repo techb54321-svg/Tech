@@ -5,7 +5,7 @@ import { questionFor } from '../../shared/questions'
 import { CAR_FILL } from '../parent/illustrations'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
-import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
+import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, useAction, type FamilyInfo } from './ui'
 
 type Draft = {
   kind: ReminderKind
@@ -25,12 +25,9 @@ type Draft = {
   ask: boolean
   remindMinutesBefore: number
   shareResponses: boolean
-  medScheduleConfirmed: boolean
 }
 
 const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { notes?: string; question?: string }> = [
-  { kind: 'medication', title: 'Morning tablets', time: '08:00', repeat: 'daily', notes: 'From the blister pack, morning slot.' },
-  { kind: 'medication', title: 'Evening tablets', time: '18:00', repeat: 'daily', notes: 'From the blister pack, evening slot.' },
   { kind: 'routine', title: 'Drink a glass of water', time: '10:00', repeat: 'daily', question: 'Have you had a glass of water?' },
   { kind: 'routine', title: 'Shower', time: '09:00', repeat: 'daily', question: 'Have you had your shower?' },
   { kind: 'routine', title: 'Short walk', time: '15:00', repeat: 'daily', question: 'Have you been for your walk?' },
@@ -43,7 +40,7 @@ const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { not
   { kind: 'social', title: 'Shopping', time: '10:00', repeat: 'none', notes: 'Bring your shopping bags.' },
 ]
 
-const GROUP_LABEL = { appointment: 'Appointments', social: 'Social activities', routine: 'Daily routines', medication: 'Medication' } as const
+const GROUP_LABEL = { appointment: 'Appointments', social: 'Social activities and outings', routine: 'Daily routines' } as const
 
 const blank = (today: string): Draft => ({
   kind: 'appointment',
@@ -63,7 +60,6 @@ const blank = (today: string): Draft => ({
   ask: false,
   remindMinutesBefore: 60,
   shareResponses: false,
-  medScheduleConfirmed: false,
 })
 
 const fromReminder = (r: Reminder): Draft => ({
@@ -84,8 +80,6 @@ const fromReminder = (r: Reminder): Draft => ({
   ask: r.ask,
   remindMinutesBefore: r.remindMinutesBefore,
   shareResponses: r.shareResponses,
-  // Editing a medication reminder requires confirming the schedule again.
-  medScheduleConfirmed: false,
 })
 
 export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
@@ -94,7 +88,7 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
   const del = useAction()
   const parent = info.settings.parentName
 
-  const groups: ReminderKind[] = ['appointment', 'social', 'routine', 'medication']
+  const groups: ReminderKind[] = ['appointment', 'social', 'routine']
   return (
     <>
       <div className="banner info">
@@ -158,12 +152,6 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
                       </span>
                       {r.photoUrl && <span className="pill neutral">Photo</span>}
                       {r.voiceUrl && <span className="pill neutral">Voice message</span>}
-                      {r.kind === 'medication' && r.medScheduleConfirmedAt && (
-                        <span className="small muted">
-                          {' '}
-                          Schedule match confirmed by {r.medScheduleConfirmedBy}, {fmtDateTime(r.medScheduleConfirmedAt, info.settings.timeZone)}
-                        </span>
-                      )}
                     </span>
                     <span className="row">
                       <button
@@ -227,7 +215,6 @@ function ReminderForm({
   const savedId = useRef<string | null>(id)
   const parent = info.settings.parentName
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }))
-  const med = d.kind === 'medication'
 
   return (
     <form
@@ -285,7 +272,6 @@ function ReminderForm({
                     question: t.question ?? '',
                     remindMinutesBefore: t.kind === 'appointment' ? 60 : 0,
                     shareResponses: t.kind === 'routine' && t.title === 'Shower' ? false : x.shareResponses,
-                    medScheduleConfirmed: false,
                   }))
                 }
               >
@@ -311,7 +297,7 @@ function ReminderForm({
                   setD((x) => ({
                     ...x,
                     kind: k,
-                    repeat: k === 'routine' || k === 'medication' ? 'daily' : x.repeat,
+                    repeat: k === 'routine' ? 'daily' : x.repeat,
                     remindMinutesBefore: k === 'appointment' ? 60 : 0,
                   }))
                 }
@@ -322,21 +308,11 @@ function ReminderForm({
         </div>
       </fieldset>
 
-      {med && (
-        <div className="banner info">
-          <span>
-            Only enter a reminder that matches {parent}’s <strong>existing, verified medication schedule</strong> (for
-            example the pharmacy blister pack or the prescriber’s medication list). Alongside does not give medical
-            advice. Answers are recorded as “reported taken”, never as verified, and an unanswered reminder means “not
-            confirmed”.
-          </span>
-        </div>
-      )}
 
-      <Field id="rf-title" label="Short title" hint={med ? 'For example “Morning tablets”' : 'A few words, e.g. “Dr Chen” or “Shower”'} error={act.fields.title}>
+      <Field id="rf-title" label="Short title" hint="A few words, e.g. “Dr Chen” or “Shower”" error={act.fields.title}>
         <input id="rf-title" value={d.title} maxLength={60} onChange={(e) => set('title', e.target.value)} required />
       </Field>
-      {(d.kind === 'medication' || d.kind === 'routine') && (
+      {d.kind === 'routine' && (
         <Field
           id="rf-question"
           label="Question to ask (optional)"
@@ -423,11 +399,9 @@ function ReminderForm({
           </Field>
         </fieldset>
       )}
-      {!med && (
-        <Field id="rf-loc" label="Where (optional)" error={act.fields.location}>
-          <input id="rf-loc" value={d.location} maxLength={200} onChange={(e) => set('location', e.target.value)} />
-        </Field>
-      )}
+      <Field id="rf-loc" label="Where (optional)" error={act.fields.location}>
+        <input id="rf-loc" value={d.location} maxLength={200} onChange={(e) => set('location', e.target.value)} />
+      </Field>
       <Field
         id="rf-notes"
         label="Short instructions (optional)"
@@ -442,7 +416,7 @@ function ReminderForm({
         current={existing?.photoUrl ?? null}
         change={photo}
         onChange={setPhoto}
-        hint={med ? 'A photo of the blister pack or medication box helps recognise the right one.' : 'A photo of the place, person or thing helps recognise it at a glance.'}
+        hint="A photo of the place, person or thing helps recognise it at a glance."
       />
       <VoicePicker id="rf-voice" current={existing?.voiceUrl ?? null} change={voice} onChange={setVoice} parentName={parent} />
 
@@ -458,26 +432,6 @@ function ReminderForm({
         </span>
       </label>
 
-      {med && (
-        <div className="field" data-invalid={!!act.fields.medScheduleConfirmed}>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={d.medScheduleConfirmed}
-              onChange={(e) => set('medScheduleConfirmed', e.target.checked)}
-              aria-describedby={act.fields.medScheduleConfirmed ? 'rf-med-error' : undefined}
-            />
-            <span>
-              <strong>I have checked that this reminder matches {parent}’s current, verified medication schedule.</strong>
-            </span>
-          </label>
-          {act.fields.medScheduleConfirmed && (
-            <span className="error" id="rf-med-error" role="alert">
-              {act.fields.medScheduleConfirmed}
-            </span>
-          )}
-        </div>
-      )}
 
       <ErrorBanner error={act.error} onRetry={act.retry} />
       <div className="row">

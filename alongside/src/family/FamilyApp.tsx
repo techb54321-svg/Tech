@@ -249,7 +249,7 @@ function NewHousehold({ me, reloadMe }: { me: Me; reloadMe: () => Promise<void> 
           onSubmit={async (e) => {
             e.preventDefault()
             await create.run(
-              () => api('POST', '/api/family/households', { ...s, pharmacyName: '', pharmacyPhone: '', smsAlerts: false }),
+              () => api('POST', '/api/family/households', { ...s, smsAlerts: false }),
               async () => {
                 await reloadMe()
                 navigate('/family/setup', true)

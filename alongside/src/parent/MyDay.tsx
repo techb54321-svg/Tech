@@ -4,7 +4,7 @@
 // - no counters, no browsing ahead, no status jargon;
 // - when nothing is due, say so calmly and show the one thing coming up.
 import { useEffect, useState } from 'react'
-import { Ban, Car, Check, CircleHelp, CircleX, Clock, House, ListChecks, MapPin, Pill, Stethoscope, Users, Sparkles } from 'lucide-react'
+import { Ban, Car, Check, CircleHelp, CircleX, Clock, House, ListChecks, MapPin, Stethoscope, Users, Sparkles } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
 import { useNavigate, useScreenFocus } from '../route'
 import { formatInstantTime, formatTime12, localTimeHM, zonedTimeToInstant } from '../../shared/time'
@@ -19,7 +19,6 @@ const KIND = {
   appointment: { label: 'Appointment', Icon: Stethoscope },
   social: { label: 'Going out', Icon: Users },
   routine: { label: '', Icon: Sparkles },
-  medication: { label: 'Medicine', Icon: Pill },
 } as const
 
 type Ack =
@@ -183,13 +182,7 @@ export function MyDay({
         onAutoPlayed={clearAutoPlay}
       />
       <div className="btn-stack answers" role="group" aria-label={question ?? r.title}>
-        {r.kind === 'medication' ? (
-          <>
-            <Answer item={current} action="taken" busy={busy} onClick={answer} className="green" Icon={Check} text="Yes" />
-            <Answer item={current} action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Not yet" />
-            <Answer item={current} action="not_sure" busy={busy} onClick={answer} className="plain" Icon={CircleHelp} text="I’m not sure" />
-          </>
-        ) : r.kind === 'routine' ? (
+        {r.kind === 'routine' ? (
           <>
             <Answer item={current} action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Yes" />
             <Answer item={current} action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Not yet" />
@@ -204,11 +197,9 @@ export function MyDay({
           <Answer item={current} action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Okay" />
         )}
       </div>
-      {r.kind !== 'medication' && (
-        <div className="help-row">
-          <Answer item={current} action="need_help" busy={busy} onClick={answer} className="help" Icon={CircleHelp} text="I need help" />
-        </div>
-      )}
+      <div className="help-row">
+        <Answer item={current} action="need_help" busy={busy} onClick={answer} className="help" Icon={CircleHelp} text="I need help" />
+      </div>
     </ParentScreen>
   )
 }
@@ -268,7 +259,7 @@ function Preview({ item, today, reload }: { item: DayItem; today: ParentToday; r
   const time = formatTime12(timeOf(item))
   const r = item.type === 'reminder' ? item.reminder : null
   const status = item.type === 'reminder' ? liveStatus(item, Date.now()) : null
-  const finished = status === 'done' || status === 'reported_taken'
+  const finished = status === 'done'
   const line = finished ? 'You have done this today.' : `Today at ${time}.`
   return (
     <ParentScreen>
@@ -355,7 +346,7 @@ function TodayPlan({ today }: { today: ParentToday }) {
           const status = i.type === 'reminder' ? liveStatus(i, now) : null
           const kind = i.type === 'lift' ? 'lift' : i.reminder.kind
           const Icon = kind === 'lift' ? Car : KIND[kind].Icon
-          const done = status === 'done' || status === 'reported_taken'
+          const done = status === 'done'
           return (
             <li key={i.key} className={`plan-row kind-${kind}${done ? ' is-done' : ''}`}>
               <span className="kind-badge">
@@ -445,33 +436,6 @@ function AckView({
           <div className="btn-stack">
             <CallButton who="contact" name={name} phone={today.contactPhone} demo={today.demo} className="big-btn green medium" />
             {nextButton}
-          </div>
-        </div>
-      )
-    case 'not_sure':
-      // Never advise on doses: only help the person reach someone who can check.
-      return (
-        <div className="ack" role="status">
-          <div className="ack-icon help">
-            <CircleHelp aria-hidden="true" />
-          </div>
-          <H1>That’s okay</H1>
-          <p className="p-body">Let’s ask {name}.</p>
-          <div className="btn-stack">
-            <CallButton who="contact" name={name} phone={today.contactPhone} demo={today.demo} className="big-btn green medium" />
-            {today.pharmacyPhone && (
-              <CallButton
-                who="pharmacy"
-                name={today.pharmacyName || 'pharmacy'}
-                phone={today.pharmacyPhone}
-                demo={today.demo}
-                className="big-btn plain medium"
-                label="Call the pharmacist"
-              />
-            )}
-            <a className="big-btn plain medium" href="#/">
-              <House aria-hidden="true" /> Home
-            </a>
           </div>
         </div>
       )

@@ -177,7 +177,7 @@ export function VoicePicker({
     <div className="field media-field">
       <span className="label">Voice message (optional)</span>
       <span className="hint">
-        A few words in your own voice, e.g. “Hi {parentName}, it’s time for your morning tablets.” It plays when{' '}
+        A few words in your own voice, e.g. “Hi {parentName}, it’s time for your walk.” It plays when{' '}
         {parentName} taps “Hear …” on this reminder. Up to {MAX_SECONDS} seconds.
       </span>
       <div className="row">

@@ -96,16 +96,24 @@ describe('access control', () => {
 })
 
 describe('validation', () => {
-  it('requires schedule confirmation for medication reminders', async () => {
+  it('does not accept medication reminders: Alongside does not handle medicines', async () => {
     const { base } = await setup()
     const { family, hid } = await household(base)
-    const r = await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets' }))
+    const r = await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets', medScheduleConfirmed: true }))
     expect(r.status).toBe(400)
-    expect(r.json.fields.medScheduleConfirmed).toMatch(/verified medication schedule/)
-    const ok = await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets', medScheduleConfirmed: true }))
-    expect(ok.status).toBe(201)
-    const list = (await family.get(`/api/family/${hid}`)).json.reminders
-    expect(list[0].medScheduleConfirmedBy).toBe('Anna')
+    expect(r.json.fields.kind).toBeTruthy()
+  })
+
+  it('hides medication reminders saved by an earlier version', async () => {
+    const { base, db } = await setup()
+    const { family, parent, hid } = await household(base)
+    db.prepare(
+      `INSERT INTO reminders (id, household_id, kind, title, time, start_date, repeat, created_at, updated_at)
+       VALUES (?, ?, 'medication', 'Old tablets', '09:00', '2026-10-01', 'daily', '2026-10-01', '2026-10-01')`,
+    ).run(randomUUID(), hid)
+    expect((await family.get(`/api/family/${hid}`)).json.reminders).toHaveLength(0)
+    expect((await parent.get('/api/parent/today')).json.items).toHaveLength(0)
+    expect((await family.get(`/api/family/${hid}/day`)).json.statuses).toHaveLength(0)
   })
 
   it('rejects malformed input', async () => {
@@ -154,23 +162,18 @@ describe('reminders and answers', () => {
     expect(y.status).toBe('done')
   })
 
-  it('medication: only medication answers apply, and "Not sure" never becomes taken', async () => {
+  it('only the answers that fit the reminder are accepted', async () => {
     const { base } = await setup()
     const { family, parent, hid } = await household(base)
-    const med = (await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Tablets', time: '09:00', medScheduleConfirmed: true }))).json.id
-    expect((await answer(parent, med, 'done')).status).toBe(400)
-    expect((await answer(parent, med, 'need_help')).status).toBe(400)
-    expect((await answer(parent, med, 'not_sure')).status).toBe(201)
-    const st = (await family.get(`/api/family/${hid}/day`)).json.statuses[0]
-    expect(st.status).toBe('not_sure')
     const routine = (await family.post(`/api/family/${hid}/reminders`, reminder())).json.id
-    expect((await answer(parent, routine, 'taken')).status).toBe(400)
+    for (const action of ['taken', 'not_sure', 'yes']) expect((await answer(parent, routine, action)).status).toBe(400)
+    expect((await answer(parent, routine, 'done')).status).toBe(201)
   })
 
-  it('an unanswered medication reminder reads as not confirmed', async () => {
+  it('an unanswered reminder reads as no answer', async () => {
     const { base, clock } = await setup()
     const { family, hid } = await household(base)
-    await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Tablets', time: '08:00', medScheduleConfirmed: true }))
+    await family.post(`/api/family/${hid}/reminders`, reminder({ time: '08:00' }))
     clock.advance(2 * 3600000) // 11:30 am
     const st = (await family.get(`/api/family/${hid}/day`)).json.statuses[0]
     expect(st.status).toBe('no_response')

@@ -72,13 +72,17 @@ describe('photos and music', () => {
     expect((await family.put(`/api/family/${hid}/media/song/${id}/photo`, { dataUrl: jpeg })).status).toBe(400)
     expect((await family.put(`/api/family/${hid}/media/song/${id}/audio`, { dataUrl: wav(3000) })).status).toBe(200)
     const songs = (await parent.get('/api/parent/today')).json.songs
-    expect(songs).toEqual([{ id, title: 'Moon River', url: expect.stringContaining(`/api/media/${hid}/song/${id}/audio`) }])
+    expect(songs).toEqual([{ id, title: 'Moon River', artist: '', url: expect.stringContaining(`/api/media/${hid}/song/${id}/audio`) }])
     const cookie = [...parent.cookies].map(([k, v]) => `${k}=${v}`).join('; ')
     const part = await fetch(base + songs[0].url, { headers: { Cookie: cookie, Range: 'bytes=0-99' } })
     expect(part.status).toBe(206)
     expect(part.headers.get('content-range')).toBe('bytes 0-99/3016')
     expect((await part.arrayBuffer()).byteLength).toBe(100)
     expect((await new Client(base).get(songs[0].url)).status).toBe(404)
+    const elvis = (await family.post(`/api/family/${hid}/songs`, { title: 'Can’t Help Falling in Love', artist: 'Elvis Presley' })).json.id
+    await family.put(`/api/family/${hid}/media/song/${elvis}/audio`, { dataUrl: wav(100) })
+    expect((await family.get(`/api/family/${hid}/songs`)).json[1]).toMatchObject({ title: 'Can’t Help Falling in Love', artist: 'Elvis Presley' })
+    await family.del(`/api/family/${hid}/songs/${elvis}`)
     expect((await family.del(`/api/family/${hid}/songs/${id}`)).status).toBe(200)
     expect((await parent.get('/api/parent/today')).json.songs).toEqual([])
   })

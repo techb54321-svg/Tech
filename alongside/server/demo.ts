@@ -63,7 +63,7 @@ export function createDemo(db: DB, now = new Date()) {
     }
     for (const s of demoSongs) {
       const id = randomUUID()
-      db.prepare('INSERT INTO songs (id, household_id, title, created_at) VALUES (?,?,?,?)').run(id, hid, s.title, nowIso())
+      db.prepare('INSERT INTO songs (id, household_id, title, artist, created_at) VALUES (?,?,?,?,?)').run(id, hid, s.title, s.artist, nowIso())
       const audio = decodeMedia('audio', demoMedia[s.picture])
       saveMedia(db, hid, 'song', id, 'audio', audio.mime, audio.data)
     }
@@ -86,13 +86,13 @@ export function createDemo(db: DB, now = new Date()) {
     ).run(randomUUID(), hid, 'family_arranged', 'family_entered', today, demoLift.time, demoLift.destinationLabel,
       demoLift.destinationAddress, demoLift.details, userId, nowIso())
 
-    // If the morning has passed, show an example shared answer for the family view.
-    const eight = zonedTimeToInstant(today, '08:05', DEMO_TZ)
-    if (now > eight && localDateISO(now, DEMO_TZ) === today) {
+    // If the appointment has passed, show an example shared answer for the family view.
+    const seen = zonedTimeToInstant(today, '10:25', DEMO_TZ)
+    if (now > seen && localDateISO(now, DEMO_TZ) === today) {
       db.prepare(
         `INSERT INTO responses (id, household_id, reminder_id, occurrence_date, action, snooze_until, shared, client_request_id, created_at)
          VALUES (?,?,?,?,?,?,?,?,?)`,
-      ).run(randomUUID(), hid, ids.morningMeds, today, 'taken', null, 1, randomUUID(), eight.toISOString())
+      ).run(randomUUID(), hid, ids.doctor, today, 'done', null, 1, randomUUID(), seen.toISOString())
     }
 
     return {

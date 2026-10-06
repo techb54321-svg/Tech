@@ -54,10 +54,22 @@ async function inspect(page, label, { parent = true } = {}) {
     const out = { overflowX: 0, clipped: [], overlaps: [], small: [], contrast: [] }
     const doc = document.scrollingElement
     out.overflowX = doc.scrollWidth - window.innerWidth
+    // Scrolled out of view inside a scrolling list: not on screen, so not part of the layout check.
+    const scrolledAway = (el) => {
+      const b = el.getBoundingClientRect()
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const o = getComputedStyle(p).overflowY
+        if (o === 'auto' || o === 'scroll' || o === 'hidden') {
+          const r = p.getBoundingClientRect()
+          if (b.bottom <= r.top + 1 || b.top >= r.bottom - 1) return true
+        }
+      }
+      return false
+    }
     const visible = (el) => {
       const s = getComputedStyle(el)
       const b = el.getBoundingClientRect()
-      return s.visibility !== 'hidden' && s.display !== 'none' && b.width > 0 && b.height > 0 && !el.closest('.visually-hidden')
+      return s.visibility !== 'hidden' && s.display !== 'none' && b.width > 0 && b.height > 0 && !el.closest('.visually-hidden') && !scrolledAway(el)
     }
     const els = [...document.querySelectorAll('button, a, h1, h2, p, label, input, .pill, li')].filter(visible)
     for (const el of els) {
@@ -114,7 +126,7 @@ async function inspect(page, label, { parent = true } = {}) {
         })
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
       }
-      document.querySelectorAll('.big-btn, .home-btn, .small-btn, .tile').forEach((el) => {
+      document.querySelectorAll('.big-btn, .home-btn, .small-btn, .tile, .song-btn, .yn').forEach((el) => {
         if (!visible(el) || el.disabled) return
         const s = getComputedStyle(el)
         let bg = s.backgroundColor
@@ -176,12 +188,13 @@ if (nearMidnight) {
 let made = 0
 async function addDue(page, { kind = 'routine', title, question = '', location = '', notes = '', share = true, minutes = -3 }) {
   const hid = await householdId(page)
-  const at = sydney(kind === 'appointment' || kind === 'social' ? 30 : minutes - made++ / 10)
+  // Small stagger for items due now, so their order is stable; future items keep their exact offset.
+  const at = sydney(kind === 'appointment' || kind === 'social' ? 30 : minutes < 0 ? minutes - (made++ % 10) / 10 : minutes)
   const r = await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
     headers: { 'X-Alongside': '1' },
     data: {
       kind, title, time: at.time, startDate: at.date, repeat: 'none', endDate: null, location, notes, question,
-      remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share, medScheduleConfirmed: kind === 'medication',
+      remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share,
     },
   })
   const { id } = await r.json()
@@ -196,7 +209,7 @@ async function answerAllDue(page) {
     if (!due) continue
     await page.request.post(BASE + '/api/parent/responses', {
       headers: { 'X-Alongside': '1' },
-      data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action: i.reminder.kind === 'medication' ? 'taken' : 'done' },
+      data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action: i.reminder.ask ? 'yes' : 'done' },
     })
   }
 }
@@ -236,17 +249,18 @@ for (const v of WIDTHS) {
   for (const want of ['My day', 'Call Anna', 'Call Sarah', 'Taxi', 'Puzzles', 'Photos', 'Music']) check(tiles.includes(want), `${v.name}/home: no "${want}" tile (${tiles.join(', ')})`)
   check((await page.locator('.tiles .tile .tile-pic').count()) === tiles.length, `${v.name}/home: a tile has no picture`)
 
-  const med = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack, lunch slot.' })
+  const kettle = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
   const routine = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
   const appt = await addDue(page, { kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street', notes: 'Anna will drive you.' })
   const routine2 = await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
 
-  await gotoItem(page, med)
-  check(await page.getByText('Have you taken your lunchtime tablets?').isVisible(), `${v.name}: medication question missing`)
-  const medButtons = await page.locator('.answers button').allTextContents()
-  check(medButtons.join('|') === 'Yes|Not yet|I’m not sure', `${v.name}: medication answers are ${medButtons.join('|')}`)
+  await gotoItem(page, kettle)
+  check(await page.getByText('Have you had a cup of tea?').isVisible(), `${v.name}: routine question missing`)
+  const answers = await page.locator('.answers button').allTextContents()
+  check(answers.join('|') === 'Yes|Not yet|No, not today', `${v.name}: routine answers are ${answers.join('|')}`)
   check((await page.getByText(/of \d+$/).count()) === 0 && (await page.getByRole('button', { name: /Previous/ }).count()) === 0, `${v.name}: counters or browsing still shown`)
-  await shot(page, v.name, '02-day-medication')
+  check(!/medication|tablet|dose/i.test(await page.locator('body').textContent()), `${v.name}: medication still mentioned`)
+  await shot(page, v.name, '02-day-question')
   await gotoItem(page, routine)
   check(await page.getByText('Have you watered the plants?').isVisible(), `${v.name}: routine question missing`)
   await shot(page, v.name, '03-day-routine')
@@ -263,10 +277,10 @@ for (const v of WIDTHS) {
   await page.getByRole('button', { name: 'Not yet' }).click()
   await page.getByText('I’ll ask you again soon.').waitFor()
   await shot(page, v.name, '06-ack-not-yet')
-  await gotoItem(page, med)
-  await page.getByRole('button', { name: 'I’m not sure' }).click()
-  await page.getByRole('heading', { name: 'That’s okay' }).waitFor()
-  await shot(page, v.name, '07-ack-not-sure')
+  await gotoItem(page, kettle)
+  await page.getByRole('button', { name: 'No, not today' }).click()
+  await page.getByText('Not today. That’s fine.').waitFor()
+  await shot(page, v.name, '07-ack-not-today')
   await gotoItem(page, appt)
   await page.getByRole('button', { name: 'I need help' }).click()
   await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
@@ -356,7 +370,7 @@ step('Text at 200%')
   await big()
   await shot(page, 'text-200', '01-home')
   for (const [opts, name] of [
-    [{ kind: 'medication', title: 'Lunchtime tablets' }, '02-day-medication'],
+    [{ title: 'Cup of tea', question: 'Have you had a cup of tea?' }, '02-day-question'],
     [{ title: 'Water the plants', question: 'Have you watered the plants?' }, '03-day-routine'],
     [{ kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street' }, '04-day-appointment'],
   ]) {
@@ -428,34 +442,26 @@ step('Text at 200%')
   await page.getByRole('button', { name: 'I need help' }).dblclick()
   await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
 
-  step('Medication uncertainty')
-  const ms = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets' })
-  await gotoItem(page, ms)
-  await page.getByRole('button', { name: 'I’m not sure' }).click()
-  await page.getByRole('heading', { name: 'That’s okay' }).waitFor()
-  const notSureText = await page.locator('main').textContent()
-  check(!/dose|another|extra|skip/i.test(notSureText), `medication: "Not sure" screen gives dosing advice: ${notSureText}`)
+  step('Family view: answers and privacy')
+  const fv = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?' })
+  await gotoItem(page, fv)
+  await page.getByRole('button', { name: 'Not yet' }).click()
+  await page.getByText('I’ll ask you again soon.').waitFor()
   await page.goto(BASE + '/#/family')
-  await page.locator('li', { hasText: 'Lunchtime tablets' }).waitFor()
-  const row = await page.locator('li', { hasText: 'Lunchtime tablets' }).textContent()
-  check(row.includes('Not sure — not confirmed') && !row.includes('Reported taken'), `family: lunchtime tablets shows "${row}"`)
+  await page.locator('li', { hasText: 'Cup of tea' }).waitFor()
+  const row = await page.locator('li', { hasText: 'Cup of tea' }).first().textContent()
+  check(row.includes('Postponed'), `family: cup of tea shows "${row}"`)
   const shower = await page.locator('li', { hasText: 'Shower' }).first().textContent()
   check(shower.includes('Private'), `family: private routine shown as "${shower}"`)
   const help = await page.locator('section', { hasText: 'Help requests' }).first().textContent()
   check((help.match(/Help with “Feed the cat”/g) || []).length === 1, `family: help requests "${help}"`)
   check(help.includes('Saved in the app · no text sent'), 'family: help request message status not shown honestly')
 
-  step('Family: medication reminder')
+  step('Family: no medication')
   await page.goto(BASE + '/#/family/reminders')
   await page.getByRole('button', { name: 'Add a reminder' }).click()
-  await page.getByRole('radio', { name: 'Medication' }).check()
-  await page.getByLabel('Short title').fill('Supper tablets')
-  await page.getByRole('button', { name: 'Add reminder' }).click()
-  await page.getByText('Confirm this matches the existing, verified medication schedule').waitFor()
-  await page.screenshot({ path: join(shotsDir, '390', '32-family-med-confirmation.png'), fullPage: true })
-  await page.getByLabel(/I have checked that this reminder matches/).check()
-  await page.getByRole('button', { name: 'Add reminder' }).click()
-  await page.getByText('Added “Supper tablets”.').waitFor()
+  check((await page.getByRole('radio', { name: 'Medication' }).count()) === 0, 'family: medication can still be chosen')
+  check(!/medication|tablet|pharmac/i.test(await page.locator('main').textContent()), 'family: medication still mentioned in reminders')
 
   step('Family: change contact')
   await page.goto(BASE + '/#/family/setup')
@@ -566,12 +572,12 @@ step('With speech')
       setTimeout(() => u.onend && u.onend(), 50)
     }
   })
-  const k = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack.' })
+  const k = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
   await gotoItem(page, k)
   await page.reload()
   await page.getByRole('button', { name: 'Read aloud' }).click()
   const spoken = await page.evaluate(() => window.__spoken)
-  check(spoken.length === 1 && spoken[0].includes('Have you taken your lunchtime tablets?') && spoken[0].includes('blister pack'), `speech: spoke ${JSON.stringify(spoken)}`)
+  check(spoken.length === 1 && spoken[0].includes('Have you had a cup of tea?') && spoken[0].includes('kettle'), `speech: spoke ${JSON.stringify(spoken)}`)
   await ctx.close()
 }
 
@@ -654,14 +660,30 @@ step('Outings, YES / NO, photos and music')
   await page.getByRole('button', { name: 'Another photo' }).click()
   await page.getByRole('heading', { name: 'Yesterday’s photo' }).waitFor()
 
-  // Music: one big Play button.
+  // Music: a big button per song, with the singer.
   await page.goto(BASE + '/#/')
   await page.getByRole('link', { name: 'Music' }).click()
-  await page.getByText('Twinkle, Twinkle, Little Star').waitFor()
+  const songBtn = page.getByRole('button', { name: /Twinkle, Twinkle, Little Star/ })
+  await songBtn.waitFor()
+  check(await songBtn.getByText('Traditional').isVisible(), 'music: singer not shown')
   await shot(page, '390', '62-music')
-  await page.getByRole('button', { name: 'Play' }).click()
-  await page.getByRole('button', { name: 'Stop' }).or(page.getByText('This device could not play the song.')).first().waitFor()
-  check(await page.getByRole('button', { name: 'Stop' }).isVisible(), 'music: the song did not start')
+  await songBtn.click()
+  await page.getByText('Playing · tap to stop').or(page.getByText('This device could not play the song.')).first().waitFor()
+  check(await page.getByText('Playing · tap to stop').isVisible(), 'music: the song did not start')
+
+  // Family: choose an Elvis song from the 1960s list and attach a file.
+  await page.goto(BASE + '/#/family/media')
+  await page.getByLabel('Search songs or singers').fill('elvis')
+  await page.locator('.catalogue li', { hasText: 'Can’t Help Falling in Love' }).getByRole('button', { name: 'Choose' }).click()
+  check((await page.getByLabel('Song', { exact: true }).inputValue()) === 'Can’t Help Falling in Love', 'songs: title not filled from the list')
+  check((await page.getByLabel('Singer or band').inputValue()) === 'Elvis Presley', 'songs: singer not filled from the list')
+  const wav = Buffer.concat([Buffer.from('RIFF0000WAVEfmt '), Buffer.alloc(2000, 128)])
+  await page.locator('#so-file').setInputFiles({ name: 'my-copy.wav', mimeType: 'audio/wav', buffer: wav })
+  await page.getByRole('button', { name: 'Add song' }).click()
+  await page.getByText('Added “Can’t Help Falling in Love”.').waitFor()
+  await shot(page, '390', '65-family-song-picker', { parent: false })
+  await page.goto(BASE + '/#/music')
+  await page.getByRole('button', { name: /Can’t Help Falling in Love/ }).waitFor()
 
   // Family: add a photo of the day, and see the outing fields.
   const bytes = await (await page.request.get(BASE + (await today(page)).photos[0].url)).body()
@@ -686,10 +708,10 @@ step('Photos, voice and week')
   const { ctx, page } = await newDemo({ width: 390, height: 844 }, { permissions: ['microphone'] })
   const hid = await householdId(page)
   const t = await today(page)
-  // Give a due medication reminder the demo's blister-pack photo.
-  const morning = t.items.find((i) => i.type === 'reminder' && i.reminder.title === 'Morning tablets')
-  const bytes = await (await page.request.get(BASE + morning.reminder.photoUrl)).body()
-  const k = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets' })
+  // Give a due reminder the demo's medical-centre picture.
+  const doctor = t.items.find((i) => i.type === 'reminder' && i.reminder.title === 'Dr Chen')
+  const bytes = await (await page.request.get(BASE + doctor.reminder.photoUrl)).body()
+  const k = await addDue(page, { title: 'Walk to the shops', question: 'Have you been for your walk?' })
   await page.request.put(`${BASE}/api/family/${hid}/media/reminder/${k.split(':')[0]}/photo`, {
     headers: { 'X-Alongside': '1' },
     data: { dataUrl: 'data:image/jpeg;base64,' + bytes.toString('base64') },

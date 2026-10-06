@@ -354,7 +354,7 @@ export function familyRoutes(deps: Deps) {
       if (count >= 10) throw new HttpError(400, 'Up to 10 songs. Remove one first.')
       const s = parse(songSchema, req.body)
       const id = randomUUID()
-      db.prepare('INSERT INTO songs (id, household_id, title, created_at) VALUES (?,?,?,?)').run(id, req.householdId!, s.title, nowIso())
+      db.prepare('INSERT INTO songs (id, household_id, title, artist, created_at) VALUES (?,?,?,?,?)').run(id, req.householdId!, s.title, s.artist, nowIso())
       res.status(201).json({ id })
     }),
   )

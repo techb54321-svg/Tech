@@ -203,6 +203,7 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['reminders', 'car_colour', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'car_note', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'ask', 'INTEGER NOT NULL DEFAULT 0'],
+  ['songs', 'artist', "TEXT NOT NULL DEFAULT ''"],
 ]
 
 export function openDb(file: string): DB {

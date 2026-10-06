@@ -82,8 +82,6 @@ Access is enforced on the server:
 | Parent home (greeting, date, 3 buttons, quiet Family setup link) | Working |
 | My day: one plain question at a time, only for what is due now, with read aloud and a read-only plan of the day | Working |
 | Routines: **Yes / Not yet / No, not today** and **I need help**. Appointments and outings: **Okay** and **I need help** | Working |
-| Medication: **Yes / Not yet / I'm not sure**; recorded as *reported taken*; unanswered = *not confirmed*; "Not sure" offers calls to family or pharmacist and gives no dose advice | Working |
-| Medication setup requires confirming the reminder matches the existing verified schedule (enforced by the server; who and when is stored) | Working |
 | "Later" = 20 minutes, explained after tapping | Working |
 | Daily repeats in the household time zone, including daylight saving; each day's answer is separate | Working (tested) |
 | Private routines: answers hidden from family unless the parent agreed; sharing is snapshotted per answer | Working (tested) |
@@ -94,7 +92,7 @@ Access is enforced on the server:
 | Uber hand-off (Uber's documented universal link). The person books and pays in Uber; recorded as "Opened Uber · booking not confirmed" | Working |
 | Ask family for a lift | Working |
 | Family-entered lifts (labelled as such) appear in the parent's My day | Working |
-| Call family / pharmacist via the phone's dialler (`tel:`). The demonstration never dials | Working |
+| Call family via the phone's dialler (`tel:`). The demonstration never dials | Working |
 | Family area: settings, places, reminders (add/edit/remove), responses, help requests, lifts, sharing, devices, invitations | Working |
 | In-app reminders: a reminder that becomes due while the app is open comes to the front with a chime | Working while the app is open |
 | Calendar export (.ics, with time zone and alarms) so the device calendar can alert when the app is closed | Working |
@@ -109,8 +107,8 @@ Access is enforced on the server:
 | **Voice messages** recorded by family (or chosen as a sound file), played with **Hear Anna** on the reminder | Working (tested in Chromium with a simulated microphone) |
 | **Play reminders aloud when they come up** (family setting): plays the voice message, otherwise reads the reminder. Some browsers block sound until the screen has been touched once | Working while the app is open |
 | **Keep the screen on** (family setting) for a tablet on the bench, using the Screen Wake Lock API | Works where the browser supports it; ignored elsewhere |
-| **"That's everything for today"** end-of-day screen with "Tomorrow starts with …". An unanswered medication reminder keeps the day open | Working (tested) |
-| **Week view** for family: a 7-day grid with symbols as well as colours, "Reported taken X of Y days", private routines shown as private | Working (tested) |
+| **"That's everything for today"** end-of-day screen with "Tomorrow starts with …". | Working (tested) |
+| **Week view** for family: a 7-day grid with symbols as well as colours, "Done X of Y days", private routines shown as private | Working (tested) |
 | **Quick start templates** for common reminders | Working |
 | **Side by side**: the parent's phone and the family area live on one page (demonstration only) | Working (tested) |
 
@@ -118,11 +116,11 @@ Access is enforced on the server:
 
 - **"Next: Lunch with Jean"**: after each answer, the button names what comes next.
 - **Back to Home when idle**: after 5 minutes without a touch, the app returns to the Home screen.
-- **A colour for each type of reminder**: medication pink, appointments blue, routines teal, outings orange,
+- **A colour for each type of reminder**: appointments blue, routines teal, outings orange,
   lifts purple, each with a matching badge.
 - **Time-of-day cues**: a sunrise, sun or moon beside the date, and a soft morning/afternoon/evening tint.
 - Brighter buttons with white icon tiles, softly coloured place buttons, and bigger Previous/Next buttons.
-- A small burst of colour on "Done" and "I've taken it". It is hidden when the device asks for reduced motion.
+- A small burst of colour on "Done". It is hidden when the device asks for reduced motion.
 
 All colours still pass the 4.5:1 text-contrast check in the browser tests.
 
@@ -131,9 +129,8 @@ All colours still pass the 4.5:1 text-contrast check in the browser tests.
 "My day" was redesigned around one plain question at a time:
 
 - **Only what is due now.** My day opens on the thing that needs an answer now. There are no counters ("4 of 7"),
-  no Previous/Next and no answering ahead of time, so evening tablets cannot be marked as taken in the afternoon.
+  no Previous/Next and no answering ahead of time.
 - **Questions in everyday words**, answered in everyday words:
-  - Medication: "Have you taken your morning tablets?" with **Yes**, **Not yet** and **I'm not sure**.
   - Routines: "Have you had your shower?" with **Yes**, **Not yet**, **No, not today** and a separate
     **I need help**.
   - Appointments and outings are information only, with a single **Okay** and **I need help**.
@@ -179,6 +176,20 @@ This replaces the original brief's Previous/Next browsing, which asks too much o
 - **Fix for "Can't connect" in the online preview**: demonstration data saved by an older version is now upgraded
   when it loads. Unexpected errors say what happened and offer "Start the demonstration again".
 - The demo song is "Twinkle, Twinkle, Little Star" (a traditional tune), synthesised by `scripts/make-demo-media.mjs`.
+
+### Seventh round: no medication, and songs from the 1960s and 1970s
+
+- **Medication has been taken out.** There are no medication reminders, no "reported taken", no pharmacist
+  contact and no medication templates or demo items. The server refuses medication reminders. Any saved by an
+  earlier version are hidden, not deleted, so nothing is lost silently.
+- **Songs from the 1960s and 1970s.** The carer searches or filters a built-in list of well-known songs
+  (Elvis Presley, The Beatles, The Seekers, ABBA, Daddy Cool, Sherbet and others, in `shared/songCatalogue.ts`)
+  and chooses one. The title and singer fill in, and the carer attaches a recording they own (MP3/M4A, up to
+  12 MB).
+- **Why there are no recordings:** songs from this era are under copyright, so Alongside cannot include or
+  distribute them. A licensed streaming integration (for example Apple MusicKit or Spotify) would need the
+  family's own subscription and developer approval. It is not built yet.
+- **Music screen for the parent**: a big button per song showing title and singer. Tap to play, tap again to stop.
 
 ## Integrations and their limits
 
@@ -241,8 +252,7 @@ scripts/e2e.mjs    browser checks and screenshots
 - **Unit and API tests (`npm test`, 44 tests).**
   - Time zones and daylight saving: Sydney and London gaps and overlaps, and Brisbane, which has no daylight saving.
   - Daily reset, and "Later" lasting 20 minutes.
-  - Medication: "Not sure" is never treated as taken; an unanswered reminder means not confirmed; actions are
-    restricted to medication answers.
+  - Only the answers that fit each reminder are accepted; medication reminders are refused, and old ones hidden.
   - Server-side permissions: no session; parent device versus family endpoints; another household; single-use
     pairing codes; revoked devices; CSRF header.
   - Privacy snapshot for answers, and validation.
@@ -259,8 +269,7 @@ scripts/e2e.mjs    browser checks and screenshots
   - Keyboard-only use with a visible focus ring.
   - Answers survive a refresh; failed saves show "That didn't save" and retry correctly; a double tap creates one
     request.
-  - The family view shows "Not sure — not confirmed" and keeps routines private.
-  - The medication confirmation is enforced.
+  - The family view keeps private routines private, and no medication can be added.
   - Changing the contact updates the green button.
   - An in-app reminder comes forward when it becomes due (using a fake clock).
   - Read aloud works, and is hidden without speech support.

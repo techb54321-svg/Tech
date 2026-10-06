@@ -1,11 +1,10 @@
 // "Photos" shows today's photo from family (or the latest), with its caption.
 // "Music" plays a song the family uploaded, with one big Play / Stop button.
 import { useEffect, useRef, useState } from 'react'
-import { Images, Music, Pause, Play, House } from 'lucide-react'
+import { Images, Pause, Play, House } from 'lucide-react'
 import { formatLongDate, addDaysISO } from '../../shared/time'
 import type { ParentToday } from '../../shared/types'
 import { H1, ParentScreen } from './common'
-import { MusicPicture } from './illustrations'
 import { useScreenFocus } from '../route'
 
 function whenLabel(date: string, today: string) {
@@ -49,13 +48,11 @@ export function PhotoScreen({ today }: { today: ParentToday }) {
 }
 
 export function MusicScreen({ today }: { today: ParentToday }) {
-  const [i, setI] = useState(0)
-  const [playing, setPlaying] = useState(false)
+  const [playing, setPlaying] = useState<string | null>(null)
   const [error, setError] = useState('')
   const audio = useRef<HTMLAudioElement | null>(null)
   useScreenFocus('music')
   const songs = today.songs
-  const song = songs.length ? songs[i % songs.length] : null
 
   useEffect(
     () => () => {
@@ -64,23 +61,25 @@ export function MusicScreen({ today }: { today: ParentToday }) {
     [],
   )
 
-  function stop() {
-    audio.current?.pause()
-    setPlaying(false)
-  }
-  function play() {
-    if (!song) return
+  function toggle(id: string, url: string) {
     setError('')
     audio.current?.pause()
-    const a = new Audio(song.url)
+    if (playing === id) {
+      setPlaying(null)
+      return
+    }
+    const a = new Audio(url)
     audio.current = a
-    a.onended = () => setPlaying(false)
+    a.onended = () => setPlaying(null)
     a.play()
-      .then(() => setPlaying(true))
-      .catch(() => setError('This device could not play the song.'))
+      .then(() => setPlaying(id))
+      .catch(() => {
+        setPlaying(null)
+        setError('This device could not play the song.')
+      })
   }
 
-  if (!song) {
+  if (songs.length === 0) {
     return (
       <ParentScreen>
         <H1>Music</H1>
@@ -91,40 +90,31 @@ export function MusicScreen({ today }: { today: ParentToday }) {
   return (
     <ParentScreen>
       <H1>Music</H1>
-      <div className="music-pic">
-        <MusicPicture />
-      </div>
-      <p className="song-title">{song.title}</p>
-      <div className="btn-stack">
-        {playing ? (
-          <button className="big-btn pink" onClick={stop}>
-            <Pause aria-hidden="true" />
-            <span>Stop</span>
-          </button>
-        ) : (
-          <button className="big-btn green" onClick={play}>
-            <Play aria-hidden="true" />
-            <span>Play</span>
-          </button>
-        )}
-        {error && (
-          <p className="status err" role="alert">
-            {error}
-          </p>
-        )}
-        {songs.length > 1 && (
-          <button
-            className="big-btn blue medium"
-            onClick={() => {
-              stop()
-              setI(i + 1)
-            }}
-          >
-            <Music aria-hidden="true" />
-            <span>Another song</span>
-          </button>
-        )}
-      </div>
+      <p className="p-body">Tap a song to play it.</p>
+      {error && (
+        <p className="status err" role="alert">
+          {error}
+        </p>
+      )}
+      <ul className="song-list">
+        {songs.map((s) => {
+          const on = playing === s.id
+          return (
+            <li key={s.id}>
+              <button className={`song-btn${on ? ' on' : ''}`} aria-pressed={on} onClick={() => toggle(s.id, s.url)}>
+                <span className="song-icon" aria-hidden="true">
+                  {on ? <Pause /> : <Play />}
+                </span>
+                <span className="song-words">
+                  <span className="song-name">{s.title}</span>
+                  {s.artist && <span className="song-artist">{s.artist}</span>}
+                  {on && <span className="song-state">Playing · tap to stop</span>}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
     </ParentScreen>
   )
 }

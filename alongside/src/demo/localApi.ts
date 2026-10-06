@@ -78,7 +78,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 3
+const DEMO_VERSION = 4
 
 interface State {
   version: number
@@ -93,7 +93,7 @@ interface State {
   media: Record<string, string>
   contacts: Array<{ id: string; name: string; phone: string }>
   photos: Array<{ id: string; caption: string; showDate: string }>
-  songs: Array<{ id: string; title: string }>
+  songs: Array<{ id: string; title: string; artist: string }>
 }
 
 const KEY = 'alongside.static-demo'
@@ -124,7 +124,7 @@ function upgrade(s: State) {
   s.media ??= {}
   s.contacts ??= []
   s.photos ??= []
-  s.songs ??= []
+  s.songs = (s.songs ?? []).map((x) => ({ ...x, artist: x.artist ?? '' }))
   s.help ??= []
   s.trips ??= []
   s.responses ??= []
@@ -178,7 +178,6 @@ function parse<S extends ZodTypeAny>(schema: S, body: unknown): z.infer<S> {
 }
 
 function toReminder(id: string, input: z.input<typeof reminderSchema>): Reminder & { deleted?: boolean } {
-  const med = input.kind === 'medication'
   const outing = input.kind === 'appointment' || input.kind === 'social'
   return {
     id,
@@ -199,8 +198,6 @@ function toReminder(id: string, input: z.input<typeof reminderSchema>): Reminder
     ask: outing && !!input.ask,
     remindMinutesBefore: input.remindMinutesBefore ?? 0,
     shareResponses: input.shareResponses,
-    medScheduleConfirmedAt: med ? nowIso() : null,
-    medScheduleConfirmedBy: med ? DEMO_FAMILY_NAME : null,
     photoUrl: null,
     voiceUrl: null,
   }
@@ -262,7 +259,7 @@ function createDemo(): State {
   }
   for (const song of demoSongs) {
     const id = uuid()
-    s.songs.push({ id, title: song.title })
+    s.songs.push({ id, title: song.title, artist: song.artist })
     s.media[`song:${id}:audio`] = demoMedia[song.picture]
   }
   s.media[`contact:${s.householdId}:photo`] = demoMedia.anna
@@ -273,9 +270,9 @@ function createDemo(): State {
     id: uuid(), kind: 'family_arranged', status: 'family_entered', date: today, ...demoLift, provider: null,
     providerRef: null, fareText: null, createdAt: nowIso(), enteredBy: DEMO_FAMILY_NAME, clientRequestId: null,
   })
-  const eight = zonedTimeToInstant(today, '08:05', tz)
-  if (now > eight) {
-    s.responses.push({ reminderId: ids.morningMeds, occurrenceDate: today, action: 'taken', snoozeUntil: null, createdAt: eight.toISOString(), shared: true, clientRequestId: uuid() })
+  const seen = zonedTimeToInstant(today, '10:25', tz)
+  if (now > seen) {
+    s.responses.push({ reminderId: ids.doctor, occurrenceDate: today, action: 'done', snoozeUntil: null, createdAt: seen.toISOString(), shared: true, clientRequestId: uuid() })
   }
   save(s)
   return s
@@ -283,7 +280,7 @@ function createDemo(): State {
 
 const reminders = (s: State) =>
   s.reminders
-    .filter((r) => !r.deleted)
+    .filter((r) => !r.deleted && (r.kind as string) !== 'medication')
     .map((r) => withMedia(s, r))
     .sort((a, b) => (a.time + a.title < b.time + b.title ? -1 : 1))
 const today = (s: State) => localDateISO(new Date(), s.settings.timeZone)
@@ -387,7 +384,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     if (dup) return { action: dup.action, snoozeUntil: dup.snoozeUntil, messageStatus: null, duplicate: true } as T
     const rem = reminders(s).find((r) => r.id === input.reminderId)
     if (!rem) throw new ApiError(404, 'This reminder was removed by family.')
-    const allowed = rem.kind === 'medication' ? ['taken', 'later', 'not_sure'] : rem.ask ? ['yes', 'no', 'need_help'] : ['done', 'later', 'need_help', 'not_today']
+    const allowed = rem.ask ? ['yes', 'no', 'need_help'] : ['done', 'later', 'need_help', 'not_today']
     if (!allowed.includes(input.action)) throw new ApiError(400, 'That answer does not apply to this reminder.')
     const t = today(s)
     if (input.occurrenceDate !== t && input.occurrenceDate !== addDaysISO(t, -1)) throw new ApiError(400, 'Only today’s reminders can be answered.')
@@ -552,7 +549,8 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   if (rest === '/songs' && method === 'POST') {
     if (s.songs.length >= 10) throw new ApiError(400, 'Up to 10 songs. Remove one first.')
     const id = uuid()
-    s.songs.push({ id, title: parse(songSchema, body).title })
+    const song = parse(songSchema, body)
+    s.songs.push({ id, title: song.title, artist: song.artist })
     save(s)
     return { id } as T
   }

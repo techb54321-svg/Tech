@@ -13,12 +13,10 @@ interface Week {
 // A symbol plus a tone for each state, so the grid reads without relying on colour alone.
 const CELL: Record<OccurrenceStatus | 'private', { sym: string; tone: string }> = {
   done: { sym: '✓', tone: 'ok' },
-  reported_taken: { sym: '✓', tone: 'ok' },
   not_today: { sym: '–', tone: 'neutral' },
   snoozed: { sym: '⏱', tone: 'warn' },
   due: { sym: '…', tone: 'warn' },
   upcoming: { sym: '·', tone: 'muted' },
-  not_sure: { sym: '?', tone: 'err' },
   help_requested: { sym: '!', tone: 'err' },
   no_response: { sym: '○', tone: 'neutral' },
   private: { sym: '🔒', tone: 'muted' },
@@ -99,7 +97,7 @@ export function WeekGrid({ info }: { info: FamilyInfo }) {
               <tbody>
                 {week.rows.map((r) => {
                   const counted = week.days.filter((d) => r.cells[d] && r.cells[d] !== 'upcoming' && r.cells[d] !== 'private')
-                  const yes = counted.filter((d) => r.cells[d] === 'reported_taken' || r.cells[d] === 'done').length
+                  const yes = counted.filter((d) => r.cells[d] === 'done' || r.cells[d] === 'said_yes').length
                   return (
                     <tr key={r.reminderId}>
                       <th scope="row">
@@ -107,7 +105,7 @@ export function WeekGrid({ info }: { info: FamilyInfo }) {
                         <span className="small muted"> · {formatTime12(r.time)}</span>
                         {counted.length > 0 && (
                           <span className="small muted week-summary">
-                            {r.kind === 'medication' ? 'Reported taken' : 'Done'} {yes} of {counted.length} {counted.length === 1 ? 'day' : 'days'}
+                            Done {yes} of {counted.length} {counted.length === 1 ? 'day' : 'days'}
                           </span>
                         )}
                       </th>
@@ -130,8 +128,8 @@ export function WeekGrid({ info }: { info: FamilyInfo }) {
             </table>
           </div>
           <p className="small muted legend">
-            ✓ done or reported taken · Y / N said yes or no to an outing · ? not sure · ! asked for help · ⏱ postponed · – declined · ○ no answer · 🔒
-            private · blank: not scheduled. Medication answers are reported by {info.settings.parentName}, not verified.
+            ✓ done · Y / N said yes or no to an outing · ! asked for help · ⏱ postponed · – declined · ○ no answer · 🔒
+            private · blank: not scheduled.
           </p>
         </>
       )}

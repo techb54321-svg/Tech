@@ -294,8 +294,8 @@ function Home({ today, offline, reload }: { today: ParentToday; offline: boolean
 function CallScreen({ today, who }: { today: ParentToday; who: string }) {
   useScreenFocus(who)
   const person = who === 'contact' ? today.contacts.find((c) => c.main) : today.contacts.find((c) => c.id === who)
-  const name = who === 'pharmacy' ? today.pharmacyName || 'the pharmacy' : person?.name ?? today.contactName
-  const phone = who === 'pharmacy' ? today.pharmacyPhone : person?.phone ?? today.contactPhone
+  const name = person?.name ?? today.contactName
+  const phone = person?.phone ?? today.contactPhone
   return (
     <ParentScreen>
       <H1>Call {name}</H1>

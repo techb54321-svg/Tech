@@ -8,8 +8,6 @@ export interface FamilyInfo {
     timeZone: string
     contactName: string
     contactPhone: string
-    pharmacyName: string
-    pharmacyPhone: string
     smsAlerts: boolean
     autoSpeak: boolean
     keepAwake: boolean
@@ -131,7 +129,6 @@ export const KIND_LABEL = {
   appointment: 'Appointment',
   social: 'Social activity',
   routine: 'Daily routine',
-  medication: 'Medication',
 } as const
 
 export function fmtDateTime(iso: string, tz: string) {

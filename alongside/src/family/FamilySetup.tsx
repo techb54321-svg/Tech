@@ -1,0 +1,288 @@
+import { useMemo, useState } from 'react'
+import { api } from '../api'
+import type { Destination } from '../../shared/types'
+import { ErrorBanner, Field, Saved, useAction, type FamilyInfo } from './ui'
+
+export function TimeZoneSelect({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  const zones = useMemo(() => {
+    let all: string[] = []
+    try {
+      all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
+    } catch {
+      /* older browsers */
+    }
+    if (!all.length) all = ['Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Adelaide', 'Australia/Perth', 'Australia/Hobart', 'Australia/Darwin']
+    const au = all.filter((z) => z.startsWith('Australia/'))
+    const rest = all.filter((z) => !z.startsWith('Australia/'))
+    if (!all.includes(value)) rest.unshift(value)
+    return { au, rest }
+  }, [value])
+  return (
+    <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+      <optgroup label="Australia">
+        {zones.au.map((z) => (
+          <option key={z} value={z}>
+            {z.replace('Australia/', '').replace(/_/g, ' ')}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Other">
+        {zones.rest.map((z) => (
+          <option key={z} value={z}>
+            {z.replace(/_/g, ' ')}
+          </option>
+        ))}
+      </optgroup>
+    </select>
+  )
+}
+
+export function FamilySetup({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
+  return (
+    <>
+      <SettingsForm info={info} refresh={refresh} />
+      <Places info={info} refresh={refresh} />
+      <Sharing info={info} />
+      <Delivery info={info} />
+    </>
+  )
+}
+
+function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
+  const { isDemo: _demo, ...initial } = info.settings
+  const [s, setS] = useState(initial)
+  const [saved, setSaved] = useState(false)
+  const act = useAction()
+  const set = <K extends keyof typeof s>(k: K, v: (typeof s)[K]) => {
+    setSaved(false)
+    setS((x) => ({ ...x, [k]: v }))
+  }
+  const sms = info.integrations.sms
+  return (
+    <form
+      className="form card"
+      aria-labelledby="st-h"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setSaved(false)
+        await act.run(
+          () => api('PUT', `/api/family/${info.id}/settings`, s),
+          async () => {
+            setSaved(true)
+            await refresh()
+          },
+        )
+      }}
+    >
+      <h2 id="st-h">Person and contacts</h2>
+      <div className="two-col">
+        <Field id="st-name" label="Parent’s name" hint="Shown in the greeting" error={act.fields.parentName}>
+          <input id="st-name" value={s.parentName} onChange={(e) => set('parentName', e.target.value)} required />
+        </Field>
+        <Field id="st-tz" label="Time zone" hint="Reminder times and “today” follow this zone, including daylight saving" error={act.fields.timeZone}>
+          <TimeZoneSelect id="st-tz" value={s.timeZone} onChange={(v) => set('timeZone', v)} />
+        </Field>
+        <Field id="st-cn" label="Family contact name" hint="The green button says “Call [name]”" error={act.fields.contactName}>
+          <input id="st-cn" value={s.contactName} maxLength={40} onChange={(e) => set('contactName', e.target.value)} required />
+        </Field>
+        <Field id="st-cp" label="Family contact phone" error={act.fields.contactPhone}>
+          <input id="st-cp" type="tel" value={s.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} autoComplete="tel" />
+        </Field>
+        <Field id="st-pn" label="Pharmacy name (optional)" hint="Offered when the answer to a medication reminder is “Not sure”" error={act.fields.pharmacyName}>
+          <input id="st-pn" value={s.pharmacyName} onChange={(e) => set('pharmacyName', e.target.value)} />
+        </Field>
+        <Field id="st-pp" label="Pharmacy phone (optional)" error={act.fields.pharmacyPhone}>
+          <input id="st-pp" type="tel" value={s.pharmacyPhone} onChange={(e) => set('pharmacyPhone', e.target.value)} />
+        </Field>
+      </div>
+      <label className="check">
+        <input type="checkbox" checked={s.smsAlerts} onChange={(e) => set('smsAlerts', e.target.checked)} />
+        <span>
+          <strong>Text the family contact when {s.parentName || 'the parent'} asks for help or a lift</strong>
+          <br />
+          <span className="small muted">
+            {sms.configured
+              ? `Uses ${sms.name}. The app shows whether each text was accepted, delivered or failed.`
+              : 'Text messaging is not set up on this server, so requests are saved in the app only.'}
+            {info.settings.isDemo ? ' The demonstration never sends texts.' : ''}
+          </span>
+        </span>
+      </label>
+      <ErrorBanner error={act.error} onRetry={act.retry} />
+      <Saved show={saved} />
+      <div>
+        <button className="btn" disabled={act.busy}>
+          {act.busy ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+const ICON_LABEL: Record<Destination['icon'], string> = {
+  medical: 'Medical',
+  shops: 'Shops',
+  home: 'Home',
+  other: 'Other place',
+}
+
+type PlaceDraft = { label: string; address: string; icon: Destination['icon']; latitude: string; longitude: string }
+
+function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
+  const [edit, setEdit] = useState<{ id: string | null; d: PlaceDraft } | null>(null)
+  const act = useAction()
+  const del = useAction()
+  return (
+    <section className="card" aria-labelledby="pl-h">
+      <h2 id="pl-h">Familiar places</h2>
+      <p className="small muted">
+        These are the big buttons under “Get a lift”. Keep names short. Latitude and longitude are optional; they help
+        Uber find the exact spot.
+      </p>
+      <ErrorBanner error={del.error} onRetry={del.retry} />
+      <ul className="list">
+        {info.destinations.map((d) => (
+          <li key={d.id}>
+            <span>
+              <strong>{d.label}</strong> · {d.address} <span className="pill neutral">{ICON_LABEL[d.icon]}</span>
+            </span>
+            <span className="row">
+              <button
+                className="btn secondary"
+                onClick={() =>
+                  setEdit({
+                    id: d.id,
+                    d: { label: d.label, address: d.address, icon: d.icon, latitude: d.latitude?.toString() ?? '', longitude: d.longitude?.toString() ?? '' },
+                  })
+                }
+              >
+                Edit
+              </button>
+              <button
+                className="btn danger"
+                disabled={del.busy}
+                onClick={async () => {
+                  if (!window.confirm(`Remove “${d.label}”?`)) return
+                  await del.run(() => api('DELETE', `/api/family/${info.id}/destinations/${d.id}`), refresh)
+                }}
+              >
+                Remove
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {edit ? (
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const num = (v: string) => (v.trim() === '' ? null : Number(v))
+            const body = { ...edit.d, latitude: num(edit.d.latitude), longitude: num(edit.d.longitude) }
+            await act.run(
+              () =>
+                edit.id
+                  ? api('PUT', `/api/family/${info.id}/destinations/${edit.id}`, body)
+                  : api('POST', `/api/family/${info.id}/destinations`, body),
+              async () => {
+                setEdit(null)
+                await refresh()
+              },
+            )
+          }}
+        >
+          <h3>{edit.id ? 'Edit place' : 'New place'}</h3>
+          <div className="two-col">
+            <Field id="pl-label" label="Button name" hint="E.g. “Medical centre”" error={act.fields.label}>
+              <input id="pl-label" value={edit.d.label} maxLength={40} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, label: e.target.value } })} required />
+            </Field>
+            <Field id="pl-icon" label="Icon" error={act.fields.icon}>
+              <select id="pl-icon" value={edit.d.icon} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, icon: e.target.value as Destination['icon'] } })}>
+                {Object.entries(ICON_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field id="pl-addr" label="Address" error={act.fields.address}>
+            <input id="pl-addr" value={edit.d.address} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, address: e.target.value } })} required />
+          </Field>
+          <div className="two-col">
+            <Field id="pl-lat" label="Latitude (optional)" error={act.fields.latitude}>
+              <input id="pl-lat" inputMode="decimal" value={edit.d.latitude} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, latitude: e.target.value } })} />
+            </Field>
+            <Field id="pl-lng" label="Longitude (optional)" error={act.fields.longitude}>
+              <input id="pl-lng" inputMode="decimal" value={edit.d.longitude} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, longitude: e.target.value } })} />
+            </Field>
+          </div>
+          <ErrorBanner error={act.error} onRetry={act.retry} />
+          <div className="row">
+            <button className="btn" disabled={act.busy}>
+              {act.busy ? 'Saving…' : 'Save place'}
+            </button>
+            <button type="button" className="btn secondary" onClick={() => setEdit(null)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div>
+          <button className="btn" onClick={() => setEdit({ id: null, d: { label: '', address: '', icon: 'other', latitude: '', longitude: '' } })}>
+            Add a place
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function Sharing({ info }: { info: FamilyInfo }) {
+  const parent = info.settings.parentName
+  return (
+    <section className="card" aria-labelledby="sh-h">
+      <h2 id="sh-h">Sharing</h2>
+      <p>
+        Family sees {parent}’s answers only for reminders where {parent} has agreed to share. Change this per reminder
+        under <a href="#/family/reminders">Reminders → Edit</a>. Requests for help and lifts are always shared, because
+        their purpose is to reach family.
+      </p>
+      <ul className="list">
+        {info.reminders.map((r) => (
+          <li key={r.id}>
+            <span>{r.title}</span>
+            <span className={`pill ${r.shareResponses ? 'info' : 'neutral'}`}>{r.shareResponses ? 'Shared' : 'Private'}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function Delivery({ info }: { info: FamilyInfo }) {
+  const n = info.integrations.notifications
+  return (
+    <section className="card" aria-labelledby="dl-h">
+      <h2 id="dl-h">How reminders are delivered</h2>
+      <div className="banner info">
+        <span>{n.summary}</span>
+      </div>
+      <ul>
+        <li>While Alongside is open, a due reminder comes to the front with a short chime (if the device allows sound).</li>
+        <li>“Later” moves a reminder 20 minutes and it comes back while the app is open.</li>
+        <li>Read aloud uses the device’s own voice where available; the words always stay on screen.</li>
+      </ul>
+      <p>
+        <a className="btn secondary" href={`/api/family/${info.id}/calendar.ics`} download>
+          Download calendar file (.ics)
+        </a>
+      </p>
+      <p className="small muted">
+        Open the file on {info.settings.parentName}’s phone or tablet to add the reminders to its calendar, which can
+        alert even when Alongside is closed. The calendar copy does not update automatically; download it again after
+        changes.
+      </p>
+    </section>
+  )
+}

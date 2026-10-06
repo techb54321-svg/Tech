@@ -1,0 +1,332 @@
+import { useState } from 'react'
+import { api } from '../api'
+import { formatLongDate, formatTime12 } from '../../shared/time'
+import type { Reminder, ReminderKind } from '../../shared/types'
+import { ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
+
+type Draft = {
+  kind: ReminderKind
+  title: string
+  time: string
+  startDate: string
+  repeat: 'none' | 'daily'
+  endDate: string
+  location: string
+  notes: string
+  remindMinutesBefore: number
+  shareResponses: boolean
+  medScheduleConfirmed: boolean
+}
+
+const GROUP_LABEL = { appointment: 'Appointments', social: 'Social activities', routine: 'Daily routines', medication: 'Medication' } as const
+
+const blank = (today: string): Draft => ({
+  kind: 'appointment',
+  title: '',
+  time: '09:00',
+  startDate: today,
+  repeat: 'none',
+  endDate: '',
+  location: '',
+  notes: '',
+  remindMinutesBefore: 60,
+  shareResponses: false,
+  medScheduleConfirmed: false,
+})
+
+const fromReminder = (r: Reminder): Draft => ({
+  kind: r.kind,
+  title: r.title,
+  time: r.time,
+  startDate: r.startDate,
+  repeat: r.repeat,
+  endDate: r.endDate ?? '',
+  location: r.location,
+  notes: r.notes,
+  remindMinutesBefore: r.remindMinutesBefore,
+  shareResponses: r.shareResponses,
+  // Editing a medication reminder requires confirming the schedule again.
+  medScheduleConfirmed: false,
+})
+
+export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
+  const [editing, setEditing] = useState<{ id: string | null; draft: Draft } | null>(null)
+  const [savedMsg, setSavedMsg] = useState('')
+  const del = useAction()
+  const parent = info.settings.parentName
+
+  const groups: ReminderKind[] = ['appointment', 'social', 'routine', 'medication']
+  return (
+    <>
+      <div className="banner info">
+        <span>
+          Reminders appear on {parent}’s screen <strong>only while Alongside is open</strong>. Background notifications
+          are not set up yet. For alerts when the app is closed, use the calendar export in Setup.
+        </span>
+      </div>
+      <Saved show={!!savedMsg} text={savedMsg} />
+      <ErrorBanner error={del.error} onRetry={del.retry} />
+      {editing ? (
+        <ReminderForm
+          info={info}
+          id={editing.id}
+          initial={editing.draft}
+          onCancel={() => setEditing(null)}
+          onSaved={async (msg) => {
+            setEditing(null)
+            setSavedMsg(msg)
+            await refresh()
+          }}
+        />
+      ) : (
+        <div>
+          <button
+            className="btn"
+            onClick={() => {
+              setSavedMsg('')
+              setEditing({ id: null, draft: blank(info.today) })
+            }}
+          >
+            Add a reminder
+          </button>
+        </div>
+      )}
+      {groups.map((k) => {
+        const list = info.reminders.filter((r) => r.kind === k)
+        return (
+          <section key={k} className="card" aria-labelledby={`g-${k}`}>
+            <h2 id={`g-${k}`}>{GROUP_LABEL[k]}</h2>
+            {list.length === 0 ? (
+              <p className="muted">None yet.</p>
+            ) : (
+              <ul className="list">
+                {list.map((r) => (
+                  <li key={r.id}>
+                    <span>
+                      <strong>
+                        {formatTime12(r.time)} · {r.title}
+                      </strong>
+                      <br />
+                      <span className="small muted">
+                        {r.repeat === 'daily'
+                          ? `Every day from ${formatLongDate(r.startDate)}${r.endDate ? ` to ${formatLongDate(r.endDate)}` : ''}`
+                          : formatLongDate(r.startDate)}
+                        {r.location ? ` · ${r.location}` : ''}
+                      </span>
+                      <br />
+                      <span className={`pill ${r.shareResponses ? 'info' : 'neutral'}`}>
+                        {r.shareResponses ? 'Answers shared with family' : 'Private'}
+                      </span>
+                      {r.kind === 'medication' && r.medScheduleConfirmedAt && (
+                        <span className="small muted">
+                          {' '}
+                          Schedule match confirmed by {r.medScheduleConfirmedBy}, {fmtDateTime(r.medScheduleConfirmedAt, info.settings.timeZone)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="row">
+                      <button
+                        className="btn secondary"
+                        onClick={() => {
+                          setSavedMsg('')
+                          setEditing({ id: r.id, draft: fromReminder(r) })
+                          window.scrollTo(0, 0)
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn danger"
+                        disabled={del.busy}
+                        onClick={async () => {
+                          if (!window.confirm(`Remove “${r.title}”? It will no longer appear for ${parent}.`)) return
+                          setSavedMsg('')
+                          await del.run(
+                            () => api('DELETE', `/api/family/${info.id}/reminders/${r.id}`),
+                            async () => {
+                              setSavedMsg(`Removed “${r.title}”.`)
+                              await refresh()
+                            },
+                          )
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )
+      })}
+    </>
+  )
+}
+
+function ReminderForm({
+  info,
+  id,
+  initial,
+  onCancel,
+  onSaved,
+}: {
+  info: FamilyInfo
+  id: string | null
+  initial: Draft
+  onCancel: () => void
+  onSaved: (msg: string) => void
+}) {
+  const [d, setD] = useState<Draft>(initial)
+  const act = useAction()
+  const parent = info.settings.parentName
+  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }))
+  const med = d.kind === 'medication'
+
+  return (
+    <form
+      className="form card"
+      aria-labelledby="rf-h"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        const body = {
+          ...d,
+          endDate: d.repeat === 'daily' && d.endDate ? d.endDate : null,
+          remindMinutesBefore: d.kind === 'appointment' || d.kind === 'social' ? d.remindMinutesBefore : 0,
+        }
+        await act.run(
+          () => (id ? api('PUT', `/api/family/${info.id}/reminders/${id}`, body) : api('POST', `/api/family/${info.id}/reminders`, body)),
+          () => onSaved(id ? `Saved changes to “${d.title}”.` : `Added “${d.title}”.`),
+        )
+      }}
+    >
+      <h2 id="rf-h">{id ? 'Edit reminder' : 'New reminder'}</h2>
+      <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+        <legend className="label" style={{ fontWeight: 700, marginBottom: '0.3rem' }}>
+          Type
+        </legend>
+        <div className="row">
+          {(Object.keys(KIND_LABEL) as ReminderKind[]).map((k) => (
+            <label key={k} className="check">
+              <input
+                type="radio"
+                name="kind"
+                checked={d.kind === k}
+                onChange={() =>
+                  setD((x) => ({
+                    ...x,
+                    kind: k,
+                    repeat: k === 'routine' || k === 'medication' ? 'daily' : x.repeat,
+                    remindMinutesBefore: k === 'appointment' ? 60 : 0,
+                  }))
+                }
+              />
+              {KIND_LABEL[k]}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {med && (
+        <div className="banner info">
+          <span>
+            Only enter a reminder that matches {parent}’s <strong>existing, verified medication schedule</strong> (for
+            example the pharmacy blister pack or the prescriber’s medication list). Alongside does not give medical
+            advice. Answers are recorded as “reported taken”, never as verified, and an unanswered reminder means “not
+            confirmed”.
+          </span>
+        </div>
+      )}
+
+      <Field id="rf-title" label="Short title" hint={med ? 'For example “Morning tablets”' : 'A few words, e.g. “Dr Chen” or “Shower”'} error={act.fields.title}>
+        <input id="rf-title" value={d.title} maxLength={60} onChange={(e) => set('title', e.target.value)} required />
+      </Field>
+      <div className="two-col">
+        <Field id="rf-time" label={`Time (${info.settings.timeZone})`} error={act.fields.time}>
+          <input id="rf-time" type="time" value={d.time} onChange={(e) => set('time', e.target.value)} required />
+        </Field>
+        <Field id="rf-repeat" label="Repeats" error={act.fields.repeat}>
+          <select id="rf-repeat" value={d.repeat} onChange={(e) => set('repeat', e.target.value as Draft['repeat'])}>
+            <option value="none">Just once</option>
+            <option value="daily">Every day</option>
+          </select>
+        </Field>
+        <Field id="rf-date" label={d.repeat === 'daily' ? 'Starting' : 'Date'} error={act.fields.startDate}>
+          <input id="rf-date" type="date" value={d.startDate} onChange={(e) => set('startDate', e.target.value)} required />
+        </Field>
+        {d.repeat === 'daily' && (
+          <Field id="rf-end" label="Last day (optional)" error={act.fields.endDate}>
+            <input id="rf-end" type="date" value={d.endDate} onChange={(e) => set('endDate', e.target.value)} />
+          </Field>
+        )}
+        {(d.kind === 'appointment' || d.kind === 'social') && (
+          <Field id="rf-early" label="Show reminder" error={act.fields.remindMinutesBefore}>
+            <select id="rf-early" value={d.remindMinutesBefore} onChange={(e) => set('remindMinutesBefore', Number(e.target.value))}>
+              <option value={0}>At the time</option>
+              <option value={15}>15 minutes before</option>
+              <option value={30}>30 minutes before</option>
+              <option value={60}>1 hour before</option>
+              <option value={120}>2 hours before</option>
+            </select>
+          </Field>
+        )}
+      </div>
+      {!med && (
+        <Field id="rf-loc" label="Where (optional)" error={act.fields.location}>
+          <input id="rf-loc" value={d.location} maxLength={200} onChange={(e) => set('location', e.target.value)} />
+        </Field>
+      )}
+      <Field
+        id="rf-notes"
+        label="Short instructions (optional)"
+        hint="Keep it brief; this is read on the big screen. E.g. “Bring your Medicare card.”"
+        error={act.fields.notes}
+      >
+        <textarea id="rf-notes" value={d.notes} maxLength={300} onChange={(e) => set('notes', e.target.value)} />
+      </Field>
+
+      <label className="check">
+        <input type="checkbox" checked={d.shareResponses} onChange={(e) => set('shareResponses', e.target.checked)} />
+        <span>
+          <strong>{parent} has agreed to share answers to this reminder with family.</strong>
+          <br />
+          <span className="small muted">
+            Leave unticked to keep answers private (recommended for personal routines like showering). Turning this on
+            later never reveals earlier private answers. Requests for help are always shared.
+          </span>
+        </span>
+      </label>
+
+      {med && (
+        <div className="field" data-invalid={!!act.fields.medScheduleConfirmed}>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.medScheduleConfirmed}
+              onChange={(e) => set('medScheduleConfirmed', e.target.checked)}
+              aria-describedby={act.fields.medScheduleConfirmed ? 'rf-med-error' : undefined}
+            />
+            <span>
+              <strong>I have checked that this reminder matches {parent}’s current, verified medication schedule.</strong>
+            </span>
+          </label>
+          {act.fields.medScheduleConfirmed && (
+            <span className="error" id="rf-med-error" role="alert">
+              {act.fields.medScheduleConfirmed}
+            </span>
+          )}
+        </div>
+      )}
+
+      <ErrorBanner error={act.error} onRetry={act.retry} />
+      <div className="row">
+        <button className="btn" disabled={act.busy}>
+          {act.busy ? 'Saving…' : id ? 'Save changes' : 'Add reminder'}
+        </button>
+        <button type="button" className="btn secondary" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}

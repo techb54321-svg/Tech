@@ -117,3 +117,10 @@ automated narrated journey to each cell type.
 
 Everything is procedurally generated geometry (no external 3D model files), so the
 single HTML file is completely self-contained apart from the Three.js library.
+
+---
+
+## Alongside
+
+`alongside/` contains **Alongside**, a separate, standalone app: a simple daily helper for an older person with
+family support behind the scenes. See [alongside/README.md](alongside/README.md).

@@ -22,6 +22,16 @@ Open the address and choose **Try the demonstration**. This creates an isolated 
 and places, and opens the parent's home screen. Use the small **Family setup** link at the bottom to reach the
 family area. In the demonstration no calls, texts or bookings are made, and the demo household is deleted after 3 days.
 
+Browser-only preview (no server, for sharing a quick look):
+
+```bash
+npm run build:preview   # writes dist-static/alongside-preview.html
+```
+
+The preview runs the same screens against an in-browser stand-in for the API (`src/demo/localApi.ts`), with
+demonstration data kept in that browser only. Accounts, device pairing, text messages and calendar export need the
+full app.
+
 Development (hot reload, API on 8787, web on 5173):
 
 ```bash

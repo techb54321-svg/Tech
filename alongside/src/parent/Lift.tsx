@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Car, Check, CircleX, House, MapPin, Pencil, ShoppingBag, Stethoscope, Users, ChevronRight } from 'lucide-react'
-import { api, ApiError, newRequestId } from '../api'
+import { api, ApiError, newRequestId, STATIC_DEMO } from '../api'
 import { navigate, useScreenFocus } from '../route'
 import type { Destination, MessageStatus, ParentToday } from '../../shared/types'
 import { uberDeepLink } from '../../shared/uber'
@@ -156,16 +156,19 @@ function Confirm({ today, chosen }: { today: ParentToday; chosen: Chosen }) {
           rel="noopener noreferrer"
           onClick={() => {
             // Note the hand-off for family. Booking itself happens in Uber.
-            fetch('/api/parent/lift/handoff', {
-              method: 'POST',
-              keepalive: true,
-              credentials: 'same-origin',
-              headers: { 'Content-Type': 'application/json', 'X-Alongside': '1' },
-              body: JSON.stringify({
-                clientRequestId: handoffId.current,
-                destination: { destinationId: chosen.destinationId, label: chosen.label, address: chosen.address },
-              }),
-            }).catch(() => undefined)
+            const payload = {
+              clientRequestId: handoffId.current,
+              destination: { destinationId: chosen.destinationId, label: chosen.label, address: chosen.address },
+            }
+            if (STATIC_DEMO) api('POST', '/api/parent/lift/handoff', payload).catch(() => undefined)
+            else
+              fetch('/api/parent/lift/handoff', {
+                method: 'POST',
+                keepalive: true,
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Alongside': '1' },
+                body: JSON.stringify(payload),
+              }).catch(() => undefined)
             navigate('/lift/uber')
           }}
         >

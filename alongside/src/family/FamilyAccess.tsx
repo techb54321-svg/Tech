@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
-import { ErrorBanner, fmtDateTime, useAction, type FamilyInfo } from './ui'
+import { ConfirmButton, ErrorBanner, fmtDateTime, useAction, type FamilyInfo } from './ui'
 
 export function FamilyAccess({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void>; reloadMe: () => Promise<void> }) {
   const [codes, setCodes] = useState<{ parent?: { code: string; expiresAt: string }; family?: { code: string; expiresAt: string } }>({})
@@ -53,16 +53,15 @@ export function FamilyAccess({ info, refresh }: { info: FamilyInfo; refresh: () 
                     {d.lastSeenAt ? ` · last used ${fmtDateTime(d.lastSeenAt, tz)}` : ''}
                   </span>
                 </span>
-                <button
-                  className="btn danger"
+                <ConfirmButton
+                  label="Disconnect"
+                  confirmLabel="Yes, disconnect"
+                  question="Disconnect? It will need a new code to reconnect."
                   disabled={act.busy}
-                  onClick={async () => {
-                    if (!window.confirm('Disconnect this device? It will need a new code to reconnect.')) return
+                  onConfirm={async () => {
                     await act.run(() => api('DELETE', `/api/family/${info.id}/devices/${d.id}`), refresh)
                   }}
-                >
-                  Disconnect
-                </button>
+                />
               </li>
             ))}
           </ul>

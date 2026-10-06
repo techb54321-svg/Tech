@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, ApiError } from './api'
+import { api, ApiError, STATIC_DEMO } from './api'
 import { navigate, useScreenFocus } from './route'
 
 /** First-run screen on a device that is not paired and not signed in. */
@@ -31,8 +31,8 @@ export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
         {busy ? 'Starting…' : 'Try the demonstration'}
       </button>
       <p className="muted">
-        The demonstration uses made-up people and places. No calls, texts or bookings are made. It is removed after
-        three days.
+        The demonstration uses made-up people and places. No calls, texts or bookings are made.
+        {STATIC_DEMO ? '' : ' It is removed after three days.'}
       </p>
       {error && (
         <p className="banner err" role="alert">
@@ -40,12 +40,21 @@ export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
         </p>
       )}
 
-      <button className="big-btn green medium" onClick={() => navigate('/pair')}>
-        Set up this device for my parent
-      </button>
-      <button className="big-btn plain medium" onClick={() => navigate('/family')}>
-        Family sign in
-      </button>
+      {STATIC_DEMO ? (
+        <p className="muted">
+          This online preview runs entirely in your browser and keeps the demonstration data on this device only.
+          Family accounts, pairing a parent’s device and text messages need the full app with its server.
+        </p>
+      ) : (
+        <>
+          <button className="big-btn green medium" onClick={() => navigate('/pair')}>
+            Set up this device for my parent
+          </button>
+          <button className="big-btn plain medium" onClick={() => navigate('/family')}>
+            Family sign in
+          </button>
+        </>
+      )}
     </main>
   )
 }

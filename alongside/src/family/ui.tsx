@@ -141,3 +141,47 @@ export function fmtDateTime(iso: string, tz: string) {
     minute: '2-digit',
   }).format(new Date(iso))
 }
+
+/** Two-step removal: the first press asks, the second press acts. No browser pop-ups. */
+export function ConfirmButton({
+  label,
+  confirmLabel,
+  question,
+  disabled,
+  onConfirm,
+}: {
+  label: string
+  confirmLabel: string
+  question: string
+  disabled?: boolean
+  onConfirm: () => void
+}) {
+  const [asking, setAsking] = useState(false)
+  if (!asking) {
+    return (
+      <button type="button" className="btn danger" disabled={disabled} onClick={() => setAsking(true)}>
+        {label}
+      </button>
+    )
+  }
+  return (
+    <span className="row" role="group" aria-label={question}>
+      <span className="small">{question}</span>
+      <button
+        type="button"
+        className="btn danger"
+        disabled={disabled}
+        autoFocus
+        onClick={() => {
+          setAsking(false)
+          onConfirm()
+        }}
+      >
+        {confirmLabel}
+      </button>
+      <button type="button" className="btn secondary" onClick={() => setAsking(false)}>
+        Cancel
+      </button>
+    </span>
+  )
+}

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { api } from '../api'
+import { api, STATIC_DEMO } from '../api'
 import type { Destination } from '../../shared/types'
-import { ErrorBanner, Field, Saved, useAction, type FamilyInfo } from './ui'
+import { ConfirmButton, ErrorBanner, Field, Saved, useAction, type FamilyInfo } from './ui'
 
 export function TimeZoneSelect({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
   const zones = useMemo(() => {
@@ -158,16 +158,15 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
               >
                 Edit
               </button>
-              <button
-                className="btn danger"
+              <ConfirmButton
+                label="Remove"
+                confirmLabel="Yes, remove"
+                question={`Remove “${d.label}”?`}
                 disabled={del.busy}
-                onClick={async () => {
-                  if (!window.confirm(`Remove “${d.label}”?`)) return
+                onConfirm={async () => {
                   await del.run(() => api('DELETE', `/api/family/${info.id}/destinations/${d.id}`), refresh)
                 }}
-              >
-                Remove
-              </button>
+              />
             </span>
           </li>
         ))}
@@ -273,6 +272,10 @@ function Delivery({ info }: { info: FamilyInfo }) {
         <li>“Later” moves a reminder 20 minutes and it comes back while the app is open.</li>
         <li>Read aloud uses the device’s own voice where available; the words always stay on screen.</li>
       </ul>
+      {STATIC_DEMO ? (
+        <p className="small muted">The full app offers a calendar file (.ics) here. It is not available in this browser-only preview.</p>
+      ) : (
+      <>
       <p>
         <a className="btn secondary" href={`/api/family/${info.id}/calendar.ics`} download>
           Download calendar file (.ics)
@@ -283,6 +286,8 @@ function Delivery({ info }: { info: FamilyInfo }) {
         alert even when Alongside is closed. The calendar copy does not update automatically; download it again after
         changes.
       </p>
+      </>
+      )}
     </section>
   )
 }

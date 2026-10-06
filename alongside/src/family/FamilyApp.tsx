@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, STATIC_DEMO } from '../api'
 import { navigate, useScreenFocus } from '../route'
 import type { Me } from '../App'
 import { ErrorBanner, Field, useAction, type FamilyInfo } from './ui'
@@ -87,9 +87,11 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
                 ))}
               </select>
             )}
-            <button className="linklike" onClick={signOut}>
-              Sign out · {me.family!.name}
-            </button>
+            {!STATIC_DEMO && (
+              <button className="linklike" onClick={signOut}>
+                Sign out · {me.family!.name}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -104,8 +106,8 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
         {info?.settings.isDemo && (
           <div className="banner demo">
             <span>
-              <strong>Demonstration.</strong> Fictional people and places. No calls, texts or bookings are made. Changes
-              are kept for three days.
+              <strong>Demonstration.</strong> Fictional people and places. No calls, texts or bookings are made.
+              {STATIC_DEMO ? ' Changes stay in this browser only.' : ' Changes are kept for three days.'}
             </span>
             <button
               className="btn secondary"

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
-import { ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
+import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
 
 type Draft = {
   kind: ReminderKind
@@ -135,11 +135,12 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
                       >
                         Edit
                       </button>
-                      <button
-                        className="btn danger"
+                      <ConfirmButton
+                        label="Remove"
+                        confirmLabel="Yes, remove"
+                        question={`Remove “${r.title}” for ${parent}?`}
                         disabled={del.busy}
-                        onClick={async () => {
-                          if (!window.confirm(`Remove “${r.title}”? It will no longer appear for ${parent}.`)) return
+                        onConfirm={async () => {
                           setSavedMsg('')
                           await del.run(
                             () => api('DELETE', `/api/family/${info.id}/reminders/${r.id}`),
@@ -149,9 +150,8 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
                             },
                           )
                         }}
-                      >
-                        Remove
-                      </button>
+                      />
+
                     </span>
                   </li>
                 ))}

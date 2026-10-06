@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api'
 import { formatLongDate, formatTime12 } from '../../shared/time'
-import { ErrorBanner, Field, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
+import { ConfirmButton, ErrorBanner, Field, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
 import { messageLabel, useDay } from './day'
 
 export function FamilyLifts({ info }: { info: FamilyInfo }) {
@@ -147,16 +147,15 @@ export function FamilyLifts({ info }: { info: FamilyInfo }) {
                   <br />
                   {t.details} <span className="pill neutral">Family-entered{t.enteredBy ? ` by ${t.enteredBy}` : ''}</span>
                 </span>
-                <button
-                  className="btn danger"
+                <ConfirmButton
+                  label="Remove"
+                  confirmLabel="Yes, remove"
+                  question="Remove this lift from the parent’s day?"
                   disabled={act.busy}
-                  onClick={async () => {
-                    if (!window.confirm('Remove this lift from the parent’s day?')) return
+                  onConfirm={async () => {
                     await act.run(() => api('DELETE', `/api/family/${info.id}/lifts/${t.id}`), load)
                   }}
-                >
-                  Remove
-                </button>
+                />
               </li>
             ))}
           </ul>

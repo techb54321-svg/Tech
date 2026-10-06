@@ -11,7 +11,14 @@ export class ApiError extends Error {
   }
 }
 
+/** True in the browser-only preview build, which has no server. */
+export const STATIC_DEMO = import.meta.env.VITE_STATIC_DEMO === '1'
+
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  if (STATIC_DEMO) {
+    const { localApi } = await import('./demo/localApi')
+    return localApi<T>(method, path, body)
+  }
   let res: Response
   try {
     res = await fetch(path, {

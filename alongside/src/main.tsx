@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
 )
 
 // Installable PWA: the service worker caches only the app shell, never API data.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if ('serviceWorker' in navigator && import.meta.env.PROD && import.meta.env.VITE_STATIC_DEMO !== '1') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {
       /* the app works without it */

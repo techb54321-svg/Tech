@@ -10,12 +10,14 @@ import {
   DEMO_FAMILY_NAME,
   demoDestinationPhotos,
   demoDestinations,
+  demoDueNow,
   demoLift,
   demoReminderPhotos,
   demoReminders,
   demoSettings,
 } from '../../shared/demoSeed'
 import { demoMedia } from '../../shared/demoMedia'
+import { questionFor } from '../../shared/questions'
 import type { DayItem, Destination, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
 import {
   arrangedLiftSchema,
@@ -139,6 +141,7 @@ function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder
     endDate: input.repeat === 'daily' ? input.endDate : null,
     location: input.location,
     notes: input.notes,
+    question: input.question ?? '',
     remindMinutesBefore: input.remindMinutesBefore,
     shareResponses: input.shareResponses,
     medScheduleConfirmedAt: med ? nowIso() : null,
@@ -176,6 +179,8 @@ function createDemo(): State {
     ids[r.key] = uuid()
     s.reminders.push(toReminder(ids[r.key], r.input))
   }
+  const dueNow = demoDueNow(now, tz)
+  if (dueNow) s.reminders.push(toReminder(uuid(), dueNow))
   for (const [key, pic] of Object.entries(demoReminderPhotos)) s.media[`reminder:${ids[key]}:photo`] = demoMedia[pic]
   s.destinations.forEach((d, i) => (s.media[`destination:${d.id}:photo`] = demoMedia[demoDestinationPhotos[i]]))
   s.trips.push({
@@ -206,7 +211,7 @@ function parentItems(s: State, date: string): DayItem[] {
     const st = occurrenceStatus(r, date, s.settings.timeZone, latest, now)
     items.push({
       type: 'reminder', key: `${r.id}:${date}`,
-      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl },
+      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question) },
       occurrenceDate: date, status: st.status, snoozeUntil: st.snoozeUntil,
       dueAt: dueAt(r, date, s.settings.timeZone).toISOString(), answeredAt: latest?.createdAt ?? null, t: r.time,
     })

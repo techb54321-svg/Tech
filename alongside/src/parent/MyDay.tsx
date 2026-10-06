@@ -1,20 +1,10 @@
+// "My day", designed for someone living with dementia:
+// - only what needs answering now, one plain question at a time;
+// - answers in everyday words ("Yes", "Not yet", "I'm not sure");
+// - no counters, no browsing ahead, no status jargon;
+// - when nothing is due, say so calmly and show the one thing coming up.
 import { useEffect, useState } from 'react'
-import {
-  Ban,
-  Car,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  CircleHelp,
-  Clock,
-  House,
-  MapPin,
-  Pill,
-  Stethoscope,
-  Users,
-  CircleCheck,
-  CircleX,
-} from 'lucide-react'
+import { Ban, Car, Check, CircleHelp, CircleX, Clock, House, ListChecks, MapPin, Pill, Stethoscope, Users, Sparkles } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
 import { useNavigate, useScreenFocus } from '../route'
 import { formatInstantTime, formatTime12, localTimeHM, zonedTimeToInstant } from '../../shared/time'
@@ -26,41 +16,34 @@ type ReminderItem = Extract<DayItem, { type: 'reminder' }>
 
 const KIND = {
   appointment: { label: 'Appointment', Icon: Stethoscope },
-  social: { label: 'Outing', Icon: Users },
-  routine: { label: 'Routine', Icon: CircleCheck },
-  medication: { label: 'Medication', Icon: Pill },
+  social: { label: 'Going out', Icon: Users },
+  routine: { label: '', Icon: Sparkles },
+  medication: { label: 'Medicine', Icon: Pill },
 } as const
 
-/** Which item to open first: something due now, else the next thing coming up. */
-function startIndex(items: DayItem[], tz: string): number {
+type Ack =
+  | { kind: 'saved'; item: ReminderItem; action: ResponseAction; messageStatus: MessageStatus | null }
+  | { kind: 'error'; item: ReminderItem; action: ResponseAction; requestId: string; message: string }
+
+const titleOf = (i: DayItem) => (i.type === 'reminder' ? i.reminder.title : `Lift to ${i.lift.destinationLabel}`)
+const timeOf = (i: DayItem) => (i.type === 'reminder' ? i.reminder.time : i.lift.time)
+
+/** Reminders that need an answer right now. */
+function dueNow(items: DayItem[]): ReminderItem[] {
   const now = Date.now()
-  const due = items.findIndex((i) => liveStatus(i, now) === 'due')
-  if (due >= 0) return due
-  const hm = localTimeHM(new Date(), tz)
-  const next = items.findIndex((i) =>
-    i.type === 'lift' ? i.lift.time >= hm : i.status === 'upcoming' || i.status === 'snoozed',
-  )
-  if (next >= 0) return next
-  return Math.max(0, items.length - 1)
+  return items.filter((i): i is ReminderItem => i.type === 'reminder' && liveStatus(i, now) === 'due')
 }
 
-type Ack =
-  | { kind: 'saved'; action: ResponseAction; snoozeUntil: string | null; messageStatus: MessageStatus | null }
-  | { kind: 'error'; action: ResponseAction; requestId: string; message: string }
-
-/** True when nothing is left to answer and every lift has gone. */
-function dayIsDone(items: DayItem[], tz: string): boolean {
+/** The next thing later today (not yet due). */
+function comingUp(items: DayItem[], tz: string): DayItem | null {
   const now = Date.now()
   const hm = localTimeHM(new Date(), tz)
+  const when = (i: DayItem) =>
+    i.type === 'reminder' && i.status === 'snoozed' && i.snoozeUntil ? localTimeHM(new Date(i.snoozeUntil), tz) : timeOf(i)
   return (
-    items.length > 0 &&
-    items.every((i) => {
-      if (i.type === 'lift') return i.lift.time < hm
-      const s = liveStatus(i, now)
-      // An unanswered medication reminder is never "finished": it may still be answered.
-      if (s === 'no_response') return i.reminder.kind !== 'medication'
-      return s === 'done' || s === 'reported_taken' || s === 'not_today' || s === 'help_requested'
-    })
+    items
+      .filter((i) => (i.type === 'lift' ? i.lift.time >= hm : ['upcoming', 'snoozed'].includes(liveStatus(i, now) ?? '')))
+      .sort((a, b) => (when(a) < when(b) ? -1 : 1))[0] ?? null
   )
 }
 
@@ -73,97 +56,50 @@ export function MyDay({
 }: {
   today: ParentToday
   itemKey: string | null
-  reload: () => void
+  reload: () => Promise<void> | void
   autoPlayKey: string | null
   clearAutoPlay: () => void
 }) {
   const navigate = useNavigate()
-  const items = today.items
-  let idx = itemKey ? items.findIndex((i) => i.key === itemKey) : -1
-  const allDone = !itemKey && dayIsDone(items, today.timeZone)
-  if (idx < 0) idx = startIndex(items, today.timeZone)
-  const item = items[idx] as DayItem | undefined
   const [ack, setAck] = useState<Ack | null>(null)
   const [busy, setBusy] = useState<ResponseAction | null>(null)
-  const [changing, setChanging] = useState(false)
-  useScreenFocus(`${item?.key}|${ack?.kind}|${ack && 'action' in ack ? ack.action : ''}`)
+  const due = dueNow(today.items)
+  const current = itemKey === 'plan' ? null : (itemKey ? due.find((i) => i.key === itemKey) : null) ?? due[0] ?? null
+  useScreenFocus(`${itemKey}|${current?.key}|${ack?.kind}|${ack?.action ?? ''}`)
 
+  useEffect(() => setAck(null), [itemKey])
+  // Asked for something this screen hasn't loaded yet (just added by family): fetch fresh data.
+  // Fetch once; if it still isn't there (an old link), carry on with what is due now.
+  const unknownKey = !!itemKey && itemKey !== 'plan' && !today.items.some((i) => i.key === itemKey)
+  const [checkedKey, setCheckedKey] = useState<string | null>(null)
+  const checking = unknownKey && checkedKey !== itemKey
   useEffect(() => {
-    setAck(null)
-    setChanging(false)
-  }, [item?.key])
+    if (!checking) return
+    let live = true
+    Promise.resolve(reload()).finally(() => live && setCheckedKey(itemKey))
+    return () => {
+      live = false
+    }
+  }, [checking, itemKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const go = (i: number) => navigate(`/day/${encodeURIComponent(items[i].key)}`)
-  if (!item || allDone) {
-    return (
-      <ParentScreen>
-        <div className="ack" role="status">
-          <div className="ack-icon ok">
-            <Check aria-hidden="true" />
-          </div>
-          <H1>{item ? 'That’s everything for today' : 'Nothing planned today'}</H1>
-          {today.tomorrow && (
-            <p className="p-body">
-              Tomorrow starts with <strong>{today.tomorrow.title}</strong> at {formatTime12(today.tomorrow.time)}.
-            </p>
-          )}
-          <div className="btn-stack">
-            <a className="big-btn blue medium" href="#/">
-              <House aria-hidden="true" />
-              <span>Home</span>
-            </a>
-            {item && (
-              <button type="button" className="small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => go(0)}>
-                Look back at today
-              </button>
-            )}
-          </div>
-        </div>
-      </ParentScreen>
-    )
-  }
+  if (itemKey === 'plan') return <TodayPlan today={today} />
 
-  const hasNext = idx < items.length - 1
-  const nextItem = hasNext ? items[idx + 1] : null
-  const nextTitle = nextItem ? (nextItem.type === 'reminder' ? nextItem.reminder.title : `Lift to ${nextItem.lift.destinationLabel}`) : ''
-  // Name what comes next, so nobody has to remember or guess.
-  const nextButton = hasNext ? (
-    <button className="big-btn blue medium" onClick={() => go(idx + 1)}>
-      <ChevronRight aria-hidden="true" />
-      <span>Next: {nextTitle}</span>
-    </button>
-  ) : (
-    <a className="big-btn blue medium" href="#/">
-      <House aria-hidden="true" />
-      <span>Home</span>
-    </a>
-  )
-  const position = (
-    <p className="position" aria-label={`Item ${idx + 1} of ${items.length}`}>
-      {idx + 1} of {items.length}
-    </p>
-  )
-
-  async function answer(action: ResponseAction, requestId = newRequestId()) {
-    if (busy || item?.type !== 'reminder') return
+  async function answer(item: ReminderItem, action: ResponseAction, requestId = newRequestId()) {
+    if (busy) return
     setBusy(action)
     try {
-      const r = await api<{ snoozeUntil: string | null; messageStatus: MessageStatus | null }>(
-        'POST',
-        '/api/parent/responses',
-        {
-          clientRequestId: requestId,
-          reminderId: item.reminder.id,
-          occurrenceDate: item.occurrenceDate,
-          action,
-        },
-      )
-      setAck({ kind: 'saved', action, snoozeUntil: r.snoozeUntil, messageStatus: r.messageStatus })
-      setChanging(false)
+      const r = await api<{ messageStatus: MessageStatus | null }>('POST', '/api/parent/responses', {
+        clientRequestId: requestId,
+        reminderId: item.reminder.id,
+        occurrenceDate: item.occurrenceDate,
+        action,
+      })
+      setAck({ kind: 'saved', item, action, messageStatus: r.messageStatus })
       reload()
     } catch (e) {
       setAck({
         kind: 'error',
+        item,
         action,
         requestId,
         message: e instanceof ApiError && e.status !== 0 && e.status < 500 ? e.message : 'Please try again.',
@@ -174,46 +110,57 @@ export function MyDay({
   }
 
   if (ack) {
+    const next = due.find((i) => i.key !== ack.item.key)
+    const nextButton = next ? (
+      <button
+        className="big-btn blue medium"
+        onClick={() => {
+          setAck(null)
+          navigate(`/day/${encodeURIComponent(next.key)}`)
+        }}
+      >
+        <Check aria-hidden="true" />
+        <span>Next: {next.reminder.title}</span>
+      </button>
+    ) : (
+      <a className="big-btn blue medium" href="#/">
+        <House aria-hidden="true" />
+        <span>Home</span>
+      </a>
+    )
     return (
-      <ParentScreen aside={position}>
-        <AckView ack={ack} today={today} item={item as ReminderItem} busy={!!busy} retry={answer} nextButton={nextButton} />
+      <ParentScreen>
+        <AckView ack={ack} today={today} busy={!!busy} retry={answer} nextButton={nextButton} />
       </ParentScreen>
     )
   }
 
-  if (item.type === 'lift') {
-    const l = item.lift
-    const time = formatTime12(l.time)
+  if (checking && !ack) {
     return (
-      <ParentScreen aside={position}>
-        <ItemHead kind="lift" label="Lift" Icon={Car} time={time} title={`Lift to ${l.destinationLabel}`} />
-        <p className="p-detail">{l.details}</p>
-        {l.destinationAddress && (
-          <p className="p-detail">
-            <MapPin aria-hidden="true" />
-            <span>{l.destinationAddress}</span>
-          </p>
-        )}
-        <p className="p-note">Family-entered details, from {l.enteredByName}</p>
-        <Listen text={`${time}. Lift to ${l.destinationLabel}. ${l.details}`} voiceUrl={null} name={today.contactName} />
-        <Nav idx={idx} count={items.length} go={go} />
+      <ParentScreen>
+        <p className="p-body" aria-busy="true">
+          One moment…
+        </p>
       </ParentScreen>
     )
   }
+  if (!current) return <NothingNow today={today} />
 
-  const r = item.reminder
-  const { label, Icon } = KIND[r.kind]
-  const now = Date.now()
-  const status = liveStatus(item, now)
+  const r = current.reminder
   const time = formatTime12(r.time)
-  const settled = status === 'done' || status === 'reported_taken' || status === 'not_today'
-  const med = r.kind === 'medication'
-  const startsLater = now < zonedTimeToInstant(item.occurrenceDate, r.time, today.timeZone).getTime()
+  const startsLater = Date.now() < zonedTimeToInstant(current.occurrenceDate, r.time, today.timeZone).getTime()
+  const question = r.question
+  const spoken = [question ?? (startsLater ? `Coming up at ${time}` : `${r.title}, now`), r.title, r.location, r.notes].filter(Boolean).join('. ')
 
   return (
-    <ParentScreen aside={position}>
-      <ItemHead kind={r.kind} label={label} Icon={Icon} time={time} title={r.title} />
+    <ParentScreen>
+      <ItemHead kind={r.kind} time={time} title={r.title} />
       <Photo url={r.photoUrl} alt={`Photo for ${r.title}`} />
+      {question ? (
+        <p className="p-question">{question}</p>
+      ) : (
+        <p className="p-question">{startsLater ? `Coming up at ${time}.` : 'This is happening now.'}</p>
+      )}
       {r.location && (
         <p className="p-detail">
           <MapPin aria-hidden="true" />
@@ -221,51 +168,45 @@ export function MyDay({
         </p>
       )}
       {r.notes && <p className="p-detail">{r.notes}</p>}
-      <StatusLine item={item} status={status} today={today} startsLater={startsLater} />
       <Listen
-        text={[time, r.title, r.location, r.notes].filter(Boolean).join('. ')}
+        text={spoken}
         voiceUrl={r.voiceUrl}
         name={today.contactName}
-        autoPlay={today.autoSpeak && autoPlayKey === item.key && !ack}
+        autoPlay={today.autoSpeak && autoPlayKey === current.key}
         onAutoPlayed={clearAutoPlay}
       />
-
-      {settled && !changing ? (
-        <div className="btn-stack">
-          <button type="button" className="small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setChanging(true)}>
-            Change answer
-          </button>
-        </div>
-      ) : (
-        <div className="btn-stack" role="group" aria-label="Your answer">
-          {med ? (
-            <>
-              <ActionButton action="taken" busy={busy} onClick={answer} className="green" Icon={Check} text="I’ve taken it" />
-              <ActionButton action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Later" />
-              <ActionButton action="not_sure" busy={busy} onClick={answer} className="plain" Icon={CircleHelp} text="Not sure" />
-            </>
-          ) : (
-            <>
-              <ActionButton action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Done" />
-              <ActionButton action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Later" />
-              <ActionButton action="need_help" busy={busy} onClick={answer} className="help" Icon={CircleHelp} text="Need help" />
-              {r.kind !== 'appointment' && (
-                <ActionButton action="not_today" busy={busy} onClick={answer} className="plain" Icon={Ban} text="Not today" />
-              )}
-            </>
-          )}
+      <div className="btn-stack answers" role="group" aria-label={question ?? r.title}>
+        {r.kind === 'medication' ? (
+          <>
+            <Answer item={current} action="taken" busy={busy} onClick={answer} className="green" Icon={Check} text="Yes" />
+            <Answer item={current} action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Not yet" />
+            <Answer item={current} action="not_sure" busy={busy} onClick={answer} className="plain" Icon={CircleHelp} text="I’m not sure" />
+          </>
+        ) : r.kind === 'routine' ? (
+          <>
+            <Answer item={current} action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Yes" />
+            <Answer item={current} action="later" busy={busy} onClick={answer} className="amber" Icon={Clock} text="Not yet" />
+            <Answer item={current} action="not_today" busy={busy} onClick={answer} className="plain" Icon={Ban} text="No, not today" />
+          </>
+        ) : (
+          <Answer item={current} action="done" busy={busy} onClick={answer} className="green" Icon={Check} text="Okay" />
+        )}
+      </div>
+      {r.kind !== 'medication' && (
+        <div className="help-row">
+          <Answer item={current} action="need_help" busy={busy} onClick={answer} className="help" Icon={CircleHelp} text="I need help" />
         </div>
       )}
-      <Nav idx={idx} count={items.length} go={go} />
     </ParentScreen>
   )
 }
 
-/** The coloured top of each item: type, time and title. Each type has its own colour. */
-function ItemHead({ kind, label, Icon, time, title }: { kind: string; label: string; Icon: typeof Check; time: string; title: string }) {
+/** The coloured top of each item: what it is, when, and its name. */
+function ItemHead({ kind, time, title }: { kind: keyof typeof KIND | 'lift'; time: string; title: string }) {
+  const { label, Icon } = kind === 'lift' ? { label: 'Lift', Icon: Car } : KIND[kind]
   return (
     <div className={`item-head kind-${kind}`}>
-      <p className="item-kind">
+      <p className={`item-kind${label ? '' : ' icon-only'}`}>
         <span className="kind-badge">
           <Icon aria-hidden="true" />
         </span>
@@ -277,7 +218,8 @@ function ItemHead({ kind, label, Icon, time, title }: { kind: string; label: str
   )
 }
 
-function ActionButton({
+function Answer({
+  item,
   action,
   busy,
   onClick,
@@ -285,9 +227,10 @@ function ActionButton({
   Icon,
   text,
 }: {
+  item: ReminderItem
   action: ResponseAction
   busy: ResponseAction | null
-  onClick: (a: ResponseAction) => void
+  onClick: (i: ReminderItem, a: ResponseAction) => void
   className: string
   Icon: typeof Check
   text: string
@@ -298,7 +241,7 @@ function ActionButton({
       className={`big-btn medium ${className}`}
       disabled={!!busy}
       aria-busy={busy === action}
-      onClick={() => onClick(action)}
+      onClick={() => onClick(item, action)}
     >
       <Icon aria-hidden="true" />
       <span>{busy === action ? 'Saving…' : text}</span>
@@ -306,77 +249,89 @@ function ActionButton({
   )
 }
 
-function StatusLine({
-  item,
-  status,
-  today,
-  startsLater,
-}: {
-  item: ReminderItem
-  status: ReturnType<typeof liveStatus>
-  today: ParentToday
-  startsLater: boolean
-}) {
-  const at = (iso: string | null) => (iso ? formatInstantTime(new Date(iso), today.timeZone) : '')
-  switch (status) {
-    case 'due':
-      return (
-        <p className="status now">
-          <Clock aria-hidden="true" /> {startsLater ? 'Coming up soon' : 'It’s time'}
-        </p>
-      )
-    case 'snoozed':
-      return (
-        <p className="status info">
-          <Clock aria-hidden="true" /> Moved to {at(item.snoozeUntil)}
-        </p>
-      )
-    case 'done':
-      return (
-        <p className="status ok">
-          <Check aria-hidden="true" /> Done
-        </p>
-      )
-    case 'reported_taken':
-      return (
-        <p className="status ok">
-          <Check aria-hidden="true" /> You said you’ve taken it
-        </p>
-      )
-    case 'not_sure':
-      return (
-        <p className="status warn">
-          <CircleHelp aria-hidden="true" /> You weren’t sure
-        </p>
-      )
-    case 'help_requested':
-      return (
-        <p className="status info">
-          <CircleHelp aria-hidden="true" /> Help request saved for {today.contactName}
-        </p>
-      )
-    case 'not_today':
-      return (
-        <p className="status info">
-          <Ban aria-hidden="true" /> Not today
-        </p>
-      )
-    default:
-      return null
-  }
+/** Nothing needs answering: say so, and show the one thing coming up. */
+function NothingNow({ today }: { today: ParentToday }) {
+  const navigate = useNavigate()
+  const next = comingUp(today.items, today.timeZone)
+  const anything = today.items.length > 0
+  return (
+    <ParentScreen>
+      <div className="ack" role="status">
+        <div className="ack-icon ok">
+          <Check aria-hidden="true" />
+        </div>
+        <H1>{next ? 'Nothing to do right now' : anything ? 'That’s everything for today' : 'Nothing planned today'}</H1>
+        {next ? (
+          <div className={`coming-up kind-${next.type === 'lift' ? 'lift' : next.reminder.kind}`}>
+            <p className="coming-label">Later today</p>
+            <p className="coming-time">
+              {next.type === 'reminder' && next.status === 'snoozed' && next.snoozeUntil
+                ? formatInstantTime(new Date(next.snoozeUntil), today.timeZone)
+                : formatTime12(timeOf(next))}
+            </p>
+            <p className="coming-title">{titleOf(next)}</p>
+          </div>
+        ) : (
+          today.tomorrow && (
+            <p className="p-body">
+              Tomorrow starts with <strong>{today.tomorrow.title}</strong> at {formatTime12(today.tomorrow.time)}.
+            </p>
+          )
+        )}
+        <div className="btn-stack">
+          <a className="big-btn blue medium" href="#/">
+            <House aria-hidden="true" />
+            <span>Home</span>
+          </a>
+          {anything && (
+            <button type="button" className="small-btn plan-btn" onClick={() => navigate('/day/plan')}>
+              <ListChecks aria-hidden="true" /> See today’s plan
+            </button>
+          )}
+        </div>
+      </div>
+    </ParentScreen>
+  )
 }
 
-function Nav({ idx, count, go }: { idx: number; count: number; go: (i: number) => void }) {
-  if (count < 2) return null
+/** A calm, read-only list of today. Only things due now can be opened. */
+function TodayPlan({ today }: { today: ParentToday }) {
+  const now = Date.now()
   return (
-    <nav className="nav-row" aria-label="Other items today">
-      <button type="button" className="small-btn" onClick={() => go(idx - 1)} disabled={idx === 0} aria-disabled={idx === 0}>
-        <ChevronLeft aria-hidden="true" /> Previous
-      </button>
-      <button type="button" className="small-btn" onClick={() => go(idx + 1)} disabled={idx >= count - 1}>
-        Next <ChevronRight aria-hidden="true" />
-      </button>
-    </nav>
+    <ParentScreen>
+      <H1>Today’s plan</H1>
+      <ol className="plan">
+        {today.items.map((i) => {
+          const status = i.type === 'reminder' ? liveStatus(i, now) : null
+          const kind = i.type === 'lift' ? 'lift' : i.reminder.kind
+          const Icon = kind === 'lift' ? Car : KIND[kind].Icon
+          const done = status === 'done' || status === 'reported_taken'
+          return (
+            <li key={i.key} className={`plan-row kind-${kind}${done ? ' is-done' : ''}`}>
+              <span className="kind-badge">
+                <Icon aria-hidden="true" />
+              </span>
+              <span className="plan-text">
+                <span className="plan-time">{formatTime12(timeOf(i))}</span>
+                <span className="plan-title">{titleOf(i)}</span>
+                {i.type === 'lift' && <span className="plan-detail">{i.lift.details}</span>}
+              </span>
+              {done ? (
+                <span className="plan-state ok">
+                  <Check aria-hidden="true" /> Done
+                </span>
+              ) : status === 'due' ? (
+                <a className="plan-state now" href={`#/day/${encodeURIComponent(i.key)}`}>
+                  Now
+                </a>
+              ) : status === 'not_today' ? (
+                <span className="plan-state quiet">Not today</span>
+              ) : null}
+            </li>
+          )
+        })}
+      </ol>
+    </ParentScreen>
   )
 }
 
@@ -385,18 +340,17 @@ const MESSAGE_SENT: MessageStatus[] = ['accepted', 'queued', 'sent', 'delivered'
 function AckView({
   ack,
   today,
-  item,
   busy,
   retry,
   nextButton,
 }: {
   ack: Ack
   today: ParentToday
-  item: ReminderItem
   busy: boolean
-  retry: (a: ResponseAction, id: string) => void
+  retry: (i: ReminderItem, a: ResponseAction, id: string) => void
   nextButton: React.ReactNode
 }) {
+  const name = today.contactName
   if (ack.kind === 'error') {
     return (
       <div className="ack" role="alert">
@@ -406,18 +360,15 @@ function AckView({
         <H1>That didn’t save</H1>
         <p className="p-body">{ack.message}</p>
         <div className="btn-stack">
-          <button className="big-btn blue medium" disabled={busy} onClick={() => retry(ack.action, ack.requestId)}>
+          <button className="big-btn blue medium" disabled={busy} onClick={() => retry(ack.item, ack.action, ack.requestId)}>
             {busy ? 'Saving…' : 'Try again'}
           </button>
-          <a className="big-btn plain medium" href="#/">
-            <House aria-hidden="true" /> Home
-          </a>
+          <CallButton who="contact" name={name} phone={today.contactPhone} demo={today.demo} className="big-btn green medium" />
         </div>
       </div>
     )
   }
 
-  const name = today.contactName
   switch (ack.action) {
     case 'later':
       return (
@@ -425,8 +376,8 @@ function AckView({
           <div className="ack-icon later">
             <Clock aria-hidden="true" />
           </div>
-          <H1>Moved to {ack.snoozeUntil ? formatInstantTime(new Date(ack.snoozeUntil), today.timeZone) : 'later'}</H1>
-          <p className="p-body">“Later” gives you 20 more minutes. It will come back here then.</p>
+          <H1>Okay</H1>
+          <p className="p-body">I’ll ask you again soon.</p>
           <div className="btn-stack">{nextButton}</div>
         </div>
       )
@@ -436,7 +387,7 @@ function AckView({
           <div className="ack-icon help">
             <CircleHelp aria-hidden="true" />
           </div>
-          <H1>Request saved</H1>
+          <H1>Your message is saved for {name}</H1>
           <p className="p-body">
             {name} will see it in Alongside.
             {ack.messageStatus && MESSAGE_SENT.includes(ack.messageStatus) ? ` A text was also sent to ${name}.` : ''}
@@ -454,11 +405,8 @@ function AckView({
           <div className="ack-icon help">
             <CircleHelp aria-hidden="true" />
           </div>
-          <H1>Not sure?</H1>
-          <p className="p-body">
-            Please check with {name}
-            {today.pharmacyPhone ? ' or your pharmacist' : ''}.
-          </p>
+          <H1>That’s okay</H1>
+          <p className="p-body">Let’s ask {name}.</p>
           <div className="btn-stack">
             <CallButton who="contact" name={name} phone={today.contactPhone} demo={today.demo} className="big-btn green medium" />
             {today.pharmacyPhone && (
@@ -467,8 +415,8 @@ function AckView({
                 name={today.pharmacyName || 'pharmacy'}
                 phone={today.pharmacyPhone}
                 demo={today.demo}
-                className="big-btn green medium"
-                label="Call pharmacist"
+                className="big-btn plain medium"
+                label="Call the pharmacist"
               />
             )}
             <a className="big-btn plain medium" href="#/">
@@ -477,26 +425,28 @@ function AckView({
           </div>
         </div>
       )
-    default: {
-      const title = ack.action === 'taken' ? 'Thank you' : ack.action === 'not_today' ? 'Okay, not today' : 'Done'
-      const body =
-        ack.action === 'taken'
-          ? `Noted: you’ve taken your ${item.reminder.title.toLowerCase()}.`
-          : ack.action === 'not_today'
-            ? 'That’s fine.'
-            : 'Thank you.'
+    case 'not_today':
       return (
         <div className="ack" role="status">
-          <div className={`ack-icon ok${ack.action === 'not_today' ? '' : ' celebrate'}`}>
+          <div className="ack-icon ok">
             <Check aria-hidden="true" />
-            {ack.action !== 'not_today' && <Burst />}
           </div>
-          <H1>{title}</H1>
-          <p className="p-body">{body}</p>
+          <H1>Okay</H1>
+          <p className="p-body">Not today. That’s fine.</p>
           <div className="btn-stack">{nextButton}</div>
         </div>
       )
-    }
+    default:
+      return (
+        <div className="ack" role="status">
+          <div className="ack-icon ok celebrate">
+            <Check aria-hidden="true" />
+            <Burst />
+          </div>
+          <H1>Thank you, {today.parentName}</H1>
+          <div className="btn-stack">{nextButton}</div>
+        </div>
+      )
   }
 }
 

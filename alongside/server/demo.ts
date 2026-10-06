@@ -11,6 +11,7 @@ import {
   DEMO_FAMILY_NAME,
   demoDestinationPhotos,
   demoDestinations,
+  demoDueNow,
   demoLift,
   demoReminderPhotos,
   demoReminders,
@@ -44,6 +45,8 @@ export function createDemo(db: DB, now = new Date()) {
     const today = todayFor(getHousehold(db, hid), now)
     const ids: Record<string, string> = {}
     for (const r of demoReminders(today)) ids[r.key] = saveReminder(db, hid, r.input, DEMO_FAMILY_NAME)!
+    const dueNow = demoDueNow(now, DEMO_TZ)
+    if (dueNow) saveReminder(db, hid, dueNow, DEMO_FAMILY_NAME)
     demoDestinations.forEach((d, i) => {
       const id = addDestination(db, hid, d)
       const img = decodeMedia('photo', demoMedia[demoDestinationPhotos[i]])

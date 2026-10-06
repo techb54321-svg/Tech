@@ -63,6 +63,20 @@ describe('photos and voice messages', () => {
   })
 })
 
+describe('plain questions', () => {
+  it('asks a plain question: default for medication, family wording for routines, none for appointments', async () => {
+    const { base } = await setup()
+    const { family, parent, hid } = await household(base)
+    await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets', time: '08:00', medScheduleConfirmed: true }))
+    await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Shower', time: '09:00', question: 'Have you had your shower?' }))
+    await family.post(`/api/family/${hid}/reminders`, reminder({ title: 'Walk', time: '10:00' }))
+    await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'appointment', title: 'Dr Chen', time: '11:00', repeat: 'none' }))
+    const q = (await parent.get('/api/parent/today')).json.items.map((i: { reminder: { question: string | null } }) => i.reminder.question)
+    expect(q).toEqual(['Have you taken your morning tablets?', 'Have you had your shower?', 'Have you done this?', null])
+    expect((await family.post(`/api/family/${hid}/reminders`, reminder({ question: 'x'.repeat(81) }))).status).toBe(400)
+  })
+})
+
 describe('week view and day extras', () => {
   it('returns seven days of shared statuses and keeps private routines private', async () => {
     const { base, clock } = await setup()

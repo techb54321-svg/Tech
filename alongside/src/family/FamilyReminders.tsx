@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { api, ApiError } from '../api'
 import { PhotoPicker, VoicePicker, type MediaChange } from './media'
+import { questionFor } from '../../shared/questions'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
 import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
@@ -14,19 +15,20 @@ type Draft = {
   endDate: string
   location: string
   notes: string
+  question: string
   remindMinutesBefore: number
   shareResponses: boolean
   medScheduleConfirmed: boolean
 }
 
-const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { notes?: string }> = [
+const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { notes?: string; question?: string }> = [
   { kind: 'medication', title: 'Morning tablets', time: '08:00', repeat: 'daily', notes: 'From the blister pack, morning slot.' },
   { kind: 'medication', title: 'Evening tablets', time: '18:00', repeat: 'daily', notes: 'From the blister pack, evening slot.' },
-  { kind: 'routine', title: 'Drink a glass of water', time: '10:00', repeat: 'daily' },
-  { kind: 'routine', title: 'Shower', time: '09:00', repeat: 'daily' },
-  { kind: 'routine', title: 'Short walk', time: '15:00', repeat: 'daily' },
-  { kind: 'routine', title: 'Lunch', time: '12:30', repeat: 'daily' },
-  { kind: 'routine', title: 'Bins out', time: '18:30', repeat: 'none' },
+  { kind: 'routine', title: 'Drink a glass of water', time: '10:00', repeat: 'daily', question: 'Have you had a glass of water?' },
+  { kind: 'routine', title: 'Shower', time: '09:00', repeat: 'daily', question: 'Have you had your shower?' },
+  { kind: 'routine', title: 'Short walk', time: '15:00', repeat: 'daily', question: 'Have you been for your walk?' },
+  { kind: 'routine', title: 'Lunch', time: '12:30', repeat: 'daily', question: 'Have you had your lunch?' },
+  { kind: 'routine', title: 'Bins out', time: '18:30', repeat: 'none', question: 'Have you put the bins out?' },
   { kind: 'appointment', title: 'Doctor', time: '10:00', repeat: 'none', notes: 'Bring your Medicare card.' },
   { kind: 'social', title: 'Visit from family', time: '14:00', repeat: 'none' },
 ]
@@ -42,6 +44,7 @@ const blank = (today: string): Draft => ({
   endDate: '',
   location: '',
   notes: '',
+  question: '',
   remindMinutesBefore: 60,
   shareResponses: false,
   medScheduleConfirmed: false,
@@ -56,6 +59,7 @@ const fromReminder = (r: Reminder): Draft => ({
   endDate: r.endDate ?? '',
   location: r.location,
   notes: r.notes,
+  question: r.question,
   remindMinutesBefore: r.remindMinutesBefore,
   shareResponses: r.shareResponses,
   // Editing a medication reminder requires confirming the schedule again.
@@ -254,6 +258,7 @@ function ReminderForm({
                     ...t,
                     location: '',
                     notes: t.notes ?? '',
+                    question: t.question ?? '',
                     remindMinutesBefore: t.kind === 'appointment' ? 60 : 0,
                     shareResponses: t.kind === 'routine' && t.title === 'Shower' ? false : x.shareResponses,
                     medScheduleConfirmed: false,
@@ -307,6 +312,22 @@ function ReminderForm({
       <Field id="rf-title" label="Short title" hint={med ? 'For example “Morning tablets”' : 'A few words, e.g. “Dr Chen” or “Shower”'} error={act.fields.title}>
         <input id="rf-title" value={d.title} maxLength={60} onChange={(e) => set('title', e.target.value)} required />
       </Field>
+      {(d.kind === 'medication' || d.kind === 'routine') && (
+        <Field
+          id="rf-question"
+          label="Question to ask (optional)"
+          hint={`Short and in everyday words, answered with Yes or Not yet. Leave blank to ask: “${questionFor(d.kind, d.title || 'this', '')}”`}
+          error={act.fields.question}
+        >
+          <input
+            id="rf-question"
+            value={d.question}
+            maxLength={80}
+            placeholder={d.kind === 'routine' ? 'e.g. Have you had your shower?' : undefined}
+            onChange={(e) => set('question', e.target.value)}
+          />
+        </Field>
+      )}
       <div className="two-col">
         <Field id="rf-time" label={`Time (${info.settings.timeZone})`} error={act.fields.time}>
           <input id="rf-time" type="time" value={d.time} onChange={(e) => set('time', e.target.value)} required />

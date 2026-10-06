@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS trips (
 const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['households', 'auto_speak', 'INTEGER NOT NULL DEFAULT 0'],
   ['households', 'keep_awake', 'INTEGER NOT NULL DEFAULT 0'],
+  ['reminders', 'question', "TEXT NOT NULL DEFAULT ''"],
 ]
 
 export function openDb(file: string): DB {

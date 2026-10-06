@@ -46,6 +46,8 @@ export const reminderSchema = z
     endDate: dateStr.nullable(),
     location: text(200),
     notes: text(300),
+    /** The plain question the parent is asked, e.g. "Have you had your shower?" Blank = a sensible default. */
+    question: text(80).default(''),
     remindMinutesBefore: z.number().int().min(0).max(240),
     shareResponses: z.boolean(),
     /** Must be true to save a medication reminder. */

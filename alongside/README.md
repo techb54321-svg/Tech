@@ -80,9 +80,9 @@ Access is enforced on the server:
 | Area | Status |
 | --- | --- |
 | Parent home (greeting, date, 3 buttons, quiet Family setup link) | Working |
-| My day: one item at a time, large time, title, place, instructions, read aloud, Previous/Next | Working |
-| Routines and appointments: **Done / Later / Need help** (+ **Not today** for routines and outings) | Working |
-| Medication: **I've taken it / Later / Not sure**; recorded as *reported taken*; unanswered = *not confirmed*; "Not sure" offers calls to family or pharmacist and gives no dose advice | Working |
+| My day: one plain question at a time, only for what is due now, with read aloud and a read-only plan of the day | Working |
+| Routines: **Yes / Not yet / No, not today** and **I need help**. Appointments and outings: **Okay** and **I need help** | Working |
+| Medication: **Yes / Not yet / I'm not sure**; recorded as *reported taken*; unanswered = *not confirmed*; "Not sure" offers calls to family or pharmacist and gives no dose advice | Working |
 | Medication setup requires confirming the reminder matches the existing verified schedule (enforced by the server; who and when is stored) | Working |
 | "Later" = 20 minutes, explained after tapping | Working |
 | Daily repeats in the household time zone, including daylight saving; each day's answer is separate | Working (tested) |
@@ -125,6 +125,28 @@ Access is enforced on the server:
 - A small burst of colour on "Done" and "I've taken it". It is hidden when the device asks for reduced motion.
 
 All colours still pass the 4.5:1 text-contrast check in the browser tests.
+
+### Fourth round: designed for someone living with dementia
+
+"My day" was redesigned around one plain question at a time:
+
+- **Only what is due now.** My day opens on the thing that needs an answer now. There are no counters ("4 of 7"),
+  no Previous/Next and no answering ahead of time, so evening tablets cannot be marked as taken in the afternoon.
+- **Questions in everyday words**, answered in everyday words:
+  - Medication: "Have you taken your morning tablets?" with **Yes**, **Not yet** and **I'm not sure**.
+  - Routines: "Have you had your shower?" with **Yes**, **Not yet**, **No, not today** and a separate
+    **I need help**.
+  - Appointments and outings are information only, with a single **Okay** and **I need help**.
+  - Family can word each question themselves (new "Question to ask" field). Sensible defaults are used otherwise,
+    and the templates fill them in.
+- **Gentle replies**: "Okay. I'll ask you again soon.", "That's okay. Let's ask Anna." with Call Anna, and
+  "Thank you, Margaret."
+- **Nothing due**: "Nothing to do right now", with the one thing coming up later today. For something postponed,
+  that is the time it will be asked again.
+- **Today's plan** is a calm, read-only list of the day. Items due now have a **Now** button.
+- Status banners ("It's time", "You said you've taken it") and "Change answer" were removed.
+
+This replaces the original brief's Previous/Next browsing, which asks too much of someone with memory loss.
 
 ## Integrations and their limits
 

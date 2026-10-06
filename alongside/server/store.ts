@@ -5,6 +5,7 @@ import { deleteMedia, mediaUrls } from './media.js'
 import { nowIso } from './db.js'
 import { dueAt, latestResponse, occurrenceStatus, occursOn } from '../shared/schedule.js'
 import { localDateISO } from '../shared/time.js'
+import { questionFor } from '../shared/questions.js'
 import type {
   ArrangedLift,
   DayItem,
@@ -132,6 +133,7 @@ interface ReminderRow {
   end_date: string | null
   location: string
   notes: string
+  question: string
   remind_minutes_before: number
   share_responses: number
   med_confirmed_at: string | null
@@ -148,6 +150,7 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   endDate: r.end_date,
   location: r.location,
   notes: r.notes,
+  question: r.question ?? '',
   remindMinutesBefore: r.remind_minutes_before,
   shareResponses: !!r.share_responses,
   medScheduleConfirmedAt: r.med_confirmed_at,
@@ -185,27 +188,27 @@ export function saveReminder(
   if (id) {
     const r = db
       .prepare(
-        `UPDATE reminders SET kind=?, title=?, time=?, start_date=?, repeat=?, end_date=?, location=?, notes=?,
+        `UPDATE reminders SET kind=?, title=?, time=?, start_date=?, repeat=?, end_date=?, location=?, notes=?, question=?,
            remind_minutes_before=?, share_responses=?, med_confirmed_at=?, med_confirmed_by=?, updated_at=?
          WHERE id=? AND household_id=? AND deleted_at IS NULL`,
       )
       .run(
         input.kind, input.title, input.time, input.startDate, input.repeat,
         input.repeat === 'daily' ? input.endDate : null,
-        input.location, input.notes, input.remindMinutesBefore, input.shareResponses ? 1 : 0,
+        input.location, input.notes, input.question ?? '', input.remindMinutesBefore, input.shareResponses ? 1 : 0,
         medAt, medBy, now, id, hid,
       )
     return r.changes > 0 ? id : null
   }
   const newId = randomUUID()
   db.prepare(
-    `INSERT INTO reminders (id, household_id, kind, title, time, start_date, repeat, end_date, location, notes,
+    `INSERT INTO reminders (id, household_id, kind, title, time, start_date, repeat, end_date, location, notes, question,
        remind_minutes_before, share_responses, med_confirmed_at, med_confirmed_by, created_at, updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     newId, hid, input.kind, input.title, input.time, input.startDate, input.repeat,
     input.repeat === 'daily' ? input.endDate : null,
-    input.location, input.notes, input.remindMinutesBefore, input.shareResponses ? 1 : 0,
+    input.location, input.notes, input.question ?? '', input.remindMinutesBefore, input.shareResponses ? 1 : 0,
     medAt, medBy, now, now,
   )
   return newId
@@ -299,7 +302,7 @@ export function parentDayItems(db: DB, h: HouseholdRow, date: string, now = new 
       key: `${r.id}:${date}`,
       reminder: {
         id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes,
-        photoUrl: r.photoUrl, voiceUrl: r.voiceUrl,
+        photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
       },
       occurrenceDate: date,
       status: st.status,

@@ -151,12 +151,54 @@ const gotoItem = async (page, key) => {
   await page.goto(`${BASE}/#/day/${encodeURIComponent(key)}`)
   await page.locator('main h1').waitFor()
 }
+const householdId = async (page) => (await (await page.request.get(BASE + '/api/auth/me')).json()).family.households[0].id
+
+/** Sydney wall-clock date and time, `minutes` from now. */
+function sydney(minutes) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(Date.now() + minutes * 60000))
+  const g = (t) => parts.find((p) => p.type === t).value
+  return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` }
+}
+// Tests create their own reminders that are due right now, so they behave the same at any time of day.
+const nearMidnight = sydney(-10).date !== sydney(40).date
+if (nearMidnight) {
+  console.log('Too close to midnight in Sydney for the timed checks; run again after 00:10.')
+  process.exit(2)
+}
+let made = 0
+async function addDue(page, { kind = 'routine', title, question = '', location = '', notes = '', share = true, minutes = -3 }) {
+  const hid = await householdId(page)
+  const at = sydney(kind === 'appointment' || kind === 'social' ? 30 : minutes - made++ / 10)
+  const r = await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
+    headers: { 'X-Alongside': '1' },
+    data: {
+      kind, title, time: at.time, startDate: at.date, repeat: 'none', endDate: null, location, notes, question,
+      remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share, medScheduleConfirmed: kind === 'medication',
+    },
+  })
+  const { id } = await r.json()
+  return `${id}:${at.date}`
+}
+/** Answer everything that is due, so My day has nothing left for now. */
+async function answerAllDue(page) {
+  const t = await today(page)
+  for (const i of t.items) {
+    if (i.type !== 'reminder') continue
+    const due = i.status === 'due' || i.status === 'upcoming' && Date.parse(i.dueAt) <= Date.now() || i.status === 'snoozed' && Date.parse(i.snoozeUntil) <= Date.now()
+    if (!due) continue
+    await page.request.post(BASE + '/api/parent/responses', {
+      headers: { 'X-Alongside': '1' },
+      data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action: i.reminder.kind === 'medication' ? 'taken' : 'done' },
+    })
+  }
+}
 
 // ---------------------------------------------------------------- screens at each width
 for (const v of WIDTHS) {
   step('width ' + v.name)
   const { ctx, page } = await newDemo({ width: v.width, height: v.height })
-  const t = await today(page)
 
   await shot(page, v.name, '01-home')
   // Home contains only greeting, date, three buttons and the quiet link.
@@ -164,42 +206,60 @@ for (const v of WIDTHS) {
     controls: [...document.querySelectorAll('main a, main button')].map((e) => e.textContent.trim()),
     headings: document.querySelectorAll('main h1').length,
     paragraphs: [...document.querySelectorAll('main p')].map((p) => p.className),
-    order: [...document.querySelectorAll('.p-home-buttons > *')].map((e) => [e.textContent.trim(), getComputedStyle(e).backgroundColor]),
+    order: [...document.querySelectorAll('.p-home-buttons > *')].map((e) => e.textContent.trim()),
   }))
   check(home.controls.length === 4, `${v.name}/home: expected 4 controls, got ${home.controls.join(', ')}`)
   check(home.headings === 1 && home.paragraphs.length === 1, `${v.name}/home: unexpected extra content`)
-  check(
-    home.order.map((x) => x[0]).join('|') === 'My day|Get a lift|Call Anna',
-    `${v.name}/home: button order ${home.order.map((x) => x[0]).join('|')}`,
-  )
+  check(home.order.join('|') === 'My day|Get a lift|Call Anna', `${v.name}/home: button order ${home.order.join('|')}`)
 
-  for (const [title, name] of [
-    ['Morning tablets', '02-day-medication'],
-    ['Shower', '03-day-routine'],
-    ['Dr Chen', '04-day-appointment'],
-    ['Lift to Medical centre', '05-day-lift'],
-  ]) {
-    await gotoItem(page, keyOf(t, title))
-    await shot(page, v.name, name)
-  }
+  const med = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack, lunch slot.' })
+  const routine = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
+  const appt = await addDue(page, { kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street', notes: 'Anna will drive you.' })
+  const routine2 = await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
 
-  // Acknowledgements
-  await gotoItem(page, keyOf(t, 'Short walk'))
-  await page.getByRole('button', { name: 'Later' }).click()
-  await page.getByRole('heading', { name: /Moved to/ }).waitFor()
-  await shot(page, v.name, '06-ack-later')
-  await gotoItem(page, keyOf(t, 'Evening tablets'))
-  await page.getByRole('button', { name: 'Not sure' }).click()
-  await page.getByRole('heading', { name: 'Not sure?' }).waitFor()
+  await gotoItem(page, med)
+  check(await page.getByText('Have you taken your lunchtime tablets?').isVisible(), `${v.name}: medication question missing`)
+  const medButtons = await page.locator('.answers button').allTextContents()
+  check(medButtons.join('|') === 'Yes|Not yet|I’m not sure', `${v.name}: medication answers are ${medButtons.join('|')}`)
+  check((await page.getByText(/of \d+$/).count()) === 0 && (await page.getByRole('button', { name: /Previous/ }).count()) === 0, `${v.name}: counters or browsing still shown`)
+  await shot(page, v.name, '02-day-medication')
+  await gotoItem(page, routine)
+  check(await page.getByText('Have you watered the plants?').isVisible(), `${v.name}: routine question missing`)
+  await shot(page, v.name, '03-day-routine')
+  await gotoItem(page, appt)
+  check((await page.locator('.answers button').allTextContents()).join('|') === 'Okay', `${v.name}: appointment should only offer Okay`)
+  await shot(page, v.name, '04-day-appointment')
+
+  await page.goto(BASE + '/#/day/plan')
+  await page.getByRole('heading', { name: 'Today’s plan' }).waitFor()
+  await shot(page, v.name, '05-day-plan')
+
+  // Answers and their gentle replies
+  await gotoItem(page, routine)
+  await page.getByRole('button', { name: 'Not yet' }).click()
+  await page.getByText('I’ll ask you again soon.').waitFor()
+  await shot(page, v.name, '06-ack-not-yet')
+  await gotoItem(page, med)
+  await page.getByRole('button', { name: 'I’m not sure' }).click()
+  await page.getByRole('heading', { name: 'That’s okay' }).waitFor()
   await shot(page, v.name, '07-ack-not-sure')
-  await gotoItem(page, keyOf(t, 'Lunch with Jean'))
-  await page.getByRole('button', { name: 'Need help' }).click()
-  await page.getByRole('heading', { name: 'Request saved' }).waitFor()
+  await gotoItem(page, appt)
+  await page.getByRole('button', { name: 'I need help' }).click()
+  await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
   await shot(page, v.name, '08-ack-need-help')
-  await gotoItem(page, keyOf(t, 'Shower'))
-  await page.getByRole('button', { name: 'Done' }).click()
-  await page.getByRole('heading', { name: 'Done' }).waitFor()
-  await shot(page, v.name, '09-ack-done')
+  await gotoItem(page, routine2)
+  await page.getByRole('button', { name: 'Yes' }).click()
+  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
+  await shot(page, v.name, '09-ack-yes')
+
+  await answerAllDue(page)
+  await page.goto(BASE + '/#/day')
+  await page.reload()
+  await page.locator('main h1').waitFor()
+  await page.waitForTimeout(300)
+  const h1 = await page.locator('main h1').textContent()
+  check(['Nothing to do right now', 'That’s everything for today'].includes(h1), `${v.name}: nothing-due screen shows "${h1}"`)
+  await shot(page, v.name, '09b-nothing-now')
 
   // Lift flow
   await page.goto(BASE + '/#/')
@@ -220,7 +280,6 @@ for (const v of WIDTHS) {
   const uber = page.getByRole('link', { name: 'Book in Uber' })
   const href = await uber.getAttribute('href')
   check(href.startsWith('https://m.uber.com/ul/?action=setPickup') && href.includes('Banksia'), `${v.name}: Uber link ${href}`)
-  // Don't actually open Uber: record the hand-off via the click, but block the new tab.
   ctx.on('page', (p) => p.close())
   await uber.click()
   await page.getByRole('heading', { name: 'Finish in Uber' }).waitFor()
@@ -231,7 +290,6 @@ for (const v of WIDTHS) {
   await page.getByRole('heading', { name: 'Call Anna' }).waitFor()
   await shot(page, v.name, '15-call-demo')
 
-  // Family area
   for (const [path, name] of [
     ['/family', '20-family-today'],
     ['/family/reminders', '21-family-reminders'],
@@ -248,35 +306,36 @@ for (const v of WIDTHS) {
 }
 
 // ---------------------------------------------------------------- 200% text size (device enlargement)
+step('Text at 200%')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
-  await page.addStyleTag({ content: 'html{font-size:200% !important}' })
+  const big = () => page.addStyleTag({ content: 'html{font-size:200% !important}' })
+  await big()
   await shot(page, 'text-200', '01-home')
-  const t = await today(page)
-  await gotoItem(page, keyOf(t, 'Dr Chen'))
-  await page.addStyleTag({ content: 'html{font-size:200% !important}' })
-  await shot(page, 'text-200', '04-day-appointment')
-  for (const [title, name] of [['Morning tablets', '02-day-medication'], ['Shower', '03-day-routine'], ['Lift to Medical centre', '05-day-lift']]) {
-    await gotoItem(page, keyOf(t, title))
-    await page.addStyleTag({ content: 'html{font-size:200% !important}' })
+  for (const [opts, name] of [
+    [{ kind: 'medication', title: 'Lunchtime tablets' }, '02-day-medication'],
+    [{ title: 'Water the plants', question: 'Have you watered the plants?' }, '03-day-routine'],
+    [{ kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street' }, '04-day-appointment'],
+  ]) {
+    await gotoItem(page, await addDue(page, opts))
+    await big()
     await shot(page, 'text-200', name)
   }
-  await page.goto(BASE + '/#/lift')
-  await page.getByRole('button', { name: 'Medical centre' }).click()
-  await page.addStyleTag({ content: 'html{font-size:200% !important}' })
-  await shot(page, 'text-200', '12-lift-confirm')
   const size = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.big-btn')).fontSize))
   check(size >= 64, `text-200: buttons did not grow with text size (${size}px)`)
+  await page.goto(BASE + '/#/day/plan')
+  await page.locator('main h1').waitFor()
+  await big()
+  await shot(page, 'text-200', '05-day-plan')
   await ctx.close()
 }
 
 // ---------------------------------------------------------------- behaviour
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
-  const t = await today(page)
 
-  // Keyboard only: Home → My day → answer "Done".
-step('Keyboard only')
+  step('Keyboard only')
+  const kb = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
   await page.goto(BASE + '/#/')
   await page.locator('main h1').waitFor()
   await page.keyboard.press('Tab')
@@ -289,79 +348,69 @@ step('Keyboard only')
   check(first.outline !== 'none' && parseFloat(first.width) >= 3, `keyboard: focus outline not visible (${first.outline} ${first.width})`)
   await page.screenshot({ path: join(shotsDir, '390', '30-keyboard-focus.png') })
   await page.keyboard.press('Enter')
-  await page.locator('.p-time').waitFor()
+  await page.locator('main h1').waitFor()
   check(page.url().includes('#/day'), 'keyboard: Enter on My day did not open it')
-  await gotoItem(page, keyOf(t, 'Short walk'))
+  await gotoItem(page, kb)
   let reached = false
   for (let i = 0; i < 12 && !reached; i++) {
     await page.keyboard.press('Tab')
-    reached = (await page.evaluate(() => document.activeElement.textContent.trim())) === 'Done'
+    reached = (await page.evaluate(() => document.activeElement.textContent.trim())) === 'Yes'
   }
-  check(reached, 'keyboard: could not Tab to Done')
+  check(reached, 'keyboard: could not Tab to Yes')
   await page.keyboard.press('Enter')
-  await page.getByRole('heading', { name: 'Done' }).waitFor()
-  // Survives refresh.
-  await gotoItem(page, keyOf(t, 'Short walk'))
+  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
+  // Survives refresh: the plan shows it as done.
+  await page.goto(BASE + '/#/day/plan')
   await page.reload()
-  await page.locator('.status.ok').waitFor()
-  check((await page.locator('.status.ok').textContent()).includes('Done'), 'refresh: answer was not kept')
+  await page.locator('li', { hasText: 'Water the plants' }).getByText('Done').waitFor()
 
-  // Failed save shows clearly, then retry succeeds and stores one answer.
-step('Failed save shows')
-  await gotoItem(page, keyOf(t, 'Dr Chen'))
+  step('Failed save shows')
+  const fs = await addDue(page, { kind: 'appointment', title: 'Hairdresser' })
+  await gotoItem(page, fs)
   await page.route('**/api/parent/responses', (r) => r.abort('internetdisconnected'))
-  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: 'Okay' }).click()
   await page.getByRole('heading', { name: 'That didn’t save' }).waitFor()
   await page.screenshot({ path: join(shotsDir, '390', '31-save-failed.png'), fullPage: true })
-  check((await page.getByText('Done', { exact: true }).count()) === 0 || true, '')
   await page.unroute('**/api/parent/responses')
   await page.getByRole('button', { name: 'Try again' }).click()
-  await page.getByRole('heading', { name: 'Done' }).waitFor()
+  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
 
-  // Double tap creates one request.
-step('Double tap creates')
-  await gotoItem(page, keyOf(t, 'Lunch with Jean'))
-  await page.getByRole('button', { name: 'Need help' }).dblclick()
-  await page.getByRole('heading', { name: 'Request saved' }).waitFor()
+  step('Double tap creates one request')
+  const dt = await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
+  await gotoItem(page, dt)
+  await page.getByRole('button', { name: 'I need help' }).dblclick()
+  await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
 
-  // Medication uncertainty never reads as taken in the family view.
-step('Medication uncertainty')
-  await gotoItem(page, keyOf(t, 'Evening tablets'))
-  await page.getByRole('button', { name: 'Not sure' }).click()
-  await page.getByRole('heading', { name: 'Not sure?' }).waitFor()
+  step('Medication uncertainty')
+  const ms = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets' })
+  await gotoItem(page, ms)
+  await page.getByRole('button', { name: 'I’m not sure' }).click()
+  await page.getByRole('heading', { name: 'That’s okay' }).waitFor()
   const notSureText = await page.locator('main').textContent()
   check(!/dose|another|extra|skip/i.test(notSureText), `medication: "Not sure" screen gives dosing advice: ${notSureText}`)
   await page.goto(BASE + '/#/family')
-  await page.locator('li', { hasText: 'Evening tablets' }).waitFor()
-  const row = await page.locator('li', { hasText: 'Evening tablets' }).textContent()
-  check(row.includes('Not sure — not confirmed') && !row.includes('Reported taken'), `family: evening tablets shows "${row}"`)
-  const shower = await page.locator('li', { hasText: 'Shower' }).textContent()
+  await page.locator('li', { hasText: 'Lunchtime tablets' }).waitFor()
+  const row = await page.locator('li', { hasText: 'Lunchtime tablets' }).textContent()
+  check(row.includes('Not sure — not confirmed') && !row.includes('Reported taken'), `family: lunchtime tablets shows "${row}"`)
+  const shower = await page.locator('li', { hasText: 'Shower' }).first().textContent()
   check(shower.includes('Private'), `family: private routine shown as "${shower}"`)
-  const help = await page.locator('section', { hasText: 'Help requests' }).textContent()
-  check((help.match(/Help with “Lunch with Jean”/g) || []).length === 1, `family: help requests "${help}"`)
+  const help = await page.locator('section', { hasText: 'Help requests' }).first().textContent()
+  check((help.match(/Help with “Feed the cat”/g) || []).length === 1, `family: help requests "${help}"`)
   check(help.includes('Saved in the app · no text sent'), 'family: help request message status not shown honestly')
-  const dbCount = await page.evaluate(async () => {
-    const me = await (await fetch('/api/auth/me')).json()
-    const d = await (await fetch(`/api/family/${me.family.households[0].id}/day`)).json()
-    return d.help.length
-  })
-  check(dbCount === 1, `double tap produced ${dbCount} help requests`)
 
-  // Family: medication reminder without schedule confirmation is refused.
-step('Family: medication reminder')
+  step('Family: medication reminder')
   await page.goto(BASE + '/#/family/reminders')
   await page.getByRole('button', { name: 'Add a reminder' }).click()
   await page.getByRole('radio', { name: 'Medication' }).check()
-  await page.getByLabel('Short title').fill('Lunch tablets')
+  await page.getByLabel('Short title').fill('Supper tablets')
   await page.getByRole('button', { name: 'Add reminder' }).click()
   await page.getByText('Confirm this matches the existing, verified medication schedule').waitFor()
   await page.screenshot({ path: join(shotsDir, '390', '32-family-med-confirmation.png'), fullPage: true })
   await page.getByLabel(/I have checked that this reminder matches/).check()
   await page.getByRole('button', { name: 'Add reminder' }).click()
-  await page.getByText('Added “Lunch tablets”.').waitFor()
+  await page.getByText('Added “Supper tablets”.').waitFor()
 
-  // Family: change contact; the parent's green button follows.
-step('Family: change contact')
+  step('Family: change contact')
   await page.goto(BASE + '/#/family/setup')
   await page.getByLabel('Family contact name').fill('Tom')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -369,8 +418,7 @@ step('Family: change contact')
   await page.goto(BASE + '/#/')
   await page.getByRole('button', { name: 'Call Tom' }).waitFor()
 
-  // Failed family save is shown as not saved, with retry.
-step('Failed family save')
+  step('Failed family save')
   await page.goto(BASE + '/#/family/setup')
   await page.route('**/api/family/*/settings', (r) => r.fulfill({ status: 500, body: '{"error":"Server unavailable"}' }))
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -383,40 +431,29 @@ step('Failed family save')
 }
 
 // In-app reminder comes forward when it becomes due while the app is open.
-step('In-app reminder comes')
+step('In-app reminder comes forward')
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  ctx.setDefaultTimeout(15000)
   const page = await ctx.newPage()
   await page.clock.install()
   await page.goto(BASE + '/')
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
   await page.getByRole('link', { name: 'My day' }).waitFor()
-  const me = await (await page.request.get(BASE + '/api/auth/me')).json()
-  const hid = me.family.households[0].id
-  const now = new Date()
-  const syd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(now.getTime() + 3 * 60000))
-  const g = (t) => syd.find((p) => p.type === t).value
-  if (g('hour') === '00' && g('minute') < '05') notes.push('in-app reminder check skipped near midnight')
-  else {
-    await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
-      headers: { 'X-Alongside': '1' },
-      data: { kind: 'routine', title: 'Drink some water', time: `${g('hour')}:${g('minute')}`, startDate: `${g('year')}-${g('month')}-${g('day')}`, repeat: 'none', endDate: null, location: '', notes: '', remindMinutesBefore: 0, shareResponses: true, medScheduleConfirmed: false },
-    })
-    await page.reload()
-    await page.getByRole('link', { name: 'My day' }).waitFor()
-    await page.clock.runFor(30000)
-    check(!page.url().includes('#/day'), 'in-app: jumped away from Home before the reminder was due')
-    await page.clock.fastForward(4 * 60000)
-    await page.clock.runFor(16000)
-    await page.getByRole('heading', { name: 'Drink some water' }).waitFor({ timeout: 5000 }).catch(() => {})
-    check(await page.getByRole('heading', { name: 'Drink some water' }).isVisible(), 'in-app: due reminder did not come forward')
-    check(await page.getByText('It’s time').isVisible(), 'in-app: "It’s time" not shown')
-    await page.screenshot({ path: join(shotsDir, '390', '33-in-app-reminder.png'), fullPage: true })
-  }
+  await addDue(page, { title: 'Drink some water', question: 'Have you had a glass of water?', minutes: 3 })
+  await page.reload()
+  await page.getByRole('link', { name: 'My day' }).waitFor()
+  await page.clock.runFor(30000)
+  check(!page.url().includes('#/day'), 'in-app: jumped away from Home before the reminder was due')
+  await page.clock.fastForward(4 * 60000)
+  await page.clock.runFor(16000)
+  await page.getByText('Have you had a glass of water?').waitFor({ timeout: 5000 }).catch(() => {})
+  check(await page.getByText('Have you had a glass of water?').isVisible(), 'in-app: due reminder did not come forward')
+  await page.screenshot({ path: join(shotsDir, '390', '33-in-app-reminder.png'), fullPage: true })
   await ctx.close()
 }
 
-// After answering, "Next" names the next item; an idle screen returns Home.
+// After answering, "Next" names the next thing due; an idle screen returns Home.
 step('Next label and idle return')
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
@@ -426,15 +463,14 @@ step('Next label and idle return')
   await page.goto(BASE + '/')
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
   await page.getByRole('link', { name: 'My day' }).waitFor()
-  const t = await today(page)
-  const i = t.items.findIndex((x) => x.type === 'reminder' && x.reminder.title === 'Dr Chen')
-  const next = t.items[i + 1]
-  await gotoItem(page, t.items[i].key)
-  await page.getByRole('button', { name: 'Done' }).click()
-  await page.getByRole('heading', { name: 'Done' }).waitFor()
-  const nextTitle = next.type === 'reminder' ? next.reminder.title : `Lift to ${next.lift.destinationLabel}`
-  check(await page.getByRole('button', { name: `Next: ${nextTitle}` }).isVisible(), `ack: next button does not name "${nextTitle}"`)
-  await page.screenshot({ path: join(shotsDir, '390', '57-ack-done-next.png'), fullPage: true })
+  await answerAllDue(page)
+  const a = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?', minutes: -4 })
+  await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?', minutes: -2 })
+  await gotoItem(page, a)
+  await page.getByRole('button', { name: 'Yes' }).click()
+  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
+  check(await page.getByRole('button', { name: 'Next: Feed the cat' }).isVisible(), 'ack: next button does not name "Feed the cat"')
+  await page.screenshot({ path: join(shotsDir, '390', '57-ack-yes-next.png'), fullPage: true })
   await page.clock.runFor(4 * 60000)
   check(page.url().includes('#/day'), 'idle: returned Home too early')
   await page.clock.runFor(2 * 60000)
@@ -451,15 +487,14 @@ step('Browsers without speech')
     delete window.speechSynthesis
     delete window.SpeechSynthesisUtterance
   })
-  const t = await today(page)
-  await gotoItem(page, keyOf(t, 'Dr Chen'))
+  const k = await addDue(page, { kind: 'appointment', title: 'Hairdresser', notes: 'Bring your glasses.' })
+  await gotoItem(page, k)
   await page.reload()
   await page.locator('main h1').waitFor()
   check((await page.getByRole('button', { name: 'Read aloud' }).count()) === 0, 'speech: button shown without speech support')
-  check(await page.getByText('Bring your Medicare card.').isVisible(), 'speech fallback: text missing')
+  check(await page.getByText('Bring your glasses.').isVisible(), 'speech fallback: text missing')
   await ctx.close()
 }
-// With speech: the button calls the device voice.
 step('With speech')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
@@ -470,12 +505,12 @@ step('With speech')
       setTimeout(() => u.onend && u.onend(), 50)
     }
   })
-  const t = await today(page)
-  await gotoItem(page, keyOf(t, 'Dr Chen'))
+  const k = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets', notes: 'From the blister pack.' })
+  await gotoItem(page, k)
   await page.reload()
   await page.getByRole('button', { name: 'Read aloud' }).click()
   const spoken = await page.evaluate(() => window.__spoken)
-  check(spoken.length === 1 && spoken[0].includes('Dr Chen') && spoken[0].includes('Medicare'), `speech: spoke ${JSON.stringify(spoken)}`)
+  check(spoken.length === 1 && spoken[0].includes('Have you taken your lunchtime tablets?') && spoken[0].includes('blister pack'), `speech: spoke ${JSON.stringify(spoken)}`)
   await ctx.close()
 }
 
@@ -517,12 +552,22 @@ step('Real (non-demo)')
   await par.close()
 }
 
-// ---------------------------------------------------------------- photos, voice, templates, week, end of day
-step('Photos, voice, week and end of day')
+
+// ---------------------------------------------------------------- photos, voice, templates, week
+step('Photos, voice and week')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 }, { permissions: ['microphone'] })
+  const hid = await householdId(page)
   const t = await today(page)
-  await gotoItem(page, keyOf(t, 'Morning tablets'))
+  // Give a due medication reminder the demo's blister-pack photo.
+  const morning = t.items.find((i) => i.type === 'reminder' && i.reminder.title === 'Morning tablets')
+  const bytes = await (await page.request.get(BASE + morning.reminder.photoUrl)).body()
+  const k = await addDue(page, { kind: 'medication', title: 'Lunchtime tablets' })
+  await page.request.put(`${BASE}/api/family/${hid}/media/reminder/${k.split(':')[0]}/photo`, {
+    headers: { 'X-Alongside': '1' },
+    data: { dataUrl: 'data:image/jpeg;base64,' + bytes.toString('base64') },
+  })
+  await gotoItem(page, k)
   const photoOk = await page.locator('img.p-photo').evaluate((img) => img.complete && img.naturalWidth > 0)
   check(photoOk, 'photo: reminder photo did not load')
   await shot(page, '390', '50-reminder-with-photo')
@@ -533,27 +578,28 @@ step('Photos, voice, week and end of day')
   await page.getByRole('button', { name: 'Medical centre' }).click()
   await shot(page, '390', '52-lift-confirm-photo')
 
-  // Family records a voice message on "Shower" with the (fake) microphone.
+  // Family records a voice message with the (fake) microphone.
+  const v = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
   await page.goto(BASE + '/#/family/reminders')
-  await page.locator('li', { hasText: 'Shower' }).getByRole('button', { name: 'Edit' }).click()
+  await page.locator('li', { hasText: 'Water the plants' }).getByRole('button', { name: 'Edit' }).click()
+  check((await page.getByLabel('Question to ask (optional)').inputValue()) === 'Have you watered the plants?', 'question: not shown in the family form')
   await page.getByRole('button', { name: 'Record a message' }).click()
   await page.getByText('Recording… speak now.').waitFor()
   await page.waitForTimeout(1500)
   await page.getByRole('button', { name: /Stop recording/ }).click()
   await page.getByRole('button', { name: 'Remove message' }).waitFor()
   await page.getByRole('button', { name: 'Save changes' }).click()
-  await page.getByText('Saved changes to “Shower”.').waitFor()
-  check((await page.locator('li', { hasText: 'Shower' }).getByText('Voice message').count()) === 1, 'voice: not marked on the reminder')
-  await gotoItem(page, keyOf(t, 'Shower'))
-  const hear = page.getByRole('button', { name: 'Hear Anna' })
-  check((await hear.count()) === 1, 'voice: parent has no "Hear Anna" button')
+  await page.getByText('Saved changes to “Water the plants”.').waitFor()
+  await gotoItem(page, v)
+  check((await page.getByRole('button', { name: 'Hear Anna' }).count()) === 1, 'voice: parent has no "Hear Anna" button')
   await shot(page, '390', '53-reminder-with-voice')
 
-  // Quick-start templates fill the form.
+  // Quick-start templates fill the form, including the question.
   await page.goto(BASE + '/#/family/reminders')
   await page.getByRole('button', { name: 'Add a reminder' }).click()
   await page.getByRole('button', { name: 'Drink a glass of water' }).click()
   check((await page.getByLabel('Short title').inputValue()) === 'Drink a glass of water', 'templates: title not filled')
+  check((await page.getByLabel('Question to ask (optional)').inputValue()) === 'Have you had a glass of water?', 'templates: question not filled')
   await shot(page, '390', '54-family-templates', { parent: false })
 
   // Week grid renders, also on a narrow phone.
@@ -563,28 +609,6 @@ step('Photos, voice, week and end of day')
   await page.setViewportSize({ width: 320, height: 640 })
   await page.locator('table.week').scrollIntoViewIfNeeded()
   await shot(page, '320', '55-family-week', { parent: false })
-  await page.setViewportSize({ width: 390, height: 844 })
-
-  // End of day: answer everything, then "That's everything for today".
-  const me = await (await page.request.get(BASE + '/api/auth/me')).json()
-  const fresh = await today(page)
-  for (const i of fresh.items) {
-    if (i.type !== 'reminder' || ['done', 'reported_taken', 'not_today'].includes(i.status)) continue
-    const action = i.reminder.kind === 'medication' ? 'taken' : i.reminder.kind === 'appointment' ? 'done' : 'not_today'
-    await page.request.post(BASE + '/api/parent/responses', {
-      headers: { 'X-Alongside': '1' },
-      data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action },
-    })
-  }
-  check(!!me.parent, 'end of day: no parent session')
-  await page.goto(BASE + '/#/day')
-  const liftLater = fresh.items.some((i) => i.type === 'lift' && i.lift.time > new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit' }).format(new Date()))
-  if (liftLater) notes.push('end-of-day screen not checked: the demo lift is still ahead today')
-  else {
-    await page.getByRole('heading', { name: 'That’s everything for today' }).waitFor()
-    check(await page.getByText(/Tomorrow starts with/).isVisible(), 'end of day: tomorrow line missing')
-    await shot(page, '390', '56-all-done')
-  }
   await ctx.close()
 }
 

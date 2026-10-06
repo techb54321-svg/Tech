@@ -15,6 +15,8 @@ export interface Reminder {
   endDate: string | null
   location: string
   notes: string
+  /** Family's wording of the question; blank means the default for this kind. */
+  question: string
   /** Show the in-app prompt this many minutes early (appointments). */
   remindMinutesBefore: number
   /** The parent has agreed that family may see their responses. */
@@ -76,7 +78,10 @@ export type DayItem =
   | {
       type: 'reminder'
       key: string
-      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl'>
+      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl'> & {
+        /** The question to ask, or null for information-only items (appointments, outings). */
+        question: string | null
+      }
       occurrenceDate: string
       status: OccurrenceStatus
       snoozeUntil: string | null

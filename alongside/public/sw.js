@@ -1,7 +1,7 @@
-// Alongside service worker: makes the app installable and lets the shell load
+// Hazel service worker: makes the app installable and lets the shell load
 // with a weak connection. It never caches /api responses (private data).
-const CACHE = 'alongside-shell-v1'
-const SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png']
+const CACHE = 'hazel-shell-v2'
+const SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/apple-touch-icon.png']
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()))

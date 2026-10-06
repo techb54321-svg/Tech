@@ -471,7 +471,7 @@ export function familyRoutes(deps: Deps) {
     h((req, res) => {
       const hh = getHousehold(db, req.householdId!)
       res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
-      res.setHeader('Content-Disposition', 'attachment; filename="alongside-reminders.ics"')
+      res.setHeader('Content-Disposition', 'attachment; filename="hazel-reminders.ics"')
       res.send(buildIcs(hh, listReminders(db, hh.id), deps.now()))
     }),
   )

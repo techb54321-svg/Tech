@@ -1,5 +1,5 @@
 // iCalendar export so the device's own calendar can raise alerts while
-// Alongside is closed. Times use the household's IANA zone via TZID, so
+// Hazel is closed. Times use the household's IANA zone via TZID, so
 // calendar apps apply daylight saving themselves.
 import type { HouseholdRow } from './store.js'
 import type { Reminder } from '../shared/types.js'
@@ -22,12 +22,13 @@ const icsLocal = (d: string, t: string) => `${icsDate(d)}T${t.replace(':', '')}0
 const icsUtc = (dt: Date) => dt.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
 
 export function buildIcs(h: HouseholdRow, reminders: Reminder[], now: Date): string {
-  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Alongside//Reminders//EN', 'CALSCALE:GREGORIAN',
-    `X-WR-CALNAME:${esc(`Alongside – ${h.parent_name}`)}`, `X-WR-TIMEZONE:${h.time_zone}`]
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Hazel//Reminders//EN', 'CALSCALE:GREGORIAN',
+    `X-WR-CALNAME:${esc(`Hazel – ${h.parent_name}`)}`, `X-WR-TIMEZONE:${h.time_zone}`]
   for (const r of reminders) {
     const [hh, mm] = r.time.split(':').map(Number)
     const endMin = hh * 60 + mm + (r.kind === 'appointment' || r.kind === 'social' ? 60 : 15)
     const end = endMin >= 24 * 60 ? '23:59' : `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`
+    // The UID keeps the app's original name so calendars that already imported these events update them, not duplicate them.
     lines.push('BEGIN:VEVENT', `UID:${r.id}@alongside`, `DTSTAMP:${icsUtc(now)}`,
       `DTSTART;TZID=${h.time_zone}:${icsLocal(r.startDate, r.time)}`,
       `DTEND;TZID=${h.time_zone}:${icsLocal(r.startDate, end)}`,

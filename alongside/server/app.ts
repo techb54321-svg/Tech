@@ -42,7 +42,7 @@ export function createApp(deps: Deps, opts: { staticDir?: string } = {}) {
   // CSRF protection: state-changing API calls must carry a custom header,
   // which browsers only allow same-origin pages to send.
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-alongside'] !== '1') {
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-hazel'] !== '1') {
       return res.status(403).json({ error: 'Request blocked.' })
     }
     res.setHeader('Cache-Control', 'no-store')

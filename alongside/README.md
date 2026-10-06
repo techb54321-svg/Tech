@@ -1,12 +1,12 @@
-# Alongside
+# Hazel
 
 A simple daily helper for an older person, with family support behind the scenes.
 
 The parent sees **one screen** and never moves to another: a board of flat colour tiles with the day and time in
-big letters. Questions that are due now, today's outings, calls, a taxi, a word search, today's photo and music
+big letters. Today's photo, questions that are due now, today's outings, calls, a word search and music
 all work inside their tiles. Family members do the setup in a separate, signed-in family area.
 
-> Alongside supports everyday routines. It is **not** an emergency or monitoring service.
+> Hazel supports everyday routines. It is **not** an emergency or monitoring service.
 
 ## Quick start
 
@@ -26,7 +26,7 @@ family area. In the demonstration no calls, texts or bookings are made, and the 
 Browser-only preview (no server, for sharing a quick look):
 
 ```bash
-npm run build:preview   # writes dist-static/alongside-preview.html
+npm run build:preview   # writes dist-static/hazel-preview.html
 ```
 
 The preview runs the same screens against an in-browser stand-in for the API (`src/demo/localApi.ts`), with
@@ -60,7 +60,7 @@ pass).
 1. A family member opens **Family sign in → Create a family account** and sets up the parent: name, time zone and
    contact.
 2. In **Family setup → Access**, they choose **Create device code**. The code works once and expires after 1 hour.
-3. On the parent's phone or tablet, open Alongside and choose **Set up this device for my parent**, then enter the
+3. On the parent's phone or tablet, open Hazel and choose **Set up this device for my parent**, then enter the
    code. That device now stays signed in as the parent's device.
 4. Other family members join with an **invitation code** from the same page.
 
@@ -187,7 +187,7 @@ This replaces the original brief's Previous/Next browsing, which asks too much o
   (Elvis Presley, The Beatles, The Seekers, ABBA, Daddy Cool, Sherbet and others, in `shared/songCatalogue.ts`)
   and chooses one. The title and singer fill in, and the carer attaches a recording they own (MP3/M4A, up to
   12 MB).
-- **Why there are no recordings:** songs from this era are under copyright, so Alongside cannot include or
+- **Why there are no recordings:** songs from this era are under copyright, so Hazel cannot include or
   distribute them. A licensed streaming integration (for example Apple MusicKit or Spotify) would need the
   family's own subscription and developer approval. It is not built yet.
 - **Music screen for the parent**: a big button per song showing title and singer. Tap to play, tap again to stop.
@@ -211,10 +211,10 @@ The integrations live in `server/integrations/`.
     `TransportProvider` interface.
   - It is exercised with `TRANSPORT_PROVIDER=test`, a clearly labelled *test* provider that books nothing.
   - To connect a real provider, implement `quote()` and `book()` against its documented API.
-- **Uber hand-off: working.** It opens Uber with the drop-off filled in. Alongside cannot see whether a ride was
+- **Uber hand-off: working.** It opens Uber with the drop-off filled in. Hazel cannot see whether a ride was
   booked, so it never says "Booked" for a hand-off.
 - **Background notifications: `notifications.ts`, not implemented.**
-  - Reminders appear only while Alongside is open on screen. This is stated in the family area.
+  - Reminders appear only while Hazel is open on screen. This is stated in the family area.
   - Background delivery would need Web Push: VAPID keys, push subscriptions, a server scheduler and a service-worker
     push handler, verified on real devices with the app closed.
   - Until then, use the calendar export.
@@ -288,7 +288,7 @@ database file and keep it.
   glass of water" is no longer a quick-start template for families.
 - **Uber wording simplified.** The taxi tile no longer says "In Uber you book and pay yourself" or "Finish
   booking and paying in the Uber app". After "Book in Uber" it just says "Uber is opening." (It is still only a
-  hand-off: nothing is booked or paid inside Alongside.)
+  hand-off: nothing is booked or paid inside Hazel.)
 
 ### Eleventh round: a premium finish
 
@@ -334,6 +334,21 @@ database file and keep it.
 - **Clock like a lock screen**: "Tuesday evening", a very large time, then the date. The circled icon is gone.
 - **Photographic demo pictures**: the clip-art drawings are replaced by two rendered scenes with soft light, haze,
   film grain and a vignette: a sunset at Wattleton beach and a misty morning in the Blue Mountains.
+
+### Fifteenth round: the name is Hazel, with a logo
+
+- **The app is now called Hazel** everywhere people see it: the welcome screen, the family area, the side-by-side
+  view, the installed app's name, the browser tab, text messages ("Hazel: Margaret asked for help…") and the
+  calendar export. Internal names (stored data keys, the database file, login cookies and calendar event IDs)
+  keep the old name so existing devices stay signed in and calendars do not get duplicates.
+- **The logo** is a flat hazelnut (warm brown with a pale base) with a two-tone hazel leaf, beside the word
+  "Hazel" in Fraunces SemiBold, a warm display serif under the SIL Open Font Licence, converted to outlines so no
+  web font is loaded. See `docs/brand/` for the files and how to use them.
+- **App icons**: the hazelnut on the app's charcoal background, as the favicon, the PWA icons (including a
+  maskable one) and the Apple touch icon. `node scripts/make-brand.mjs` redraws them all from
+  `src/brand/hazel.json`.
+- The **welcome screen** now uses the brand: the logo in ivory on charcoal, a gold "Try the demonstration" button
+  and outlined secondary buttons. The family area header and the side-by-side view show the logo too.
 
 ## Project layout
 

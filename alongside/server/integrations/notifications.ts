@@ -1,6 +1,6 @@
 // Background reminder delivery.
 //
-// Not implemented yet: reminders are delivered *in the app* while Alongside is
+// Not implemented yet: reminders are delivered *in the app* while Hazel is
 // open on screen. Background delivery would need Web Push (VAPID keys, a
 // service-worker push handler, stored subscriptions and a server scheduler)
 // and must be verified on real devices with the app closed. Until then the
@@ -15,7 +15,7 @@ export function notificationCapability(): NotificationCapability {
   return {
     background: false,
     summary:
-      'Reminders appear only while Alongside is open on the screen. Background notifications are not set up. ' +
+      'Reminders appear only while Hazel is open on the screen. Background notifications are not set up. ' +
       'For alerts when the app is closed, add the calendar export to the device’s calendar.',
   }
 }

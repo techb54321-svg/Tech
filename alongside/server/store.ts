@@ -194,7 +194,7 @@ export function saveReminder(
   id?: string,
 ): string | null {
   const now = nowIso()
-  // Alongside no longer handles medication; these columns stay empty.
+  // Hazel no longer handles medication; these columns stay empty.
   const medAt = null
   const medBy = null
   void byName

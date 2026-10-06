@@ -39,7 +39,7 @@ export async function startServer(opts: {
 export class Client {
   cookies = new Map<string, string>()
   constructor(private base: string) {}
-  async req(method: string, path: string, body?: unknown, headers: Record<string, string> = { 'X-Alongside': '1' }) {
+  async req(method: string, path: string, body?: unknown, headers: Record<string, string> = { 'X-Hazel': '1' }) {
     const res = await fetch(this.base + path, {
       method,
       headers: {

@@ -245,7 +245,7 @@ function Songs({ info }: { info: FamilyInfo }) {
             }}
           />
           <span className="hint">
-            Alongside does not include recordings: songs from this era are under copyright. Use a copy you own, such as
+            Hazel does not include recordings: songs from this era are under copyright. Use a copy you own, such as
             a song you bought as a download or copied from your own CD (MP3 or M4A, up to 12 MB).
           </span>
           {fileError && (

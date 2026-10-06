@@ -49,13 +49,13 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       method,
       credentials: 'same-origin',
       headers: {
-        'X-Alongside': '1',
+        'X-Hazel': '1',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new ApiError(0, 'Could not reach Alongside. Check the internet connection.')
+    throw new ApiError(0, 'Could not reach Hazel. Check the internet connection.')
   }
   const data = (await res.json().catch(() => null)) as { error?: string; fields?: Record<string, string> } | null
   if (!res.ok) {

@@ -1,6 +1,6 @@
 // Types shared by the server and the browser.
 
-// Alongside does not handle medication: there is no medication reminder type.
+// Hazel does not handle medication: there is no medication reminder type.
 export type ReminderKind = 'appointment' | 'social' | 'routine'
 export type Repeat = 'none' | 'daily'
 

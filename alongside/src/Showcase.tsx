@@ -1,5 +1,6 @@
 import { MemoryRouter, useScreenFocus } from './route'
 import { App, type Me } from './App'
+import { HazelLogo } from './brand/HazelLogo'
 
 /**
  * Demonstration only: Margaret's phone and Anna's family view side by side,
@@ -14,7 +15,10 @@ export function Showcase({ me }: { me: Me }) {
     <div className="showcase">
       <header className="showcase-head">
         <div>
-          <h1 tabIndex={-1}>Alongside, side by side</h1>
+          <h1 tabIndex={-1} className="sc-title">
+            <HazelLogo className="sc-logo" />
+            <span>side by side</span>
+          </h1>
           <p>
             Left: what {parent} sees on the phone, all on one screen. Right: what {family} sees in the family area. Add
             someone to call in Setup, or a photo, and watch {parent}’s screen update. Everything here is fictional.

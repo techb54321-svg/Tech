@@ -34,7 +34,7 @@ const server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning',
   stdio: ['ignore', 'pipe', 'inherit'],
 })
 await new Promise((resolve, reject) => {
-  server.stdout.on('data', (d) => String(d).includes('Alongside server') && resolve())
+  server.stdout.on('data', (d) => String(d).includes('Hazel server') && resolve())
   server.on('exit', (c) => reject(new Error('server exited ' + c)))
 })
 
@@ -189,6 +189,7 @@ async function newDemo(viewport, extra = {}) {
   const page = await ctx.newPage()
   page.on('pageerror', (e) => failures.push('page error: ' + e.message))
   await page.goto(BASE + '/')
+  await page.getByRole('heading', { name: 'Hazel' }).waitFor()
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
   await page.getByRole('button', { name: 'Puzzles' }).waitFor()
   return { ctx, page }
@@ -229,7 +230,7 @@ async function addDue(page, { kind = 'routine', title, question = '', location =
   // Small stagger for items due now, so their order is stable; future items keep their exact offset.
   const at = sydney(kind === 'appointment' || kind === 'social' ? 30 : minutes < 0 ? minutes - (made++ % 10) / 10 : minutes)
   const r = await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
-    headers: { 'X-Alongside': '1' },
+    headers: { 'X-Hazel': '1' },
     data: {
       kind, title, time: at.time, startDate: at.date, repeat: 'none', endDate: null, location, notes, question,
       remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share, ...extra,
@@ -246,7 +247,7 @@ async function answerAllDue(page) {
     const due = i.status === 'due' || i.status === 'upcoming' && Date.parse(i.dueAt) <= Date.now() || i.status === 'snoozed' && Date.parse(i.snoozeUntil) <= Date.now()
     if (!due) continue
     await page.request.post(BASE + '/api/parent/responses', {
-      headers: { 'X-Alongside': '1' },
+      headers: { 'X-Hazel': '1' },
       data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action: i.reminder.ask ? 'yes' : 'done' },
     })
   }
@@ -285,6 +286,14 @@ async function solveWordSearch(page) {
 let sawDiagonal = false
 for (const v of WIDTHS) {
   step('width ' + v.name)
+  {
+    const wctx = await browser.newContext({ viewport: { width: v.width, height: v.height }, locale: 'en-AU' })
+    const w = await wctx.newPage()
+    await w.goto(BASE + '/')
+    await w.getByRole('heading', { name: 'Hazel' }).waitFor()
+    await shot(w, v.name, '00-welcome', { parent: false })
+    await wctx.close()
+  }
   const { ctx, page } = await newDemo({ width: v.width, height: v.height })
 
   await shot(page, v.name, '01-home')
@@ -305,6 +314,7 @@ for (const v of WIDTHS) {
   check(!/medication|tablet|dose/i.test(text), `${v.name}: medication still mentioned`)
   check(!/driving|Sue the carer/i.test(text), `${v.name}: who is driving still shown`)
   check(!/glass of water/i.test(text), `${v.name}: the water reminder is still in the demonstration`)
+  check(!/Alongside/.test(await page.locator('body').innerText()) && (await page.title()) === 'Hazel', `${v.name}: the old name is still shown`)
   // Big tiles: never more than two to a row.
   const perRow = await page.evaluate(() => {
     const tops = {}
@@ -374,6 +384,8 @@ for (const v of WIDTHS) {
     await page.goto(BASE + '/#' + path)
     await page.locator('main h1').waitFor()
     await page.waitForTimeout(300)
+    check(!/Alongside/.test(await page.locator('body').innerText()), `${v.name}/${name}: the old name is still shown`)
+    check(await page.getByRole('img', { name: 'Hazel' }).first().isVisible(), `${v.name}/${name}: no Hazel logo in the family header`)
     await shot(page, v.name, name, { parent: false })
   }
   await ctx.close()
@@ -530,7 +542,7 @@ step('In-app reminder appears')
   // Only this test's reminder: demo items that happen to fall due now would make the check depend on the time of day.
   const hidIn = await householdId(page)
   const all = (await (await page.request.get(`${BASE}/api/family/${hidIn}`)).json()).reminders
-  for (const r of all) await page.request.delete(`${BASE}/api/family/${hidIn}/reminders/${r.id}`, { headers: { 'X-Alongside': '1' } })
+  for (const r of all) await page.request.delete(`${BASE}/api/family/${hidIn}/reminders/${r.id}`, { headers: { 'X-Hazel': '1' } })
   await addDue(page, { title: 'Lunch', question: 'Have you had your lunch?', minutes: 3 })
   await page.reload()
   await page.getByRole('button', { name: 'Puzzles' }).waitFor()
@@ -638,7 +650,7 @@ step('Outings, photos and music')
   ]) {
     // "ask" and "carNote" are sent as an older app would; both must be ignored.
     await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
-      headers: { 'X-Alongside': '1' },
+      headers: { 'X-Hazel': '1' },
       data: { time: sydney(75).time, startDate: later.date, repeat: 'none', endDate: null, location: '', question: '', remindMinutesBefore: 30, shareResponses: true, ...data },
     })
   }
@@ -719,7 +731,7 @@ step('Photos, voice and week')
   const bytes = await (await page.request.get(BASE + doctor.reminder.photoUrl)).body()
   const k = await addDue(page, { title: 'Walk to the shops', question: 'Have you been for your walk?' })
   await page.request.put(`${BASE}/api/family/${hid}/media/reminder/${k.split(':')[0]}/photo`, {
-    headers: { 'X-Alongside': '1' },
+    headers: { 'X-Hazel': '1' },
     data: { dataUrl: 'data:image/jpeg;base64,' + bytes.toString('base64') },
   })
   await homeAgain(page)

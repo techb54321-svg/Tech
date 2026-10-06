@@ -20,7 +20,7 @@ export function FamilyAccess({ info, refresh }: { info: FamilyInfo; refresh: () 
       <section className="card" aria-labelledby="pd-h">
         <h2 id="pd-h">Set up {parent}’s device</h2>
         <ol>
-          <li>On {parent}’s phone or tablet, open Alongside and choose “Set up this device for my parent”.</li>
+          <li>On {parent}’s phone or tablet, open Hazel and choose “Set up this device for my parent”.</li>
           <li>Create a code here and type it in on that device. Each code works once and expires after 1 hour.</li>
         </ol>
         {codes.parent ? (

@@ -152,7 +152,7 @@ export function parentRoutes(deps: Deps) {
       if (helpId) {
         // Private routines are not named in a text message.
         const what = rem.shareResponses ? ` with “${rem.title}”` : ''
-        messageStatus = await notifyFamily(hh, helpId, `Alongside: ${hh.parent_name} asked for help${what}. Open Alongside to see the request.`)
+        messageStatus = await notifyFamily(hh, helpId, `Hazel: ${hh.parent_name} asked for help${what}. Open Hazel to see the request.`)
       }
       res.status(201).json({ action: input.action, snoozeUntil, messageStatus, duplicate: false })
     }),
@@ -189,7 +189,7 @@ export function parentRoutes(deps: Deps) {
       const messageStatus = await notifyFamily(
         hh,
         id,
-        `Alongside: ${hh.parent_name} would like a lift to ${body.destination.label}. Open Alongside to see the request.`,
+        `Hazel: ${hh.parent_name} would like a lift to ${body.destination.label}. Open Hazel to see the request.`,
       )
       res.status(201).json({ messageStatus, duplicate: false })
     }),

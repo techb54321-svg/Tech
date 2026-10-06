@@ -91,7 +91,7 @@ export function FamilyLifts({ info }: { info: FamilyInfo }) {
         <h2 id="al-h">Record a lift you have arranged</h2>
         <p className="small muted">
           Use this for a lift that is already confirmed (you are driving, or you booked a taxi). It is shown as
-          family-entered details, not as a booking made by Alongside.
+          family-entered details, not as a booking made by Hazel.
         </p>
         <div className="two-col">
           <Field id="al-date" label="Date" error={act.fields.date}>
@@ -165,7 +165,7 @@ export function FamilyLifts({ info }: { info: FamilyInfo }) {
       <section className="card" aria-labelledby="ub-h">
         <h2 id="ub-h">Uber hand-offs (last 14 days)</h2>
         <p className="small muted">
-          {parent} was sent to the Uber app to book and pay. Alongside cannot see whether a ride was actually booked.
+          {parent} was sent to the Uber app to book and pay. Hazel cannot see whether a ride was actually booked.
         </p>
         {handoffs.length === 0 ? (
           <p>None.</p>

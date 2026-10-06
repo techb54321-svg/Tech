@@ -7,7 +7,7 @@
 //    TRANSPORT_PROVIDER=test enables a local *test* provider for development
 //    only: it is labelled as a test everywhere and never contacts anyone.
 // 2. The Uber hand-off builds Uber's documented universal deep link. The
-//    person then books and pays inside Uber; Alongside never learns whether a
+//    person then books and pays inside Uber; Hazel never learns whether a
 //    booking was made, so it never calls the hand-off "booked".
 import { randomUUID } from 'node:crypto'
 

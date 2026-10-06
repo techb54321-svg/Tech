@@ -96,7 +96,7 @@ describe('access control', () => {
 })
 
 describe('validation', () => {
-  it('does not accept medication reminders: Alongside does not handle medicines', async () => {
+  it('does not accept medication reminders: Hazel does not handle medicines', async () => {
     const { base } = await setup()
     const { family, hid } = await household(base)
     const r = await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'medication', title: 'Morning tablets', medScheduleConfirmed: true }))

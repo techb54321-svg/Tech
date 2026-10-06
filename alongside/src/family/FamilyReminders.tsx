@@ -86,7 +86,7 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
     <>
       <div className="banner info">
         <span>
-          Reminders appear on {parent}’s screen <strong>only while Alongside is open</strong>. Background notifications
+          Reminders appear on {parent}’s screen <strong>only while Hazel is open</strong>. Background notifications
           are not set up yet. For alerts when the app is closed, use the calendar export in Setup.
         </span>
       </div>
@@ -237,7 +237,7 @@ function ReminderForm({
                 setVoice(undefined)
               }
             } catch (e) {
-              const msg = e instanceof ApiError ? e.message : 'Could not reach Alongside.'
+              const msg = e instanceof ApiError ? e.message : 'Could not reach Hazel.'
               throw new ApiError(e instanceof ApiError ? e.status : 0, `The reminder was saved, but the photo or voice message was not: ${msg}`)
             }
           },

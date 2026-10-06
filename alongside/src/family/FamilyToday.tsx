@@ -36,7 +36,7 @@ export function FamilyToday({ info }: { info: FamilyInfo }) {
   return (
     <>
       <p className="muted">
-        Alongside supports everyday routines. It is not an emergency or monitoring service: an unanswered reminder
+        Hazel supports everyday routines. It is not an emergency or monitoring service: an unanswered reminder
         only means nothing was confirmed.
       </p>
       <HelpRequests info={info} data={data} reload={load} />

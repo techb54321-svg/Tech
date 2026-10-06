@@ -9,6 +9,7 @@ import { FamilyLifts } from './FamilyLifts'
 import { FamilySetup, TimeZoneSelect } from './FamilySetup'
 import { FamilyAccess } from './FamilyAccess'
 import { FamilyMedia } from './FamilyMedia'
+import { HazelLogo } from '../brand/HazelLogo'
 
 const TABS = [
   { path: '/family', label: 'Today' },
@@ -69,7 +70,10 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
     <div className="f">
       <header className="f-header">
         <div className="f-header-inner">
-          <span className="f-brand">Alongside · Family area</span>
+          <span className="f-brand">
+            <HazelLogo className="f-logo" />
+            <span className="f-brand-area">Family area</span>
+          </span>
           <div className="row">
             {me.parent && <a href="#/">Back to {me.parent.parentName}’s screen</a>}
             {me.family!.households.length > 1 && (
@@ -243,7 +247,7 @@ function NewHousehold({ me, reloadMe }: { me: Me; reloadMe: () => Promise<void> 
   return (
     <div className="f">
       <main className="f-main" style={{ maxWidth: '40rem' }}>
-        <h1 tabIndex={-1}>Set up Alongside</h1>
+        <h1 tabIndex={-1}>Set up Hazel</h1>
         <form
           className="form card"
           onSubmit={async (e) => {

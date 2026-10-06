@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, ApiError, STATIC_DEMO } from './api'
 import { useNavigate, useScreenFocus } from './route'
+import { HazelLogo } from './brand/HazelLogo'
 
 /** First-run screen on a device that is not paired and not signed in. */
 export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
@@ -24,42 +25,46 @@ export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
   }
 
   return (
-    <main className="w-wrap">
-      <h1 tabIndex={-1}>Alongside</h1>
-      <p>A simple daily helper, with family support behind the scenes.</p>
+    <div className="w-page">
+      <main className="w-wrap">
+        <h1 tabIndex={-1} className="w-logo">
+          <HazelLogo tone="dark" />
+        </h1>
+        <p className="w-tagline">A simple daily helper, with family support behind the scenes.</p>
 
-      <button className="big-btn blue medium" onClick={() => startDemo()} disabled={busy} aria-busy={busy}>
-        {busy ? 'Starting…' : 'Try the demonstration'}
-      </button>
-      <button className="big-btn purple medium" onClick={() => startDemo('/both')} disabled={busy}>
-        See both screens side by side
-      </button>
-      <p className="muted">
-        The demonstration uses made-up people and places. No calls, texts or bookings are made.
-        {STATIC_DEMO ? '' : ' It is removed after three days.'}
-      </p>
-      {error && (
-        <p className="banner err" role="alert">
-          {error}
-        </p>
-      )}
-
-      {STATIC_DEMO ? (
+        <button className="big-btn blue medium" onClick={() => startDemo()} disabled={busy} aria-busy={busy}>
+          {busy ? 'Starting…' : 'Try the demonstration'}
+        </button>
+        <button className="big-btn purple medium" onClick={() => startDemo('/both')} disabled={busy}>
+          See both screens side by side
+        </button>
         <p className="muted">
-          This online preview runs entirely in your browser and keeps the demonstration data on this device only.
-          Family accounts, pairing a parent’s device and text messages need the full app with its server.
+          The demonstration uses made-up people and places. No calls, texts or bookings are made.
+          {STATIC_DEMO ? '' : ' It is removed after three days.'}
         </p>
-      ) : (
-        <>
-          <button className="big-btn green medium" onClick={() => navigate('/pair')}>
-            Set up this device for my parent
-          </button>
-          <button className="big-btn plain medium" onClick={() => navigate('/family')}>
-            Family sign in
-          </button>
-        </>
-      )}
-    </main>
+        {error && (
+          <p className="banner err" role="alert">
+            {error}
+          </p>
+        )}
+
+        {STATIC_DEMO ? (
+          <p className="muted">
+            This online preview runs entirely in your browser and keeps the demonstration data on this device only.
+            Family accounts, pairing a parent’s device and text messages need the full app with its server.
+          </p>
+        ) : (
+          <>
+            <button className="big-btn green medium" onClick={() => navigate('/pair')}>
+              Set up this device for my parent
+            </button>
+            <button className="big-btn plain medium" onClick={() => navigate('/family')}>
+              Family sign in
+            </button>
+          </>
+        )}
+      </main>
+    </div>
   )
 }
 
@@ -91,7 +96,7 @@ export function PairDevice({ onPaired }: { onPaired: () => Promise<void> }) {
       <h1 tabIndex={-1}>Set up this device</h1>
       <p>
         A family member creates a one-time code in <strong>Family setup → Access</strong>. Enter it here to connect this
-        device to your parent’s Alongside.
+        device to your parent’s Hazel.
       </p>
       <form onSubmit={submit} className="btn-stack">
         <label className="big-label" htmlFor="pair-code">

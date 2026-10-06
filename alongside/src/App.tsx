@@ -38,7 +38,7 @@ export function App() {
     return (
       <div className="w-wrap" role="alert">
         <h1>Can’t connect</h1>
-        <p>Alongside could not reach its server. Check the internet connection.</p>
+        <p>Hazel could not reach its server. Check the internet connection.</p>
         <button className="big-btn blue medium" onClick={reload}>
           Try again
         </button>

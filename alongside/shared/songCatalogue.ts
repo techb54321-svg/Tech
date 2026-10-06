@@ -1,5 +1,5 @@
 // Well-known songs from the 1960s and 1970s that carers can pick from.
-// This is a list of titles and artists only: Alongside does not include any
+// This is a list of titles and artists only: Hazel does not include any
 // recordings (they are under copyright). The carer attaches a copy they own.
 export interface CatalogueSong {
   title: string

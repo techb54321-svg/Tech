@@ -152,7 +152,7 @@ function ThanksTile({ done, today }: { done: Thanks; today: ParentToday }) {
         </p>
         {done.action === 'need_help' && (
           <p className="tsub">
-            {today.contactName} will see it in Alongside.
+            {today.contactName} will see it in Hazel.
             {done.messageStatus && ['accepted', 'queued', 'sent', 'delivered'].includes(done.messageStatus) ? ` A text was also sent.` : ''}
           </p>
         )}

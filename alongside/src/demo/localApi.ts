@@ -433,7 +433,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
         sms: { configured: false, name: 'Twilio SMS' }, transport: null, uberHandoff: true,
         notifications: {
           background: false,
-          summary: 'Reminders appear only while Alongside is open on the screen. Background notifications are not set up. For alerts when the app is closed, the full app offers a calendar export.',
+          summary: 'Reminders appear only while Hazel is open on the screen. Background notifications are not set up. For alerts when the app is closed, the full app offers a calendar export.',
         },
       },
     } as T

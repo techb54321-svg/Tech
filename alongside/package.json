@@ -1,9 +1,9 @@
 {
-  "name": "alongside",
+  "name": "hazel",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Alongside — a simple daily assistant for an older person, with family support behind the scenes",
+  "description": "Hazel — a simple daily assistant for an older person, with family support behind the scenes",
   "engines": {
     "node": ">=22.13"
   },

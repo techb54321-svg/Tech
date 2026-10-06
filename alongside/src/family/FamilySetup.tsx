@@ -131,7 +131,7 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
         <label className="check">
           <input type="checkbox" checked={!!s.keepAwake} onChange={(e) => set('keepAwake', e.target.checked)} />
           <span>
-            <strong>Keep the screen on while Alongside is open</strong>
+            <strong>Keep the screen on while Hazel is open</strong>
             <br />
             <span className="small muted">Useful for a tablet on the kitchen bench. Uses more battery; keep it plugged in. Not every browser allows this.</span>
           </span>
@@ -317,7 +317,7 @@ function Delivery({ info }: { info: FamilyInfo }) {
         <span>{n.summary}</span>
       </div>
       <ul>
-        <li>While Alongside is open, a due reminder comes to the front with a short chime (if the device allows sound).</li>
+        <li>While Hazel is open, a due reminder comes to the front with a short chime (if the device allows sound).</li>
         <li>“Later” moves a reminder 20 minutes and it comes back while the app is open.</li>
         <li>Read aloud uses the device’s own voice where available; the words always stay on screen.</li>
       </ul>
@@ -332,7 +332,7 @@ function Delivery({ info }: { info: FamilyInfo }) {
       </p>
       <p className="small muted">
         Open the file on {info.settings.parentName}’s phone or tablet to add the reminders to its calendar, which can
-        alert even when Alongside is closed. The calendar copy does not update automatically; download it again after
+        alert even when Hazel is closed. The calendar copy does not update automatically; download it again after
         changes.
       </p>
       </>

@@ -27,7 +27,7 @@ export const settingsSchema = z.object({
   smsAlerts: z.boolean(),
   /** Play or read a reminder aloud when it comes up on screen. */
   autoSpeak: z.boolean().default(false),
-  /** Ask the device to keep the screen on while Alongside is open. */
+  /** Ask the device to keep the screen on while Hazel is open. */
   keepAwake: z.boolean().default(false),
   /** Show a "Call …" tile for the family contact (they may prefer only the other people). */
   callContact: z.boolean().default(true),
@@ -43,7 +43,7 @@ export const destinationSchema = z.object({
 
 export const reminderSchema = z
   .object({
-    // No medication: Alongside does not manage medicines.
+    // No medication: Hazel does not manage medicines.
     kind: z.enum(['appointment', 'social', 'routine'], { message: 'Choose appointment, social activity or daily routine' }),
     title: text(60).min(1, 'Enter a short title'),
     time: timeStr,

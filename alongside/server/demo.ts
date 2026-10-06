@@ -12,7 +12,6 @@ import {
   demoDestinationPhotos,
   demoDestinations,
   demoContacts,
-  demoDueNow,
   demoOutingsToday,
   demoPhotos,
   demoSongs,
@@ -49,8 +48,6 @@ export function createDemo(db: DB, now = new Date()) {
     const today = todayFor(getHousehold(db, hid), now)
     const ids: Record<string, string> = {}
     for (const r of demoReminders(today)) ids[r.key] = saveReminder(db, hid, r.input, DEMO_FAMILY_NAME)!
-    const dueNow = demoDueNow(now, DEMO_TZ)
-    if (dueNow) saveReminder(db, hid, dueNow, DEMO_FAMILY_NAME)
     const put = (owner: 'reminder' | 'contact' | 'photo', id: string, pic: Exclude<keyof typeof demoMedia, 'song'>) => {
       const img = decodeMedia('photo', demoMedia[pic])
       saveMedia(db, hid, owner, id, 'photo', img.mime, img.data)

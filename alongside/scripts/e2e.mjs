@@ -302,6 +302,17 @@ for (const v of WIDTHS) {
   const text = await page.locator('body').textContent()
   check(!/medication|tablet|dose/i.test(text), `${v.name}: medication still mentioned`)
   check(!/driving|Sue the carer/i.test(text), `${v.name}: who is driving still shown`)
+  check(!/glass of water/i.test(text), `${v.name}: the water reminder is still in the demonstration`)
+  // Big tiles: never more than two to a row.
+  const perRow = await page.evaluate(() => {
+    const tops = {}
+    for (const c of document.querySelectorAll('.board > .cell')) {
+      const t = Math.round(c.getBoundingClientRect().top)
+      tops[t] = (tops[t] || 0) + 1
+    }
+    return Math.max(...Object.values(tops))
+  })
+  check(perRow <= 2, `${v.name}/home: ${perRow} tiles in a row`)
 
   await answerAllDue(page)
   const tea = 'Have you had a cup of tea?'
@@ -357,7 +368,8 @@ for (const v of WIDTHS) {
   check(href.startsWith('https://m.uber.com/ul/?action=setPickup') && href.includes('Banksia'), `${v.name}: Uber link ${href}`)
   ctx.on('page', (p) => p.close())
   await uber.click()
-  await page.getByText('Finish booking and paying in the Uber app.').waitFor()
+  await page.getByText('Uber is opening.').waitFor()
+  check(!/\bpay/i.test(await page.locator('.cell.wide', { hasText: 'Going to' }).innerText()), `${v.name}: taxi still talks about paying`)
   await shot(page, v.name, '14-taxi-uber')
   await page.getByRole('button', { name: 'Close taxi' }).click()
   await page.getByRole('button', { name: 'Taxi' }).waitFor()
@@ -548,15 +560,15 @@ step('In-app reminder appears')
   const hidIn = await householdId(page)
   const all = (await (await page.request.get(`${BASE}/api/family/${hidIn}`)).json()).reminders
   for (const r of all) await page.request.delete(`${BASE}/api/family/${hidIn}/reminders/${r.id}`, { headers: { 'X-Alongside': '1' } })
-  await addDue(page, { title: 'Drink some water', question: 'Have you had a glass of water?', minutes: 3 })
+  await addDue(page, { title: 'Lunch', question: 'Have you had your lunch?', minutes: 3 })
   await page.reload()
   await page.getByRole('button', { name: 'Taxi' }).waitFor()
   await page.clock.runFor(30000)
-  check((await page.getByText('Have you had a glass of water?').count()) === 0, 'in-app: shown before it was due')
+  check((await page.getByText('Have you had your lunch?').count()) === 0, 'in-app: shown before it was due')
   await page.clock.fastForward(4 * 60000)
   await page.clock.runFor(16000)
-  await page.getByText('Have you had a glass of water?').waitFor({ timeout: 5000 }).catch(() => {})
-  check(await page.getByText('Have you had a glass of water?').isVisible(), 'in-app: due reminder did not appear')
+  await page.getByText('Have you had your lunch?').waitFor({ timeout: 5000 }).catch(() => {})
+  check(await page.getByText('Have you had your lunch?').isVisible(), 'in-app: due reminder did not appear')
   check(onHome(page), `in-app: moved to ${page.url()}`)
   await page.screenshot({ path: join(shotsDir, '390', '33-in-app-reminder.png'), fullPage: true })
 
@@ -763,9 +775,10 @@ step('Photos, voice and week')
   // Quick-start templates fill the form, including the question.
   await page.goto(BASE + '/#/family/reminders')
   await page.getByRole('button', { name: 'Add a reminder' }).click()
-  await page.getByRole('button', { name: 'Drink a glass of water' }).click()
-  check((await page.getByLabel('Short title').inputValue()) === 'Drink a glass of water', 'templates: title not filled')
-  check((await page.getByLabel('Question to ask (optional)').inputValue()) === 'Have you had a glass of water?', 'templates: question not filled')
+  check((await page.getByRole('button', { name: /glass of water/i }).count()) === 0, 'templates: water reminder still offered')
+  await page.getByRole('button', { name: 'Short walk' }).click()
+  check((await page.getByLabel('Short title').inputValue()) === 'Short walk', 'templates: title not filled')
+  check((await page.getByLabel('Question to ask (optional)').inputValue()) === 'Have you been for your walk?', 'templates: question not filled')
   await shot(page, '390', '54-family-templates', { parent: false })
 
   // Week grid renders, also on a narrow phone.

@@ -469,7 +469,7 @@ function TaxiPanel({ today, onClose }: { today: ParentToday; onClose: () => void
         </p>
       ) : uberOpened ? (
         <p className="tsub strong" role="status">
-          Finish booking and paying in the Uber app.
+          Uber is opening.
         </p>
       ) : (
         <div className="place-grid">
@@ -498,7 +498,6 @@ function TaxiPanel({ today, onClose }: { today: ParentToday; onClose: () => void
           That didn’t save. Tap “Ask {today.contactName}” again.
         </p>
       )}
-      {!uberOpened && asked !== 'saved' && <p className="tsub">In Uber you book and pay yourself.</p>}
       <button type="button" className="tile-btn small" onClick={() => {
           setDest(null)
           setTyping(false)
@@ -516,7 +515,7 @@ function TaxiPanel({ today, onClose }: { today: ParentToday; onClose: () => void
 // ---------------------------------------------------------------- the board
 
 /**
- * How many columns the board's grid has right now: 2 on phones, 3 on tablets, 1 with very large text.
+ * How many columns the board's grid has right now: 2, or 1 with very large text.
  * Worked out the same way as the CSS (a column is at least 8.25rem), rather than read back from the
  * grid, which would also count any extra column a stretched tile had created.
  */
@@ -528,7 +527,7 @@ function useColumns(ref: RefObject<HTMLDivElement | null>) {
     const measure = () => {
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
       const width = el.clientWidth
-      const most = el.closest('.pane') || window.matchMedia('(max-width: 699px)').matches ? 2 : 3
+      const most = 2
       const gap = 3
       const min = Math.max(8.25 * rem, (width - (most - 1) * gap) / most - 0.5)
       setCols(Math.max(1, Math.min(most, Math.floor((width + gap) / (min + gap)))))
@@ -642,7 +641,7 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           <MusicTile today={today} />
         </div>
       )}
-      <div role="listitem" className="cell wide">
+      <div role="listitem" className="cell wide bar">
         <a className="board-bar" href="#/family">
           Family setup{today.demo ? ' · Demo' : ''}
           {offline ? ' · Offline' : ''}

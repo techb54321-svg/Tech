@@ -26,7 +26,6 @@ type Draft = {
 }
 
 const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { notes?: string; question?: string }> = [
-  { kind: 'routine', title: 'Drink a glass of water', time: '10:00', repeat: 'daily', question: 'Have you had a glass of water?' },
   { kind: 'routine', title: 'Shower', time: '09:00', repeat: 'daily', question: 'Have you had your shower?' },
   { kind: 'routine', title: 'Short walk', time: '15:00', repeat: 'daily', question: 'Have you been for your walk?' },
   { kind: 'routine', title: 'Lunch', time: '12:30', repeat: 'daily', question: 'Have you had your lunch?' },

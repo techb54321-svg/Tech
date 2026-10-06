@@ -279,6 +279,17 @@ database file and keep it.
 - **Fix:** with enlarged text, the grid could grow a thin extra column. Columns are now worked out from the
   board's width and text size.
 
+### Tenth round: bigger tiles, fewer to a row
+
+- **At most two tiles to a row**, on phones and tablets alike (tablets had three), so each tile is bigger. Icons
+  and labels grow with the tile: on a tablet a square tile is about 360 px with an icon of about 8 rem.
+  Outings and the last tile in a row take the full width.
+- **No water reminder.** The demonstration no longer starts with "Have you had a glass of water?", and "Drink a
+  glass of water" is no longer a quick-start template for families.
+- **Uber wording simplified.** The taxi tile no longer says "In Uber you book and pay yourself" or "Finish
+  booking and paying in the Uber app". After "Book in Uber" it just says "Uber is opening." (It is still only a
+  hand-off: nothing is booked or paid inside Alongside.)
+
 ## Project layout
 
 ```

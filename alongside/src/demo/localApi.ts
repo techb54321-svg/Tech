@@ -11,7 +11,6 @@ import {
   demoDestinationPhotos,
   demoDestinations,
   demoContacts,
-  demoDueNow,
   demoOutingsToday,
   demoPhotos,
   demoSongs,
@@ -78,7 +77,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 6
+const DEMO_VERSION = 7
 
 interface State {
   version: number
@@ -241,8 +240,6 @@ function createDemo(): State {
     ids[r.key] = uuid()
     s.reminders.push(toReminder(ids[r.key], r.input))
   }
-  const dueNow = demoDueNow(now, tz)
-  if (dueNow) s.reminders.push(toReminder(uuid(), dueNow))
   for (const o of demoOutingsToday(now, tz)) {
     s.reminders.push(toReminder(uuid(), o.input))
   }

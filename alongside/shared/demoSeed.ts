@@ -36,20 +36,6 @@ export function demoReminders(today: string): Array<{ key: string; input: Remind
 }
 
 /**
- * A reminder that is due as soon as the demonstration starts, so the question
- * screen can be seen at any time of day. Skipped just after midnight.
- */
-export function demoDueNow(now: Date, tz: string): ReminderInput | null {
-  const at = new Date(now.getTime() - 2 * 60000)
-  if (localDateISO(at, tz) !== localDateISO(now, tz)) return null
-  return {
-    kind: 'routine', title: 'Glass of water', time: localTimeHM(at, tz), startDate: localDateISO(now, tz), repeat: 'none',
-    endDate: null, location: '', notes: '', question: 'Have you had a glass of water?', remindMinutesBefore: 0,
-    shareResponses: true,
-  }
-}
-
-/**
  * Outings later today, so Home always shows event tiles: a Pilates class with
  * pick-up times and a blue car, coffee the person is asked about (YES / NO),
  * and shopping. Anything that would fall after midnight is left out.

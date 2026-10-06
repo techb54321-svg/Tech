@@ -528,7 +528,7 @@ function useColumns(ref: RefObject<HTMLDivElement | null>) {
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
       const width = el.clientWidth
       const most = 2
-      const gap = 3
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0
       const min = Math.max(8.25 * rem, (width - (most - 1) * gap) / most - 0.5)
       setCols(Math.max(1, Math.min(most, Math.floor((width + gap) / (min + gap)))))
     }

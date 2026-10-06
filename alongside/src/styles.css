@@ -1272,8 +1272,9 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .board {
   display: grid;
   /* Two big tiles per row (phone and tablet alike), one when the text is enlarged. */
-  grid-template-columns: repeat(auto-fill, minmax(max(8.25rem, calc((100% - 3.1px) / 2)), 1fr));
-  gap: 3px;
+  --gap: 3px;
+  grid-template-columns: repeat(auto-fill, minmax(max(8.25rem, calc((100% - var(--gap) - 0.1px) / 2)), 1fr));
+  gap: var(--gap);
   background: #fff;
   border: 3px solid #fff;
   box-shadow: 0 10px 30px rgba(30, 27, 75, 0.18);
@@ -1316,7 +1317,7 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 }
 .ftile.wide { aspect-ratio: auto; min-height: 11rem; padding: 1.4rem 1rem; }
 /* Full-row tiles keep their icon a sensible size. */
-.cell.event .tlabel, .cell.fill-2 .tlabel { font-size: clamp(min(2rem, 12.5cqi), 11cqi, 2.75rem); }
+.cell.event .tlabel, .cell.fill-2 .tlabel, .ftile.wide .tlabel:not(.big) { font-size: clamp(min(2rem, 12.5cqi), 11cqi, 2.75rem); }
 .ftile.wide .ticon, .cell.event .ticon { width: clamp(4.5rem, 14cqi, 6rem); height: clamp(4.5rem, 14cqi, 6rem); }
 .ftile.press { cursor: pointer; }
 .ftile.press:hover { filter: brightness(0.93); }
@@ -1511,18 +1512,117 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
   text-decoration: none;
 }
 
-/* The day and time, flat to match the tiles. */
-.clockbar {
-  border-radius: 0;
-  border: 0;
-  background: var(--clock-band, #1e3a8a);
-  color: #fff;
-  box-shadow: 0 10px 30px rgba(30, 27, 75, 0.18);
+/* =================== Premium finish (parent screen) =================== */
+/* A deep warm-charcoal room with a soft glow for the time of day; jewel-tone
+   tiles with rounded corners, a gentle light from above and fine line icons.
+   Every text colour still passes WCAG 4.5:1 on its tile. */
+.tod {
+  --room: #111318;
+  --ink-on-dark: #f3efe7;
+  --soft-on-dark: #bdb7ac;
+  --gold: #d8b46a;
+  color: var(--ink-on-dark);
+  background-color: var(--room);
+  background-image: radial-gradient(120% 55% at 50% -12%, var(--glow, rgba(216, 180, 106, 0.16)), transparent 70%);
 }
-.clock-morning { --clock-band: #b45309; }
-.clock-afternoon { --clock-band: #1d4ed8; }
-.clock-evening { --clock-band: #4338ca; }
-.clock-night { --clock-band: #1e1b4b; }
-.clockbar .clock-icon { background: #fff; color: var(--clock-band, #1e3a8a); }
-.clockbar .clock-date { color: #fff; opacity: 0.92; }
-.clockbar .clock-day, .clockbar .clock-time { text-transform: uppercase; letter-spacing: 0.03em; }
+.tod-morning { --glow: rgba(232, 168, 92, 0.22); }
+.tod-afternoon { --glow: rgba(120, 160, 210, 0.2); }
+.tod-evening { --glow: rgba(150, 120, 200, 0.22); }
+.tod .p-h1 { color: var(--ink-on-dark); font-weight: 400; letter-spacing: 0.005em; }
+.tod .p-home .p-h1 { font-size: 2.5rem; margin: 0.4rem 0 0.35rem; }
+.tod .p-body { color: var(--ink-on-dark); }
+
+/* The day and time: no box, fine type with a gold accent and a hairline below. */
+.tod .clockbar {
+  border: 0;
+  border-bottom: 1px solid rgba(216, 180, 106, 0.4);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.6rem 0.25rem 1.1rem;
+  margin-bottom: 0.25rem;
+  color: var(--ink-on-dark);
+  gap: 1.1rem;
+}
+.tod .clock-icon {
+  width: 3.75rem;
+  height: 3.75rem;
+  background: transparent;
+  border: 1.5px solid var(--gold);
+  color: var(--gold);
+}
+.tod .clock-icon svg { width: 1.9rem; height: 1.9rem; stroke-width: 1.5; }
+.tod .clock-day { font-size: 2rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.tod .clock-part { font-weight: 400; color: var(--soft-on-dark); }
+.tod .clock-time { font-size: 3.25rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink-on-dark); }
+.tod .clock-date { font-size: 1.5rem; font-weight: 400; letter-spacing: 0.02em; color: var(--soft-on-dark); opacity: 1; }
+
+/* The board: separate rounded tiles on the dark room. */
+.tod .board {
+  --gap: 0.75rem;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.tod .ftile {
+  border-radius: 1.4rem;
+  /* No overflow clipping: a tile must be free to grow taller for its words. */
+  background-image: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.12) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+  gap: 0.55rem;
+}
+.tod .ftile.press:hover { filter: brightness(1.08); }
+.tod .ftile.press:active { filter: brightness(0.94); transform: scale(0.992); }
+.tod .ticon { stroke-width: 1.25; opacity: 0.95; }
+.tod .tlabel { font-weight: 700; letter-spacing: 0.09em; }
+.tod .tlabel.big { letter-spacing: 0.005em; font-weight: 700; }
+.tod .tkicker { font-size: 1.375rem; letter-spacing: 0.18em; opacity: 0.92; }
+.tod .tdetail { letter-spacing: 0.16em; font-weight: 400; }
+
+/* Jewel tones (white text on all but the gold taxi). */
+.tod .t-orange { background-color: #8c3b17; }  /* copper: something to answer now */
+.tod .t-teal { background-color: #145a55; }    /* outings */
+.tod .t-blue { background-color: #1d3b6e; }    /* appointments */
+.tod .t-green { background-color: #1e5a3e; }   /* calls, and thank-yous */
+.tod .t-yellow { background-color: #d6b160; color: #1c1813; } /* taxi: champagne gold */
+.tod .t-purple { background-color: #47306a; }  /* puzzles */
+.tod .t-rose { background-color: #74203a; }    /* music */
+.tod .t-cyan { background-color: #17566a; }    /* photos */
+
+/* Buttons on tiles: warm ivory, soft depth. */
+.tod .tile-btn {
+  background: #faf7f1;
+  color: #1c1813;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 0.95rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 14px -6px rgba(0, 0, 0, 0.45);
+  font-weight: 700;
+}
+.tod .tile-btn.ghost { background: transparent; color: inherit; border: 1.5px solid currentColor; box-shadow: none; }
+.tod .tile-btn.yes { color: #14532d; }
+.tod .tile-close { border-width: 1.5px; }
+.tod .car-strip { background: #faf7f1; border-radius: 0.95rem; }
+.tod .car-swatch { border-width: 2px; border-color: rgba(0, 0, 0, 0.55); border-radius: 0.5rem; }
+
+/* Photo: full bleed, caption over a soft fade. */
+.tod .photo-tile { background-color: #17566a; }
+.tod .tphoto-caption {
+  background: linear-gradient(180deg, rgba(10, 12, 16, 0) 0%, rgba(10, 12, 16, 0.82) 38%);
+  padding: 2.2rem 0.8rem 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+/* Word search: ivory letters on the plum tile. */
+.tod .ws .ws-cell { background: #faf7f1; border-color: rgba(0, 0, 0, 0.1); color: #1c1813; }
+.tod .ws .ws-words li { background: #faf7f1; border-color: transparent; }
+
+/* The family link: a quiet hairline row, not a slab. */
+.tod .board-bar {
+  background: #1b1f27;
+  color: var(--soft-on-dark);
+  border: 1px solid rgba(216, 180, 106, 0.25);
+  border-radius: 1rem;
+  letter-spacing: 0.16em;
+  font-weight: 400;
+}
+.tod .board-bar:hover { color: var(--ink-on-dark); }

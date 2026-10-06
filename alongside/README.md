@@ -290,6 +290,20 @@ database file and keep it.
   booking and paying in the Uber app". After "Book in Uber" it just says "Uber is opening." (It is still only a
   hand-off: nothing is booked or paid inside Alongside.)
 
+### Eleventh round: a premium finish
+
+- **A dark, warm-charcoal room** with a soft glow that changes with the time of day (amber in the morning, blue in
+  the afternoon, violet in the evening). The phone's status bar matches it.
+- **Day and time without a box**: the weekday in gold capitals, the time large in ivory, the date in a soft grey,
+  a fine gold-ringed icon and a hairline underneath.
+- **Jewel-tone tiles**: copper for a question that needs an answer, deep teal for outings, sapphire for
+  appointments, forest green for calls, champagne gold for the taxi, plum for puzzles and burgundy for music.
+  Tiles are rounded, separated by gaps, lit softly from above with a subtle shadow, and use finer line icons and
+  wider letter spacing. Buttons are warm ivory.
+- The photo of the day fills its tile with the caption on a soft fade, and the family link is a quiet outlined row.
+- Every text colour still passes WCAG 4.5:1 contrast, and the browser checks (sizes, contrast, overlaps, split
+  words, 200 % text) all pass. The family area keeps its light, plain look.
+
 ## Project layout
 
 ```

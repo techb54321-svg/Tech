@@ -1283,6 +1283,9 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 }
 .cell { display: flex; min-width: 0; min-height: 9rem; }
 .cell.bar { min-height: 0; }
+/* Today's photo: across the top, in a landscape frame. */
+.photo-cell .ftile { aspect-ratio: 3 / 2; }
+.photo-cell .tphoto-caption { font-size: clamp(1.5rem, 5cqi, 2rem); }
 .cell.wide { grid-column: 1 / -1; }
 /* Today's outings get the full row so their words and car never squeeze. */
 .cell.event { grid-column: 1 / -1; }

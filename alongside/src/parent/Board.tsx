@@ -1,6 +1,6 @@
 // The parent's whole app is this one screen: a grid of flat colour tiles.
-// Nothing moves to another screen. Reminders, outings, calls, photos, music,
-// the taxi and the word search all work inside their tiles.
+// Nothing moves to another screen. Today's photo sits across the top; reminders,
+// outings, calls, music and the word search all work inside their tiles.
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import {
   Car,
@@ -11,7 +11,6 @@ import {
   Images,
   Music,
   Pause,
-  Pencil,
   Phone,
   Play,
   Puzzle,
@@ -21,13 +20,10 @@ import {
   X,
   Ban,
   CircleHelp,
-  House,
-  MapPin,
 } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
 import { formatTime12, localTimeHM } from '../../shared/time'
-import { uberDeepLink } from '../../shared/uber'
-import type { DayItem, Destination, MessageStatus, ParentToday, ResponseAction } from '../../shared/types'
+import type { DayItem, MessageStatus, ParentToday, ResponseAction } from '../../shared/types'
 import { CAR_FILL } from './illustrations'
 import { liveStatus } from './ParentApp'
 import { WordSearchGame } from './WordSearch'
@@ -383,135 +379,6 @@ function MusicTile({ today }: { today: ParentToday }) {
   )
 }
 
-// ---------------------------------------------------------------- taxi tile (opens in place)
-
-const PLACE_ICON: Record<Destination['icon'], typeof House> = { medical: Stethoscope, shops: ShoppingBag, home: House, other: MapPin }
-
-function TaxiPanel({ today, onClose }: { today: ParentToday; onClose: () => void }) {
-  const [dest, setDest] = useState<{ destinationId: string | null; label: string; address: string; latitude: number | null; longitude: number | null } | null>(null)
-  const [typing, setTyping] = useState(false)
-  const [text, setText] = useState('')
-  const [asked, setAsked] = useState<'saving' | 'saved' | 'error' | null>(null)
-  const [uberOpened, setUberOpened] = useState(false)
-  const askId = useRef(newRequestId())
-
-  async function askFamily() {
-    if (!dest) return
-    setAsked('saving')
-    try {
-      await api('POST', '/api/parent/lift/ask', {
-        clientRequestId: askId.current,
-        destination: { destinationId: dest.destinationId, label: dest.label, address: dest.address },
-      })
-      setAsked('saved')
-    } catch {
-      setAsked('error')
-    }
-  }
-
-  const close = (
-    <button type="button" className="tile-close" onClick={onClose} aria-label="Close taxi">
-      <X aria-hidden="true" /> Close
-    </button>
-  )
-
-  if (!dest) {
-    return (
-      <Tile colour="t-yellow" wide label="Taxi" className="panel">
-        {close}
-        <p className="tlabel big">Where to?</p>
-        {typing ? (
-          <form
-            className="panel-form"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const v = text.trim()
-              if (v) setDest({ destinationId: null, label: v, address: v, latitude: null, longitude: null })
-            }}
-          >
-            <label className="tsub strong" htmlFor="taxi-place">
-              Type the place or address
-            </label>
-            <input id="taxi-place" className="big-input" value={text} onChange={(e) => setText(e.target.value)} autoComplete="street-address" />
-            <button className="tile-btn" disabled={!text.trim()}>
-              <Check aria-hidden="true" /> That’s the place
-            </button>
-          </form>
-        ) : (
-          <div className="place-grid">
-            {today.destinations.map((d) => {
-              const Icon = PLACE_ICON[d.icon]
-              return (
-                <button key={d.id} type="button" className="tile-btn" onClick={() => setDest({ ...d, destinationId: d.id })}>
-                  <Icon aria-hidden="true" /> {d.label}
-                </button>
-              )
-            })}
-            <button type="button" className="tile-btn" onClick={() => setTyping(true)}>
-              <Pencil aria-hidden="true" /> Somewhere else
-            </button>
-          </div>
-        )}
-      </Tile>
-    )
-  }
-
-  const uber = uberDeepLink(dest, today.transport.uberClientId)
-  return (
-    <Tile colour="t-yellow" wide label="Taxi" className="panel">
-      {close}
-      <p className="tkicker">Going to</p>
-      <p className="tlabel big">{dest.label}</p>
-      {dest.address !== dest.label && <p className="tsub">{dest.address}</p>}
-      {asked === 'saved' ? (
-        <p className="tsub strong" role="status">
-          Request saved. {today.contactName} will see it in Alongside.
-        </p>
-      ) : uberOpened ? (
-        <p className="tsub strong" role="status">
-          Uber is opening.
-        </p>
-      ) : (
-        <div className="place-grid">
-          <a
-            className="tile-btn"
-            href={uber}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => {
-              api('POST', '/api/parent/lift/handoff', {
-                clientRequestId: newRequestId(),
-                destination: { destinationId: dest.destinationId, label: dest.label, address: dest.address },
-              }).catch(() => undefined)
-              setUberOpened(true)
-            }}
-          >
-            <Car aria-hidden="true" /> Book in Uber
-          </a>
-          <button type="button" className="tile-btn" disabled={asked === 'saving'} onClick={askFamily}>
-            <Users aria-hidden="true" /> {asked === 'saving' ? 'Saving…' : `Ask ${today.contactName}`}
-          </button>
-        </div>
-      )}
-      {asked === 'error' && (
-        <p className="tile-error" role="alert">
-          That didn’t save. Tap “Ask {today.contactName}” again.
-        </p>
-      )}
-      <button type="button" className="tile-btn small" onClick={() => {
-          setDest(null)
-          setTyping(false)
-          setText('')
-          setAsked(null)
-          setUberOpened(false)
-          askId.current = newRequestId()
-        }}>
-        Choose a different place
-      </button>
-    </Tile>
-  )
-}
-
 // ---------------------------------------------------------------- the board
 
 /**
@@ -542,7 +409,7 @@ function useColumns(ref: RefObject<HTMLDivElement | null>) {
 }
 
 export function Board({ today, offline }: { today: ParentToday; offline: boolean }) {
-  const [open, setOpen] = useState<null | 'taxi' | 'puzzle'>(null)
+  const [open, setOpen] = useState<null | 'puzzle'>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const cols = useColumns(boardRef)
@@ -583,15 +450,19 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
     }
   }, [open])
 
-  // Small tiles after the full-row ones: contacts, taxi, puzzles, photo, music.
-  // An open panel takes a full row of its own.
-  const small = today.contacts.length + (open === 'taxi' ? 0 : 1) + (open === 'puzzle' ? 0 : 1) + 1 + (today.songs.length > 0 ? 1 : 0)
-  const rest = small % cols
-  const fill = rest === 0 ? '' : ` fill-${cols - rest + 1}`
+  // Small tiles after the full-row ones: people to call, puzzles and music. The last one
+  // stretches to fill its row; an open puzzle takes a full row of its own.
   const hasMusic = today.songs.length > 0
+  const smallTiles = [...today.contacts.map((c) => c.id), ...(open === 'puzzle' ? [] : ['puzzle']), ...(hasMusic ? ['music'] : [])]
+  const rest = smallTiles.length % cols
+  const fillFor = (key: string) => (rest !== 0 && key === smallTiles[smallTiles.length - 1] ? ` fill-${cols - rest + 1}` : '')
 
   return (
     <div className="board" role="list" aria-label="Today" ref={boardRef}>
+      {/* Today's photo first, across the top. */}
+      <div role="listitem" className="cell wide photo-cell">
+        <PhotoTile today={today} />
+      </div>
       {due.map((d) => (
         <div role="listitem" className="cell wide" key={d.key}>
           {thanks[d.key] ? <ThanksTile done={thanks[d.key]} today={today} /> : <ReminderTile item={d} today={today} onAnswered={answered} />}
@@ -603,21 +474,11 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
         </div>
       ))}
       {today.contacts.map((c) => (
-        <div role="listitem" className="cell" key={c.id}>
+        <div role="listitem" className={`cell${fillFor(c.id)}`} key={c.id}>
           <CallTile c={c} today={today} />
         </div>
       ))}
-      <div role="listitem" className={`cell${open === 'taxi' ? ' wide' : ''}`} ref={open === 'taxi' ? panelRef : undefined}>
-        {open === 'taxi' ? (
-          <TaxiPanel today={today} onClose={() => setOpen(null)} />
-        ) : (
-          <Tile colour="t-yellow" onClick={() => setOpen('taxi')} label="Taxi">
-            <Car className="ticon" aria-hidden="true" />
-            <p className="tlabel">Taxi</p>
-          </Tile>
-        )}
-      </div>
-      <div role="listitem" className={`cell${open === 'puzzle' ? ' wide' : ''}`} ref={open === 'puzzle' ? panelRef : undefined}>
+      <div role="listitem" className={`cell${open === 'puzzle' ? ' wide' : fillFor('puzzle')}`} ref={open === 'puzzle' ? panelRef : undefined}>
         {open === 'puzzle' ? (
           <Tile colour="t-purple" wide label="Word search" className="panel">
             <button type="button" className="tile-close" onClick={() => setOpen(null)} aria-label="Close word search">
@@ -633,11 +494,8 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           </Tile>
         )}
       </div>
-      <div role="listitem" className={`cell${hasMusic ? '' : fill}`}>
-        <PhotoTile today={today} />
-      </div>
-      {today.songs.length > 0 && (
-        <div role="listitem" className={`cell${fill}`}>
+      {hasMusic && (
+        <div role="listitem" className={`cell${fillFor('music')}`}>
           <MusicTile today={today} />
         </div>
       )}

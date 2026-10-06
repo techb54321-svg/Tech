@@ -16,9 +16,8 @@ export function Showcase({ me }: { me: Me }) {
         <div>
           <h1 tabIndex={-1}>Alongside, side by side</h1>
           <p>
-            Left: what {parent} sees on the phone, all on one screen. Right: what {family} sees in the family area. Ask for a lift
-            with Taxi and watch {family}’s side update. Everything here is
-            fictional.
+            Left: what {parent} sees on the phone, all on one screen. Right: what {family} sees in the family area. Add
+            someone to call in Setup, or a photo, and watch {parent}’s screen update. Everything here is fictional.
           </p>
         </div>
         <a className="btn secondary" href="#/">

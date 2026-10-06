@@ -313,6 +313,15 @@ database file and keep it.
 - Each colour is the brightest shade of its hue that still keeps white text at WCAG 4.5:1, so the colours are
   vivid without becoming hard to read.
 
+### Thirteenth round: photo at the top, no taxi
+
+- **Today's photo is the first tile**, across the full width in a landscape frame, right under the greeting.
+  Tap it for another photo. Anything that needs an answer now and today's outings follow below it.
+- **The Taxi tile has been removed** from the parent's screen, with its places, Uber link and "Ask Anna" panel.
+  Lifts the family arranges still show as tiles on the day, and families still record them under Lifts. The
+  server keeps its lift endpoints for older devices.
+- The side-by-side demonstration now shows live updates by adding someone to call in Anna's Setup.
+
 ## Project layout
 
 ```

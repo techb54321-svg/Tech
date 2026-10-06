@@ -114,6 +114,18 @@ Access is enforced on the server:
 | **Quick start templates** for common reminders | Working |
 | **Side by side**: the parent's phone and the family area live on one page (demonstration only) | Working (tested) |
 
+### Third round: easier and brighter for the parent
+
+- **"Next: Lunch with Jean"**: after each answer, the button names what comes next.
+- **Back to Home when idle**: after 5 minutes without a touch, the app returns to the Home screen.
+- **A colour for each type of reminder**: medication pink, appointments blue, routines teal, outings orange,
+  lifts purple, each with a matching badge.
+- **Time-of-day cues**: a sunrise, sun or moon beside the date, and a soft morning/afternoon/evening tint.
+- Brighter buttons with white icon tiles, softly coloured place buttons, and bigger Previous/Next buttons.
+- A small burst of colour on "Done" and "I've taken it". It is hidden when the device asks for reduced motion.
+
+All colours still pass the 4.5:1 text-contrast check in the browser tests.
+
 ## Integrations and their limits
 
 The integrations live in `server/integrations/`.

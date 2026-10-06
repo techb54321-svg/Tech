@@ -416,6 +416,33 @@ step('In-app reminder comes')
   await ctx.close()
 }
 
+// After answering, "Next" names the next item; an idle screen returns Home.
+step('Next label and idle return')
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  ctx.setDefaultTimeout(15000)
+  const page = await ctx.newPage()
+  await page.clock.install()
+  await page.goto(BASE + '/')
+  await page.getByRole('button', { name: 'Try the demonstration' }).click()
+  await page.getByRole('link', { name: 'My day' }).waitFor()
+  const t = await today(page)
+  const i = t.items.findIndex((x) => x.type === 'reminder' && x.reminder.title === 'Dr Chen')
+  const next = t.items[i + 1]
+  await gotoItem(page, t.items[i].key)
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('heading', { name: 'Done' }).waitFor()
+  const nextTitle = next.type === 'reminder' ? next.reminder.title : `Lift to ${next.lift.destinationLabel}`
+  check(await page.getByRole('button', { name: `Next: ${nextTitle}` }).isVisible(), `ack: next button does not name "${nextTitle}"`)
+  await page.screenshot({ path: join(shotsDir, '390', '57-ack-done-next.png'), fullPage: true })
+  await page.clock.runFor(4 * 60000)
+  check(page.url().includes('#/day'), 'idle: returned Home too early')
+  await page.clock.runFor(2 * 60000)
+  await page.getByRole('link', { name: 'My day' }).waitFor({ timeout: 5000 }).catch(() => {})
+  check(!page.url().includes('#/day'), 'idle: did not return Home after 5 minutes')
+  await ctx.close()
+}
+
 // Browsers without speech: no read-aloud button; text stays.
 step('Browsers without speech')
 {

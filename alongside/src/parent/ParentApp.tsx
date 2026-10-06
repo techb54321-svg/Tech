@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CalendarDays, Car } from 'lucide-react'
+import { CalendarDays, Car, Moon, Sun, Sunrise } from 'lucide-react'
 import { api, ApiError, useOnDataChanged } from '../api'
 import { useNavigate, useScreenFocus } from '../route'
-import { formatLongDate, greetingFor, localDateISO } from '../../shared/time'
+import { formatLongDate, greetingFor, localDateISO, localTimeHM } from '../../shared/time'
 import type { DayItem, ParentToday } from '../../shared/types'
 import { CallButton, H1, ParentScreen, telHref } from './common'
 import { MyDay } from './MyDay'
@@ -112,11 +112,13 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
     return () => clearInterval(t)
   }, [checkDue])
 
+  const part = dayPart(new Date(), today?.timeZone ?? 'Australia/Sydney')
   return (
-    <>
+    <div className={`tod tod-${part}`}>
       <KeepAwake on={!!today?.keepAwake} />
+      <IdleHome path={path} />
       {screen()}
-    </>
+    </div>
   )
 
   function screen() {
@@ -193,7 +195,10 @@ function Home({ today, offline }: { today: ParentToday; offline: boolean }) {
         <H1>
           {greetingFor(now, today.timeZone)}, {today.parentName}
         </H1>
-        <p className="p-date">{formatLongDate(date)}</p>
+        <p className="p-date greeting">
+          <TimeOfDayIcon part={dayPart(now, today.timeZone)} />
+          <span className="date-text">{formatLongDate(date)}</span>
+        </p>
         <nav className="p-home-buttons" aria-label="Main choices">
           <a className="big-btn blue" href="#/day">
             <CalendarDays aria-hidden="true" />
@@ -244,4 +249,46 @@ function CallScreen({ today, who }: { today: ParentToday; who: 'contact' | 'phar
       )}
     </ParentScreen>
   )
+}
+
+type DayPart = 'morning' | 'afternoon' | 'evening'
+function dayPart(now: Date, tz: string): DayPart {
+  const h = Number(localTimeHM(now, tz).slice(0, 2))
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
+}
+
+/** A picture of the time of day (sunrise, sun, moon) that helps orientation without more words. */
+function TimeOfDayIcon({ part }: { part: DayPart }) {
+  const Icon = part === 'morning' ? Sunrise : part === 'afternoon' ? Sun : Moon
+  return (
+    <span className={`tod-icon tod-icon-${part}`} aria-hidden="true">
+      <Icon />
+    </span>
+  )
+}
+
+const IDLE_MS = 5 * 60000
+
+/** After five minutes without a touch, go back to the familiar Home screen. */
+function IdleHome({ path }: { path: string }) {
+  const navigate = useNavigate()
+  const last = useRef(Date.now())
+  const pathRef = useRef(path)
+  pathRef.current = path
+  useEffect(() => {
+    last.current = Date.now()
+  }, [path])
+  useEffect(() => {
+    const touch = () => (last.current = Date.now())
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const
+    events.forEach((e) => window.addEventListener(e, touch, { passive: true }))
+    const t = setInterval(() => {
+      if (pathRef.current !== '/' && Date.now() - last.current > IDLE_MS) navigate('/')
+    }, 15000)
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, touch))
+      clearInterval(t)
+    }
+  }, [navigate])
+  return null
 }

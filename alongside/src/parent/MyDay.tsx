@@ -124,10 +124,13 @@ export function MyDay({
   }
 
   const hasNext = idx < items.length - 1
+  const nextItem = hasNext ? items[idx + 1] : null
+  const nextTitle = nextItem ? (nextItem.type === 'reminder' ? nextItem.reminder.title : `Lift to ${nextItem.lift.destinationLabel}`) : ''
+  // Name what comes next, so nobody has to remember or guess.
   const nextButton = hasNext ? (
     <button className="big-btn blue medium" onClick={() => go(idx + 1)}>
       <ChevronRight aria-hidden="true" />
-      <span>Next</span>
+      <span>Next: {nextTitle}</span>
     </button>
   ) : (
     <a className="big-btn blue medium" href="#/">
@@ -183,11 +186,7 @@ export function MyDay({
     const time = formatTime12(l.time)
     return (
       <ParentScreen aside={position}>
-        <p className="p-time">{time}</p>
-        <H1>Lift to {l.destinationLabel}</H1>
-        <p className="p-kind">
-          <Car aria-hidden="true" /> Lift
-        </p>
+        <ItemHead kind="lift" label="Lift" Icon={Car} time={time} title={`Lift to ${l.destinationLabel}`} />
         <p className="p-detail">{l.details}</p>
         {l.destinationAddress && (
           <p className="p-detail">
@@ -213,12 +212,8 @@ export function MyDay({
 
   return (
     <ParentScreen aside={position}>
-      <p className="p-time">{time}</p>
-      <H1>{r.title}</H1>
+      <ItemHead kind={r.kind} label={label} Icon={Icon} time={time} title={r.title} />
       <Photo url={r.photoUrl} alt={`Photo for ${r.title}`} />
-      <p className="p-kind">
-        <Icon aria-hidden="true" /> {label}
-      </p>
       {r.location && (
         <p className="p-detail">
           <MapPin aria-hidden="true" />
@@ -263,6 +258,22 @@ export function MyDay({
       )}
       <Nav idx={idx} count={items.length} go={go} />
     </ParentScreen>
+  )
+}
+
+/** The coloured top of each item: type, time and title. Each type has its own colour. */
+function ItemHead({ kind, label, Icon, time, title }: { kind: string; label: string; Icon: typeof Check; time: string; title: string }) {
+  return (
+    <div className={`item-head kind-${kind}`}>
+      <p className="item-kind">
+        <span className="kind-badge">
+          <Icon aria-hidden="true" />
+        </span>
+        {label}
+      </p>
+      <p className="p-time">{time}</p>
+      <H1>{title}</H1>
+    </div>
   )
 }
 
@@ -476,8 +487,9 @@ function AckView({
             : 'Thank you.'
       return (
         <div className="ack" role="status">
-          <div className="ack-icon ok">
+          <div className={`ack-icon ok${ack.action === 'not_today' ? '' : ' celebrate'}`}>
             <Check aria-hidden="true" />
+            {ack.action !== 'not_today' && <Burst />}
           </div>
           <H1>{title}</H1>
           <p className="p-body">{body}</p>
@@ -486,4 +498,15 @@ function AckView({
       )
     }
   }
+}
+
+/** A small burst of colour around the tick. Hidden when the device asks for reduced motion. */
+function Burst() {
+  return (
+    <span className="burst" aria-hidden="true">
+      {Array.from({ length: 10 }, (_, i) => (
+        <span key={i} style={{ '--i': i } as React.CSSProperties} />
+      ))}
+    </span>
+  )
 }

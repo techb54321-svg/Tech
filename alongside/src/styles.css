@@ -7,16 +7,16 @@
   --text: #1b1a19;
   --muted: #4a4540;
   --line: #d8cfc3;
-  --blue: #1d4ed8;
-  --blue-dark: #1e3a8a;
-  --purple: #6d28d9;
-  --purple-dark: #4c1d95;
+  --blue: #2563eb;
+  --blue-dark: #1d4ed8;
+  --purple: #7c3aed;
+  --purple-dark: #5b21b6;
   --green: #15803d;
   --green-dark: #14532d;
   --amber: #fbbf24;
   --amber-dark: #b45309;
-  --help: #b91c1c;
-  --help-dark: #7f1d1d;
+  --help: #dc2626;
+  --help-dark: #b91c1c;
   --focus: #111111;
   --ok-bg: #dcfce7;
   --warn-bg: #fef3c7;
@@ -731,3 +731,133 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .visually-hidden { top: 0; left: 0; }
 /* Keep icon or photo beside the label; the label wraps within its own space first. */
 .big-btn > span { flex: 1 1 7rem; }
+
+/* =================== Brighter parent screens =================== */
+
+/* A gentle tint for the time of day: warm morning, sky-blue afternoon, lavender evening. */
+.tod { min-height: 100dvh; }
+.pane .tod { min-height: 100%; }
+.tod-morning { background: linear-gradient(180deg, #ffe9b0 0%, #fff6e3 38%, var(--bg) 100%); }
+.tod-afternoon { background: linear-gradient(180deg, #cdeaff 0%, #eef8ff 38%, #f7fbff 100%); }
+.tod-evening { background: linear-gradient(180deg, #ddd0ff 0%, #f1ecff 38%, #f8f5ff 100%); }
+.tod .p-wrap { background: transparent; }
+
+.greeting { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.greeting > .date-text { min-width: 0; flex: 1 1 8rem; }
+.tod-icon {
+  flex: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.15);
+}
+.tod-icon svg { width: 2.2rem; height: 2.2rem; stroke-width: 2.4; }
+.tod-icon-morning { background: #fbbf24; color: #7c2d12; }
+.tod-icon-afternoon { background: #facc15; color: #713f12; }
+.tod-icon-evening { background: #4338ca; color: #fef9c3; }
+
+/* Home buttons: a white tile behind each icon, coloured to match. */
+.p-home .big-btn svg {
+  width: 3.6rem;
+  height: 3.6rem;
+  padding: 0.6rem;
+  border-radius: 50%;
+  background: #fff;
+  stroke-width: 2.6;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+}
+.p-home .big-btn.blue svg { color: var(--blue); }
+.p-home .big-btn.purple svg { color: var(--purple); }
+.p-home .big-btn.green svg { color: var(--green); }
+.p-home .big-btn { min-height: 8rem; border-radius: 1.5rem; }
+
+/* Each type of reminder has its own colour. */
+.kind-medication { --kind: #be185d; --kind-light: #fce7f3; }
+.kind-appointment { --kind: #1d4ed8; --kind-light: #dbeafe; }
+.kind-routine { --kind: #0f766e; --kind-light: #ccfbf1; }
+.kind-social { --kind: #c2410c; --kind-light: #ffedd5; }
+.kind-lift { --kind: #6d28d9; --kind-light: #ede9fe; }
+.item-head {
+  background: var(--kind-light);
+  border: 3px solid var(--kind);
+  border-radius: 1.25rem;
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--kind) 35%, transparent);
+}
+.item-kind {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--kind);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 0.3rem 1rem 0.3rem 0.35rem;
+  border-radius: 999px;
+  max-width: 100%;
+}
+.kind-badge {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--kind);
+  display: grid;
+  place-items: center;
+}
+.kind-badge svg { width: 1.6rem; height: 1.6rem; stroke-width: 2.4; }
+.item-head .p-time { color: var(--kind); }
+
+/* Places: each familiar place gets its own soft colour. */
+.big-btn.choice:nth-child(4n + 1) { background: #f3edff; }
+.big-btn.choice:nth-child(4n + 2) { background: #ffeef6; }
+.big-btn.choice:nth-child(4n + 3) { background: #e8f9f6; }
+.big-btn.choice:nth-child(4n + 4) { background: #fff8db; }
+.big-btn.choice:hover { filter: brightness(0.97); }
+
+/* Bigger, friendlier Previous / Next. */
+.nav-row .small-btn {
+  min-height: 4.5rem;
+  font-size: 1.75rem;
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
+}
+.nav-row .small-btn[disabled] { opacity: 0.45; }
+.home-btn { box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15); }
+
+/* A small burst of colour on "Done" and "I've taken it". */
+.ack-icon { width: 5.5rem; height: 5.5rem; box-shadow: 0 5px 0 rgba(0, 0, 0, 0.18); }
+.celebrate { position: relative; }
+.burst span {
+  position: absolute;
+  left: calc(50% - 0.4rem);
+  top: calc(50% - 0.4rem);
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--c, #f59e0b);
+  opacity: 0;
+  animation: burst 1s ease-out forwards;
+}
+.burst span:nth-child(5n + 1) { --c: #f59e0b; }
+.burst span:nth-child(5n + 2) { --c: #ec4899; }
+.burst span:nth-child(5n + 3) { --c: #3b82f6; }
+.burst span:nth-child(5n + 4) { --c: #22c55e; }
+.burst span:nth-child(5n + 5) { --c: #a855f7; }
+@keyframes burst {
+  0% { opacity: 1; transform: rotate(calc(var(--i) * 36deg)) translateY(0) scale(0.5); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(calc(var(--i) * 36deg)) translateY(-4.2rem) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .burst { display: none; }
+  .big-btn:active { transform: none; }
+}

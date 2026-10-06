@@ -1513,8 +1513,8 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 }
 
 /* =================== Premium finish (parent screen) =================== */
-/* A deep warm-charcoal room with a soft glow for the time of day; jewel-tone
-   tiles with rounded corners, a gentle light from above and fine line icons.
+/* A deep warm-charcoal room with a soft glow for the time of day; bright flat
+   colour tiles with rounded corners and white line icons.
    Every text colour still passes WCAG 4.5:1 on its tile. */
 .tod {
   --room: #111318;
@@ -1567,27 +1567,27 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .tod .ftile {
   border-radius: 1.4rem;
   /* No overflow clipping: a tile must be free to grow taller for its words. */
-  background-image: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.12) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 14px 30px -12px rgba(0, 0, 0, 0.6);
   gap: 0.55rem;
 }
 .tod .ftile.press:hover { filter: brightness(1.08); }
 .tod .ftile.press:active { filter: brightness(0.94); transform: scale(0.992); }
-.tod .ticon { stroke-width: 1.25; opacity: 0.95; }
+.tod .ticon { stroke-width: 1.5; }
 .tod .tlabel { font-weight: 700; letter-spacing: 0.09em; }
 .tod .tlabel.big { letter-spacing: 0.005em; font-weight: 700; }
 .tod .tkicker { font-size: 1.375rem; letter-spacing: 0.18em; opacity: 0.92; }
 .tod .tdetail { letter-spacing: 0.16em; font-weight: 400; }
 
-/* Jewel tones (white text on all but the gold taxi). */
-.tod .t-orange { background-color: #8c3b17; }  /* copper: something to answer now */
-.tod .t-teal { background-color: #145a55; }    /* outings */
-.tod .t-blue { background-color: #1d3b6e; }    /* appointments */
-.tod .t-green { background-color: #1e5a3e; }   /* calls, and thank-yous */
-.tod .t-yellow { background-color: #d6b160; color: #1c1813; } /* taxi: champagne gold */
-.tod .t-purple { background-color: #47306a; }  /* puzzles */
-.tod .t-rose { background-color: #74203a; }    /* music */
-.tod .t-cyan { background-color: #17566a; }    /* photos */
+/* Bright flat colours, like a weather-widget grid: solid, no sheen. Each is the
+   brightest shade of its flat-design hue that keeps white text at 4.5:1. */
+.tod .ftile { box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.7); }
+.tod .t-orange { background-color: #c2570f; }  /* something to answer now */
+.tod .t-teal { background-color: #0f826b; }    /* outings: turquoise */
+.tod .t-blue { background-color: #1c7ab8; }    /* appointments: blue */
+.tod .t-green { background-color: #1b8648; }   /* calls and thank-yous: emerald */
+.tod .t-yellow { background-color: #f1c40f; color: #1c1813; } /* taxi: sunflower */
+.tod .t-purple { background-color: #9c57b8; }  /* puzzles: amethyst */
+.tod .t-rose { background-color: #df1678; }    /* music: pink */
+.tod .t-cyan { background-color: #1c7ab8; }    /* photos */
 
 /* Buttons on tiles: warm ivory, soft depth. */
 .tod .tile-btn {
@@ -1605,7 +1605,7 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .tod .car-swatch { border-width: 2px; border-color: rgba(0, 0, 0, 0.55); border-radius: 0.5rem; }
 
 /* Photo: full bleed, caption over a soft fade. */
-.tod .photo-tile { background-color: #17566a; }
+.tod .photo-tile { background-color: #1c7ab8; }
 .tod .tphoto-caption {
   background: linear-gradient(180deg, rgba(10, 12, 16, 0) 0%, rgba(10, 12, 16, 0.82) 38%);
   padding: 2.2rem 0.8rem 0.8rem;

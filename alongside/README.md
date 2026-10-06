@@ -304,6 +304,15 @@ database file and keep it.
 - Every text colour still passes WCAG 4.5:1 contrast, and the browser checks (sizes, contrast, overlaps, split
   words, 200 % text) all pass. The family area keeps its light, plain look.
 
+### Twelfth round: bright flat colours
+
+- The tiles go back to **bright, solid flat colours** like the weather-widget grid the family shared, now on the
+  dark background: turquoise for outings, blue for appointments and photos, emerald for calls and thank-yous,
+  sunflower yellow for the taxi (dark text), amethyst for puzzles, pink for music and orange for a question that
+  needs an answer. No sheen or gradient.
+- Each colour is the brightest shade of its hue that still keeps white text at WCAG 4.5:1, so the colours are
+  vivid without becoming hard to read.
+
 ## Project layout
 
 ```

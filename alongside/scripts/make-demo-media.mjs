@@ -62,32 +62,97 @@ const home = `
   <circle cx="110" cy="290" r="40" fill="#16a34a"/><rect x="104" y="300" width="12" height="50" fill="#78350f"/>
 </svg>`
 
-// Calm scenes standing in for family photos: no cartoon people, no writing on them.
+// Photographic-style scenes standing in for family photos: soft gradients,
+// haze, grain and a vignette; no people and no writing.
+const PW = 1100, PH = 733
+const grain = (id) => `
+  <filter id="${id}" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="n"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0.09 0"/>
+  </filter>`
+const vignette = `<radialGradient id="vig" cx="0.5" cy="0.5" r="0.75"><stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.38"/></radialGradient>`
+/** A smooth ridge line from a few sine waves, closed down to the bottom of the frame. */
+function ridge(baseY, amp, seed, w = PW, h = PH) {
+  const pts = []
+  for (let x = 0; x <= w; x += 10) {
+    const y = baseY
+      - amp * (0.55 * Math.sin(x / 210 + seed) + 0.3 * Math.sin(x / 97 + seed * 2.3) + 0.15 * Math.sin(x / 41 + seed * 4.1))
+    pts.push(`${x},${y.toFixed(1)}`)
+  }
+  return `M0,${h} L${pts.join(' L')} L${w},${h} Z`
+}
 const beach = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PW} ${PH}">
   <defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9ec5de"/><stop offset="1" stop-color="#e9dfcf"/></linearGradient>
-    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f7896"/><stop offset="1" stop-color="#6fa3b5"/></linearGradient>
-    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9c29c"/><stop offset="1" stop-color="#bfa47a"/></linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#26335c"/><stop offset="0.35" stop-color="#5d5a8f"/>
+      <stop offset="0.58" stop-color="#d98b74"/><stop offset="0.68" stop-color="#f6c48a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.64" r="0.45"><stop offset="0" stop-color="#ffe7b8" stop-opacity="0.9"/><stop offset="1" stop-color="#ffe7b8" stop-opacity="0"/></radialGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2a587"/><stop offset="0.25" stop-color="#9b7b92"/><stop offset="1" stop-color="#34436d"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a77f78"/><stop offset="1" stop-color="#5f4a52"/>
+    </linearGradient>
+    <radialGradient id="streakFade" cx="0.5" cy="0" r="1" gradientTransform="translate(0.5 0) scale(0.5 1) translate(-0.5 0)">
+      <stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="0.85" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="streakMask"><rect x="700" y="470" width="185" height="170" fill="url(#streakFade)"/></mask>
+    <filter id="clouds" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0025 0.012" numOctaves="5" seed="3" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 1  0 0 0 0 0.78  0 0 0 0 0.72  0 0 0 2.4 -1.25"/>
+      <feGaussianBlur stdDeviation="1.5"/>
+    </filter>
+    <filter id="glitter" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.35" numOctaves="2" seed="11" result="t"/>
+      <feColorMatrix in="t" type="matrix" values="0 0 0 0 1  0 0 0 0 0.9  0 0 0 0 0.7  0 0 0 4 -2"/>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="2"/></filter>
+    <filter id="mblurB" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="18"/></filter>
+    ${grain('grain')}
+    ${vignette}
   </defs>
-  <rect width="${W}" height="${H}" fill="url(#sky)"/>
-  <path d="M0 200 C90 150 170 140 250 175 C290 192 320 196 360 200 L0 200 Z" fill="#5d7a5a"/>
-  <rect y="198" width="${W}" height="110" fill="url(#sea)"/>
-  <path d="M0 300 C120 286 220 296 340 288 C460 280 560 292 ${W} 284 L${W} ${H} L0 ${H} Z" fill="url(#sand)"/>
-  <path d="M0 300 C120 286 220 296 340 288 C460 280 560 292 ${W} 284" stroke="#f4efe6" stroke-width="5" fill="none" opacity="0.8"/>
-  <path d="M40 250 C140 244 240 252 340 246 C440 240 540 250 ${W} 244" stroke="#cfe2ea" stroke-width="2" fill="none" opacity="0.6"/>
+  <rect width="${PW}" height="${PH}" fill="url(#sky)"/>
+  <rect width="${PW}" height="470" filter="url(#clouds)" opacity="0.55"/>
+  <rect width="${PW}" height="${PH}" fill="url(#glow)"/>
+  <circle cx="792" cy="452" r="30" fill="#fff4dc"/>
+  <path d="${ridge(462, 38, 1.2, 520)}" fill="#3d3456" opacity="0.92"/>
+  <path d="${ridge(470, 16, 3.4)}" fill="#6a5574" opacity="0.35" filter="url(#soft)"/>
+  <rect y="470" width="${PW}" height="200" fill="url(#sea)"/>
+  <rect x="700" y="470" width="185" height="170" filter="url(#glitter)" mask="url(#streakMask)" opacity="0.9"/>
+  <path d="M0 640 C220 622 420 646 640 630 C820 618 960 634 ${PW} 624 L${PW} ${PH} L0 ${PH} Z" fill="url(#sand)"/>
+  <path d="M0 640 C220 622 420 646 640 630 C820 618 960 634 ${PW} 624" stroke="#fde8d4" stroke-width="3" fill="none" opacity="0.75" filter="url(#soft)"/>
+  <ellipse cx="792" cy="660" rx="120" ry="22" fill="#f3c08f" opacity="0.16" filter="url(#mblurB)"/>
+  <rect width="${PW}" height="${PH}" filter="url(#grain)"/>
+  <rect width="${PW}" height="${PH}" fill="url(#vig)"/>
 </svg>`
+const mountainLayers = [
+  { y: 330, amp: 60, seed: 0.4, fill: '#b9c6d6' },
+  { y: 400, amp: 70, seed: 2.1, fill: '#93a7bd' },
+  { y: 470, amp: 60, seed: 4.0, fill: '#6f87a0' },
+  { y: 560, amp: 55, seed: 5.7, fill: '#4b6279' },
+  { y: 650, amp: 45, seed: 7.9, fill: '#2d3f51' },
+]
 const garden = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${PW} ${PH}">
   <defs>
-    <linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9d9c4"/><stop offset="1" stop-color="#8fae7f"/></linearGradient>
-    <radialGradient id="rose" cx="0.4" cy="0.4" r="0.7"><stop offset="0" stop-color="#e7a1a6"/><stop offset="1" stop-color="#a8424f"/></radialGradient>
+    <linearGradient id="msky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fb0cf"/><stop offset="0.55" stop-color="#e9d6c3"/><stop offset="0.75" stop-color="#f6e2c8"/>
+    </linearGradient>
+    <radialGradient id="msun" cx="0.78" cy="0.36" r="0.4"><stop offset="0" stop-color="#fff6e2" stop-opacity="0.95"/><stop offset="1" stop-color="#fff6e2" stop-opacity="0"/></radialGradient>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4ece4" stop-opacity="0"/><stop offset="0.6" stop-color="#f4ece4" stop-opacity="0.75"/><stop offset="1" stop-color="#f4ece4" stop-opacity="0"/></linearGradient>
+    <filter id="haze"><feGaussianBlur stdDeviation="1.2"/></filter>
+    <filter id="mblur"><feGaussianBlur stdDeviation="14"/></filter>
+    ${grain('mgrain')}
+    ${vignette}
   </defs>
-  <rect width="${W}" height="${H}" fill="url(#g-sky)"/>
-  <rect y="300" width="${W}" height="120" fill="#5f7d4d"/>
-  <ellipse cx="320" cy="300" rx="300" ry="120" fill="#4e6b3f"/>
-  ${[[150, 210, 34], [230, 170, 40], [320, 215, 36], [410, 175, 42], [490, 225, 32], [280, 270, 30], [370, 265, 34]]
-    .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="url(#rose)"/><circle cx="${x - r / 4}" cy="${y - r / 4}" r="${r / 3}" fill="#f1c4c6" opacity="0.5"/>`).join('')}
+  <rect width="${PW}" height="${PH}" fill="url(#msky)"/>
+  <rect width="${PW}" height="${PH}" fill="url(#msun)"/>
+  ${mountainLayers.map((l, i) => `<path d="${ridge(l.y, l.amp, l.seed)}" fill="${l.fill}" filter="url(#haze)"/>
+  <rect y="${l.y - 10}" width="${PW}" height="${70 + i * 8}" fill="url(#mist)" filter="url(#mblur)" opacity="${0.75 - i * 0.12}"/>`).join('\n  ')}
+  <rect width="${PW}" height="${PH}" filter="url(#mgrain)"/>
+  <rect width="${PW}" height="${PH}" fill="url(#vig)"/>
 </svg>`
 
 /** A short, quiet, original piano piece (C – Am – F – G arpeggios), synthesised as a small WAV. */
@@ -127,8 +192,11 @@ for (const [name, svg] of Object.entries({
   beach,
   garden,
 })) {
-  await page.setContent(`<style>html,body{margin:0}svg{display:block;width:${W}px;height:${H}px}</style>${svg}`)
-  const buf = await page.screenshot({ type: 'jpeg', quality: 78 })
+  const photo = name === 'beach' || name === 'garden'
+  const [w, h] = photo ? [PW, PH] : [W, H]
+  await page.setViewportSize({ width: w, height: h })
+  await page.setContent(`<style>html,body{margin:0}svg{display:block;width:${w}px;height:${h}px}</style>${svg}`)
+  const buf = await page.screenshot({ type: 'jpeg', quality: photo ? 80 : 78 })
   out[name] = 'data:image/jpeg;base64,' + buf.toString('base64')
   console.log(name, Math.round(buf.length / 1024) + ' KB')
 }

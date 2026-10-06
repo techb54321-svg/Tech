@@ -68,7 +68,7 @@ export function demoOutingsToday(now: Date, tz: string): Array<{ input: Reminder
 export function demoPhotos(today: string) {
   return [
     { caption: 'Sunday at Wattleton beach', showDate: today, picture: 'beach' as const },
-    { caption: 'Anna’s roses are out', showDate: addDaysISO(today, -1), picture: 'garden' as const },
+    { caption: 'Morning in the Blue Mountains', showDate: addDaysISO(today, -1), picture: 'garden' as const },
   ]
 }
 

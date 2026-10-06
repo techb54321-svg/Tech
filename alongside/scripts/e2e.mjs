@@ -141,7 +141,7 @@ async function inspect(page, label, { parent = true } = {}) {
       const time = document.querySelector('.clock-time')
       if (!day || !time) out.small.push('no day and time shown')
       else if (px(day) < 32 || px(time) < 40) out.small.push(`day/time too small: ${px(day)}/${px(time)}`)
-      document.querySelectorAll('.p-body, .p-detail, .p-date, .status, .tsub, .car-strip-words, .ws-intro').forEach((el) => visible(el) && px(el) < (el.closest('.ftile:not(.wide)') ? 20 : 24) && out.small.push(`body ${px(el)}px: ${el.textContent.trim().slice(0, 30)}`))
+      document.querySelectorAll('.p-body, .p-detail, .p-date, .status, .tsub, .tchip, .ws-intro').forEach((el) => visible(el) && px(el) < (el.closest('.ftile:not(.wide)') || el.matches('.tchip') ? 20 : 24) && out.small.push(`body ${px(el)}px: ${el.textContent.trim().slice(0, 30)}`))
       // WCAG contrast of button text against its background.
       const lum = (c) => {
         const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map((v) => {

@@ -143,16 +143,20 @@ function ThanksTile({ done, today }: { done: Thanks; today: ParentToday }) {
           : `Your message is saved for ${today.contactName}`
   return (
     <Tile colour="t-green" wide label={done.item.reminder.title}>
-      <Check className="ticon" aria-hidden="true" />
-      <p className="tlabel" role="status">
-        {text}
-      </p>
-      {done.action === 'need_help' && (
-        <p className="tsub">
-          {today.contactName} will see it in Alongside.
-          {done.messageStatus && ['accepted', 'queued', 'sent', 'delivered'].includes(done.messageStatus) ? ` A text was also sent.` : ''}
+      <span className="ticon-wrap">
+        <Check className="ticon" aria-hidden="true" />
+      </span>
+      <div className="tfoot">
+        <p className="tlabel" role="status">
+          {text}
         </p>
-      )}
+        {done.action === 'need_help' && (
+          <p className="tsub">
+            {today.contactName} will see it in Alongside.
+            {done.messageStatus && ['accepted', 'queued', 'sent', 'delivered'].includes(done.messageStatus) ? ` A text was also sent.` : ''}
+          </p>
+        )}
+      </div>
     </Tile>
   )
 }
@@ -218,17 +222,20 @@ function ReminderTile({ item, today, onAnswered }: { item: ReminderItem; today: 
 
 // ---------------------------------------------------------------- outing tile
 
-function CarStrip({ r }: { r: ReminderItem['reminder'] }) {
+/** The car and its times as small chips: "● Blue car", "Pick up 9:00 pm", "Home 10:45 pm". */
+function CarChips({ r }: { r: ReminderItem['reminder'] }) {
   if (!r.pickupTime && !r.returnTime && !r.carColour) return null
-  const colour = r.carColour ? CAR_FILL[r.carColour]?.name : ''
+  const car = r.carColour ? CAR_FILL[r.carColour] : null
   return (
-    <div className="car-strip">
-      {r.carColour && <span className="car-swatch" style={{ background: CAR_FILL[r.carColour]?.fill }} aria-hidden="true" />}
-      <div className="car-strip-words">
-        {colour && <span className="car-colour">{colour} car</span>}
-        {r.pickupTime && <span>Pick up {formatTime12(r.pickupTime)}</span>}
-        {r.returnTime && <span>Home {formatTime12(r.returnTime)}</span>}
-      </div>
+    <div className="tchips">
+      {car && (
+        <span className="tchip">
+          <span className="tchip-dot" style={{ background: car.fill }} aria-hidden="true" />
+          <span>{car.name} car</span>
+        </span>
+      )}
+      {r.pickupTime && <span className="tchip">Pick up {formatTime12(r.pickupTime)}</span>}
+      {r.returnTime && <span className="tchip">Home {formatTime12(r.returnTime)}</span>}
     </div>
   )
 }
@@ -238,10 +245,16 @@ function EventTile({ item }: { item: DayItem }) {
   if (item.type === 'lift') {
     const l = item.lift
     return (
-      <Tile colour="t-purple" label={`Lift to ${l.destinationLabel}`}>
-        <Car className="ticon" aria-hidden="true" />
-        <p className="tlabel">Lift to {l.destinationLabel}</p>
-        <p className="tsub strong">{formatTime12(l.time)}</p>
+      <Tile colour="t-purple" label={`Lift to ${l.destinationLabel}`} className="event-tile">
+        <div className="trow">
+          <span className="ticon-wrap">
+            <Car className="ticon" aria-hidden="true" />
+          </span>
+          <span className="ttime">{formatTime12(l.time)}</span>
+        </div>
+        <div className="tfoot">
+          <p className="tlabel">Lift to {l.destinationLabel}</p>
+        </div>
       </Tile>
     )
   }
@@ -249,12 +262,19 @@ function EventTile({ item }: { item: DayItem }) {
   const Icon = eventIcon(r.title, r.kind)
   return (
     <Tile colour={r.kind === 'appointment' ? 't-blue' : 't-teal'} label={r.title} className="event-tile">
-      <Icon className="ticon" aria-hidden="true" />
-      <p className="tlabel">{r.title}</p>
-      {r.subtitle && <p className="tdetail">{r.subtitle}</p>}
-      <p className="tsub strong">{formatTime12(r.time)}</p>
-      {r.notes && <p className="tsub">{r.notes}</p>}
-      <CarStrip r={r} />
+      <div className="trow">
+        <span className="ticon-wrap">
+          <Icon className="ticon" aria-hidden="true" />
+        </span>
+        <span className="ttime">{formatTime12(r.time)}</span>
+      </div>
+      <div className="tfoot">
+        <p className="tkicker">Today</p>
+        <p className="tlabel">{r.title}</p>
+        {r.subtitle && <p className="tdetail">{r.subtitle}</p>}
+        {r.notes && <p className="tsub">{r.notes}</p>}
+        <CarChips r={r} />
+      </div>
     </Tile>
   )
 }
@@ -270,13 +290,21 @@ function CallTile({ c, today }: { c: ParentToday['contacts'][number]; today: Par
   }, [shown])
   const body = (
     <>
-      {c.photoUrl ? <img className="tface" src={c.photoUrl} alt="" /> : <Phone className="ticon" aria-hidden="true" />}
-      <p className="tlabel">Call {c.name}</p>
-      {shown && (
-        <p className="tsub strong" role="status">
-          {today.demo ? `This is a demo, so no call is made. Number: ${c.phone}` : c.phone ? `Calling ${c.phone}` : 'No number saved yet.'}
-        </p>
+      {c.photoUrl ? (
+        <img className="tface" src={c.photoUrl} alt="" />
+      ) : (
+        <span className="ticon-wrap">
+          <Phone className="ticon" aria-hidden="true" />
+        </span>
       )}
+      <span className="tfoot">
+        <span className="tlabel">Call {c.name}</span>
+        {shown && (
+          <span className="tsub strong" role="status">
+            {today.demo ? `This is a demo, so no call is made. Number: ${c.phone}` : c.phone ? `Calling ${c.phone}` : 'No number saved yet.'}
+          </span>
+        )}
+      </span>
     </>
   )
   // A real saved number opens the phone's dialler directly.
@@ -302,9 +330,13 @@ function PhotoTile({ today }: { today: ParentToday }) {
   if (photos.length === 0) {
     return (
       <Tile colour="t-cyan" label="Photos">
-        <Images className="ticon" aria-hidden="true" />
-        <p className="tlabel">Photos</p>
-        <p className="tsub">None yet</p>
+        <span className="ticon-wrap">
+          <Images className="ticon" aria-hidden="true" />
+        </span>
+        <div className="tfoot">
+          <p className="tlabel">Photos</p>
+          <p className="tsub">None yet</p>
+        </div>
       </Tile>
     )
   }
@@ -318,8 +350,8 @@ function PhotoTile({ today }: { today: ParentToday }) {
     >
       <img className="tphoto" src={p.url} alt={p.caption || 'Photo from family'} />
       <span className="tphoto-caption">
-        {p.caption}
-        {photos.length > 1 && <span className="tphoto-more">Tap for another</span>}
+        <span className="tphoto-title">{p.caption}</span>
+        {photos.length > 1 && <span className="tphoto-more">Tap for another photo</span>}
       </span>
     </Tile>
   )
@@ -352,10 +384,19 @@ function MusicTile({ today }: { today: ParentToday }) {
   return (
     <Tile colour="t-rose" label="Music" className="music-tile">
       <button type="button" className="music-main" onClick={toggle} aria-pressed={playing} aria-label={`${playing ? 'Stop' : 'Play'} ${song.title}`}>
-        {playing ? <Pause className="ticon" aria-hidden="true" /> : <Music className="ticon" aria-hidden="true" />}
-        <span className="tlabel">{playing ? 'Playing' : 'Music'}</span>
-        <span className="tsub strong">{song.title}</span>
-        {song.artist && <span className="tsub">{song.artist}</span>}
+        <span className="trow">
+          <span className="ticon-wrap">
+            <Music className="ticon" aria-hidden="true" />
+          </span>
+          <span className="tplay" aria-hidden="true">
+            {playing ? <Pause /> : <Play />}
+          </span>
+        </span>
+        <span className="tfoot">
+          <span className="tlabel">{playing ? 'Playing' : 'Music'}</span>
+          <span className="tsub strong">{song.title}</span>
+          {song.artist && <span className="tsub">{song.artist}</span>}
+        </span>
       </button>
       {error && (
         <p className="tile-error" role="alert">
@@ -489,8 +530,13 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           </Tile>
         ) : (
           <Tile colour="t-purple" onClick={() => setOpen('puzzle')} label="Puzzles">
-            <Puzzle className="ticon" aria-hidden="true" />
-            <p className="tlabel">Puzzles</p>
+            <span className="ticon-wrap">
+              <Puzzle className="ticon" aria-hidden="true" />
+            </span>
+            <span className="tfoot">
+              <span className="tlabel">Puzzles</span>
+              <span className="tsub">Word search</span>
+            </span>
           </Tile>
         )}
       </div>

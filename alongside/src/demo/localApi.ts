@@ -77,7 +77,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 8
+const DEMO_VERSION = 9
 
 interface State {
   version: number

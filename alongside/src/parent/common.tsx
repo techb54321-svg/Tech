@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { AudioLines, House, Moon, Phone, Square, Sun, Sunrise, Volume2 } from 'lucide-react'
+import { AudioLines, House, Phone, Square, Volume2 } from 'lucide-react'
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { formatTime12, localTimeHM } from '../../shared/time'
 import { canSpeak, speak, stopSpeaking } from '../speech'
@@ -23,12 +23,8 @@ export function ClockBar() {
   const date = new Intl.DateTimeFormat('en-AU', { timeZone: tz, day: 'numeric', month: 'long', year: 'numeric' }).format(now)
   const hour = Number(localTimeHM(now, tz).slice(0, 2))
   const part = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night'
-  const Icon = part === 'morning' ? Sunrise : part === 'afternoon' ? Sun : Moon
   return (
     <div className={`clockbar clock-${part}`} role="group" aria-label="Today">
-      <span className="clock-icon" aria-hidden="true">
-        <Icon />
-      </span>
       <div className="clock-text">
         <p className="clock-day">
           {weekday} <span className="clock-part">{part}</span>

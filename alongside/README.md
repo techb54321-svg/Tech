@@ -322,6 +322,19 @@ database file and keep it.
   server keeps its lift endpoints for older devices.
 - The side-by-side demonstration now shows live updates by adding someone to call in Anna's Setup.
 
+### Fourteenth round: a more professional finish
+
+- **One layout for every tile**, like a well-made widget: the icon top-left and the words bottom-left, instead of a
+  centred stack. Large times sit in the top-right corner of outing tiles ("10:26 pm").
+- **Outings**: a small "Today" label, the title, the detail (AQUA AEROBICS) and notes, then the car and its times as
+  neat chips: "● Red car", "Pick up 10:11 pm", "Home 11:11 pm". This replaces the white card with a colour square.
+- **Questions**: "Now · 9:07 pm", the question large and left-aligned, the notes, "Read aloud", then the four
+  answers in a full-width grid.
+- **Music** has a clear white play button in the corner, and **Puzzles** says "Word search" under its name.
+- **Clock like a lock screen**: "Tuesday evening", a very large time, then the date. The circled icon is gone.
+- **Photographic demo pictures**: the clip-art drawings are replaced by two rendered scenes with soft light, haze,
+  film grain and a vignette: a sunset at Wattleton beach and a misty morning in the Blue Mountains.
+
 ## Project layout
 
 ```

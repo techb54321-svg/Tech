@@ -1629,3 +1629,101 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
   font-weight: 400;
 }
 .tod .board-bar:hover { color: var(--ink-on-dark); }
+
+/* =================== Widget layout (parent screen) =================== */
+/* One consistent composition, like a well-made widget: icon top-left, words
+   bottom-left, times large in the corner, details as small chips. */
+.tod .ftile {
+  align-items: flex-start;
+  justify-content: space-between;
+  text-align: left;
+  gap: 0.75rem;
+  padding: clamp(0.75rem, 3cqi, 1.5rem);
+}
+.tod .ftile.wide,
+.tod .cell.event .ftile,
+.tod .reminder-tile { justify-content: flex-start; }
+.tod .ticon-wrap { display: flex; flex: none; }
+.tod .ticon { width: clamp(3rem, 28cqi, 5rem); height: clamp(3rem, 28cqi, 5rem); stroke-width: 1.5; }
+.tod .cell.event .ticon, .tod .ftile.wide .ticon { width: 3.5rem; height: 3.5rem; }
+.tod .tfoot { display: flex; flex-direction: column; gap: 0.25rem; width: 100%; min-width: 0; }
+.tod .trow { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; width: 100%; }
+.tod .tlabel { font-size: clamp(1.5rem, 15cqi, 2.25rem); letter-spacing: 0.02em; line-height: 1.08; }
+.tod .cell.event .tlabel, .tod .ftile.wide .tlabel:not(.big) { font-size: clamp(min(2rem, 12.5cqi), 9cqi, 2.75rem); }
+.tod .tlabel.big { text-wrap: pretty; }
+.tod .tkicker { font-size: 1.25rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; }
+.tod .tdetail { font-size: 1.5rem; letter-spacing: 0.14em; }
+.tod .tsub { line-height: 1.3; }
+.tod .ttime {
+  font-size: clamp(1.75rem, 7cqi, 2.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* The car and its times, as chips. */
+.tod .tchips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.tod .tchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  font-size: 1.25rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tod .tchip-dot { width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid #fff; flex: none; }
+
+/* Something to answer: question large, answers in a full-width grid. */
+.tod .reminder-tile .answer-grid { max-width: none; }
+.tod .reminder-tile .tpic { align-self: flex-start; }
+
+/* Music: the whole tile plays, with a clear play button in the corner. */
+.tod .music-main {
+  flex: 1;
+  height: 100%;
+  justify-content: space-between;
+  align-items: flex-start;
+  text-align: left;
+  gap: 0.75rem;
+}
+.tod .tplay {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: #fff;
+  color: #9d1050;
+  flex: none;
+}
+.tod .tplay svg { width: 1.5rem; height: 1.5rem; fill: currentColor; stroke: currentColor; }
+
+/* Photo: caption in the lower left over a soft fade. */
+.tod .tphoto-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: left;
+  padding: 3rem clamp(1rem, 4cqi, 1.5rem) clamp(0.9rem, 3cqi, 1.25rem);
+}
+.tod .tphoto-title { font-size: clamp(1.5rem, 5cqi, 2rem); font-weight: 700; line-height: 1.2; }
+.tod .tphoto-more { font-size: 1.125rem; font-weight: 400; opacity: 0.9; }
+
+/* Lock-screen clock: day, a large time, the date. No box, no badge. */
+.tod .clockbar { display: block; padding: 0.5rem 0.25rem 1.1rem; }
+.tod .clock-text { display: flex; flex-direction: column; gap: 0.1rem; }
+.tod .clock-day { font-size: 2rem; font-weight: 700; letter-spacing: 0.01em; text-transform: none; color: var(--ink-on-dark); }
+.tod .clock-part { color: var(--gold); font-weight: 400; }
+.tod .clock-time { font-size: clamp(3.5rem, 16vw, 5rem); font-weight: 700; line-height: 1; letter-spacing: -0.01em; text-transform: none; margin: 0.1rem 0 0.2rem; }
+.tod .pane .clock-time, .pane .tod .clock-time { font-size: 3.5rem; }
+.tod .clock-date { font-size: 1.5rem; color: var(--soft-on-dark); }
+.tod .photo-tile { justify-content: flex-end; align-items: stretch; padding: 0; }
+.tod .tphoto { object-position: center 62%; }
+/* With enlarged text, corner rows and chips wrap instead of running off the tile. */
+.tod .trow { flex-wrap: wrap; }
+.tod .tchip { white-space: normal; }
+.tod .ttime { white-space: normal; }

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 // Small fetch wrapper. Every failure becomes an ApiError so screens can show
 // "That didn't save" and offer a retry. Nothing is reported as saved unless
 // the server answered with success.
@@ -14,7 +15,23 @@ export class ApiError extends Error {
 /** True in the browser-only preview build, which has no server. */
 export const STATIC_DEMO = import.meta.env.VITE_STATIC_DEMO === '1'
 
+/** Fired after any successful save, so every open view (including the other panel of the side-by-side demo) refreshes. */
+export const DATA_CHANGED = 'alongside:changed'
+
+export function useOnDataChanged(fn: () => void) {
+  useEffect(() => {
+    window.addEventListener(DATA_CHANGED, fn)
+    return () => window.removeEventListener(DATA_CHANGED, fn)
+  }, [fn])
+}
+
 export async function api<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  const out = await request<T>(method, path, body)
+  if (method !== 'GET') setTimeout(() => window.dispatchEvent(new Event(DATA_CHANGED)), 0)
+  return out
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   if (STATIC_DEMO) {
     const { localApi } = await import('./demo/localApi')
     return localApi<T>(method, path, body)

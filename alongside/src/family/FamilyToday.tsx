@@ -5,6 +5,7 @@ import { familyStatusLabel } from '../../shared/schedule'
 import type { OccurrenceStatus } from '../../shared/types'
 import { ErrorBanner, fmtDateTime, useAction, type FamilyInfo } from './ui'
 import { messageLabel, useDay, type DayData } from './day'
+import { WeekGrid } from './WeekGrid'
 
 function statusTone(s: OccurrenceStatus | 'private', medication: boolean) {
   switch (s) {
@@ -82,6 +83,7 @@ export function FamilyToday({ info }: { info: FamilyInfo }) {
           Medication answers are what {info.settings.parentName} reported in the app. They are not verified.
         </p>
       </section>
+      <WeekGrid info={info} />
     </>
   )
 }

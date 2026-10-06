@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Car, Check, CircleX, House, MapPin, Pencil, ShoppingBag, Stethoscope, Users, ChevronRight } from 'lucide-react'
 import { api, ApiError, newRequestId, STATIC_DEMO } from '../api'
-import { navigate, useScreenFocus } from '../route'
+import { useNavigate, useScreenFocus } from '../route'
 import type { Destination, MessageStatus, ParentToday } from '../../shared/types'
 import { uberDeepLink } from '../../shared/uber'
 import { CallButton, H1, ParentScreen } from './common'
@@ -12,6 +12,7 @@ interface Chosen {
   address: string
   latitude: number | null
   longitude: number | null
+  photoUrl?: string | null
 }
 
 const STORE = 'alongside.lift'
@@ -58,6 +59,7 @@ export function Lift({ today, route }: { today: ParentToday; route: string }) {
 }
 
 function Choose({ today }: { today: ParentToday }) {
+  const navigate = useNavigate()
   useScreenFocus('choose')
   return (
     <ParentScreen>
@@ -70,11 +72,11 @@ function Choose({ today }: { today: ParentToday }) {
               key={d.id}
               className="big-btn choice medium"
               onClick={() => {
-                saveChosen({ destinationId: d.id, label: d.label, address: d.address, latitude: d.latitude, longitude: d.longitude })
+                saveChosen({ destinationId: d.id, label: d.label, address: d.address, latitude: d.latitude, longitude: d.longitude, photoUrl: d.photoUrl })
                 navigate('/lift/go')
               }}
             >
-              <Icon aria-hidden="true" />
+              {d.photoUrl ? <img className="thumb" src={d.photoUrl} alt="" /> : <Icon aria-hidden="true" />}
               <span>{d.label}</span>
             </button>
           )
@@ -89,6 +91,7 @@ function Choose({ today }: { today: ParentToday }) {
 }
 
 function OtherPlace() {
+  const navigate = useNavigate()
   useScreenFocus('other')
   const [text, setText] = useState('')
   return (
@@ -128,6 +131,7 @@ function OtherPlace() {
 function DestCard({ chosen }: { chosen: Chosen }) {
   return (
     <div className="dest-card">
+      {chosen.photoUrl && <img className="p-photo" src={chosen.photoUrl} alt={`Photo of ${chosen.label}`} />}
       <span className="label">{chosen.label}</span>
       {chosen.address && chosen.address !== chosen.label && <span className="addr">{chosen.address}</span>}
     </div>
@@ -135,6 +139,7 @@ function DestCard({ chosen }: { chosen: Chosen }) {
 }
 
 function Confirm({ today, chosen }: { today: ParentToday; chosen: Chosen }) {
+  const navigate = useNavigate()
   useScreenFocus('confirm')
   const url = uberDeepLink(chosen, today.transport.uberClientId)
   const handoffId = useRef(newRequestId())
@@ -302,6 +307,7 @@ interface QuoteResp {
 
 /** Provider booking: price and pickup first, then an explicit, chargeable confirmation. */
 function Price({ today, chosen }: { today: ParentToday; chosen: Chosen }) {
+  const navigate = useNavigate()
   const [quote, setQuote] = useState<QuoteResp | null>(null)
   const [phase, setPhase] = useState<'loading' | 'quote' | 'booking' | 'booked' | 'failed' | 'error'>('loading')
   const [detail, setDetail] = useState('')

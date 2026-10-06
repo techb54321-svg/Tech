@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { api } from '../api'
+import { useRef, useState } from 'react'
+import { api, ApiError } from '../api'
+import { PhotoPicker, VoicePicker, type MediaChange } from './media'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
 import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, fmtDateTime, useAction, type FamilyInfo } from './ui'
@@ -17,6 +18,18 @@ type Draft = {
   shareResponses: boolean
   medScheduleConfirmed: boolean
 }
+
+const TEMPLATES: Array<Pick<Draft, 'kind' | 'title' | 'time' | 'repeat'> & { notes?: string }> = [
+  { kind: 'medication', title: 'Morning tablets', time: '08:00', repeat: 'daily', notes: 'From the blister pack, morning slot.' },
+  { kind: 'medication', title: 'Evening tablets', time: '18:00', repeat: 'daily', notes: 'From the blister pack, evening slot.' },
+  { kind: 'routine', title: 'Drink a glass of water', time: '10:00', repeat: 'daily' },
+  { kind: 'routine', title: 'Shower', time: '09:00', repeat: 'daily' },
+  { kind: 'routine', title: 'Short walk', time: '15:00', repeat: 'daily' },
+  { kind: 'routine', title: 'Lunch', time: '12:30', repeat: 'daily' },
+  { kind: 'routine', title: 'Bins out', time: '18:30', repeat: 'none' },
+  { kind: 'appointment', title: 'Doctor', time: '10:00', repeat: 'none', notes: 'Bring your Medicare card.' },
+  { kind: 'social', title: 'Visit from family', time: '14:00', repeat: 'none' },
+]
 
 const GROUP_LABEL = { appointment: 'Appointments', social: 'Social activities', routine: 'Daily routines', medication: 'Medication' } as const
 
@@ -117,6 +130,8 @@ export function FamilyReminders({ info, refresh }: { info: FamilyInfo; refresh: 
                       <span className={`pill ${r.shareResponses ? 'info' : 'neutral'}`}>
                         {r.shareResponses ? 'Answers shared with family' : 'Private'}
                       </span>
+                      {r.photoUrl && <span className="pill neutral">Photo</span>}
+                      {r.voiceUrl && <span className="pill neutral">Voice message</span>}
                       {r.kind === 'medication' && r.medScheduleConfirmedAt && (
                         <span className="small muted">
                           {' '}
@@ -179,6 +194,11 @@ function ReminderForm({
 }) {
   const [d, setD] = useState<Draft>(initial)
   const act = useAction()
+  const existing = id ? info.reminders.find((r) => r.id === id) : undefined
+  const [photo, setPhoto] = useState<MediaChange>(undefined)
+  const [voice, setVoice] = useState<MediaChange>(undefined)
+  // Once a new reminder is created, retries update it instead of adding a second one.
+  const savedId = useRef<string | null>(id)
   const parent = info.settings.parentName
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((x) => ({ ...x, [k]: v }))
   const med = d.kind === 'medication'
@@ -195,12 +215,58 @@ function ReminderForm({
           remindMinutesBefore: d.kind === 'appointment' || d.kind === 'social' ? d.remindMinutesBefore : 0,
         }
         await act.run(
-          () => (id ? api('PUT', `/api/family/${info.id}/reminders/${id}`, body) : api('POST', `/api/family/${info.id}/reminders`, body)),
+          async () => {
+            if (savedId.current) await api('PUT', `/api/family/${info.id}/reminders/${savedId.current}`, body)
+            else savedId.current = (await api<{ id: string }>('POST', `/api/family/${info.id}/reminders`, body)).id
+            const base = `/api/family/${info.id}/media/reminder/${savedId.current}`
+            try {
+              if (photo !== undefined) {
+                await (photo === null ? api('DELETE', `${base}/photo`) : api('PUT', `${base}/photo`, { dataUrl: photo }))
+                setPhoto(undefined)
+              }
+              if (voice !== undefined) {
+                await (voice === null ? api('DELETE', `${base}/voice`) : api('PUT', `${base}/voice`, { dataUrl: voice }))
+                setVoice(undefined)
+              }
+            } catch (e) {
+              const msg = e instanceof ApiError ? e.message : 'Could not reach Alongside.'
+              throw new ApiError(e instanceof ApiError ? e.status : 0, `The reminder was saved, but the photo or voice message was not: ${msg}`)
+            }
+          },
           () => onSaved(id ? `Saved changes to “${d.title}”.` : `Added “${d.title}”.`),
         )
       }}
     >
       <h2 id="rf-h">{id ? 'Edit reminder' : 'New reminder'}</h2>
+      {!id && (
+        <div className="field">
+          <span className="label">Quick start</span>
+          <div className="row templates">
+            {TEMPLATES.map((t) => (
+              <button
+                key={t.title}
+                type="button"
+                className="chip"
+                aria-pressed={d.title === t.title && d.kind === t.kind}
+                onClick={() =>
+                  setD((x) => ({
+                    ...x,
+                    ...t,
+                    location: '',
+                    notes: t.notes ?? '',
+                    remindMinutesBefore: t.kind === 'appointment' ? 60 : 0,
+                    shareResponses: t.kind === 'routine' && t.title === 'Shower' ? false : x.shareResponses,
+                    medScheduleConfirmed: false,
+                  }))
+                }
+              >
+                {t.title}
+              </button>
+            ))}
+          </div>
+          <span className="hint">Fills in the form; change anything before saving.</span>
+        </div>
+      )}
       <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
         <legend className="label" style={{ fontWeight: 700, marginBottom: '0.3rem' }}>
           Type
@@ -284,6 +350,15 @@ function ReminderForm({
       >
         <textarea id="rf-notes" value={d.notes} maxLength={300} onChange={(e) => set('notes', e.target.value)} />
       </Field>
+
+      <PhotoPicker
+        id="rf-photo"
+        current={existing?.photoUrl ?? null}
+        change={photo}
+        onChange={setPhoto}
+        hint={med ? 'A photo of the blister pack or medication box helps recognise the right one.' : 'A photo of the place, person or thing helps recognise it at a glance.'}
+      />
+      <VoicePicker id="rf-voice" current={existing?.voiceUrl ?? null} change={voice} onChange={setVoice} parentName={parent} />
 
       <label className="check">
         <input type="checkbox" checked={d.shareResponses} onChange={(e) => set('shareResponses', e.target.checked)} />

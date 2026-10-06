@@ -8,6 +8,7 @@ import { familyRoutes } from './routes/family.js'
 import { parentRoutes } from './routes/parent.js'
 import { demoRoutes } from './routes/demo.js'
 import { webhookRoutes } from './routes/webhooks.js'
+import { mediaRoutes } from './routes/media.js'
 
 export function createApp(deps: Deps, opts: { staticDir?: string } = {}) {
   const app = express()
@@ -20,14 +21,17 @@ export function createApp(deps: Deps, opts: { staticDir?: string } = {}) {
     res.setHeader('X-Frame-Options', 'DENY')
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     )
     next()
   })
 
   app.use('/api/webhooks', webhookRoutes(deps))
 
-  app.use('/api', express.json({ limit: '50kb' }))
+  // Small bodies everywhere, except photo and voice uploads.
+  const smallJson = express.json({ limit: '50kb' })
+  const mediaJson = express.json({ limit: '2mb' })
+  app.use('/api', (req, res, next) => (/^\/family\/[^/]+\/media\//.test(req.path) ? mediaJson : smallJson)(req, res, next))
   // CSRF protection: state-changing API calls must carry a custom header,
   // which browsers only allow same-origin pages to send.
   app.use('/api', (req: Request, res: Response, next: NextFunction) => {
@@ -43,6 +47,7 @@ export function createApp(deps: Deps, opts: { staticDir?: string } = {}) {
   app.use('/api/demo', demoRoutes(deps))
   app.use('/api/family', familyRoutes(deps))
   app.use('/api/parent', parentRoutes(deps))
+  app.use('/api/media', mediaRoutes(deps))
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found.' }))
   app.use(errorHandler)
 

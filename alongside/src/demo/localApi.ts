@@ -6,13 +6,27 @@ import { ZodError, type ZodTypeAny, type z } from 'zod'
 import { ApiError } from '../api'
 import { LATER_MINUTES, dueAt, latestResponse, occurrenceStatus, occursOn } from '../../shared/schedule'
 import { addDaysISO, localDateISO, zonedTimeToInstant } from '../../shared/time'
-import { DEMO_FAMILY_NAME, demoDestinations, demoLift, demoReminders, demoSettings } from '../../shared/demoSeed'
+import {
+  DEMO_FAMILY_NAME,
+  demoDestinationPhotos,
+  demoDestinations,
+  demoLift,
+  demoReminderPhotos,
+  demoReminders,
+  demoSettings,
+} from '../../shared/demoSeed'
+import { demoMedia } from '../../shared/demoMedia'
 import type { DayItem, Destination, MessageStatus, ParentToday, Reminder, ResponseRecord } from '../../shared/types'
 import {
   arrangedLiftSchema,
   clientRequestId,
   destinationSchema,
+  mediaSchema,
+  PHOTO_MAX_BYTES,
+  PHOTO_TYPES,
   reminderSchema,
+  VOICE_MAX_BYTES,
+  VOICE_TYPES,
   responseSchema,
   settingsSchema,
   tripDestinationSchema,
@@ -62,6 +76,8 @@ interface State {
   responses: Array<ResponseRecord & { shared: boolean; clientRequestId: string }>
   help: Help[]
   trips: Trip[]
+  /** "owner:id:kind" → data URL */
+  media: Record<string, string>
 }
 
 const KEY = 'alongside.static-demo'
@@ -71,18 +87,23 @@ function load(): State | null {
   if (memory) return memory
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) memory = JSON.parse(raw) as State
+    if (raw) {
+      memory = JSON.parse(raw) as State
+      memory.media ??= {} // saved by an earlier version of the preview
+    }
   } catch {
     /* storage unavailable: keep in memory only */
   }
   return memory
 }
-function save(s: State) {
+/** Returns false when the browser refused to store it (it is then kept for this visit only). */
+function save(s: State): boolean {
   memory = s
   try {
     localStorage.setItem(KEY, JSON.stringify(s))
+    return true
   } catch {
-    /* in memory only for this visit */
+    return false
   }
 }
 
@@ -106,7 +127,7 @@ function parse<S extends ZodTypeAny>(schema: S, body: unknown): z.infer<S> {
   }
 }
 
-function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder {
+function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder & { deleted?: boolean } {
   const med = input.kind === 'medication'
   return {
     id,
@@ -122,8 +143,18 @@ function toReminder(id: string, input: z.infer<typeof reminderSchema>): Reminder
     shareResponses: input.shareResponses,
     medScheduleConfirmedAt: med ? nowIso() : null,
     medScheduleConfirmedBy: med ? DEMO_FAMILY_NAME : null,
+    photoUrl: null,
+    voiceUrl: null,
   }
 }
+
+/** Attach stored media URLs (the preview keeps them as data URLs). */
+const withMedia = (s: State, r: Reminder): Reminder => ({
+  ...r,
+  photoUrl: s.media[`reminder:${r.id}:photo`] ?? null,
+  voiceUrl: s.media[`reminder:${r.id}:voice`] ?? null,
+})
+const destinations = (s: State): Destination[] => s.destinations.map((d) => ({ ...d, photoUrl: s.media[`destination:${d.id}:photo`] ?? null }))
 
 function createDemo(): State {
   const now = new Date()
@@ -133,17 +164,20 @@ function createDemo(): State {
     version: 1,
     householdId: uuid(),
     settings: { ...demoSettings },
-    destinations: demoDestinations.map((d) => ({ id: uuid(), ...d })),
+    destinations: demoDestinations.map((d) => ({ id: uuid(), ...d, photoUrl: null })),
     reminders: [],
     responses: [],
     help: [],
     trips: [],
+    media: {},
   }
   const ids: Record<string, string> = {}
   for (const r of demoReminders(today)) {
     ids[r.key] = uuid()
     s.reminders.push(toReminder(ids[r.key], r.input))
   }
+  for (const [key, pic] of Object.entries(demoReminderPhotos)) s.media[`reminder:${ids[key]}:photo`] = demoMedia[pic]
+  s.destinations.forEach((d, i) => (s.media[`destination:${d.id}:photo`] = demoMedia[demoDestinationPhotos[i]]))
   s.trips.push({
     id: uuid(), kind: 'family_arranged', status: 'family_entered', date: today, ...demoLift, provider: null,
     providerRef: null, fareText: null, createdAt: nowIso(), enteredBy: DEMO_FAMILY_NAME, clientRequestId: null,
@@ -156,7 +190,11 @@ function createDemo(): State {
   return s
 }
 
-const reminders = (s: State) => s.reminders.filter((r) => !r.deleted).sort((a, b) => (a.time + a.title < b.time + b.title ? -1 : 1))
+const reminders = (s: State) =>
+  s.reminders
+    .filter((r) => !r.deleted)
+    .map((r) => withMedia(s, r))
+    .sort((a, b) => (a.time + a.title < b.time + b.title ? -1 : 1))
 const today = (s: State) => localDateISO(new Date(), s.settings.timeZone)
 
 function parentItems(s: State, date: string): DayItem[] {
@@ -168,7 +206,7 @@ function parentItems(s: State, date: string): DayItem[] {
     const st = occurrenceStatus(r, date, s.settings.timeZone, latest, now)
     items.push({
       type: 'reminder', key: `${r.id}:${date}`,
-      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes },
+      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl },
       occurrenceDate: date, status: st.status, snoozeUntil: st.snoozeUntil,
       dueAt: dueAt(r, date, s.settings.timeZone).toISOString(), answeredAt: latest?.createdAt ?? null, t: r.time,
     })
@@ -237,8 +275,15 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   // ---------------- parent
   if (method === 'GET' && p === '/api/parent/today') {
     const date = today(s)
+    const tomorrow = parentItems(s, addDaysISO(date, 1))[0]
     const out: ParentToday = {
-      demo: true, ...s.settings, date, now: nowIso(), items: parentItems(s, date), destinations: s.destinations,
+      demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
+      items: parentItems(s, date), destinations: destinations(s),
+      tomorrow: tomorrow
+        ? tomorrow.type === 'reminder'
+          ? { title: tomorrow.reminder.title, time: tomorrow.reminder.time }
+          : { title: `Lift to ${tomorrow.lift.destinationLabel}`, time: tomorrow.lift.time }
+        : null,
       transport: { providerAvailable: false, providerName: null, uberHandoff: true, uberClientId: null },
     }
     return out as T
@@ -302,7 +347,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   const rest = m[2] ?? ''
   if (method === 'GET' && rest === '') {
     return {
-      id: s.householdId, settings: { ...s.settings, isDemo: true }, today: today(s), destinations: s.destinations,
+      id: s.householdId, settings: { autoSpeak: false, keepAwake: false, ...s.settings, isDemo: true }, today: today(s), destinations: destinations(s),
       reminders: reminders(s), devices: [{ id: 'demo-device', label: 'This browser (demonstration)', createdAt: nowIso(), lastSeenAt: nowIso() }],
       members: [{ name: DEMO_FAMILY_NAME, email: null }],
       integrations: {
@@ -326,7 +371,7 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   if (rest === '/destinations' && method === 'POST') {
     const d = parse(destinationSchema, body)
     const id = uuid()
-    s.destinations.push({ id, ...d })
+    s.destinations.push({ id, ...d, photoUrl: null })
     save(s)
     return { id } as T
   }
@@ -334,8 +379,11 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   if (mm) {
     const i = s.destinations.findIndex((d) => d.id === mm![1])
     if (i < 0) throw new ApiError(404, 'That place no longer exists.')
-    if (method === 'PUT') s.destinations[i] = { id: mm[1], ...parse(destinationSchema, body) }
-    else if (method === 'DELETE') s.destinations.splice(i, 1)
+    if (method === 'PUT') s.destinations[i] = { id: mm[1], ...parse(destinationSchema, body), photoUrl: null }
+    else if (method === 'DELETE') {
+      s.destinations.splice(i, 1)
+      delete s.media[`destination:${mm[1]}:photo`]
+    }
     save(s)
     return { ok: true } as T
   }
@@ -377,6 +425,41 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
     if (!t) throw new ApiError(404, 'Already removed.')
     t.deleted = true
     save(s)
+    return { ok: true } as T
+  }
+  if (method === 'GET' && rest === '/week') {
+    const end = url.searchParams.get('end') || today(s)
+    const days = Array.from({ length: 7 }, (_, i) => addDaysISO(end, i - 6))
+    const rows = new Map<string, { reminderId: string; title: string; kind: string; time: string; cells: Record<string, string> }>()
+    for (const date of days) {
+      for (const st of familyDay(s, date).statuses) {
+        const row = rows.get(st.reminderId) ?? { reminderId: st.reminderId, title: st.title, kind: st.kind, time: st.time, cells: {} }
+        row.cells[date] = st.status
+        rows.set(st.reminderId, row)
+      }
+    }
+    return { days, rows: [...rows.values()].sort((a, b) => (a.time < b.time ? -1 : 1)) } as T
+  }
+  mm = rest.match(/^\/media\/(reminder|destination)\/([^/]+)\/(photo|voice)$/)
+  if (mm) {
+    const [, owner, ownerId, kind] = mm
+    const exists = owner === 'reminder' ? reminders(s).some((r) => r.id === ownerId) : s.destinations.some((d) => d.id === ownerId)
+    if (!exists) throw new ApiError(404, 'That item no longer exists.')
+    const key = `${owner}:${ownerId}:${kind}`
+    if (method === 'DELETE') delete s.media[key]
+    else {
+      const { dataUrl } = parse(mediaSchema, body)
+      const mime = dataUrl.slice(5, dataUrl.indexOf(';'))
+      const allowed: readonly string[] = kind === 'photo' ? PHOTO_TYPES : VOICE_TYPES
+      if (!allowed.includes(mime)) throw new ApiError(400, kind === 'photo' ? 'Use a JPEG, PNG or WebP photo.' : 'That sound format is not supported.')
+      const bytes = Math.floor(((dataUrl.length - dataUrl.indexOf(',') - 1) * 3) / 4)
+      if (bytes > (kind === 'photo' ? PHOTO_MAX_BYTES : VOICE_MAX_BYTES)) throw new ApiError(400, 'That file is too large.')
+      s.media[key] = dataUrl
+    }
+    if (!save(s)) {
+      if (method !== 'DELETE') delete s.media[key]
+      throw new ApiError(507, 'This browser has no room left to keep that file for the demonstration.')
+    }
     return { ok: true } as T
   }
   if (rest === '/codes' || rest.startsWith('/devices/')) throw new ApiError(400, SERVER_ONLY)

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CalendarDays, Car } from 'lucide-react'
-import { api, ApiError } from '../api'
-import { navigate, useScreenFocus } from '../route'
+import { api, ApiError, useOnDataChanged } from '../api'
+import { useNavigate, useScreenFocus } from '../route'
 import { formatLongDate, greetingFor, localDateISO } from '../../shared/time'
 import type { DayItem, ParentToday } from '../../shared/types'
 import { CallButton, H1, ParentScreen, telHref } from './common'
@@ -37,10 +37,15 @@ function markPrompted(k: string) {
 }
 
 export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [today, setToday] = useState<ParentToday | null>(null)
   const [loadError, setLoadError] = useState('')
   const [, setTick] = useState(0)
   const waiting = useRef(new Set<string>())
+  const [autoPlayKey, setAutoPlayKey] = useState<string | null>(null)
+  const clearAutoPlay = useCallback(() => setAutoPlayKey(null), [])
+  const pathRef = useRef(path)
+  pathRef.current = path
 
   const load = useCallback(async () => {
     try {
@@ -52,6 +57,7 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
     }
   }, [onSignedOut])
 
+  useOnDataChanged(load)
   useEffect(() => {
     load()
     const refresh = setInterval(load, 60000)
@@ -71,7 +77,7 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
       load() // past midnight: fetch the new day
       return
     }
-    const here = window.location.hash.replace(/^#/, '') || '/'
+    const here = pathRef.current
     if (!(here === '/' || here.startsWith('/day'))) return // never interrupt a lift or a call
     const now = Date.now()
     for (const item of today.items) {
@@ -90,6 +96,7 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
       if (since > 30 * 60000) continue // became due long ago; leave it in My day
       if (here === `/day/${encodeURIComponent(item.key)}`) continue
       chime()
+      setAutoPlayKey(item.key)
       navigate(`/day/${encodeURIComponent(item.key)}`)
       if (item.status !== 'due') load()
       break
@@ -105,6 +112,14 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
     return () => clearInterval(t)
   }, [checkDue])
 
+  return (
+    <>
+      <KeepAwake on={!!today?.keepAwake} />
+      {screen()}
+    </>
+  )
+
+  function screen() {
   if (!today) {
     return (
       <div className="p-wrap">
@@ -130,7 +145,7 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
   const [route, query = ''] = path.split('?')
   if (route === '/day' || route.startsWith('/day/')) {
     const key = route.startsWith('/day/') ? decodeURIComponent(route.slice(5)) : null
-    return <MyDay today={today} itemKey={key} reload={load} />
+    return <MyDay today={today} itemKey={key} reload={load} autoPlayKey={autoPlayKey} clearAutoPlay={clearAutoPlay} />
   }
   if (route.startsWith('/lift')) return <Lift today={today} route={route} />
   if (route === '/call') {
@@ -138,6 +153,34 @@ export function ParentApp({ path, onSignedOut }: { path: string; onSignedOut: ()
     return <CallScreen today={today} who={who} />
   }
   return <Home today={today} offline={!!loadError} />
+  }
+}
+
+/** Keeps the screen on (for a tablet on the bench) where the browser allows it. */
+function KeepAwake({ on }: { on: boolean }) {
+  useEffect(() => {
+    if (!on || !('wakeLock' in navigator)) return
+    let lock: { release: () => Promise<void> } | null = null
+    let cancelled = false
+    const request = () => {
+      if (document.visibilityState !== 'visible') return
+      ;(navigator as Navigator & { wakeLock: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock
+        .request('screen')
+        .then((l) => {
+          if (cancelled) l.release().catch(() => undefined)
+          else lock = l
+        })
+        .catch(() => undefined) // not allowed here; the screen simply follows its normal timeout
+    }
+    request()
+    document.addEventListener('visibilitychange', request)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', request)
+      lock?.release().catch(() => undefined)
+    }
+  }, [on])
+  return null
 }
 
 function Home({ today, offline }: { today: ParentToday; offline: boolean }) {

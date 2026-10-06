@@ -23,12 +23,15 @@ import {
 import {
   arrangedLiftSchema,
   codeSchema,
+  mediaSchema,
   destinationSchema,
   reminderSchema,
   settingsSchema,
 } from '../../shared/validation.js'
 import { notificationCapability } from '../integrations/notifications.js'
 import { buildIcs } from '../ics.js'
+import { decodeMedia, deleteMedia, saveMedia } from '../media.js'
+import { addDaysISO } from '../../shared/time.js'
 
 const dateQuery = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -265,6 +268,65 @@ export function familyRoutes(deps: Deps) {
       res.json({ ok: true })
     }),
   )
+
+  /** A seven-day grid of shared answers, ending on `end` (default today). */
+  r.get(
+    '/:hid/week',
+    member,
+    h((req, res) => {
+      const hh = getHousehold(db, req.householdId!)
+      const end = req.query.end ? parse(dateQuery, req.query.end) : todayFor(hh, deps.now())
+      const days = Array.from({ length: 7 }, (_, i) => addDaysISO(end, i - 6))
+      const rows = new Map<string, { reminderId: string; title: string; kind: string; time: string; cells: Record<string, string> }>()
+      for (const date of days) {
+        for (const s of familyDayStatuses(db, hh, date, deps.now())) {
+          const row = rows.get(s.reminder.id) ?? { reminderId: s.reminder.id, title: s.reminder.title, kind: s.reminder.kind, time: s.reminder.time, cells: {} }
+          row.cells[date] = s.status
+          rows.set(s.reminder.id, row)
+        }
+      }
+      res.json({ days, rows: [...rows.values()].sort((a, b) => (a.time < b.time ? -1 : 1)) })
+    }),
+  )
+
+  /** Attach or replace a photo or voice message on a reminder or place. */
+  r.put(
+    '/:hid/media/:owner/:ownerId/:kind',
+    member,
+    h((req, res) => {
+      const { owner, ownerId, kind } = parseMediaPath(req.params)
+      ensureOwner(req.householdId!, owner, ownerId)
+      const { mime, data } = decodeMedia(kind, parse(mediaSchema, req.body).dataUrl)
+      saveMedia(db, req.householdId!, owner, ownerId, kind, mime, data)
+      res.json({ ok: true })
+    }),
+  )
+  r.delete(
+    '/:hid/media/:owner/:ownerId/:kind',
+    member,
+    h((req, res) => {
+      const { owner, ownerId, kind } = parseMediaPath(req.params)
+      ensureOwner(req.householdId!, owner, ownerId)
+      deleteMedia(db, req.householdId!, owner, ownerId, kind)
+      res.json({ ok: true })
+    }),
+  )
+
+  function parseMediaPath(p: Record<string, unknown>) {
+    return parse(
+      z
+        .object({ owner: z.enum(['reminder', 'destination']), ownerId: z.string().uuid(), kind: z.enum(['photo', 'voice']) })
+        .refine((v) => !(v.owner === 'destination' && v.kind === 'voice'), 'Places can have a photo only'),
+      p,
+    )
+  }
+  function ensureOwner(hid: string, owner: 'reminder' | 'destination', id: string) {
+    const ok =
+      owner === 'reminder'
+        ? db.prepare('SELECT 1 FROM reminders WHERE id=? AND household_id=? AND deleted_at IS NULL').get(id, hid)
+        : db.prepare('SELECT 1 FROM destinations WHERE id=? AND household_id=?').get(id, hid)
+    if (!ok) throw new HttpError(404, 'That item no longer exists.')
+  }
 
   /** One-time codes: pair the parent's device, or invite another family member. */
   r.post(

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { api, STATIC_DEMO } from '../api'
+import { api, ApiError, STATIC_DEMO } from '../api'
+import { PhotoPicker, type MediaChange } from './media'
 import type { Destination } from '../../shared/types'
 import { ConfirmButton, ErrorBanner, Field, Saved, useAction, type FamilyInfo } from './ui'
 
@@ -108,6 +109,28 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
           </span>
         </span>
       </label>
+      <fieldset className="field plain-fieldset">
+        <legend className="label">On {s.parentName || 'the parent'}’s screen</legend>
+        <label className="check">
+          <input type="checkbox" checked={!!s.autoSpeak} onChange={(e) => set('autoSpeak', e.target.checked)} />
+          <span>
+            <strong>Play reminders aloud when they come up</strong>
+            <br />
+            <span className="small muted">
+              Plays your voice message if there is one, otherwise reads the reminder with the device voice. Some
+              browsers only allow sound after the screen has been touched once.
+            </span>
+          </span>
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={!!s.keepAwake} onChange={(e) => set('keepAwake', e.target.checked)} />
+          <span>
+            <strong>Keep the screen on while Alongside is open</strong>
+            <br />
+            <span className="small muted">Useful for a tablet on the kitchen bench. Uses more battery; keep it plugged in. Not every browser allows this.</span>
+          </span>
+        </label>
+      </fieldset>
       <ErrorBanner error={act.error} onRetry={act.retry} />
       <Saved show={saved} />
       <div>
@@ -127,9 +150,10 @@ const ICON_LABEL: Record<Destination['icon'], string> = {
 }
 
 type PlaceDraft = { label: string; address: string; icon: Destination['icon']; latitude: string; longitude: string }
+type PlaceEdit = { id: string | null; d: PlaceDraft; current: string | null; photo: MediaChange; savedId?: string }
 
 function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<void> }) {
-  const [edit, setEdit] = useState<{ id: string | null; d: PlaceDraft } | null>(null)
+  const [edit, setEdit] = useState<PlaceEdit | null>(null)
   const act = useAction()
   const del = useAction()
   return (
@@ -144,6 +168,7 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
         {info.destinations.map((d) => (
           <li key={d.id}>
             <span>
+              {d.photoUrl && <img className="thumb-sm" src={d.photoUrl} alt="" />}
               <strong>{d.label}</strong> · {d.address} <span className="pill neutral">{ICON_LABEL[d.icon]}</span>
             </span>
             <span className="row">
@@ -153,6 +178,8 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
                   setEdit({
                     id: d.id,
                     d: { label: d.label, address: d.address, icon: d.icon, latitude: d.latitude?.toString() ?? '', longitude: d.longitude?.toString() ?? '' },
+                    current: d.photoUrl,
+                    photo: undefined,
                   })
                 }
               >
@@ -178,11 +205,20 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
             e.preventDefault()
             const num = (v: string) => (v.trim() === '' ? null : Number(v))
             const body = { ...edit.d, latitude: num(edit.d.latitude), longitude: num(edit.d.longitude) }
+            const ed = edit
             await act.run(
-              () =>
-                edit.id
-                  ? api('PUT', `/api/family/${info.id}/destinations/${edit.id}`, body)
-                  : api('POST', `/api/family/${info.id}/destinations`, body),
+              async () => {
+                const pid = ed.id ?? ed.savedId
+                if (pid) await api('PUT', `/api/family/${info.id}/destinations/${pid}`, body)
+                else ed.savedId = (await api<{ id: string }>('POST', `/api/family/${info.id}/destinations`, body)).id
+                const target = ed.id ?? ed.savedId
+                if (ed.photo !== undefined) {
+                  const url = `/api/family/${info.id}/media/destination/${target}/photo`
+                  await (ed.photo === null ? api('DELETE', url) : api('PUT', url, { dataUrl: ed.photo })).catch((e) => {
+                    throw new ApiError(e instanceof ApiError ? e.status : 0, `The place was saved, but the photo was not: ${e instanceof Error ? e.message : ''}`)
+                  })
+                }
+              },
               async () => {
                 setEdit(null)
                 await refresh()
@@ -216,6 +252,13 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
               <input id="pl-lng" inputMode="decimal" value={edit.d.longitude} onChange={(e) => setEdit({ ...edit, d: { ...edit.d, longitude: e.target.value } })} />
             </Field>
           </div>
+          <PhotoPicker
+            id="pl-photo"
+            current={edit.current}
+            change={edit.photo}
+            onChange={(photo) => setEdit({ ...edit, photo })}
+            hint="A photo of the entrance helps recognise the place on the “Get a lift” screen."
+          />
           <ErrorBanner error={act.error} onRetry={act.retry} />
           <div className="row">
             <button className="btn" disabled={act.busy}>
@@ -228,7 +271,7 @@ function Places({ info, refresh }: { info: FamilyInfo; refresh: () => Promise<vo
         </form>
       ) : (
         <div>
-          <button className="btn" onClick={() => setEdit({ id: null, d: { label: '', address: '', icon: 'other', latitude: '', longitude: '' } })}>
+          <button className="btn" onClick={() => setEdit({ id: null, d: { label: '', address: '', icon: 'other', latitude: '', longitude: '' }, current: null, photo: undefined })}>
             Add a place
           </button>
         </div>

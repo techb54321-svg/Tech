@@ -35,6 +35,10 @@ export function demoReminders(today: string): Array<{ key: string; input: Remind
   ]
 }
 
+/** Which demo items carry an illustration (see shared/demoMedia.ts). */
+export const demoReminderPhotos: Record<string, 'tablets' | 'medical'> = { morningMeds: 'tablets', eveningMeds: 'tablets', doctor: 'medical' }
+export const demoDestinationPhotos: Array<'medical' | 'shops' | 'home'> = ['medical', 'shops', 'home']
+
 export const demoLift = {
   time: '10:00',
   destinationLabel: 'Medical centre',

@@ -132,6 +132,18 @@ CREATE TABLE IF NOT EXISTS help_requests (
   created_at TEXT NOT NULL
 );
 
+-- Family photos and voice messages attached to reminders and places.
+CREATE TABLE IF NOT EXISTS media (
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  owner_type TEXT NOT NULL CHECK (owner_type IN ('reminder','destination')),
+  owner_id TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('photo','voice')),
+  mime TEXT NOT NULL,
+  data BLOB NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (owner_type, owner_id, kind)
+);
+
 -- Transport records are kept by kind so that a request, a hand-off, a
 -- family-entered arrangement and a provider-confirmed booking never blur.
 CREATE TABLE IF NOT EXISTS trips (
@@ -154,10 +166,20 @@ CREATE TABLE IF NOT EXISTS trips (
 );
 `
 
+// Columns added after the first release; added in place on older databases.
+const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
+  ['households', 'auto_speak', 'INTEGER NOT NULL DEFAULT 0'],
+  ['households', 'keep_awake', 'INTEGER NOT NULL DEFAULT 0'],
+]
+
 export function openDb(file: string): DB {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
   db.exec(SCHEMA)
+  for (const [table, column, ddl] of ADDED_COLUMNS) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+    if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
+  }
   return db
 }
 

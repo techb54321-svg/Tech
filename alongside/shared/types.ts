@@ -22,6 +22,10 @@ export interface Reminder {
   /** Medication only: when and by whom the schedule match was confirmed. */
   medScheduleConfirmedAt: string | null
   medScheduleConfirmedBy: string | null
+  /** Optional family photo (e.g. the blister pack, the doctor, the entrance). */
+  photoUrl: string | null
+  /** Optional voice message recorded by family. */
+  voiceUrl: string | null
 }
 
 /** What the parent tapped. "taken" is only ever *reported* taken. */
@@ -54,6 +58,7 @@ export interface Destination {
   icon: 'medical' | 'shops' | 'home' | 'other'
   latitude: number | null
   longitude: number | null
+  photoUrl: string | null
 }
 
 /** A family-entered lift, shown to the parent in "My day". */
@@ -71,7 +76,7 @@ export type DayItem =
   | {
       type: 'reminder'
       key: string
-      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes'>
+      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl'>
       occurrenceDate: string
       status: OccurrenceStatus
       snoozeUntil: string | null
@@ -102,9 +107,13 @@ export interface ParentToday {
   pharmacyName: string
   pharmacyPhone: string
   timeZone: string
+  autoSpeak: boolean
+  keepAwake: boolean
   date: string
   now: string
   items: DayItem[]
+  /** The first thing tomorrow, for the end-of-day screen. */
+  tomorrow: { title: string; time: string } | null
   destinations: Destination[]
   transport: {
     providerAvailable: boolean

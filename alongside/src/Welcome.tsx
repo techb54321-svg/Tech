@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { api, ApiError, STATIC_DEMO } from './api'
-import { navigate, useScreenFocus } from './route'
+import { useNavigate, useScreenFocus } from './route'
 
 /** First-run screen on a device that is not paired and not signed in. */
 export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   useScreenFocus('welcome')
 
-  async function startDemo() {
+  async function startDemo(to = '/') {
     setBusy(true)
     setError('')
     try {
       await api('POST', '/api/demo/start')
       await reloadMe()
-      navigate('/', true)
+      navigate(to, true)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Could not start the demonstration.')
     } finally {
@@ -27,8 +28,11 @@ export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
       <h1 tabIndex={-1}>Alongside</h1>
       <p>A simple daily helper, with family support behind the scenes.</p>
 
-      <button className="big-btn blue medium" onClick={startDemo} disabled={busy} aria-busy={busy}>
+      <button className="big-btn blue medium" onClick={() => startDemo()} disabled={busy} aria-busy={busy}>
         {busy ? 'Starting…' : 'Try the demonstration'}
+      </button>
+      <button className="big-btn purple medium" onClick={() => startDemo('/both')} disabled={busy}>
+        See both screens side by side
       </button>
       <p className="muted">
         The demonstration uses made-up people and places. No calls, texts or bookings are made.
@@ -61,6 +65,7 @@ export function Welcome({ reloadMe }: { reloadMe: () => Promise<void> }) {
 
 /** Pair the parent's device with a one-time code created in family setup. */
 export function PairDevice({ onPaired }: { onPaired: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')

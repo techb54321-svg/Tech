@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, STATIC_DEMO } from '../api'
-import { navigate, useScreenFocus } from '../route'
+import { api, STATIC_DEMO, useOnDataChanged } from '../api'
+import { useEmbedded, useNavigate, useScreenFocus } from '../route'
 import type { Me } from '../App'
 import { ErrorBanner, Field, useAction, type FamilyInfo } from './ui'
 import { FamilyToday } from './FamilyToday'
@@ -34,9 +34,11 @@ export function FamilyApp({ me, path, reloadMe }: { me: Me; path: string; reload
 }
 
 function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: string; reloadMe: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [info, setInfo] = useState<FamilyInfo | null>(null)
   const [loadError, setLoadError] = useState('')
   const restart = useAction()
+  const embedded = useEmbedded()
 
   const refresh = useCallback(async () => {
     try {
@@ -49,6 +51,7 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
   useEffect(() => {
     refresh()
   }, [refresh])
+  useOnDataChanged(refresh)
   useScreenFocus(path)
 
   async function signOut() {
@@ -109,6 +112,11 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
               <strong>Demonstration.</strong> Fictional people and places. No calls, texts or bookings are made.
               {STATIC_DEMO ? ' Changes stay in this browser only.' : ' Changes are kept for three days.'}
             </span>
+            {!embedded && (
+              <a className="btn secondary" href="#/both">
+                See both screens side by side
+              </a>
+            )}
             <button
               className="btn secondary"
               disabled={restart.busy}
@@ -217,6 +225,7 @@ function SignIn({ me, reloadMe }: { me: Me; reloadMe: () => Promise<void> }) {
 }
 
 function NewHousehold({ me, reloadMe }: { me: Me; reloadMe: () => Promise<void> }) {
+  const navigate = useNavigate()
   const [s, setS] = useState({
     parentName: '',
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Australia/Sydney',

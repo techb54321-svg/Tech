@@ -22,6 +22,10 @@ export const settingsSchema = z.object({
   pharmacyName: text(60),
   pharmacyPhone: phone,
   smsAlerts: z.boolean(),
+  /** Play or read a reminder aloud when it comes up on screen. */
+  autoSpeak: z.boolean().default(false),
+  /** Ask the device to keep the screen on while Alongside is open. */
+  keepAwake: z.boolean().default(false),
 })
 
 export const destinationSchema = z.object({
@@ -103,7 +107,19 @@ export const codeSchema = z.object({
     .pipe(z.string().length(8, 'Codes have 8 letters and numbers')),
 })
 
-export type SettingsInput = z.infer<typeof settingsSchema>
+export const PHOTO_MAX_BYTES = 400 * 1024
+export const VOICE_MAX_BYTES = 1024 * 1024
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
+export const VOICE_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/mpeg', 'audio/wav', 'audio/x-m4a', 'audio/aac'] as const
+
+export const mediaSchema = z.object({
+  dataUrl: z
+    .string()
+    .max(1_500_000, 'That file is too large')
+    .regex(/^data:[a-z]+\/[a-z0-9.+-]+(;[a-z]+=[^;,]+)*;base64,[A-Za-z0-9+/=]+$/, 'Choose a photo or sound file'),
+})
+
+export type SettingsInput = z.input<typeof settingsSchema>
 export type DestinationInput = z.infer<typeof destinationSchema>
 export type ReminderInput = z.infer<typeof reminderSchema>
 export type ArrangedLiftInput = z.infer<typeof arrangedLiftSchema>

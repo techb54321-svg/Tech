@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../api'
+import { api, useOnDataChanged } from '../api'
 import type { MessageStatus, OccurrenceStatus, ReminderKind } from '../../shared/types'
 
 export interface DayData {
@@ -55,6 +55,7 @@ export function useDay(hid: string, date: string) {
       setError(e instanceof Error ? e.message : 'Could not load.')
     }
   }, [hid, date])
+  useOnDataChanged(load)
   useEffect(() => {
     load()
     const t = setInterval(load, 30000)

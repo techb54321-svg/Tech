@@ -610,3 +610,124 @@ a {
   font-weight: 700;
   letter-spacing: 0.1em;
 }
+
+/* Family photos */
+.p-photo {
+  display: block;
+  width: 100%;
+  max-height: 14rem;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 3px solid var(--line);
+  background: #fff;
+}
+.big-btn .thumb {
+  flex: none;
+  width: 4rem;
+  height: 4rem;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  border: 2px solid var(--purple);
+}
+.small-btn.voice {
+  background: #ecfdf3;
+  border-color: var(--green-dark);
+  color: var(--green-dark);
+}
+.media-field .row { margin-top: 0.25rem; }
+.media-preview {
+  max-width: min(100%, 20rem);
+  max-height: 12rem;
+  object-fit: cover;
+  border-radius: 0.6rem;
+  border: 2px solid var(--line);
+}
+label.btn { cursor: pointer; }
+/* The real file input is visually hidden; show its keyboard focus on the visible label. */
+label.btn:has(+ input[type='file']:focus-visible) { outline: 4px solid var(--focus); outline-offset: 3px; }
+.chip {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  min-height: 2.5rem;
+  border-radius: 999px;
+  border: 2px solid var(--blue);
+  background: #fff;
+  color: var(--blue-dark);
+  cursor: pointer;
+}
+.chip:hover { background: #eef2ff; }
+.chip[aria-pressed='true'] { background: var(--blue); color: #fff; }
+.templates { gap: 0.5rem; }
+.thumb-sm { width: 2.5rem; height: 2.5rem; object-fit: cover; border-radius: 0.4rem; vertical-align: middle; margin-right: 0.5rem; }
+.plain-fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+.plain-fieldset > legend { font-weight: 700; margin-bottom: 0.3rem; }
+.table-scroll { overflow-x: auto; max-width: 100%; }
+table.week { border-collapse: separate; border-spacing: 3px; width: 100%; font-variant-numeric: tabular-nums; }
+table.week th { font-size: 0.85rem; text-align: center; font-weight: 700; padding: 0.25rem; }
+table.week tbody th { text-align: left; font-size: 0.95rem; min-width: 9rem; }
+.week-summary { display: block; }
+table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-radius: 0.4rem; font-weight: 700; border: 2px solid transparent; }
+.cell.ok { background: var(--ok-bg); border-color: #166534; color: #14532d; }
+.cell.warn { background: var(--warn-bg); border-color: #b45309; color: #78350f; }
+.cell.err { background: var(--err-bg); border-color: #b91c1c; color: #7f1d1d; }
+.cell.neutral { background: #f3f4f6; border-color: #6b7280; color: #374151; }
+.cell.muted { background: #fafaf9; border-color: #d6d3d1; color: #57534e; }
+.cell.none { background: transparent; }
+
+/* =================== Side-by-side demonstration =================== */
+.showcase {
+  min-height: 100dvh;
+  background: #1e1b4b;
+  color: #fff;
+  padding: 1rem 1rem 2rem;
+}
+.showcase-head {
+  max-width: 90rem;
+  margin: 0 auto 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.showcase-head h1 { font-size: 1.75rem; }
+.showcase-head p { max-width: 46rem; color: #e0e7ff; margin-top: 0.25rem; }
+.showcase-grid {
+  max-width: 90rem;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+.device { margin: 0; flex: 0 1 25rem; min-width: 0; }
+.device.wide { flex: 1 1 32rem; }
+.device figcaption { font-weight: 700; margin-bottom: 0.5rem; color: #e0e7ff; }
+.device-frame {
+  border: 12px solid #0b0a1f;
+  border-radius: 2.25rem;
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+}
+.device-frame.laptop { border-radius: 1rem; border-width: 10px; }
+.pane {
+  height: min(52rem, 82dvh);
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: var(--text);
+  background: var(--bg);
+  position: relative;
+}
+.pane .p-wrap,
+.pane .f,
+.pane .w-wrap { min-height: 100%; }
+/* Flex children must be allowed to shrink so wide content scrolls inside them, not the page. */
+.f-main > *, .card, .card > *, .form > *, .field { min-width: 0; }
+/* Contain screen-reader-only text so it can never widen the page. */
+.table-scroll, .media-field, .field, td, th { position: relative; }
+.visually-hidden { top: 0; left: 0; }
+/* Keep icon or photo beside the label; the label wraps within its own space first. */
+.big-btn > span { flex: 1 1 7rem; }

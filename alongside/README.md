@@ -101,6 +101,19 @@ Access is enforced on the server:
 | Installable PWA (manifest, icons, app-shell service worker; never caches private API data) | Working |
 | Read aloud with the device's own speech, hidden where unsupported; text is always on screen | Working |
 
+### Added in the second round
+
+| Feature | Status |
+| --- | --- |
+| **Photos** on reminders and places (blister pack, the doctor, the building's entrance), shown large on the parent's screen and as thumbnails under "Get a lift". Photos are shrunk in the browser, checked on the server by size and by their real file signature, and served only to that household | Working (tested) |
+| **Voice messages** recorded by family (or chosen as a sound file), played with **Hear Anna** on the reminder | Working (tested in Chromium with a simulated microphone) |
+| **Play reminders aloud when they come up** (family setting): plays the voice message, otherwise reads the reminder. Some browsers block sound until the screen has been touched once | Working while the app is open |
+| **Keep the screen on** (family setting) for a tablet on the bench, using the Screen Wake Lock API | Works where the browser supports it; ignored elsewhere |
+| **"That's everything for today"** end-of-day screen with "Tomorrow starts with …". An unanswered medication reminder keeps the day open | Working (tested) |
+| **Week view** for family: a 7-day grid with symbols as well as colours, "Reported taken X of Y days", private routines shown as private | Working (tested) |
+| **Quick start templates** for common reminders | Working |
+| **Side by side**: the parent's phone and the family area live on one page (demonstration only) | Working (tested) |
+
 ## Integrations and their limits
 
 The integrations live in `server/integrations/`.
@@ -189,9 +202,15 @@ scripts/e2e.mjs    browser checks and screenshots
 
 Selected screenshots are in `docs/screenshots/`.
 
+Second round: 48 unit/API tests (adds media permissions, file-signature checks, week grid, tomorrow and hands-free
+settings). The browser checks add photos, a real recording through Chromium's simulated microphone, templates,
+the week grid at 320 px, the end-of-day screen and the side-by-side sync.
+
 **Not verified here:**
 - Real phones and tablets: iOS/Android text-size settings, `tel:` dialling, the Uber app opening, and PWA
   installation.
 - Real speech voices: speech was simulated in the browser tests.
 - Live Twilio: SMS was tested with mocked responses only.
 - Background notifications: these are not implemented.
+- Voice recording and playback on real phones (iOS Safari records audio/mp4; the server accepts it, but this was not
+  tried on a device). Wake Lock on real tablets.

@@ -1,6 +1,7 @@
 // Data access and the day calculations built on shared/schedule.
 import { randomUUID } from 'node:crypto'
 import type { DB } from './db.js'
+import { deleteMedia, mediaUrls } from './media.js'
 import { nowIso } from './db.js'
 import { dueAt, latestResponse, occurrenceStatus, occursOn } from '../shared/schedule.js'
 import { localDateISO } from '../shared/time.js'
@@ -22,6 +23,8 @@ export interface HouseholdRow {
   pharmacy_name: string
   pharmacy_phone: string
   sms_alerts: number
+  auto_speak: number
+  keep_awake: number
   is_demo: number
   created_at: string
 }
@@ -32,7 +35,7 @@ export function getHousehold(db: DB, id: string): HouseholdRow {
   return h
 }
 
-export function settingsOf(h: HouseholdRow): SettingsInput & { isDemo: boolean } {
+export function settingsOf(h: HouseholdRow): Required<SettingsInput> & { isDemo: boolean } {
   return {
     parentName: h.parent_name,
     timeZone: h.time_zone,
@@ -41,6 +44,8 @@ export function settingsOf(h: HouseholdRow): SettingsInput & { isDemo: boolean }
     pharmacyName: h.pharmacy_name,
     pharmacyPhone: h.pharmacy_phone,
     smsAlerts: !!h.sms_alerts,
+    autoSpeak: !!h.auto_speak,
+    keepAwake: !!h.keep_awake,
     isDemo: !!h.is_demo,
   }
 }
@@ -49,7 +54,7 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
   const id = randomUUID()
   db.prepare(
     `INSERT INTO households (id, parent_name, time_zone, contact_name, contact_phone, pharmacy_name,
-       pharmacy_phone, sms_alerts, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+       pharmacy_phone, sms_alerts, auto_speak, keep_awake, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     s.parentName,
@@ -59,6 +64,8 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
     s.pharmacyName,
     s.pharmacyPhone,
     s.smsAlerts ? 1 : 0,
+    s.autoSpeak ? 1 : 0,
+    s.keepAwake ? 1 : 0,
     isDemo ? 1 : 0,
     nowIso(),
   )
@@ -68,8 +75,9 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
 export function updateSettings(db: DB, id: string, s: SettingsInput) {
   db.prepare(
     `UPDATE households SET parent_name=?, time_zone=?, contact_name=?, contact_phone=?, pharmacy_name=?,
-       pharmacy_phone=?, sms_alerts=? WHERE id=?`,
-  ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName, s.pharmacyPhone, s.smsAlerts ? 1 : 0, id)
+       pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=? WHERE id=?`,
+  ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName, s.pharmacyPhone, s.smsAlerts ? 1 : 0,
+    s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, id)
 }
 
 // ---- destinations ---------------------------------------------------------
@@ -84,9 +92,10 @@ interface DestRow {
 }
 
 export function listDestinations(db: DB, hid: string): Destination[] {
+  const media = mediaUrls(db, hid)
   return (db
     .prepare('SELECT id, label, address, icon, latitude, longitude FROM destinations WHERE household_id = ? ORDER BY sort, label')
-    .all(hid) as unknown as DestRow[]).map((d) => ({ ...d }))
+    .all(hid) as unknown as DestRow[]).map((d) => ({ ...d, photoUrl: media.get(`destination:${d.id}:photo`) ?? null }))
 }
 
 export function addDestination(db: DB, hid: string, d: DestinationInput): string {
@@ -106,7 +115,9 @@ export function updateDestination(db: DB, hid: string, id: string, d: Destinatio
 }
 
 export function deleteDestination(db: DB, hid: string, id: string): boolean {
-  return db.prepare('DELETE FROM destinations WHERE id=? AND household_id=?').run(id, hid).changes > 0
+  const ok = db.prepare('DELETE FROM destinations WHERE id=? AND household_id=?').run(id, hid).changes > 0
+  if (ok) deleteMedia(db, hid, 'destination', id)
+  return ok
 }
 
 // ---- reminders ------------------------------------------------------------
@@ -127,7 +138,7 @@ interface ReminderRow {
   med_confirmed_by: string | null
 }
 
-const toReminder = (r: ReminderRow): Reminder => ({
+const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   id: r.id,
   kind: r.kind,
   title: r.title,
@@ -141,19 +152,22 @@ const toReminder = (r: ReminderRow): Reminder => ({
   shareResponses: !!r.share_responses,
   medScheduleConfirmedAt: r.med_confirmed_at,
   medScheduleConfirmedBy: r.med_confirmed_by,
+  photoUrl: media.get(`reminder:${r.id}:photo`) ?? null,
+  voiceUrl: media.get(`reminder:${r.id}:voice`) ?? null,
 })
 
 export function listReminders(db: DB, hid: string): Reminder[] {
+  const media = mediaUrls(db, hid)
   return (db
     .prepare('SELECT * FROM reminders WHERE household_id = ? AND deleted_at IS NULL ORDER BY time, title')
-    .all(hid) as unknown as ReminderRow[]).map(toReminder)
+    .all(hid) as unknown as ReminderRow[]).map((r) => toReminder(r, media))
 }
 
 export function getReminder(db: DB, hid: string, id: string): Reminder | null {
   const r = db
     .prepare('SELECT * FROM reminders WHERE id = ? AND household_id = ? AND deleted_at IS NULL')
     .get(id, hid) as ReminderRow | undefined
-  return r ? toReminder(r) : null
+  return r ? toReminder(r, mediaUrls(db, hid)) : null
 }
 
 export function saveReminder(
@@ -283,7 +297,10 @@ export function parentDayItems(db: DB, h: HouseholdRow, date: string, now = new 
     items.push({
       type: 'reminder',
       key: `${r.id}:${date}`,
-      reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes },
+      reminder: {
+        id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes,
+        photoUrl: r.photoUrl, voiceUrl: r.voiceUrl,
+      },
       occurrenceDate: date,
       status: st.status,
       snoozeUntil: st.snoozeUntil,
@@ -314,4 +331,15 @@ export function familyDayStatuses(db: DB, h: HouseholdRow, date: string, now = n
       const st = occurrenceStatus(r, date, h.time_zone, latest, now)
       return { reminder: r, status: st.status, snoozeUntil: st.snoozeUntil, answeredAt: latest?.createdAt ?? null }
     })
+}
+
+/** The first reminder or lift on a date (for "tomorrow starts with …"). */
+export function firstItemOn(db: DB, h: HouseholdRow, date: string): { title: string; time: string } | null {
+  const candidates = [
+    ...listReminders(db, h.id)
+      .filter((r) => occursOn(r, date))
+      .map((r) => ({ title: r.title, time: r.time })),
+    ...arrangedLiftsOn(db, h.id, date).map((l) => ({ title: `Lift to ${l.destinationLabel}`, time: l.time })),
+  ].sort((a, b) => (a.time < b.time ? -1 : 1))
+  return candidates[0] ?? null
 }

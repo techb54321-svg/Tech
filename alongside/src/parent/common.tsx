@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import { House, Phone, Volume2, Square } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { AudioLines, House, Phone, Volume2, Square } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { canSpeak, speak, stopSpeaking } from '../speech'
-import { navigate } from '../route'
+import { useNavigate } from '../route'
 
 /** Shell for every parent screen after Home: a clearly labelled Home button, then one task. */
 export function ParentScreen({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
@@ -26,6 +26,75 @@ export function H1({ children, className = 'p-h1' }: { children: ReactNode; clas
       {children}
     </h1>
   )
+}
+
+/** Play a family voice message. Returns a stop function. */
+export function playVoice(url: string, onEnd: () => void): () => void {
+  const audio = new Audio(url)
+  audio.onended = onEnd
+  audio.onerror = onEnd
+  audio.play().catch(onEnd)
+  return () => {
+    audio.pause()
+    onEnd()
+  }
+}
+
+/**
+ * One "listen" control. With a family voice message it plays that ("Hear Anna");
+ * otherwise it reads the text with the device voice. The words stay on screen.
+ */
+export function Listen({
+  text,
+  voiceUrl,
+  name,
+  autoPlay,
+  onAutoPlayed,
+}: {
+  text: string
+  voiceUrl: string | null
+  name: string
+  autoPlay?: boolean
+  onAutoPlayed?: () => void
+}) {
+  const [playing, setPlaying] = useState(false)
+  const stopRef = useRef<null | (() => void)>(null)
+  const stop = () => {
+    stopRef.current?.()
+    stopRef.current = null
+    stopSpeaking()
+    setPlaying(false)
+  }
+  const start = () => {
+    if (voiceUrl) {
+      stopRef.current = playVoice(voiceUrl, () => setPlaying(false))
+      setPlaying(true)
+    } else if (speak(text, () => setPlaying(false))) {
+      setPlaying(true)
+    }
+  }
+  useEffect(() => stop, [text, voiceUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!autoPlay) return
+    onAutoPlayed?.()
+    // Browsers may block sound until the screen has been touched; the button still works.
+    start()
+  }, [autoPlay]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!voiceUrl && !canSpeak) return null
+  const label = playing ? (voiceUrl ? 'Stop' : 'Stop reading') : voiceUrl ? `Hear ${name}` : 'Read aloud'
+  return (
+    <button type="button" className={`small-btn read-btn${voiceUrl ? ' voice' : ''}`} onClick={() => (playing ? stop() : start())}>
+      {playing ? <Square aria-hidden="true" /> : voiceUrl ? <AudioLines aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
+      {label}
+    </button>
+  )
+}
+
+/** A family photo shown large, to help recognise the thing or place. */
+export function Photo({ url, alt }: { url: string | null; alt: string }) {
+  const [failed, setFailed] = useState(false)
+  if (!url || failed) return null
+  return <img className="p-photo" src={url} alt={alt} onError={() => setFailed(true)} />
 }
 
 /** Read-aloud button. Hidden where the device has no speech; the text stays on screen regardless. */
@@ -80,6 +149,7 @@ export function CallButton({
   className?: string
   label?: string
 }) {
+  const navigate = useNavigate()
   const text = label ?? `Call ${name}`
   const content = (
     <>

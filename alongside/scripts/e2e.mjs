@@ -38,7 +38,8 @@ await new Promise((resolve, reject) => {
   server.on('exit', (c) => reject(new Error('server exited ' + c)))
 })
 
-const browser = await chromium.launch()
+// A fake microphone lets the voice recorder run for real in headless Chromium.
+const browser = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] })
 const step = (m) => console.log('·', m)
 const origNewContext = browser.newContext.bind(browser)
 browser.newContext = async (o) => {
@@ -70,6 +71,7 @@ async function inspect(page, label, { parent = true } = {}) {
     while (walker.nextNode()) {
       const n = walker.currentNode
       if (!n.textContent.trim() || !n.parentElement || !visible(n.parentElement)) continue
+      if (n.parentElement.closest('.table-scroll')) continue // wide tables scroll inside their own box
       const box = n.parentElement.closest('button, a, p, h1, h2, h3, li, label, .pill, .status, .dest-card') || n.parentElement
       const b = box.getBoundingClientRect()
       range.selectNodeContents(n)
@@ -330,7 +332,7 @@ step('Medication uncertainty')
   const notSureText = await page.locator('main').textContent()
   check(!/dose|another|extra|skip/i.test(notSureText), `medication: "Not sure" screen gives dosing advice: ${notSureText}`)
   await page.goto(BASE + '/#/family')
-  await page.getByText('Evening tablets').waitFor()
+  await page.locator('li', { hasText: 'Evening tablets' }).waitFor()
   const row = await page.locator('li', { hasText: 'Evening tablets' }).textContent()
   check(row.includes('Not sure — not confirmed') && !row.includes('Reported taken'), `family: evening tablets shows "${row}"`)
   const shower = await page.locator('li', { hasText: 'Shower' }).textContent()
@@ -486,6 +488,101 @@ step('Real (non-demo)')
   check(res.status() === 401, `real account: parent device read family data (${res.status()})`)
   await fam.close()
   await par.close()
+}
+
+// ---------------------------------------------------------------- photos, voice, templates, week, end of day
+step('Photos, voice, week and end of day')
+{
+  const { ctx, page } = await newDemo({ width: 390, height: 844 }, { permissions: ['microphone'] })
+  const t = await today(page)
+  await gotoItem(page, keyOf(t, 'Morning tablets'))
+  const photoOk = await page.locator('img.p-photo').evaluate((img) => img.complete && img.naturalWidth > 0)
+  check(photoOk, 'photo: reminder photo did not load')
+  await shot(page, '390', '50-reminder-with-photo')
+  await page.goto(BASE + '/#/lift')
+  await page.getByRole('heading', { name: 'Where to?' }).waitFor()
+  check((await page.locator('.big-btn img.thumb').count()) === 3, 'photo: place thumbnails missing')
+  await shot(page, '390', '51-lift-with-photos')
+  await page.getByRole('button', { name: 'Medical centre' }).click()
+  await shot(page, '390', '52-lift-confirm-photo')
+
+  // Family records a voice message on "Shower" with the (fake) microphone.
+  await page.goto(BASE + '/#/family/reminders')
+  await page.locator('li', { hasText: 'Shower' }).getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Record a message' }).click()
+  await page.getByText('Recording… speak now.').waitFor()
+  await page.waitForTimeout(1500)
+  await page.getByRole('button', { name: /Stop recording/ }).click()
+  await page.getByRole('button', { name: 'Remove message' }).waitFor()
+  await page.getByRole('button', { name: 'Save changes' }).click()
+  await page.getByText('Saved changes to “Shower”.').waitFor()
+  check((await page.locator('li', { hasText: 'Shower' }).getByText('Voice message').count()) === 1, 'voice: not marked on the reminder')
+  await gotoItem(page, keyOf(t, 'Shower'))
+  const hear = page.getByRole('button', { name: 'Hear Anna' })
+  check((await hear.count()) === 1, 'voice: parent has no "Hear Anna" button')
+  await shot(page, '390', '53-reminder-with-voice')
+
+  // Quick-start templates fill the form.
+  await page.goto(BASE + '/#/family/reminders')
+  await page.getByRole('button', { name: 'Add a reminder' }).click()
+  await page.getByRole('button', { name: 'Drink a glass of water' }).click()
+  check((await page.getByLabel('Short title').inputValue()) === 'Drink a glass of water', 'templates: title not filled')
+  await shot(page, '390', '54-family-templates', { parent: false })
+
+  // Week grid renders, also on a narrow phone.
+  await page.goto(BASE + '/#/family')
+  await page.locator('table.week tbody tr').first().waitFor()
+  check((await page.locator('table.week tbody tr').count()) >= 5, 'week: rows missing')
+  await page.setViewportSize({ width: 320, height: 640 })
+  await page.locator('table.week').scrollIntoViewIfNeeded()
+  await shot(page, '320', '55-family-week', { parent: false })
+  await page.setViewportSize({ width: 390, height: 844 })
+
+  // End of day: answer everything, then "That's everything for today".
+  const me = await (await page.request.get(BASE + '/api/auth/me')).json()
+  const fresh = await today(page)
+  for (const i of fresh.items) {
+    if (i.type !== 'reminder' || ['done', 'reported_taken', 'not_today'].includes(i.status)) continue
+    const action = i.reminder.kind === 'medication' ? 'taken' : i.reminder.kind === 'appointment' ? 'done' : 'not_today'
+    await page.request.post(BASE + '/api/parent/responses', {
+      headers: { 'X-Alongside': '1' },
+      data: { clientRequestId: crypto.randomUUID(), reminderId: i.reminder.id, occurrenceDate: i.occurrenceDate, action },
+    })
+  }
+  check(!!me.parent, 'end of day: no parent session')
+  await page.goto(BASE + '/#/day')
+  const liftLater = fresh.items.some((i) => i.type === 'lift' && i.lift.time > new Intl.DateTimeFormat('en-GB', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit' }).format(new Date()))
+  if (liftLater) notes.push('end-of-day screen not checked: the demo lift is still ahead today')
+  else {
+    await page.getByRole('heading', { name: 'That’s everything for today' }).waitFor()
+    check(await page.getByText(/Tomorrow starts with/).isVisible(), 'end of day: tomorrow line missing')
+    await shot(page, '390', '56-all-done')
+  }
+  await ctx.close()
+}
+
+// ---------------------------------------------------------------- side-by-side, live
+step('Side by side')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
+  ctx.setDefaultTimeout(15000)
+  const page = await ctx.newPage()
+  page.on('pageerror', (e) => failures.push('page error: ' + e.message))
+  await page.goto(BASE + '/')
+  await page.getByRole('button', { name: 'See both screens side by side' }).click()
+  const phone = page.getByRole('region', { name: 'Margaret’s phone' })
+  const fam = page.getByRole('region', { name: 'Anna’s family area' })
+  await phone.getByRole('link', { name: 'Get a lift' }).click()
+  await phone.getByRole('button', { name: 'Shops' }).click()
+  await phone.getByRole('button', { name: 'Ask Anna for a lift' }).click()
+  await phone.getByRole('heading', { name: 'Request saved' }).waitFor()
+  const t0 = Date.now()
+  await fam.getByText('Lift to Shops').first().waitFor({ timeout: 5000 })
+  notes.push(`side by side: family view updated ${Date.now() - t0} ms after the request was saved`)
+  check(page.url().endsWith('#/both'), 'side by side: panes changed the page address')
+  await page.mouse.move(0, 0)
+  await page.screenshot({ path: join(shotsDir, 'showcase.png') })
+  await ctx.close()
 }
 
 await browser.close()

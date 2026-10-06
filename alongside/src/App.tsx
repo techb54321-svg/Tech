@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
-import { navigate, useRoute } from './route'
+import { useNavigate, useRoute } from './route'
 import { ParentApp } from './parent/ParentApp'
 import { FamilyApp } from './family/FamilyApp'
 import { Welcome, PairDevice } from './Welcome'
+import { Showcase } from './Showcase'
 
 export interface Me {
   family: {
@@ -52,11 +53,17 @@ export function App() {
     )
   }
 
+  if (path === '/both' && me.parent && me.family?.isDemo) return <Showcase me={me} />
   if (path.startsWith('/family')) return <FamilyApp me={me} path={path} reloadMe={reload} />
   if (path === '/pair') return <PairDevice onPaired={reload} />
   if (path === '/welcome' || (!me.parent && !me.family)) return <Welcome reloadMe={reload} />
   if (me.parent) return <ParentApp path={path} onSignedOut={reload} />
   // Signed-in family member on their own device: go to the family area.
-  navigate('/family', true)
+  return <Redirect to="/family" />
+}
+
+function Redirect({ to }: { to: string }) {
+  const navigate = useNavigate()
+  useEffect(() => navigate(to, true), [navigate, to])
   return null
 }

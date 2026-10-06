@@ -11,6 +11,8 @@ export interface FamilyInfo {
     pharmacyName: string
     pharmacyPhone: string
     smsAlerts: boolean
+    autoSpeak: boolean
+    keepAwake: boolean
     isDemo: boolean
   }
   today: string

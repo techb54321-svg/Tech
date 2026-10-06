@@ -16,10 +16,10 @@ import {
   CircleX,
 } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
-import { navigate, useScreenFocus } from '../route'
+import { useNavigate, useScreenFocus } from '../route'
 import { formatInstantTime, formatTime12, localTimeHM, zonedTimeToInstant } from '../../shared/time'
 import type { DayItem, MessageStatus, ParentToday, ResponseAction } from '../../shared/types'
-import { CallButton, H1, ParentScreen, ReadAloud } from './common'
+import { CallButton, H1, Listen, ParentScreen, Photo } from './common'
 import { liveStatus } from './ParentApp'
 
 type ReminderItem = Extract<DayItem, { type: 'reminder' }>
@@ -48,9 +48,39 @@ type Ack =
   | { kind: 'saved'; action: ResponseAction; snoozeUntil: string | null; messageStatus: MessageStatus | null }
   | { kind: 'error'; action: ResponseAction; requestId: string; message: string }
 
-export function MyDay({ today, itemKey, reload }: { today: ParentToday; itemKey: string | null; reload: () => void }) {
+/** True when nothing is left to answer and every lift has gone. */
+function dayIsDone(items: DayItem[], tz: string): boolean {
+  const now = Date.now()
+  const hm = localTimeHM(new Date(), tz)
+  return (
+    items.length > 0 &&
+    items.every((i) => {
+      if (i.type === 'lift') return i.lift.time < hm
+      const s = liveStatus(i, now)
+      // An unanswered medication reminder is never "finished": it may still be answered.
+      if (s === 'no_response') return i.reminder.kind !== 'medication'
+      return s === 'done' || s === 'reported_taken' || s === 'not_today' || s === 'help_requested'
+    })
+  )
+}
+
+export function MyDay({
+  today,
+  itemKey,
+  reload,
+  autoPlayKey,
+  clearAutoPlay,
+}: {
+  today: ParentToday
+  itemKey: string | null
+  reload: () => void
+  autoPlayKey: string | null
+  clearAutoPlay: () => void
+}) {
+  const navigate = useNavigate()
   const items = today.items
   let idx = itemKey ? items.findIndex((i) => i.key === itemKey) : -1
+  const allDone = !itemKey && dayIsDone(items, today.timeZone)
   if (idx < 0) idx = startIndex(items, today.timeZone)
   const item = items[idx] as DayItem | undefined
   const [ack, setAck] = useState<Ack | null>(null)
@@ -63,16 +93,36 @@ export function MyDay({ today, itemKey, reload }: { today: ParentToday; itemKey:
     setChanging(false)
   }, [item?.key])
 
-  if (!item) {
+  const go = (i: number) => navigate(`/day/${encodeURIComponent(items[i].key)}`)
+  if (!item || allDone) {
     return (
       <ParentScreen>
-        <H1>Nothing planned today</H1>
-        <p className="p-body">Enjoy your day.</p>
+        <div className="ack" role="status">
+          <div className="ack-icon ok">
+            <Check aria-hidden="true" />
+          </div>
+          <H1>{item ? 'That’s everything for today' : 'Nothing planned today'}</H1>
+          {today.tomorrow && (
+            <p className="p-body">
+              Tomorrow starts with <strong>{today.tomorrow.title}</strong> at {formatTime12(today.tomorrow.time)}.
+            </p>
+          )}
+          <div className="btn-stack">
+            <a className="big-btn blue medium" href="#/">
+              <House aria-hidden="true" />
+              <span>Home</span>
+            </a>
+            {item && (
+              <button type="button" className="small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => go(0)}>
+                Look back at today
+              </button>
+            )}
+          </div>
+        </div>
       </ParentScreen>
     )
   }
 
-  const go = (i: number) => navigate(`/day/${encodeURIComponent(items[i].key)}`)
   const hasNext = idx < items.length - 1
   const nextButton = hasNext ? (
     <button className="big-btn blue medium" onClick={() => go(idx + 1)}>
@@ -146,7 +196,7 @@ export function MyDay({ today, itemKey, reload }: { today: ParentToday; itemKey:
           </p>
         )}
         <p className="p-note">Family-entered details, from {l.enteredByName}</p>
-        <ReadAloud text={`${time}. Lift to ${l.destinationLabel}. ${l.details}`} />
+        <Listen text={`${time}. Lift to ${l.destinationLabel}. ${l.details}`} voiceUrl={null} name={today.contactName} />
         <Nav idx={idx} count={items.length} go={go} />
       </ParentScreen>
     )
@@ -165,6 +215,7 @@ export function MyDay({ today, itemKey, reload }: { today: ParentToday; itemKey:
     <ParentScreen aside={position}>
       <p className="p-time">{time}</p>
       <H1>{r.title}</H1>
+      <Photo url={r.photoUrl} alt={`Photo for ${r.title}`} />
       <p className="p-kind">
         <Icon aria-hidden="true" /> {label}
       </p>
@@ -176,7 +227,13 @@ export function MyDay({ today, itemKey, reload }: { today: ParentToday; itemKey:
       )}
       {r.notes && <p className="p-detail">{r.notes}</p>}
       <StatusLine item={item} status={status} today={today} startsLater={startsLater} />
-      <ReadAloud text={[time, r.title, r.location, r.notes].filter(Boolean).join('. ')} />
+      <Listen
+        text={[time, r.title, r.location, r.notes].filter(Boolean).join('. ')}
+        voiceUrl={r.voiceUrl}
+        name={today.contactName}
+        autoPlay={today.autoSpeak && autoPlayKey === item.key && !ack}
+        onAutoPlayed={clearAutoPlay}
+      />
 
       {settled && !changing ? (
         <div className="btn-stack">

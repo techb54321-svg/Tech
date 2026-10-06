@@ -7,7 +7,17 @@ import { nowIso, tx } from './db.js'
 import { addDestination, createHousehold, saveReminder, todayFor, getHousehold } from './store.js'
 import { createSession } from './auth.js'
 import { localDateISO, zonedTimeToInstant } from '../shared/time.js'
-import { DEMO_FAMILY_NAME, demoDestinations, demoLift, demoReminders, demoSettings } from '../shared/demoSeed.js'
+import {
+  DEMO_FAMILY_NAME,
+  demoDestinationPhotos,
+  demoDestinations,
+  demoLift,
+  demoReminderPhotos,
+  demoReminders,
+  demoSettings,
+} from '../shared/demoSeed.js'
+import { demoMedia } from '../shared/demoMedia.js'
+import { decodeMedia, saveMedia } from './media.js'
 
 export const DEMO_TZ = demoSettings.timeZone
 
@@ -32,9 +42,17 @@ export function createDemo(db: DB, now = new Date()) {
     )
 
     const today = todayFor(getHousehold(db, hid), now)
-    for (const d of demoDestinations) addDestination(db, hid, d)
     const ids: Record<string, string> = {}
     for (const r of demoReminders(today)) ids[r.key] = saveReminder(db, hid, r.input, DEMO_FAMILY_NAME)!
+    demoDestinations.forEach((d, i) => {
+      const id = addDestination(db, hid, d)
+      const img = decodeMedia('photo', demoMedia[demoDestinationPhotos[i]])
+      saveMedia(db, hid, 'destination', id, 'photo', img.mime, img.data)
+    })
+    for (const [key, pic] of Object.entries(demoReminderPhotos)) {
+      const img = decodeMedia('photo', demoMedia[pic])
+      saveMedia(db, hid, 'reminder', ids[key], 'photo', img.mime, img.data)
+    }
 
     // A lift Anna has already arranged, entered by family.
     db.prepare(

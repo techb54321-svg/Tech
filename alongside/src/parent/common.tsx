@@ -87,7 +87,9 @@ export function Listen({
   name,
   autoPlay,
   onAutoPlayed,
+  className = 'small-btn read-btn',
 }: {
+  className?: string
   text: string
   voiceUrl: string | null
   name: string
@@ -120,7 +122,7 @@ export function Listen({
   if (!voiceUrl && !canSpeak) return null
   const label = playing ? (voiceUrl ? 'Stop' : 'Stop reading') : voiceUrl ? `Hear ${name}` : 'Read aloud'
   return (
-    <button type="button" className={`small-btn read-btn${voiceUrl ? ' voice' : ''}`} onClick={() => (playing ? stop() : start())}>
+    <button type="button" className={`${className}${voiceUrl ? ' voice' : ''}`} onClick={() => (playing ? stop() : start())}>
       {playing ? <Square aria-hidden="true" /> : voiceUrl ? <AudioLines aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
       {label}
     </button>

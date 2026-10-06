@@ -109,15 +109,39 @@ async function inspect(page, label, { parent = true } = {}) {
         if (!visible(el)) return
         if (el.getBoundingClientRect().height < 88) out.small.push(`button height ${el.getBoundingClientRect().height}: ${el.textContent.trim()}`)
       })
-      document.querySelectorAll('.tile').forEach((el) => el.getBoundingClientRect().height < 140 && out.small.push('home tile < 140px'))
-      document.querySelectorAll('.tile-label').forEach((el) => px(el) < 32 && out.small.push(`tile label ${px(el)}px`))
+      // The board: flat tiles with big capitals, buttons big enough to press.
+      document.querySelectorAll('.ftile').forEach((el) => visible(el) && el.getBoundingClientRect().height < 140 && out.small.push('tile < 140px'))
+      // Tile words: big, and never split across two lines ("PUZZLE / S").
+      document.querySelectorAll('.tlabel').forEach((el) => {
+        if (!visible(el)) return
+        if (px(el) < 24 || (px(el) < 32 && el.closest('.ftile').getBoundingClientRect().width > 220)) out.small.push(`tile label ${px(el)}px: ${el.textContent.trim().slice(0, 20)}`)
+      })
+      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail').forEach((el) => {
+        if (!visible(el)) return
+        const words = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        const rg = document.createRange()
+        while (words.nextNode()) {
+          const n = words.currentNode
+          for (const m of n.textContent.matchAll(/\S+/g)) {
+            rg.setStart(n, m.index)
+            rg.setEnd(n, m.index + m[0].length)
+            const tops = new Set([...rg.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)))
+            if (tops.size > 1) out.clipped.push(`word split over lines: ${m[0]}`)
+          }
+        }
+      })
+      document.querySelectorAll('.tile-btn:not(.small)').forEach((el) => {
+        if (!visible(el)) return
+        if (px(el) < 20 || (px(el) < 28 && el.closest('.ftile').getBoundingClientRect().width > 300)) out.small.push(`tile button ${px(el)}px: ${el.textContent.trim()}`)
+        if (el.getBoundingClientRect().height < 60) out.small.push(`tile button height ${el.getBoundingClientRect().height}: ${el.textContent.trim()}`)
+      })
       document.querySelectorAll('main h1').forEach((el) => px(el) < 40 && out.small.push(`h1 ${px(el)}px`))
       // The day and time, in big letters, on every parent screen.
       const day = document.querySelector('.clock-day')
       const time = document.querySelector('.clock-time')
       if (!day || !time) out.small.push('no day and time shown')
       else if (px(day) < 32 || px(time) < 40) out.small.push(`day/time too small: ${px(day)}/${px(time)}`)
-      document.querySelectorAll('.p-body, .p-detail, .p-date, .status').forEach((el) => visible(el) && px(el) < 24 && out.small.push(`body ${px(el)}px: ${el.textContent.trim().slice(0, 30)}`))
+      document.querySelectorAll('.p-body, .p-detail, .p-date, .status, .tsub, .car-strip-words, .ws-intro').forEach((el) => visible(el) && px(el) < (el.closest('.ftile:not(.wide)') ? 20 : 24) && out.small.push(`body ${px(el)}px: ${el.textContent.trim().slice(0, 30)}`))
       // WCAG contrast of button text against its background.
       const lum = (c) => {
         const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number).map((v) => {
@@ -126,11 +150,18 @@ async function inspect(page, label, { parent = true } = {}) {
         })
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
       }
-      document.querySelectorAll('.big-btn, .home-btn, .small-btn, .tile, .song-btn, .yn').forEach((el) => {
+      // The nearest painted background behind an element.
+      const backdrop = (el) => {
+        for (let p = el; p; p = p.parentElement) {
+          const bg = getComputedStyle(p).backgroundColor
+          if (bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') return bg
+        }
+        return getComputedStyle(document.body).backgroundColor
+      }
+      document.querySelectorAll('.big-btn, .small-btn, .tile-btn, .ftile:not(.photo-tile), .tlabel, .tsub, .tile-close, .board-bar').forEach((el) => {
         if (!visible(el) || el.disabled) return
         const s = getComputedStyle(el)
-        let bg = s.backgroundColor
-        if (bg === 'rgba(0, 0, 0, 0)') bg = getComputedStyle(document.body).backgroundColor
+        const bg = backdrop(el)
         const [l1, l2] = [lum(s.color), lum(bg)].sort((a, b) => b - a)
         const ratio = (l1 + 0.05) / (l2 + 0.05)
         if (ratio < 4.5) out.contrast.push(`${el.textContent.trim()}: ${ratio.toFixed(2)}`)
@@ -159,17 +190,24 @@ async function newDemo(viewport, extra = {}) {
   page.on('pageerror', (e) => failures.push('page error: ' + e.message))
   await page.goto(BASE + '/')
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
-  await page.getByRole('link', { name: 'My day' }).waitFor()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
   return { ctx, page }
 }
 
 const today = async (page) => (await page.request.get(BASE + '/api/parent/today')).json()
-const keyOf = (t, title) => t.items.find((i) => (i.type === 'reminder' ? i.reminder.title : `Lift to ${i.lift.destinationLabel}`) === title).key
-const gotoItem = async (page, key) => {
-  await page.goto(`${BASE}/#/day/${encodeURIComponent(key)}`)
-  await page.locator('main h1').waitFor()
-}
 const householdId = async (page) => (await (await page.request.get(BASE + '/api/auth/me')).json()).family.households[0].id
+/** The parent never leaves the board: the address stays on Home. */
+const onHome = (page) => {
+  const hash = new URL(page.url()).hash
+  return hash === '' || hash === '#/' || hash === '#'
+}
+/** The tile for a routine that is due now. */
+const dueTile = (page, question) => page.locator('.reminder-tile', { hasText: question })
+const homeAgain = async (page) => {
+  await page.goto(BASE + '/#/')
+  await page.reload()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
+}
 
 /** Sydney wall-clock date and time, `minutes` from now. */
 function sydney(minutes) {
@@ -180,13 +218,13 @@ function sydney(minutes) {
   return { date: `${g('year')}-${g('month')}-${g('day')}`, time: `${g('hour')}:${g('minute')}` }
 }
 // Tests create their own reminders that are due right now, so they behave the same at any time of day.
-const nearMidnight = sydney(-10).date !== sydney(40).date
+const nearMidnight = sydney(-10).date !== sydney(150).date
 if (nearMidnight) {
   console.log('Too close to midnight in Sydney for the timed checks; run again after 00:10.')
   process.exit(2)
 }
 let made = 0
-async function addDue(page, { kind = 'routine', title, question = '', location = '', notes = '', share = true, minutes = -3 }) {
+async function addDue(page, { kind = 'routine', title, question = '', location = '', notes = '', share = true, minutes = -3, extra = {} }) {
   const hid = await householdId(page)
   // Small stagger for items due now, so their order is stable; future items keep their exact offset.
   const at = sydney(kind === 'appointment' || kind === 'social' ? 30 : minutes < 0 ? minutes - (made++ % 10) / 10 : minutes)
@@ -194,13 +232,13 @@ async function addDue(page, { kind = 'routine', title, question = '', location =
     headers: { 'X-Alongside': '1' },
     data: {
       kind, title, time: at.time, startDate: at.date, repeat: 'none', endDate: null, location, notes, question,
-      remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share,
+      remindMinutesBefore: kind === 'appointment' || kind === 'social' ? 60 : 0, shareResponses: share, ...extra,
     },
   })
   const { id } = await r.json()
   return `${id}:${at.date}`
 }
-/** Answer everything that is due, so My day has nothing left for now. */
+/** Answer everything that is due, so the board has nothing to ask for now. */
 async function answerAllDue(page) {
   const t = await today(page)
   for (const i of t.items) {
@@ -214,19 +252,23 @@ async function answerAllDue(page) {
   }
 }
 
-/** Find each word across or down in the grid and tap its letters, checking the found-word feedback. */
+/** Find each word across, down or diagonally in the 8 × 8 grid and tap its letters. */
 async function solveWordSearch(page) {
   const words = (await page.locator('.ws-words li').allTextContents()).map((w) => w.replace(/[^A-Z]/g, ''))
+  check(words.length === 6, `puzzle: ${words.length} words to find, not 6`)
+  const n = Math.round(Math.sqrt(await page.locator('.ws-cell').count()))
+  check(n === 8, `puzzle: grid is ${n} × ${n}, not 8 × 8`)
+  let diagonals = 0
   for (const word of words) {
     const letters = (await page.locator('.ws-cell').allTextContents()).map((l) => l.trim())
-    const n = 6
     let cells = null
     for (let r = 0; r < n && !cells; r++)
       for (let c = 0; c < n && !cells; c++)
-        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+        for (const [dr, dc] of [[0, 1], [1, 0], [1, 1]]) {
           const idx = [...word].map((_, i) => (r + dr * i) * n + (c + dc * i))
           if (r + dr * (word.length - 1) < n && c + dc * (word.length - 1) < n && idx.every((x, i) => letters[x] === word[i])) {
             cells = idx
+            if (dr && dc) diagonals++
             break
           }
         }
@@ -236,116 +278,99 @@ async function solveWordSearch(page) {
     for (const x of [...cells].reverse()) await page.locator('.ws-cell').nth(x).click()
     if (words.indexOf(word) < words.length - 1) await page.getByText(`Yes! You found ${word}.`).waitFor()
   }
+  return diagonals
 }
 
 // ---------------------------------------------------------------- screens at each width
+let sawDiagonal = false
 for (const v of WIDTHS) {
   step('width ' + v.name)
   const { ctx, page } = await newDemo({ width: v.width, height: v.height })
 
   await shot(page, v.name, '01-home')
-  // Home: the day and time, a greeting, picture tiles and the quiet family link.
-  const tiles = await page.locator('.tiles .tile-label').allTextContents()
-  for (const want of ['My day', 'Call Anna', 'Call Sarah', 'Taxi', 'Puzzles', 'Photos', 'Music']) check(tiles.includes(want), `${v.name}/home: no "${want}" tile (${tiles.join(', ')})`)
-  check((await page.locator('.tiles .tile .tile-pic').count()) === tiles.length, `${v.name}/home: a tile has no picture`)
-
-  const kettle = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
-  const routine = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
-  const appt = await addDue(page, { kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street', notes: 'Anna will drive you.' })
-  const routine2 = await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
-
-  await gotoItem(page, kettle)
-  check(await page.getByText('Have you had a cup of tea?').isVisible(), `${v.name}: routine question missing`)
-  const answers = await page.locator('.answers button').allTextContents()
-  check(answers.join('|') === 'Yes|Not yet|No, not today', `${v.name}: routine answers are ${answers.join('|')}`)
-  check((await page.getByText(/of \d+$/).count()) === 0 && (await page.getByRole('button', { name: /Previous/ }).count()) === 0, `${v.name}: counters or browsing still shown`)
-  check(!/medication|tablet|dose/i.test(await page.locator('body').textContent()), `${v.name}: medication still mentioned`)
-  await shot(page, v.name, '02-day-question')
-  await gotoItem(page, routine)
-  check(await page.getByText('Have you watered the plants?').isVisible(), `${v.name}: routine question missing`)
-  await shot(page, v.name, '03-day-routine')
-  await gotoItem(page, appt)
-  check((await page.locator('.answers button').allTextContents()).join('|') === 'Okay', `${v.name}: appointment should only offer Okay`)
-  await shot(page, v.name, '04-day-appointment')
-
-  await page.goto(BASE + '/#/day/plan')
-  await page.getByRole('heading', { name: 'Today’s plan' }).waitFor()
-  await shot(page, v.name, '05-day-plan')
-
-  // Answers and their gentle replies
-  await gotoItem(page, routine)
-  await page.getByRole('button', { name: 'Not yet' }).click()
-  await page.getByText('I’ll ask you again soon.').waitFor()
-  await shot(page, v.name, '06-ack-not-yet')
-  await gotoItem(page, kettle)
-  await page.getByRole('button', { name: 'No, not today' }).click()
-  await page.getByText('Not today. That’s fine.').waitFor()
-  await shot(page, v.name, '07-ack-not-today')
-  await gotoItem(page, appt)
-  await page.getByRole('button', { name: 'I need help' }).click()
-  await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
-  await shot(page, v.name, '08-ack-need-help')
-  await gotoItem(page, routine2)
-  await page.getByRole('button', { name: 'Yes' }).click()
-  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
-  await shot(page, v.name, '09-ack-yes')
+  // One board of flat colour tiles: no "My day", nothing that opens another screen.
+  const labels = (await page.locator('.board .tlabel').allTextContents()).map((t) => t.trim())
+  for (const want of ['Call Anna', 'Call Sarah', 'Taxi', 'Puzzles', 'Music']) check(labels.includes(want), `${v.name}/home: no "${want}" tile (${labels.join(', ')})`)
+  check((await page.locator('.board .photo-tile img.tphoto').count()) === 1, `${v.name}/home: no photo tile`)
+  check((await page.getByText('My day', { exact: true }).count()) === 0, `${v.name}/home: "My day" still shown`)
+  check((await page.locator('.board a[href^="#/"]:not(.board-bar)').count()) === 0, `${v.name}/home: a tile links to another screen`)
+  const text = await page.locator('body').textContent()
+  check(!/medication|tablet|dose/i.test(text), `${v.name}: medication still mentioned`)
+  check(!/driving|Sue the carer/i.test(text), `${v.name}: who is driving still shown`)
 
   await answerAllDue(page)
-  await page.goto(BASE + '/#/day')
-  await page.reload()
-  await page.locator('main h1').waitFor()
-  await page.waitForTimeout(300)
-  const h1 = await page.locator('main h1').textContent()
-  check(['Nothing to do right now', 'That’s everything for today'].includes(h1), `${v.name}: nothing-due screen shows "${h1}"`)
-  await shot(page, v.name, '09b-nothing-now')
+  const tea = 'Have you had a cup of tea?'
+  const plants = 'Have you watered the plants?'
+  const cat = 'Have you fed the cat?'
+  const walk = 'Have you been for your walk?'
+  await addDue(page, { title: 'Cup of tea', question: tea, notes: 'The kettle is on the bench.' })
+  await addDue(page, { title: 'Water the plants', question: plants })
+  await addDue(page, { title: 'Feed the cat', question: cat })
+  await addDue(page, { title: 'Walk', question: walk })
+  await addDue(page, { kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street', notes: 'Bring your glasses.' })
+  await homeAgain(page)
+  await dueTile(page, tea).waitFor()
+  check(await dueTile(page, tea).getByText('The kettle is on the bench.').isVisible(), `${v.name}: routine notes missing`)
+  const answers = (await dueTile(page, tea).locator('.answer-grid button').allTextContents()).map((t) => t.trim())
+  check(answers.join('|') === 'Yes|Not yet|No|Help', `${v.name}: routine answers are ${answers.join('|')}`)
+  check(await page.locator('.event-tile', { hasText: 'Hairdresser' }).isVisible(), `${v.name}: appointment tile missing`)
+  await shot(page, v.name, '02-home-due')
 
-  // Lift flow
-  await page.goto(BASE + '/#/')
-  await page.getByRole('link', { name: 'Taxi' }).click()
-  await page.getByRole('heading', { name: 'Where to?' }).waitFor()
-  await shot(page, v.name, '10-lift-where')
+  // Every answer is given on the tile; the screen never changes.
+  await dueTile(page, plants).getByRole('button', { name: 'Not yet' }).click()
+  await page.getByText('Okay. I’ll ask again soon.').waitFor()
+  await dueTile(page, tea).getByRole('button', { name: 'No', exact: true }).click()
+  await page.getByText('Okay. Not today.').waitFor()
+  await dueTile(page, cat).getByRole('button', { name: 'Help' }).click()
+  await page.getByText('Your message is saved for Anna').waitFor()
+  await dueTile(page, walk).getByRole('button', { name: 'Yes', exact: true }).click()
+  await page.getByText('Thank you, Margaret').waitFor()
+  check(onHome(page), `${v.name}: answering moved to ${page.url()}`)
+  await shot(page, v.name, '03-home-answered')
+  // The thank-you tiles go once read.
+  await page.waitForTimeout(8500)
+  check((await page.locator('.reminder-tile').count()) === 0, `${v.name}: answered tiles stayed on the board`)
+  await shot(page, v.name, '04-home-clear')
+
+  // Taxi opens on its own tile.
+  await page.getByRole('button', { name: 'Taxi' }).click()
+  await page.getByText('Where to?').waitFor()
+  await shot(page, v.name, '10-taxi-where')
   await page.getByRole('button', { name: 'Somewhere else' }).click()
   await page.getByLabel('Type the place or address').fill('Wattleton Library')
-  await shot(page, v.name, '11-lift-other')
-  await page.getByRole('button', { name: 'Next' }).click()
-  await page.getByRole('heading', { name: 'Going to' }).waitFor()
-  await shot(page, v.name, '12-lift-confirm')
-  await page.getByRole('button', { name: 'Ask Anna for a lift' }).click()
-  await page.getByRole('heading', { name: 'Request saved' }).waitFor()
-  await shot(page, v.name, '13-lift-asked')
-  await page.goto(BASE + '/#/lift')
+  await shot(page, v.name, '11-taxi-other')
+  await page.getByRole('button', { name: 'That’s the place' }).click()
+  await page.getByText('Going to').waitFor()
+  await shot(page, v.name, '12-taxi-confirm')
+  await page.getByRole('button', { name: 'Ask Anna' }).click()
+  await page.getByText('Request saved. Anna will see it in Alongside.').waitFor()
+  await shot(page, v.name, '13-taxi-asked')
+  await page.getByRole('button', { name: 'Choose a different place' }).click()
   await page.getByRole('button', { name: 'Medical centre' }).click()
   const uber = page.getByRole('link', { name: 'Book in Uber' })
   const href = await uber.getAttribute('href')
   check(href.startsWith('https://m.uber.com/ul/?action=setPickup') && href.includes('Banksia'), `${v.name}: Uber link ${href}`)
   ctx.on('page', (p) => p.close())
   await uber.click()
-  await page.getByRole('heading', { name: 'Finish in Uber' }).waitFor()
-  await shot(page, v.name, '14-lift-uber')
+  await page.getByText('Finish booking and paying in the Uber app.').waitFor()
+  await shot(page, v.name, '14-taxi-uber')
+  await page.getByRole('button', { name: 'Close taxi' }).click()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
+  check(onHome(page), `${v.name}: taxi moved to ${page.url()}`)
 
-  await page.goto(BASE + '/#/')
   await page.getByRole('button', { name: 'Call Anna' }).click()
-  await page.getByRole('heading', { name: 'Call Anna' }).waitFor()
+  await page.getByText(/This is a demo, so no call is made\. Number: 0491 570/).waitFor()
   await shot(page, v.name, '15-call-demo')
 
-  // Today's outing cards open what and when, with nothing to answer yet.
-  await page.goto(BASE + '/#/')
-  const eventCard = page.locator('.event-card a.event-main').first()
-  if (await eventCard.count()) {
-    const label = (await eventCard.locator('.event-title').textContent()).trim()
-    await eventCard.click()
-    await page.getByRole('heading', { name: label }).waitFor()
-    await shot(page, v.name, '16-event-preview')
-  } else notes.push(`${v.name}: no outing later today, so the outing cards were not checked`)
-
-  // Puzzles: solve a word search by tapping letters.
-  await page.goto(BASE + '/#/')
-  await page.getByRole('link', { name: 'Puzzles' }).click()
-  await page.getByRole('heading', { name: 'Word search' }).waitFor()
+  // Puzzles: the harder 8 × 8 word search, solved on its tile.
+  await page.getByRole('button', { name: 'Puzzles' }).click()
+  await page.locator('.ws-grid').waitFor()
   await shot(page, v.name, '17-puzzle')
-  await solveWordSearch(page)
-  await page.getByRole('heading', { name: 'Well done, Margaret!' }).waitFor()
+  if ((await solveWordSearch(page)) > 0) sawDiagonal = true
+  await page.getByText('Well done, Margaret!').waitFor()
   await shot(page, v.name, '18-puzzle-done')
+  await page.getByRole('button', { name: 'Close word search' }).click()
+  check(onHome(page), `${v.name}: puzzle moved to ${page.url()}`)
 
   for (const [path, name] of [
     ['/family', '20-family-today'],
@@ -361,29 +386,27 @@ for (const v of WIDTHS) {
   }
   await ctx.close()
 }
+if (!sawDiagonal) notes.push('puzzle: no diagonal word came up in these puzzles (the unit test checks diagonals)')
 
 // ---------------------------------------------------------------- 200% text size (device enlargement)
 step('Text at 200%')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
   const big = () => page.addStyleTag({ content: 'html{font-size:200% !important}' })
+  await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
+  await addDue(page, { kind: 'social', title: 'Coffee at the Feathers', notes: 'With Jean.', extra: { ask: true, pickupTime: sydney(20).time, returnTime: sydney(120).time, carColour: 'red' } })
+  await homeAgain(page)
   await big()
   await shot(page, 'text-200', '01-home')
-  for (const [opts, name] of [
-    [{ title: 'Cup of tea', question: 'Have you had a cup of tea?' }, '02-day-question'],
-    [{ title: 'Water the plants', question: 'Have you watered the plants?' }, '03-day-routine'],
-    [{ kind: 'appointment', title: 'Hairdresser', location: 'Wattleton Hair, 5 Main Street' }, '04-day-appointment'],
-  ]) {
-    await gotoItem(page, await addDue(page, opts))
-    await big()
-    await shot(page, 'text-200', name)
-  }
-  const size = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.big-btn')).fontSize))
-  check(size >= 64, `text-200: buttons did not grow with text size (${size}px)`)
-  await page.goto(BASE + '/#/day/plan')
-  await page.locator('main h1').waitFor()
+  const size = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('.tile-btn:not(.small)')).fontSize))
+  check(size >= 40, `text-200: buttons did not grow with text size (${size}px)`)
+  await page.getByRole('button', { name: 'Taxi' }).click()
   await big()
-  await shot(page, 'text-200', '05-day-plan')
+  await shot(page, 'text-200', '02-taxi')
+  await page.getByRole('button', { name: 'Close taxi' }).click()
+  await page.getByRole('button', { name: 'Puzzles' }).click()
+  await big()
+  await shot(page, 'text-200', '03-puzzle')
   await ctx.close()
 }
 
@@ -392,12 +415,11 @@ step('Text at 200%')
   const { ctx, page } = await newDemo({ width: 390, height: 844 })
 
   step('Keyboard only')
-  const kb = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
-  await page.goto(BASE + '/#/')
-  await page.locator('main h1').waitFor()
-  // Tab through today's outing cards to the "My day" tile.
+  await answerAllDue(page)
+  await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
+  await homeAgain(page)
   let first = { text: '' }
-  for (let i = 0; i < 12 && first.text !== 'My day'; i++) {
+  for (let i = 0; i < 12 && first.text !== 'Yes'; i++) {
     await page.keyboard.press('Tab')
     first = await page.evaluate(() => {
       const el = document.activeElement
@@ -405,48 +427,41 @@ step('Text at 200%')
       return { text: el.textContent.trim(), outline: s.outlineStyle, width: s.outlineWidth }
     })
   }
-  check(first.text === 'My day', `keyboard: could not Tab to "My day" (last: "${first.text}")`)
+  check(first.text === 'Yes', `keyboard: could not Tab to "Yes" (last: "${first.text}")`)
   check(first.outline !== 'none' && parseFloat(first.width) >= 3, `keyboard: focus outline not visible (${first.outline} ${first.width})`)
   await page.screenshot({ path: join(shotsDir, '390', '30-keyboard-focus.png') })
   await page.keyboard.press('Enter')
-  await page.locator('main h1').waitFor()
-  check(page.url().includes('#/day'), 'keyboard: Enter on My day did not open it')
-  await gotoItem(page, kb)
-  let reached = false
-  for (let i = 0; i < 12 && !reached; i++) {
-    await page.keyboard.press('Tab')
-    reached = (await page.evaluate(() => document.activeElement.textContent.trim())) === 'Yes'
-  }
-  check(reached, 'keyboard: could not Tab to Yes')
-  await page.keyboard.press('Enter')
-  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
-  // Survives refresh: the plan shows it as done.
-  await page.goto(BASE + '/#/day/plan')
+  await page.getByText('Thank you, Margaret').waitFor()
+  check(onHome(page), 'keyboard: Enter moved away from Home')
+  // Survives refresh: saved as done.
   await page.reload()
-  await page.locator('li', { hasText: 'Water the plants' }).getByText('Done').waitFor()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
+  check((await page.locator('.reminder-tile', { hasText: 'watered the plants' }).count()) === 0, 'keyboard: answered tile came back after refresh')
+  const t = await today(page)
+  check(t.items.some((i) => i.type === 'reminder' && i.reminder.title === 'Water the plants' && i.status === 'done'), 'keyboard: answer not saved as done')
 
   step('Failed save shows')
-  const fs = await addDue(page, { kind: 'appointment', title: 'Hairdresser' })
-  await gotoItem(page, fs)
+  await addDue(page, { title: 'Feed the birds', question: 'Have you fed the birds?' })
+  await homeAgain(page)
   await page.route('**/api/parent/responses', (r) => r.abort('internetdisconnected'))
-  await page.getByRole('button', { name: 'Okay' }).click()
-  await page.getByRole('heading', { name: 'That didn’t save' }).waitFor()
+  await dueTile(page, 'fed the birds').getByRole('button', { name: 'Yes', exact: true }).click()
+  await page.getByText('That didn’t save.').waitFor()
   await page.screenshot({ path: join(shotsDir, '390', '31-save-failed.png'), fullPage: true })
   await page.unroute('**/api/parent/responses')
   await page.getByRole('button', { name: 'Try again' }).click()
-  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
+  await page.getByText('Thank you, Margaret').waitFor()
 
   step('Double tap creates one request')
-  const dt = await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
-  await gotoItem(page, dt)
-  await page.getByRole('button', { name: 'I need help' }).dblclick()
-  await page.getByRole('heading', { name: 'Your message is saved for Anna' }).waitFor()
+  await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?' })
+  await homeAgain(page)
+  await dueTile(page, 'fed the cat').getByRole('button', { name: 'Help' }).dblclick()
+  await page.getByText('Your message is saved for Anna').waitFor()
 
   step('Family view: answers and privacy')
-  const fv = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?' })
-  await gotoItem(page, fv)
-  await page.getByRole('button', { name: 'Not yet' }).click()
-  await page.getByText('I’ll ask you again soon.').waitFor()
+  await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?' })
+  await homeAgain(page)
+  await dueTile(page, 'cup of tea').getByRole('button', { name: 'Not yet' }).click()
+  await page.getByText('Okay. I’ll ask again soon.').waitFor()
   await page.goto(BASE + '/#/family')
   await page.locator('li', { hasText: 'Cup of tea' }).waitFor()
   const row = await page.locator('li', { hasText: 'Cup of tea' }).first().textContent()
@@ -457,18 +472,20 @@ step('Text at 200%')
   check((help.match(/Help with “Feed the cat”/g) || []).length === 1, `family: help requests "${help}"`)
   check(help.includes('Saved in the app · no text sent'), 'family: help request message status not shown honestly')
 
-  step('Family: no medication')
+  step('Family: no medication, no driver')
   await page.goto(BASE + '/#/family/reminders')
   await page.getByRole('button', { name: 'Add a reminder' }).click()
   check((await page.getByRole('radio', { name: 'Medication' }).count()) === 0, 'family: medication can still be chosen')
   check(!/medication|tablet|pharmac/i.test(await page.locator('main').textContent()), 'family: medication still mentioned in reminders')
+  await page.getByRole('button', { name: 'Gym class' }).click()
+  check((await page.getByLabel(/Who is driving/).count()) === 0, 'family: "Who is driving" still asked')
 
   step('Family: change contact')
   await page.goto(BASE + '/#/family/setup')
   await page.getByLabel('Family contact name').fill('Tom')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await page.getByText('Saved.', { exact: true }).waitFor()
-  await page.goto(BASE + '/#/')
+  await homeAgain(page)
   await page.getByRole('button', { name: 'Call Tom' }).waitFor()
 
   step('Family: add someone to call')
@@ -478,7 +495,7 @@ step('Text at 200%')
   await page.getByLabel('Phone number').fill('0491 570 159')
   await page.locator('section', { hasText: 'People to call' }).getByRole('button', { name: 'Save', exact: true }).click()
   await page.locator('li', { hasText: 'Ruth' }).waitFor()
-  await page.goto(BASE + '/#/')
+  await homeAgain(page)
   await page.getByRole('button', { name: 'Call Ruth' }).waitFor()
 
   step('Failed family save')
@@ -493,8 +510,20 @@ step('Text at 200%')
   await ctx.close()
 }
 
-// In-app reminder comes forward when it becomes due while the app is open.
-step('In-app reminder comes forward')
+// Old links to removed screens land on the same board.
+step('Old links')
+{
+  const { ctx, page } = await newDemo({ width: 390, height: 844 })
+  for (const old of ['/day', '/day/plan', '/lift', '/puzzles', '/photos', '/music']) {
+    await page.goto(BASE + '/#' + old)
+    await page.getByRole('button', { name: 'Taxi' }).waitFor()
+    check(await page.getByRole('button', { name: 'Puzzles' }).isVisible(), `old link ${old}: board not shown`)
+  }
+  await ctx.close()
+}
+
+// A reminder that falls due while the app is open appears on the board, with no change of screen.
+step('In-app reminder appears')
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
   ctx.setDefaultTimeout(15000)
@@ -502,47 +531,31 @@ step('In-app reminder comes forward')
   await page.clock.install()
   await page.goto(BASE + '/')
   await page.getByRole('button', { name: 'Try the demonstration' }).click()
-  await page.getByRole('link', { name: 'My day' }).waitFor()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
   // Only this test's reminder: demo items that happen to fall due now would make the check depend on the time of day.
   const hidIn = await householdId(page)
   const all = (await (await page.request.get(`${BASE}/api/family/${hidIn}`)).json()).reminders
   for (const r of all) await page.request.delete(`${BASE}/api/family/${hidIn}/reminders/${r.id}`, { headers: { 'X-Alongside': '1' } })
   await addDue(page, { title: 'Drink some water', question: 'Have you had a glass of water?', minutes: 3 })
   await page.reload()
-  await page.getByRole('link', { name: 'My day' }).waitFor()
+  await page.getByRole('button', { name: 'Taxi' }).waitFor()
   await page.clock.runFor(30000)
-  check(!page.url().includes('#/day'), `in-app: jumped away from Home before the reminder was due (${decodeURIComponent(page.url())}: ${await page.locator('main h1').textContent()})`)
+  check((await page.getByText('Have you had a glass of water?').count()) === 0, 'in-app: shown before it was due')
   await page.clock.fastForward(4 * 60000)
   await page.clock.runFor(16000)
   await page.getByText('Have you had a glass of water?').waitFor({ timeout: 5000 }).catch(() => {})
-  check(await page.getByText('Have you had a glass of water?').isVisible(), 'in-app: due reminder did not come forward')
+  check(await page.getByText('Have you had a glass of water?').isVisible(), 'in-app: due reminder did not appear')
+  check(onHome(page), `in-app: moved to ${page.url()}`)
   await page.screenshot({ path: join(shotsDir, '390', '33-in-app-reminder.png'), fullPage: true })
-  await ctx.close()
-}
 
-// After answering, "Next" names the next thing due; an idle screen returns Home.
-step('Next label and idle return')
-{
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } })
-  ctx.setDefaultTimeout(15000)
-  const page = await ctx.newPage()
-  await page.clock.install()
-  await page.goto(BASE + '/')
-  await page.getByRole('button', { name: 'Try the demonstration' }).click()
-  await page.getByRole('link', { name: 'My day' }).waitFor()
-  await answerAllDue(page)
-  const a = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?', minutes: -4 })
-  await addDue(page, { title: 'Feed the cat', question: 'Have you fed the cat?', minutes: -2 })
-  await gotoItem(page, a)
-  await page.getByRole('button', { name: 'Yes' }).click()
-  await page.getByRole('heading', { name: 'Thank you, Margaret' }).waitFor()
-  check(await page.getByRole('button', { name: 'Next: Feed the cat' }).isVisible(), 'ack: next button does not name "Feed the cat"')
-  await page.screenshot({ path: join(shotsDir, '390', '57-ack-yes-next.png'), fullPage: true })
+  // An opened tile closes by itself after five minutes untouched.
+  await page.getByRole('button', { name: 'Puzzles' }).click()
+  await page.locator('.ws-grid').waitFor()
   await page.clock.runFor(4 * 60000)
-  check(page.url().includes('#/day'), 'idle: returned Home too early')
+  check(await page.locator('.ws-grid').isVisible(), 'idle: puzzle closed too early')
   await page.clock.runFor(2 * 60000)
-  await page.getByRole('link', { name: 'My day' }).waitFor({ timeout: 5000 }).catch(() => {})
-  check(!page.url().includes('#/day'), 'idle: did not return Home after 5 minutes')
+  await page.getByRole('button', { name: 'Puzzles' }).waitFor({ timeout: 5000 }).catch(() => {})
+  check((await page.locator('.ws-grid').count()) === 0, 'idle: puzzle did not close after 5 minutes')
   await ctx.close()
 }
 
@@ -554,12 +567,10 @@ step('Browsers without speech')
     delete window.speechSynthesis
     delete window.SpeechSynthesisUtterance
   })
-  const k = await addDue(page, { kind: 'appointment', title: 'Hairdresser', notes: 'Bring your glasses.' })
-  await gotoItem(page, k)
-  await page.reload()
-  await page.locator('main h1').waitFor()
+  await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
+  await homeAgain(page)
   check((await page.getByRole('button', { name: 'Read aloud' }).count()) === 0, 'speech: button shown without speech support')
-  check(await page.getByText('Bring your glasses.').isVisible(), 'speech fallback: text missing')
+  check(await page.getByText('The kettle is on the bench.').isVisible(), 'speech fallback: text missing')
   await ctx.close()
 }
 step('With speech')
@@ -572,10 +583,10 @@ step('With speech')
       setTimeout(() => u.onend && u.onend(), 50)
     }
   })
-  const k = await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
-  await gotoItem(page, k)
-  await page.reload()
-  await page.getByRole('button', { name: 'Read aloud' }).click()
+  await answerAllDue(page)
+  await addDue(page, { title: 'Cup of tea', question: 'Have you had a cup of tea?', notes: 'The kettle is on the bench.' })
+  await homeAgain(page)
+  await dueTile(page, 'cup of tea').getByRole('button', { name: 'Read aloud' }).click()
   const spoken = await page.evaluate(() => window.__spoken)
   check(spoken.length === 1 && spoken[0].includes('Have you had a cup of tea?') && spoken[0].includes('kettle'), `speech: spoke ${JSON.stringify(spoken)}`)
   await ctx.close()
@@ -609,7 +620,7 @@ step('Real (non-demo)')
   await pp.screenshot({ path: join(shotsDir, '390', '40-pair-device.png'), fullPage: true })
   await pp.getByRole('button', { name: 'Connect' }).click()
   await pp.getByRole('heading', { name: /Joan/ }).waitFor()
-  check(!(await pp.locator('main').textContent()).includes('Demonstration'), 'real account: home shows demonstration label')
+  check(!(await pp.locator('body').textContent()).includes('Demonstration'), 'real account: home shows demonstration label')
   await pp.getByRole('link', { name: /Family setup/ }).click()
   await pp.getByRole('heading', { name: 'Family sign in' }).waitFor()
   const hid = await fp.evaluate(async () => (await (await fetch('/api/auth/me')).json()).family.households[0].id)
@@ -618,7 +629,6 @@ step('Real (non-demo)')
   await fam.close()
   await par.close()
 }
-
 
 // ---------------------------------------------------------------- outings, YES / NO, photos, music
 step('Outings, YES / NO, photos and music')
@@ -629,47 +639,49 @@ step('Outings, YES / NO, photos and music')
   const later = sydney(60)
   for (const data of [
     { kind: 'social', title: 'Coffee with Jean', ask: true, notes: 'At the Feathers.', pickupTime: later.time, carColour: 'red', carNote: 'Sue the carer' },
-    { kind: 'social', title: 'Swimming', subtitle: 'Aqua aerobics', notes: 'Bring a towel.', pickupTime: later.time, returnTime: later.time, carColour: 'green', carNote: 'Anna is driving' },
+    { kind: 'social', title: 'Swimming', subtitle: 'Aqua aerobics', notes: 'Bring a towel.', pickupTime: later.time, returnTime: sydney(120).time, carColour: 'green', carNote: 'Anna is driving' },
   ]) {
+    // carNote is sent as an older app would; it must be ignored and never shown.
     await page.request.post(`${BASE}/api/family/${hid}/reminders`, {
       headers: { 'X-Alongside': '1' },
-      data: { time: sydney(75).time, startDate: later.date, repeat: 'none', endDate: null, location: '', question: '', remindMinutesBefore: 30, shareResponses: true, medScheduleConfirmed: false, ...data },
+      data: { time: sydney(75).time, startDate: later.date, repeat: 'none', endDate: null, location: '', question: '', remindMinutesBefore: 30, shareResponses: true, ...data },
     })
   }
-  await page.reload()
-  const swim = page.locator('.event-card', { hasText: 'Swimming' })
+  await homeAgain(page)
+  const swim = page.locator('.event-tile', { hasText: 'Swimming' })
   await swim.waitFor()
-  check(await swim.getByText('Aqua aerobics').isVisible(), 'outing: detail not shown on the card')
-  check(await swim.getByText('Green car · Anna is driving').isVisible(), 'outing: car colour and driver not written on the card')
+  check(await swim.getByText('Aqua aerobics').isVisible(), 'outing: detail not shown on the tile')
+  check(await swim.getByText('Green car').isVisible(), 'outing: car colour not written on the tile')
+  check(!/driving|Sue|Anna/i.test(await swim.textContent()), 'outing: who is driving is shown')
   check(await swim.getByText(/^Pick up /).isVisible() && await swim.getByText(/^Home /).isVisible(), 'outing: pick-up and home times missing')
-  const coffee = page.locator('.event-card', { hasText: 'Coffee with Jean today?' })
+  const coffee = page.locator('.event-tile', { hasText: 'Coffee with Jean today?' })
   await coffee.getByRole('button', { name: 'YES' }).click()
   await coffee.getByText('You said YES.').waitFor()
+  check(onHome(page), `outing: answering moved to ${page.url()}`)
   await shot(page, '390', '60-home-outings')
   await page.goto(BASE + '/#/family')
   const row = await page.locator('li', { hasText: 'Coffee with Jean' }).first().textContent()
   check(row.includes('Said yes'), `family: invitation answer shown as "${row}"`)
 
-  // Photos: today's photo with its caption.
-  await page.goto(BASE + '/#/')
-  await page.getByRole('link', { name: /Photos/ }).click()
-  await page.getByRole('heading', { name: 'Today’s photo' }).waitFor()
-  check(await page.locator('img.day-photo').evaluate((i) => i.complete && i.naturalWidth > 0), 'photos: photo did not load')
-  check(await page.getByText('Lily at the beach on Sunday').isVisible(), 'photos: caption missing')
-  await shot(page, '390', '61-photo')
-  await page.getByRole('button', { name: 'Another photo' }).click()
-  await page.getByRole('heading', { name: 'Yesterday’s photo' }).waitFor()
+  // Photo tile: today's photo with its caption; a tap shows another.
+  await homeAgain(page)
+  const photo = page.locator('.photo-tile')
+  check(await photo.locator('img.tphoto').evaluate((i) => i.complete && i.naturalWidth > 0), 'photos: photo did not load')
+  check(await photo.getByText('Lily at the beach on Sunday').isVisible(), 'photos: caption missing')
+  const firstCaption = await photo.locator('.tphoto-caption').textContent()
+  await photo.click()
+  await page.waitForTimeout(200)
+  check((await photo.locator('.tphoto-caption').textContent()) !== firstCaption, 'photos: tapping did not show another photo')
+  check(onHome(page), `photos: tapping moved to ${page.url()}`)
 
-  // Music: a big button per song, with the singer.
-  await page.goto(BASE + '/#/')
-  await page.getByRole('link', { name: 'Music' }).click()
-  const songBtn = page.getByRole('button', { name: /Twinkle, Twinkle, Little Star/ })
-  await songBtn.waitFor()
-  check(await songBtn.getByText('Traditional').isVisible(), 'music: singer not shown')
-  await shot(page, '390', '62-music')
-  await songBtn.click()
-  await page.getByText('Playing · tap to stop').or(page.getByText('This device could not play the song.')).first().waitFor()
-  check(await page.getByText('Playing · tap to stop').isVisible(), 'music: the song did not start')
+  // Music tile: tap to play the family's song.
+  const music = page.locator('.music-tile')
+  check(await music.getByText('Traditional').isVisible(), 'music: singer not shown')
+  await music.getByRole('button', { name: /Play Twinkle, Twinkle, Little Star/ }).click()
+  await music.getByText('Playing').or(page.getByText('This device could not play the song.')).first().waitFor()
+  check(await music.getByText('Playing').isVisible(), 'music: the song did not start')
+  await shot(page, '390', '62-music-playing')
+  await music.getByRole('button', { name: /Stop/ }).click()
 
   // Family: choose an Elvis song from the 1960s list and attach a file.
   await page.goto(BASE + '/#/family/media')
@@ -682,8 +694,9 @@ step('Outings, YES / NO, photos and music')
   await page.getByRole('button', { name: 'Add song' }).click()
   await page.getByText('Added “Can’t Help Falling in Love”.').waitFor()
   await shot(page, '390', '65-family-song-picker', { parent: false })
-  await page.goto(BASE + '/#/music')
-  await page.getByRole('button', { name: /Can’t Help Falling in Love/ }).waitFor()
+  await homeAgain(page)
+  await page.locator('.music-tile').getByRole('button', { name: 'Another song' }).click()
+  await page.locator('.music-tile').getByText('Can’t Help Falling in Love').or(page.locator('.music-tile').getByText('Twinkle, Twinkle, Little Star')).first().waitFor()
 
   // Family: add a photo of the day, and see the outing fields.
   const bytes = await (await page.request.get(BASE + (await today(page)).photos[0].url)).body()
@@ -707,6 +720,7 @@ step('Photos, voice and week')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 }, { permissions: ['microphone'] })
   const hid = await householdId(page)
+  await answerAllDue(page)
   const t = await today(page)
   // Give a due reminder the demo's medical-centre picture.
   const doctor = t.items.find((i) => i.type === 'reminder' && i.reminder.title === 'Dr Chen')
@@ -716,19 +730,13 @@ step('Photos, voice and week')
     headers: { 'X-Alongside': '1' },
     data: { dataUrl: 'data:image/jpeg;base64,' + bytes.toString('base64') },
   })
-  await gotoItem(page, k)
-  const photoOk = await page.locator('img.p-photo').evaluate((img) => img.complete && img.naturalWidth > 0)
-  check(photoOk, 'photo: reminder photo did not load')
+  await homeAgain(page)
+  const photoOk = await dueTile(page, 'your walk').locator('img.tpic').evaluate((img) => img.complete && img.naturalWidth > 0)
+  check(photoOk, 'photo: reminder photo did not load on its tile')
   await shot(page, '390', '50-reminder-with-photo')
-  await page.goto(BASE + '/#/lift')
-  await page.getByRole('heading', { name: 'Where to?' }).waitFor()
-  check((await page.locator('.big-btn img.thumb').count()) === 3, 'photo: place thumbnails missing')
-  await shot(page, '390', '51-lift-with-photos')
-  await page.getByRole('button', { name: 'Medical centre' }).click()
-  await shot(page, '390', '52-lift-confirm-photo')
 
   // Family records a voice message with the (fake) microphone.
-  const v = await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
+  await addDue(page, { title: 'Water the plants', question: 'Have you watered the plants?' })
   await page.goto(BASE + '/#/family/reminders')
   await page.locator('li', { hasText: 'Water the plants' }).getByRole('button', { name: 'Edit' }).click()
   check((await page.getByLabel('Question to ask (optional)').inputValue()) === 'Have you watered the plants?', 'question: not shown in the family form')
@@ -739,8 +747,8 @@ step('Photos, voice and week')
   await page.getByRole('button', { name: 'Remove message' }).waitFor()
   await page.getByRole('button', { name: 'Save changes' }).click()
   await page.getByText('Saved changes to “Water the plants”.').waitFor()
-  await gotoItem(page, v)
-  check((await page.getByRole('button', { name: 'Hear Anna' }).count()) === 1, 'voice: parent has no "Hear Anna" button')
+  await homeAgain(page)
+  check((await dueTile(page, 'watered the plants').getByRole('button', { name: 'Hear Anna' }).count()) === 1, 'voice: tile has no "Hear Anna" button')
   await shot(page, '390', '53-reminder-with-voice')
 
   // Quick-start templates fill the form, including the question.
@@ -772,14 +780,33 @@ step('Side by side')
   await page.getByRole('button', { name: 'See both screens side by side' }).click()
   const phone = page.getByRole('region', { name: 'Margaret’s phone' })
   const fam = page.getByRole('region', { name: 'Anna’s family area' })
-  await phone.getByRole('link', { name: 'Taxi' }).click()
+  await phone.getByRole('button', { name: 'Taxi' }).click()
   await phone.getByRole('button', { name: 'Shops' }).click()
-  await phone.getByRole('button', { name: 'Ask Anna for a lift' }).click()
-  await phone.getByRole('heading', { name: 'Request saved' }).waitFor()
+  await phone.getByRole('button', { name: 'Ask Anna' }).click()
+  await phone.getByText('Request saved.', { exact: false }).waitFor()
   const t0 = Date.now()
   await fam.getByText('Lift to Shops').first().waitFor({ timeout: 5000 })
   notes.push(`side by side: family view updated ${Date.now() - t0} ms after the request was saved`)
   check(page.url().endsWith('#/both'), 'side by side: panes changed the page address')
+  await phone.getByRole('button', { name: 'Close taxi' }).click()
+  // The phone pane is narrow: tile words must still stay whole.
+  const split = await phone.evaluate((root) => {
+    const out = []
+    const rg = document.createRange()
+    for (const el of root.querySelectorAll('.tlabel, .tile-btn, .tsub')) {
+      const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+      while (w.nextNode()) {
+        const n = w.currentNode
+        for (const m of n.textContent.matchAll(/\S+/g)) {
+          rg.setStart(n, m.index)
+          rg.setEnd(n, m.index + m[0].length)
+          if (new Set([...rg.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size > 1) out.push(m[0])
+        }
+      }
+    }
+    return out
+  })
+  check(split.length === 0, `side by side: words split over lines: ${split.join(', ')}`)
   await page.mouse.move(0, 0)
   await page.screenshot({ path: join(shotsDir, 'showcase.png') })
   await ctx.close()

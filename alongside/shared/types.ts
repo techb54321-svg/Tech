@@ -24,8 +24,6 @@ export interface Reminder {
   returnTime: string | null
   /** Colour of the car picking them up ('' if none). */
   carColour: string
-  /** E.g. "Anna driving". */
-  carNote: string
   /** Ask "… today?" with YES / NO. */
   ask: boolean
   /** Show the in-app prompt this many minutes early (appointments). */
@@ -109,7 +107,7 @@ export type DayItem =
   | {
       type: 'reminder'
       key: string
-      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl' | 'subtitle' | 'pickupTime' | 'returnTime' | 'carColour' | 'carNote' | 'ask'> & {
+      reminder: Pick<Reminder, 'id' | 'kind' | 'title' | 'time' | 'location' | 'notes' | 'photoUrl' | 'voiceUrl' | 'subtitle' | 'pickupTime' | 'returnTime' | 'carColour' | 'ask'> & {
         /** The question to ask, or null for information-only items (appointments, outings). */
         question: string | null
       }

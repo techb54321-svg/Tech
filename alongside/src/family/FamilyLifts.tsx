@@ -82,7 +82,7 @@ export function FamilyLifts({ info }: { info: FamilyInfo }) {
               details: form.details,
             }),
           async () => {
-            setSaved('Lift recorded. It now appears in ' + parent + '’s “My day” on that date, marked as arranged by family.')
+            setSaved('Lift recorded. It now appears in ' + parent + '’s screen on that date, marked as arranged by family.')
             setForm({ ...form, details: '' })
             await load()
           })

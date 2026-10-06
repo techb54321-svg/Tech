@@ -78,7 +78,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 4
+const DEMO_VERSION = 5
 
 interface State {
   version: number
@@ -138,7 +138,6 @@ function upgrade(s: State) {
     pickupTime: r.pickupTime ?? null,
     returnTime: r.returnTime ?? null,
     carColour: r.carColour ?? '',
-    carNote: r.carNote ?? '',
     ask: r.ask ?? false,
     remindMinutesBefore: r.remindMinutesBefore ?? 0,
     photoUrl: null,
@@ -194,7 +193,6 @@ function toReminder(id: string, input: z.input<typeof reminderSchema>): Reminder
     pickupTime: outing ? (input.pickupTime ?? null) : null,
     returnTime: outing ? (input.returnTime ?? null) : null,
     carColour: outing ? (input.carColour ?? '') : '',
-    carNote: outing ? (input.carNote ?? '') : '',
     ask: outing && !!input.ask,
     remindMinutesBefore: input.remindMinutesBefore ?? 0,
     shareResponses: input.shareResponses,
@@ -295,7 +293,7 @@ function parentItems(s: State, date: string): DayItem[] {
     items.push({
       type: 'reminder', key: `${r.id}:${date}`,
       reminder: { id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes, photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
-        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, carNote: r.carNote, ask: r.ask },
+        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, ask: r.ask },
       occurrenceDate: date, status: st.status, snoozeUntil: st.snoozeUntil,
       dueAt: dueAt(r, date, s.settings.timeZone).toISOString(), answeredAt: latest?.createdAt ?? null, t: r.time,
     })

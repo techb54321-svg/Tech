@@ -20,10 +20,11 @@ describe('outings on Home', () => {
     const { family, parent, hid } = await household(base)
     await family.post(`/api/family/${hid}/reminders`, reminder({
       kind: 'social', title: 'Gym class', subtitle: 'Pilates', time: '14:00', repeat: 'none', notes: 'No mat needed.',
-      pickupTime: '13:30', returnTime: '15:15', carColour: 'blue', carNote: 'Anna is driving',
+      pickupTime: '13:30', returnTime: '15:15', carColour: 'blue',
     }))
     const r = (await parent.get('/api/parent/today')).json.items[0].reminder
-    expect(r).toMatchObject({ subtitle: 'Pilates', pickupTime: '13:30', returnTime: '15:15', carColour: 'blue', carNote: 'Anna is driving', ask: false })
+    expect(r).toMatchObject({ subtitle: 'Pilates', pickupTime: '13:30', returnTime: '15:15', carColour: 'blue', ask: false })
+    expect(r).not.toHaveProperty('carNote')
     expect((await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', carColour: 'tartan' }))).status).toBe(400)
     expect((await family.post(`/api/family/${hid}/reminders`, reminder({ kind: 'social', pickupTime: '25:00' }))).status).toBe(400)
     // Routines never carry transport details.

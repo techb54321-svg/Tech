@@ -1,21 +1,27 @@
-// A gentle word search for someone living with dementia: a small grid with
-// big letters, a few everyday words on one theme, words only across or down,
-// tap the letters in any order. No timer, no score, nothing to lose.
+// Word search, played inside its Home tile. An 8 × 8 grid with six words
+// running across, down or diagonally (top-left to bottom-right). Tap the
+// letters of a word in any order. No timer, no score.
 import { useMemo, useState } from 'react'
-import { Check, RotateCcw, House, Sparkles } from 'lucide-react'
-import { H1, ParentScreen } from './common'
+import { Check, RotateCcw, Sparkles } from 'lucide-react'
 
 const THEMES = [
-  { name: 'garden', words: ['ROSE', 'TREE', 'SEED', 'LEAF', 'SOIL', 'BIRD'] },
-  { name: 'kitchen', words: ['CUP', 'TEA', 'JAM', 'SPOON', 'BREAD', 'MILK'] },
-  { name: 'beach', words: ['SAND', 'SEA', 'SHELL', 'WAVE', 'SUN', 'BOAT'] },
-  { name: 'animal', words: ['DOG', 'CAT', 'HORSE', 'COW', 'DUCK', 'SHEEP'] },
-  { name: 'Australian', words: ['KOALA', 'EMU', 'WOMBAT', 'GUM', 'ROO', 'KIWI'] },
+  { name: 'garden', words: ['ROSE', 'TREE', 'SEED', 'LEAF', 'SOIL', 'BIRD', 'TULIP', 'DAISY', 'HEDGE', 'SPADE', 'LAWN', 'PANSY'] },
+  { name: 'kitchen', words: ['CUP', 'TEA', 'JAM', 'SPOON', 'BREAD', 'MILK', 'KETTLE', 'TOAST', 'PLATE', 'SCONE', 'BUTTER', 'APRON'] },
+  { name: 'beach', words: ['SAND', 'SEA', 'SHELL', 'WAVE', 'SUN', 'BOAT', 'TOWEL', 'CRAB', 'SURF', 'HAT', 'ROCKS', 'SWIM'] },
+  { name: 'animal', words: ['DOG', 'CAT', 'HORSE', 'COW', 'DUCK', 'SHEEP', 'GOAT', 'MOUSE', 'RABBIT', 'PIG', 'HEN', 'OWL'] },
+  { name: 'Australian', words: ['KOALA', 'EMU', 'WOMBAT', 'GUM', 'ROO', 'BILBY', 'WATTLE', 'DINGO', 'GALAH', 'BUSH', 'OUTBACK', 'REEF'] },
+  { name: 'music', words: ['PIANO', 'SONG', 'DRUM', 'BAND', 'TUNE', 'HARP', 'CHOIR', 'FLUTE', 'DANCE', 'NOTE', 'BANJO', 'VIOLIN'] },
 ]
-const SIZE = 6
-const WORDS = 4
+export const SIZE = 8
+const WORDS = 6
 const FILL = 'ABCDEFGHIKLMNOPRSTUWY'
-const COLOURS = ['#bbf7d0', '#bfdbfe', '#fbcfe8', '#fde68a']
+const COLOURS = ['#bbf7d0', '#bfdbfe', '#fbcfe8', '#fde68a', '#ddd6fe', '#fed7aa']
+// Across, down, and diagonally down-right.
+const DIRECTIONS = [
+  [0, 1],
+  [1, 0],
+  [1, 1],
+] as const
 
 interface Puzzle {
   theme: string
@@ -23,24 +29,24 @@ interface Puzzle {
   words: Array<{ word: string; cells: number[] }>
 }
 
-const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)]
+const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
 
 export function makePuzzle(): Puzzle {
   for (;;) {
     const theme = pick(THEMES)
-    const chosen = [...theme.words].sort(() => Math.random() - 0.5).slice(0, WORDS)
+    const chosen = [...theme.words].filter((w) => w.length <= SIZE).sort(() => Math.random() - 0.5).slice(0, WORDS)
     const grid: string[] = Array(SIZE * SIZE).fill('')
     const words: Puzzle['words'] = []
     let ok = true
     for (const word of chosen) {
       let placed = false
-      for (let tries = 0; tries < 200 && !placed; tries++) {
-        const across = Math.random() < 0.5
-        const row = Math.floor(Math.random() * (across ? SIZE : SIZE - word.length + 1))
-        const col = Math.floor(Math.random() * (across ? SIZE - word.length + 1 : SIZE))
-        const cells = [...word].map((_, i) => (across ? row * SIZE + col + i : (row + i) * SIZE + col))
-        // No sharing of cells, so each word stands on its own.
-        if (cells.every((c) => grid[c] === '')) {
+      for (let tries = 0; tries < 300 && !placed; tries++) {
+        const [dr, dc] = pick(DIRECTIONS)
+        const row = Math.floor(Math.random() * (SIZE - dr * (word.length - 1)))
+        const col = Math.floor(Math.random() * (SIZE - dc * (word.length - 1)))
+        const cells = [...word].map((_, i) => (row + dr * i) * SIZE + col + dc * i)
+        // Words may cross where they share a letter.
+        if (cells.every((c, i) => grid[c] === '' || grid[c] === word[i])) {
           cells.forEach((c, i) => (grid[c] = word[i]))
           words.push({ word, cells })
           placed = true
@@ -53,13 +59,24 @@ export function makePuzzle(): Puzzle {
   }
 }
 
-export function WordSearch({ parentName }: { parentName: string }) {
+/** Do these cells form one straight line across, down or diagonally (top-left to bottom-right)? */
+export function straightLine(cells: number[]): boolean {
+  const s = [...cells].sort((a, b) => a - b)
+  if (s.length < 2) return false
+  const row = (c: number) => Math.floor(c / SIZE)
+  const col = (c: number) => c % SIZE
+  for (const [dr, dc] of DIRECTIONS) {
+    if (s.every((c, i) => i === 0 || (row(c) - row(s[i - 1]) === dr && col(c) - col(s[i - 1]) === dc))) return true
+  }
+  return false
+}
+
+export function WordSearchGame({ parentName }: { parentName: string }) {
   const [puzzle, setPuzzle] = useState<Puzzle>(makePuzzle)
   const [selected, setSelected] = useState<number[]>([])
-  // Each found word with the cells that were tapped for it.
   const [foundCells, setFoundCells] = useState<Record<string, number[]>>({})
-  const found = Object.keys(foundCells)
   const [justFound, setJustFound] = useState('')
+  const found = Object.keys(foundCells)
   const owner = useMemo(() => {
     const m = new Map<number, number>()
     puzzle.words.forEach((w, i) => foundCells[w.word]?.forEach((c) => m.set(c, i)))
@@ -68,15 +85,11 @@ export function WordSearch({ parentName }: { parentName: string }) {
   const done = found.length === puzzle.words.length
 
   function tap(cell: number) {
-    if (owner.has(cell)) return
     const next = selected.includes(cell) ? selected.filter((c) => c !== cell) : [...selected, cell]
-    // Accept the word wherever it is spelled in a straight line across or down,
-    // even if the filler letters happen to spell it in a second place.
+    // Accept the word wherever it is spelled in a straight line, read forwards.
     const sorted = [...next].sort((a, b) => a - b)
-    const sameRow = sorted.every((c, i) => i === 0 || (c === sorted[i - 1] + 1 && Math.floor(c / SIZE) === Math.floor(sorted[0] / SIZE)))
-    const sameCol = sorted.every((c, i) => i === 0 || c === sorted[i - 1] + SIZE)
     const spelled = sorted.map((c) => puzzle.letters[c]).join('')
-    const match = (sameRow || sameCol) && puzzle.words.find((w) => !found.includes(w.word) && w.word === spelled)
+    const match = straightLine(sorted) && puzzle.words.find((w) => !found.includes(w.word) && w.word === spelled)
     if (match) {
       setFoundCells({ ...foundCells, [match.word]: sorted })
       setSelected([])
@@ -96,34 +109,20 @@ export function WordSearch({ parentName }: { parentName: string }) {
 
   if (done) {
     return (
-      <ParentScreen>
-        <div className="ack" role="status">
-          <div className="ack-icon ok celebrate">
-            <Sparkles aria-hidden="true" />
-          </div>
-          <H1>Well done, {parentName}!</H1>
-          <p className="p-body">You found all the words.</p>
-          <div className="btn-stack">
-            <button className="big-btn orange medium" onClick={another}>
-              <RotateCcw aria-hidden="true" />
-              <span>Another puzzle</span>
-            </button>
-            <a className="big-btn plain medium" href="#/">
-              <House aria-hidden="true" />
-              <span>Home</span>
-            </a>
-          </div>
-        </div>
-      </ParentScreen>
+      <div className="ws-done" role="status">
+        <Sparkles aria-hidden="true" className="ws-done-icon" />
+        <p className="ws-done-title">Well done, {parentName}!</p>
+        <p className="ws-done-sub">You found all six words.</p>
+        <button type="button" className="tile-btn" onClick={another}>
+          <RotateCcw aria-hidden="true" /> Another puzzle
+        </button>
+      </div>
     )
   }
 
   return (
-    <ParentScreen>
-      <H1>Word search</H1>
-      <p className="p-body">
-        Find these {puzzle.theme} words. Tap each letter.
-      </p>
+    <div className="ws">
+      <p className="ws-intro">Find these {puzzle.theme} words. They go across, down or diagonally.</p>
       <ul className="ws-words" aria-label="Words to find">
         {puzzle.words.map((w, i) => {
           const f = found.includes(w.word)
@@ -145,9 +144,9 @@ export function WordSearch({ parentName }: { parentName: string }) {
               key={i}
               type="button"
               className={`ws-cell${sel ? ' sel' : ''}${o !== undefined ? ' done' : ''}`}
-              style={o !== undefined ? { background: COLOURS[o] } : undefined}
+              style={o !== undefined && !sel ? { background: COLOURS[o] } : undefined}
               aria-pressed={sel}
-              aria-label={`${l}, row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}${o !== undefined ? ', found' : ''}`}
+              aria-label={`${l}, row ${Math.floor(i / SIZE) + 1}, column ${(i % SIZE) + 1}${o !== undefined ? ', in a found word' : ''}`}
               onClick={() => tap(i)}
             >
               {l}
@@ -155,14 +154,14 @@ export function WordSearch({ parentName }: { parentName: string }) {
           )
         })}
       </div>
-      <p className="p-body ws-status" role="status">
+      <p className="ws-status" role="status">
         {justFound ? `Yes! You found ${justFound}.` : selected.length ? `${selected.length} letter${selected.length === 1 ? '' : 's'} picked.` : ' '}
       </p>
       {selected.length > 0 && (
-        <button type="button" className="small-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setSelected([])}>
+        <button type="button" className="tile-btn small" onClick={() => setSelected([])}>
           <RotateCcw aria-hidden="true" /> Clear my letters
         </button>
       )}
-    </ParentScreen>
+    </div>
   )
 }

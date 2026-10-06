@@ -21,7 +21,6 @@ type Draft = {
   pickupTime: string
   returnTime: string
   carColour: string
-  carNote: string
   ask: boolean
   remindMinutesBefore: number
   shareResponses: boolean
@@ -56,7 +55,6 @@ const blank = (today: string): Draft => ({
   pickupTime: '',
   returnTime: '',
   carColour: '',
-  carNote: '',
   ask: false,
   remindMinutesBefore: 60,
   shareResponses: false,
@@ -76,7 +74,6 @@ const fromReminder = (r: Reminder): Draft => ({
   pickupTime: r.pickupTime ?? '',
   returnTime: r.returnTime ?? '',
   carColour: r.carColour,
-  carNote: r.carNote,
   ask: r.ask,
   remindMinutesBefore: r.remindMinutesBefore,
   shareResponses: r.shareResponses,
@@ -394,9 +391,6 @@ function ReminderForm({
               ))}
             </div>
           </div>
-          <Field id="rf-carnote" label="Who is driving (optional)" hint="e.g. “Anna is driving” or “Sue the carer”" error={act.fields.carNote}>
-            <input id="rf-carnote" value={d.carNote} maxLength={60} onChange={(e) => set('carNote', e.target.value)} />
-          </Field>
         </fieldset>
       )}
       <Field id="rf-loc" label="Where (optional)" error={act.fields.location}>

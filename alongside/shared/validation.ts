@@ -58,7 +58,6 @@ export const reminderSchema = z
     pickupTime: timeStr.nullable().default(null),
     returnTime: timeStr.nullable().default(null),
     carColour: z.enum(['', ...CAR_COLOURS]).default(''),
-    carNote: text(60).default(''),
     /** Ask "… today?" with YES / NO instead of just telling. */
     ask: z.boolean().default(false),
     remindMinutesBefore: z.number().int().min(0).max(240),

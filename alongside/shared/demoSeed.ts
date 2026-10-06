@@ -61,15 +61,15 @@ export function demoOutingsToday(now: Date, tz: string): Array<{ input: Reminder
   const gym = slot(90)
   out.push({ at: gym, picture: 'gym', input: { ...base, kind: 'social', title: 'Gym class', subtitle: 'Pilates', time: hm(gym),
     location: 'Wattleton Community Hall', notes: 'No mat needed.', pickupTime: hm(gym, -30), returnTime: hm(gym, 75),
-    carColour: 'blue', carNote: 'Anna is driving' } })
+    carColour: 'blue' } })
   const coffee = slot(180)
   out.push({ at: coffee, picture: 'coffee', input: { ...base, kind: 'social', title: 'Coffee at the Feathers', time: hm(coffee),
     location: 'The Feathers Café, 2 Main Street', notes: 'With Jean.', pickupTime: hm(coffee, -15), returnTime: hm(coffee, 90),
-    carColour: 'red', carNote: 'Sue the carer', ask: true } })
+    carColour: 'red', ask: true } })
   const shop = slot(270)
   out.push({ at: shop, picture: 'shops', input: { ...base, kind: 'social', title: 'Shopping', subtitle: 'Woolworths', time: hm(shop),
     location: 'Wattleton Village Shops', notes: 'Bring your shopping bags.', pickupTime: hm(shop, -15), returnTime: hm(shop, 60),
-    carColour: 'silver', carNote: 'Sue the carer' } })
+    carColour: 'silver' } })
   // Keep only outings whose whole trip stays today.
   return out
     .filter((o) => localDateISO(new Date(o.at.getTime() + 90 * 60000), tz) === today)

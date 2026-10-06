@@ -2,8 +2,9 @@
 
 A simple daily helper for an older person, with family support behind the scenes.
 
-The parent sees one calm home screen with three big choices: **My day**, **Get a lift** and **Call [family contact]**.
-Family members do the setup in a separate, signed-in family area.
+The parent sees **one screen** and never moves to another: a board of flat colour tiles with the day and time in
+big letters. Questions that are due now, today's outings, calls, a taxi, a word search, today's photo and music
+all work inside their tiles. Family members do the setup in a separate, signed-in family area.
 
 > Alongside supports everyday routines. It is **not** an emergency or monitoring service.
 
@@ -79,22 +80,22 @@ Access is enforced on the server:
 
 | Area | Status |
 | --- | --- |
-| Parent home (greeting, date, 3 buttons, quiet Family setup link) | Working |
-| My day: one plain question at a time, only for what is due now, with read aloud and a read-only plan of the day | Working |
-| Routines: **Yes / Not yet / No, not today** and **I need help**. Appointments and outings: **Okay** and **I need help** | Working |
+| Parent board: one screen of flat colour tiles, day and time in big letters, quiet Family setup link | Working |
+| Due-now questions answered on their tile: **Yes / Not yet / No / Help**, with read aloud or the family's voice message | Working |
+| Today's outings as tiles (detail, time, notes, car colour, pick-up and home times; **YES / NO** when asked) | Working |
 | "Later" = 20 minutes, explained after tapping | Working |
 | Daily repeats in the household time zone, including daylight saving; each day's answer is separate | Working (tested) |
 | Private routines: answers hidden from family unless the parent agreed; sharing is snapshotted per answer | Working (tested) |
 | Help and lift requests saved in the app, shown and resolved in the family area | Working |
 | Duplicate protection (request ids, disabled buttons, open-request reuse) | Working (tested) |
 | Failed saves shown as "That didn't save" / "Not saved" with **Try again** | Working (tested) |
-| Get a lift: saved places, "Somewhere else", destination shown before any action | Working |
+| Taxi tile opens in place: saved places, "Somewhere else", destination shown before any action | Working |
 | Uber hand-off (Uber's documented universal link). The person books and pays in Uber; recorded as "Opened Uber · booking not confirmed" | Working |
 | Ask family for a lift | Working |
-| Family-entered lifts (labelled as such) appear in the parent's My day | Working |
+| Family-entered lifts (labelled as such) appear as a tile on the parent's board | Working |
 | Call family via the phone's dialler (`tel:`). The demonstration never dials | Working |
 | Family area: settings, places, reminders (add/edit/remove), responses, help requests, lifts, sharing, devices, invitations | Working |
-| In-app reminders: a reminder that becomes due while the app is open comes to the front with a chime | Working while the app is open |
+| In-app reminders: a reminder that becomes due while the app is open appears at the top of the board with a chime | Working while the app is open |
 | Calendar export (.ics, with time zone and alarms) so the device calendar can alert when the app is closed | Working |
 | Installable PWA (manifest, icons, app-shell service worker; never caches private API data) | Working |
 | Read aloud with the device's own speech, hidden where unsupported; text is always on screen | Working |
@@ -165,8 +166,8 @@ This replaces the original brief's Previous/Next browsing, which asks too much o
 - **Today's outings appear on Home automatically**, as big cards, from what the carer enters as an appointment or
   social activity. Each card shows:
   - the title and a detail in capitals (e.g. **Gym class / PILATES**), the time and short notes ("No mat needed.")
-  - **pick-up and home times** beside a **car drawn in the car's colour**, with the colour and driver written too
-    ("Blue car · Anna is driving"), so colour is never the only cue
+  - **pick-up and home times** beside a **car drawn in the car's colour**, with the colour written too
+    ("Blue car"), so colour is never the only cue (the driver is no longer shown: see the eighth round)
   - with "Ask if they would like to go" ticked: "**Coffee at the Feathers today?**" with big **YES** / **NO**
     buttons. The answer stays highlighted, can be changed, and shows in the family area as "Said yes" / "Said no".
 - **Photos tile**: the carer adds a photo of the day with a caption (Family setup → Photos & music). The tile
@@ -235,13 +236,35 @@ Run `npm run build`, then `NODE_ENV=production npm start` behind an HTTPS revers
 consider `DEMO_MODE=off`. One Node process serves both the API and the built app. The server must be able to write the
 database file and keep it.
 
+### Eighth round: one screen of flat colour tiles
+
+- **One screen only. "My day" has gone.** The parent's whole app is a single board, and the address never changes:
+  - **Due now**: a routine due now appears as a wide orange tile at the top with its question ("Have you had a glass
+    of water?"), the family's photo or voice message if any, and **Yes / Not yet / No / Help**. After an answer the
+    tile turns green with a short thank-you for a few seconds, then goes.
+  - **Today's outings**: full-width tiles with an icon (gym, coffee, shopping, doctor), the detail in capitals
+    (PILATES), the time, notes and the car strip. "… today?" outings have **YES / NO** on the tile.
+  - **Call** tiles with the person's photo, **Taxi** and **Puzzles**, the **photo of the day** (tap for another) and
+    **Music** (tap to play or stop, "Another song").
+  - **Taxi** and **Puzzles** open in place as a full-width tile with a **Close** button, and close themselves after
+    five minutes untouched.
+  - Old links (`#/day`, `#/lift`, `#/puzzles` and so on) show the same board.
+- **Flat tiles like a weather widget**: solid colour squares, a big white line icon, bold capital labels and a dark
+  bar along the bottom. The grid has two columns on a phone and three on a tablet. With very large text it drops to
+  one column. Tiles stay square but grow taller rather than spill their words. Buttons stack their icon above the
+  word on narrow tiles so no word is ever split. All colours pass WCAG 4.5:1 contrast.
+- **No driver shown.** "Who is driving" has been removed from the family form, the demo data and the parent's tiles.
+  Only the car's colour and the pick-up and home times are shown. A driver name sent by an older app is ignored.
+- **Harder word search**: an **8 × 8** grid with **six** words that run across, down or **diagonally**, and may
+  cross where they share a letter. A word counts wherever it is spelled in a straight line, tapped in any order.
+
 ## Project layout
 
 ```
 shared/            time zones, occurrence logic, validation, types (used by server and browser)
 server/            Express API, SQLite, sessions, demo seeding, calendar export
 server/integrations/  messaging (Twilio), transport (provider + Uber hand-off), notifications
-src/parent/        parent screens (Home, My day, Get a lift, Call)
+src/parent/        the parent's one-screen board (Board.tsx), word search, clock
 src/family/        family area
 tests/             unit and API tests (vitest)
 scripts/e2e.mjs    browser checks and screenshots
@@ -276,6 +299,14 @@ scripts/e2e.mjs    browser checks and screenshots
   - A real account can pair a device with a code, and that device cannot read family data.
 
 Selected screenshots are in `docs/screenshots/`.
+
+Eighth round: 59 unit/API tests. The word-search test checks the 8 × 8 grid, six words, all three directions, no
+wrapping round an edge, and straight-line detection. The browser checks were rewritten for the one-screen board:
+- every answer, the taxi, a call, the photo, music and a solved 8 × 8 puzzle, with the address never leaving Home
+- no "My day" and no driver text anywhere
+- a failed save on a tile, then retry
+- a newly due reminder appearing on the board (fake clock), and an opened tile closing after five idle minutes
+- 200 % text, and no tile word split across two lines, including in the side-by-side phone pane
 
 Second round: 48 unit/API tests (adds media permissions, file-signature checks, week grid, tomorrow and hands-free
 settings). The browser checks add photos, a real recording through Chromium's simulated microphone, templates,

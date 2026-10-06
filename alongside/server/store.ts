@@ -162,7 +162,6 @@ const toReminder = (r: ReminderRow, media: Map<string, string>): Reminder => ({
   pickupTime: r.pickup_time ?? null,
   returnTime: r.return_time ?? null,
   carColour: r.car_colour ?? '',
-  carNote: r.car_note ?? '',
   ask: !!r.ask,
   remindMinutesBefore: r.remind_minutes_before,
   shareResponses: !!r.share_responses,
@@ -204,7 +203,7 @@ export function saveReminder(
     outing ? (input.pickupTime ?? null) : null,
     outing ? (input.returnTime ?? null) : null,
     outing ? (input.carColour ?? '') : '',
-    outing ? (input.carNote ?? '') : '',
+    '', // car_note: no longer used (who drives is not shown)
     outing && input.ask ? 1 : 0,
   ] as const
   if (id) {
@@ -326,7 +325,7 @@ export function parentDayItems(db: DB, h: HouseholdRow, date: string, now = new 
       reminder: {
         id: r.id, kind: r.kind, title: r.title, time: r.time, location: r.location, notes: r.notes,
         photoUrl: r.photoUrl, voiceUrl: r.voiceUrl, question: questionFor(r.kind, r.title, r.question),
-        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour, carNote: r.carNote,
+        subtitle: r.subtitle, pickupTime: r.pickupTime, returnTime: r.returnTime, carColour: r.carColour,
         ask: r.ask,
       },
       occurrenceDate: date,

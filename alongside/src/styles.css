@@ -1267,3 +1267,264 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .song-name { font-size: 2rem; font-weight: 700; line-height: 1.15; }
 .song-artist { font-size: 1.625rem; font-weight: 700; opacity: 0.95; }
 .song-state { font-size: 1.375rem; font-weight: 700; }
+
+/* =================== One-screen board: flat colour tiles =================== */
+.board {
+  display: grid;
+  /* Two columns on a phone, three on a tablet, one when the text is enlarged. */
+  grid-template-columns: repeat(auto-fill, minmax(max(8.25rem, calc((100% - 6.1px) / 3)), 1fr));
+  gap: 3px;
+  background: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 10px 30px rgba(30, 27, 75, 0.18);
+  /* Small tiles fill any hole left beside an opened panel. */
+  grid-auto-flow: row dense;
+}
+@media (max-width: 699px) {
+  .board { grid-template-columns: repeat(auto-fill, minmax(max(8.25rem, calc((100% - 3.1px) / 2)), 1fr)); }
+}
+.pane .board { grid-template-columns: repeat(auto-fill, minmax(max(8.25rem, calc((100% - 3.1px) / 2)), 1fr)); }
+.cell { display: flex; min-width: 0; }
+.cell.wide { grid-column: 1 / -1; }
+/* Today's outings get the full row so their words and car never squeeze. */
+.cell.event { grid-column: 1 / -1; }
+/* The last small tile stretches to fill its row, so the grid has no holes. */
+.cell.fill-2 { grid-column: span 2; }
+.cell.fill-3 { grid-column: span 3; }
+.cell.event .ftile, .cell.fill-2 .ftile, .cell.fill-3 .ftile { aspect-ratio: auto; min-height: 11rem; }
+.ftile {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  /* Square, growing taller only if the words need it (no explicit min-height,
+     so the content can always stretch it rather than spill out). */
+  aspect-ratio: 1 / 1;
+  container-type: inline-size;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.45rem;
+  padding: 1rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  color: #fff;
+  font: inherit;
+  text-decoration: none;
+  overflow-wrap: break-word;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.ftile.wide { aspect-ratio: auto; min-height: 11rem; padding: 1.4rem 1rem; }
+.ftile.press { cursor: pointer; }
+.ftile.press:hover { filter: brightness(0.93); }
+.ftile.press:active { filter: brightness(0.86); }
+.ticon { width: 5rem; height: 5rem; stroke-width: 1.75; flex: none; }
+/* Big capitals, shrinking only as far as needed to keep whole words on a small tile. */
+.tlabel { font-size: clamp(1.5rem, 19cqi, 2rem); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.12; max-width: 100%; }
+.tlabel.big { font-size: clamp(2rem, 11cqi, 2.25rem); text-transform: none; letter-spacing: 0; text-wrap: balance; }
+.tdetail { font-size: 1.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.tsub { font-size: clamp(1.25rem, 13cqi, 1.5rem); line-height: 1.3; max-width: 100%; }
+.tsub.strong { font-weight: 700; }
+.tkicker { font-size: 1.5rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.tpic { width: min(100%, 16rem); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 0.6rem; border: 4px solid #fff; }
+.tface { width: 6.5rem; height: 6.5rem; border-radius: 50%; object-fit: cover; border: 5px solid #fff; flex: none; }
+
+.t-orange { background: #c2410c; }
+.t-green { background: #15803d; }
+.t-yellow { background: #facc15; color: #1b1a19; }
+.t-purple { background: #7c3aed; }
+.t-cyan { background: #0e7490; }
+.t-rose { background: #be123c; }
+.t-blue { background: #1d4ed8; }
+.t-teal { background: #0f766e; }
+
+/* Buttons inside tiles: white with dark text, always high contrast. */
+.tile-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 4rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.8rem;
+  border: 3px solid rgba(0, 0, 0, 0.18);
+  background: #fff;
+  color: #1b1a19;
+  font: inherit;
+  font-size: clamp(1.25rem, 12cqi, 1.75rem);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
+  touch-action: manipulation;
+  max-width: 100%;
+}
+.tile-btn svg { width: 1.9rem; height: 1.9rem; flex: none; stroke-width: 2.5; }
+.tile-btn.yes { color: #14532d; }
+.tile-btn.yes svg { color: #15803d; }
+.tile-btn.chosen { outline: 5px solid #fde047; outline-offset: 2px; background: #fefce8; }
+.tile-btn[disabled] { opacity: 0.6; cursor: progress; }
+.tile-btn.small { min-height: 3.2rem; font-size: 1.375rem; }
+.tile-btn.small svg { width: 1.5rem; height: 1.5rem; }
+.tile-btn.ghost { background: transparent; color: inherit; border-color: currentColor; box-shadow: none; }
+.answer-grid, .yn-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 34rem;
+}
+/* Narrow tile (small phone): icon above the word so words never split.
+   Very narrow for the text size (enlarged text): one answer per row. */
+@container (max-width: 22rem) {
+  .answer-grid .tile-btn, .yn-row .tile-btn, .place-grid .tile-btn { flex-direction: column; gap: 0.15rem; padding: 0.5rem 0.3rem; line-height: 1.1; }
+}
+@container (max-width: 13rem) {
+  .answer-grid, .yn-row { grid-template-columns: minmax(0, 1fr); }
+  .tile-btn { padding-inline: 0.3rem; }
+}
+.place-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.6rem;
+  width: 100%;
+}
+.panel-form { display: flex; flex-direction: column; gap: 0.6rem; width: 100%; text-align: left; }
+.tile-close {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 3rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 3px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.375rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tile-close svg { width: 1.5rem; height: 1.5rem; }
+.tile-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.tsub.said { background: #fff; color: #1b1a19; border-radius: 0.6rem; padding: 0.2rem 0.7rem; }
+
+/* Car: a car drawn in its colour, with the colour and times written. No driver. */
+.car-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.7rem;
+  background: #fff;
+  color: #1b1a19;
+  border-radius: 0.8rem;
+  padding: 0.45rem 0.8rem;
+  max-width: 100%;
+}
+.car-strip .car-icon { width: 3.6rem; }
+.car-strip-words { display: flex; flex-direction: column; text-align: left; font-size: 1.5rem; font-weight: 700; line-height: 1.25; }
+.car-colour { text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Photo of the day fills its tile; the caption sits on a dark strip. */
+.photo-tile { padding: 0; justify-content: flex-end; overflow: hidden; }
+.tphoto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.tphoto-caption {
+  position: relative;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 0.5rem 0.6rem;
+  line-height: 1.25;
+}
+.tphoto-more { display: block; font-size: 1.25rem; font-weight: 400; }
+.music-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* Word search inside its tile. */
+.ws { display: flex; flex-direction: column; align-items: center; gap: 0.7rem; width: 100%; }
+.ws-intro { font-size: 1.5rem; font-weight: 700; }
+.ws .ws-words { justify-content: center; }
+.ws .ws-words li { color: #1b1a19; font-size: 1.5rem; }
+.ws .ws-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 34rem;
+  container-type: inline-size;
+}
+.ws .ws-cell {
+  min-height: 0;
+  aspect-ratio: 1;
+  font-size: min(2rem, 7.5cqi);
+  border-width: 2px;
+  border-color: #ddd6fe;
+  border-radius: 0.4rem;
+}
+.ws .ws-cell.sel { background: #fde047; border-color: #854d0e; }
+.ws .ws-status { color: #fff; min-height: 2.2rem; font-size: 1.5rem; }
+.ws-done { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 1rem 0; }
+.ws-done-icon { width: 4.5rem; height: 4.5rem; }
+.ws-done-title { font-size: 2.25rem; font-weight: 700; }
+.ws-done-sub { font-size: 1.5rem; }
+
+.board-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.4rem 0.8rem;
+  text-align: center;
+  background: #1f2937;
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* The day and time, flat to match the tiles. */
+.clockbar {
+  border-radius: 0;
+  border: 0;
+  background: var(--clock-band, #1e3a8a);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(30, 27, 75, 0.18);
+}
+.clock-morning { --clock-band: #b45309; }
+.clock-afternoon { --clock-band: #1d4ed8; }
+.clock-evening { --clock-band: #4338ca; }
+.clock-night { --clock-band: #1e1b4b; }
+.clockbar .clock-icon { background: #fff; color: var(--clock-band, #1e3a8a); }
+.clockbar .clock-date { color: #fff; opacity: 0.92; }
+.clockbar .clock-day, .clockbar .clock-time { text-transform: uppercase; letter-spacing: 0.03em; }

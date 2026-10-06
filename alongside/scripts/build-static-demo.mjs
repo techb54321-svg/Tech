@@ -11,7 +11,8 @@ execSync('npx vite build', { cwd: root, stdio: 'inherit', env: { ...process.env,
 const out = join(root, 'dist-static')
 const css = readdirSync(out).filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(out, f), 'utf8')).join('\n')
 const js = readFileSync(join(out, 'app.js'), 'utf8').replace(/<\/script/gi, '<\\/script')
-const html = `<title>Alongside</title>
+const html = `<meta charset="utf-8">
+<title>Alongside</title>
 <meta name="description" content="Alongside: a simple daily helper for an older person, with family support behind the scenes. Browser-only demonstration.">
 <style>${css}</style>
 <div id="root"></div>

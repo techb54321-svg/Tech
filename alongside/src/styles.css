@@ -2047,3 +2047,83 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
   .f-header { padding-inline: 0.75rem; }
 }
 .f .card ol, .f .card ul:not(.list) { margin: 0; padding-left: 1.4rem; display: grid; gap: 0.35rem; }
+
+/* =================== Margaret's screen on a phone: shorter, clearer =================== */
+/* Today: one card. The next item is open; the rest are one line each. */
+.tod .ftile.agenda { padding: clamp(0.9rem, 3cqi, 1.4rem); gap: 0.4rem; min-height: 0; }
+.agenda-head { display: inline-flex; align-items: center; gap: 0.5rem; }
+.agenda-head svg { width: 1.5rem; height: 1.5rem; }
+.agenda-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; }
+.agenda-item + .agenda-item { border-top: 1px solid rgba(255, 255, 255, 0.28); }
+.agenda-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 4rem;
+  padding: 0.6rem 0.25rem;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0.8rem;
+}
+.agenda-icon { width: 1.9rem; height: 1.9rem; stroke-width: 1.6; flex: none; }
+.agenda-time { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.agenda-title { font-size: 1.5rem; font-weight: 700; line-height: 1.2; min-width: 0; }
+.agenda-detail { display: block; font-size: 1.125rem; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.95; }
+.agenda-now { background: #faf7f1; color: #0f5e50; border-radius: 999px; padding: 0.15rem 0.6rem; font-size: 1.125rem; font-weight: 700; }
+.agenda-chev { width: 1.5rem; height: 1.5rem; transition: transform 0.15s; }
+.agenda-item.open .agenda-chev { transform: rotate(180deg); }
+.agenda-item.open { background: rgba(0, 0, 0, 0.16); border-radius: 1rem; border-top-color: transparent; }
+.agenda-item.open + .agenda-item { border-top-color: transparent; }
+.agenda-item.open .agenda-time { font-size: clamp(1.75rem, 8cqi, 2.25rem); }
+.agenda-item.open .agenda-title { font-size: clamp(1.5rem, 6.5cqi, 2rem); }
+.agenda-body { padding: 0 0.75rem 0.9rem calc(1.9rem + 1rem); display: flex; flex-direction: column; gap: 0.35rem; }
+.agenda-body .tchips { margin-top: 0.35rem; }
+@media (prefers-reduced-motion: reduce) { .agenda-chev { transition: none; } }
+/* Narrow phones: time above the title so long names keep their room. */
+@container (max-width: 22rem) {
+  .agenda-row { grid-template-columns: auto minmax(0, 1fr) auto auto; row-gap: 0.1rem; }
+  .agenda-icon { grid-row: span 2; align-self: start; margin-top: 0.3rem; }
+  .agenda-time { grid-column: 2; white-space: normal; }
+  .agenda-title { grid-column: 2 / -1; grid-row: 2; }
+  .agenda-body { padding-left: 0.75rem; }
+}
+
+/* Ask Hazel: a compact row, not a tall empty tile. */
+.tod .ftile.wide.ask-tile { flex-direction: row; align-items: center; gap: 1rem; min-height: 0; padding-block: 1.1rem; }
+.tod .ask-tile .trow { width: auto; }
+.tod .ask-tile .ticon { width: 3.25rem; height: 3.25rem; }
+
+/* Music stretched across a row: icon, words, play button in one line. */
+.tod .cell.fill-2 .music-tile { min-height: 0; aspect-ratio: auto; }
+.tod .cell.fill-2 .music-main { flex-direction: row; align-items: center; gap: 1rem; }
+.tod .cell.fill-2 .music-main .trow { display: contents; }
+.tod .cell.fill-2 .music-main .ticon-wrap { order: 0; }
+.tod .cell.fill-2 .music-main .tfoot { order: 1; flex: 1; }
+.tod .cell.fill-2 .music-main .tplay { order: 2; }
+.tod .cell.fill-2 .music-main .ticon { width: 3.25rem; height: 3.25rem; }
+.tod .cell.fill-2 { min-height: 0; }
+
+/* Phones: a slightly shorter photo and a tighter header. */
+@media (max-width: 600px) {
+  .photo-cell .ftile { aspect-ratio: 16 / 9; }
+  .tod .clockbar { padding: 0.25rem 0.25rem 0.8rem; }
+  .tod .p-home .p-h1 { margin: 0.15rem 0 0.1rem; }
+}
+/* Very narrow for the text size (enlarged text): time and arrow on one line, the title below, no icon. */
+@container (max-width: 14rem) {
+  .agenda-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .agenda-icon { display: none; }
+  .agenda-time { grid-column: 1; }
+  .agenda-now { grid-column: 2; grid-row: 1; }
+  .agenda-title { grid-column: 1 / -1; grid-row: 2; }
+  .agenda-item.open .agenda-time, .agenda-item.open .agenda-title, .agenda-time, .agenda-title { font-size: 1.375rem; }
+  .agenda-detail { font-size: 1rem; letter-spacing: 0.06em; }
+  .agenda-body { padding-left: 0.25rem; padding-right: 0.25rem; }
+  .agenda-item.open { border-radius: 0.6rem; }
+}

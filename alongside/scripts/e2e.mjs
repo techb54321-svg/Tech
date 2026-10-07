@@ -124,13 +124,19 @@ async function inspect(page, label, { parent = true } = {}) {
         if (el.getBoundingClientRect().height < 88) out.small.push(`button height ${el.getBoundingClientRect().height}: ${el.textContent.trim()}`)
       })
       // The board: flat tiles with big capitals, buttons big enough to press.
-      document.querySelectorAll('.ftile').forEach((el) => visible(el) && el.getBoundingClientRect().height < 140 && out.small.push('tile < 140px'))
+      // Square tiles at least 140 px; row-shaped tiles (as wide as the screen) at least 88 px, the big-button height.
+      document.querySelectorAll('.ftile').forEach((el) => {
+        if (!visible(el)) return
+        const b = el.getBoundingClientRect()
+        const min = b.width >= 2 * b.height ? 88 : 140
+        if (b.height < min) out.small.push(`tile ${Math.round(b.height)}px < ${min}px: ${el.textContent.trim().slice(0, 20)}`)
+      })
       // Tile words: big, and never split across two lines ("PUZZLE / S").
       document.querySelectorAll('.tlabel').forEach((el) => {
         if (!visible(el)) return
         if (px(el) < 24 || (px(el) < 32 && el.closest('.ftile').getBoundingClientRect().width > 220)) out.small.push(`tile label ${px(el)}px: ${el.textContent.trim().slice(0, 20)}`)
       })
-      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail, .board-bar').forEach((el) => {
+      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail, .board-bar, .agenda-time, .agenda-title, .tchip').forEach((el) => {
         if (!visible(el)) return
         const words = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
         const rg = document.createRange()
@@ -763,15 +769,22 @@ step('Outings, photos and music')
     })
   }
   await homeAgain(page)
+  // All of today's outings are in one Today card; the next one is open, the others are one line each.
+  check((await page.locator('.agenda').count()) === 1, 'outing: outings are not in one Today card')
+  const open0 = await page.locator('.agenda-item.open').count()
+  check(open0 === 1, `outing: ${open0} items open at first, expected the next one`)
   const swim = page.locator('.event-tile', { hasText: 'Swimming' })
   await swim.waitFor()
-  check(await swim.getByText('Aqua aerobics').isVisible(), 'outing: detail not shown on the tile')
-  check(await swim.getByText('Green car').isVisible(), 'outing: car colour not written on the tile')
+  check(await swim.getByText('Aqua aerobics').isVisible(), 'outing: detail not shown on its line')
+  await swim.getByRole('button', { name: /Swimming/ }).click()
+  check(await swim.getByText('Green car').isVisible(), 'outing: car colour not written when opened')
   check(!/driving|Sue|Anna/i.test(await swim.textContent()), 'outing: who is driving is shown')
   check(await swim.getByText(/^Pick up /).isVisible() && await swim.getByText(/^Home /).isVisible(), 'outing: pick-up and home times missing')
   const coffee = page.locator('.event-tile', { hasText: 'Coffee with Jean' })
-  check(await coffee.getByText('At the Feathers.').isVisible(), 'outing: coffee tile missing its notes')
-  check((await coffee.getByRole('button').count()) === 0 && !(await coffee.textContent()).includes('today?'), 'outing: coffee is asked as a YES / NO question')
+  await coffee.getByRole('button', { name: /Coffee with Jean/ }).click()
+  check(await coffee.getByText('At the Feathers.').isVisible(), 'outing: coffee missing its notes when opened')
+  check((await page.locator('.agenda-item.open').count()) === 1 && !(await swim.getByText('Green car').isVisible()), 'outing: more than one line open at once')
+  check((await coffee.getByRole('button', { name: /^(YES|NO)$/ }).count()) === 0 && !(await coffee.textContent()).includes('today?'), 'outing: coffee is asked as a YES / NO question')
   await shot(page, '390', '60-home-outings')
 
   // Photo tile: today's photo with its caption; a tap shows another.

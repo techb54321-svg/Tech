@@ -21,6 +21,8 @@ import {
   Ban,
   CircleHelp,
   MessageCircleQuestion,
+  CalendarDays,
+  ChevronDown,
 } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
 import { formatTime12, localTimeHM } from '../../shared/time'
@@ -242,41 +244,69 @@ function CarChips({ r }: { r: ReminderItem['reminder'] }) {
   )
 }
 
-/** An outing or appointment today: it simply shows, with nothing to answer. */
-function EventTile({ item }: { item: DayItem }) {
+interface AgendaRow {
+  key: string
+  time: string
+  end: string
+  title: string
+  detail: string
+  notes: string
+  Icon: typeof Car
+  r: ReminderItem['reminder'] | null
+}
+
+function agendaRow(item: DayItem): AgendaRow {
   if (item.type === 'lift') {
     const l = item.lift
-    return (
-      <Tile colour="t-purple" label={`Lift to ${l.destinationLabel}`} className="event-tile">
-        <div className="trow">
-          <span className="ticon-wrap">
-            <Car className="ticon" aria-hidden="true" />
-          </span>
-          <span className="ttime">{formatTime12(l.time)}</span>
-        </div>
-        <div className="tfoot">
-          <p className="tlabel">Lift to {l.destinationLabel}</p>
-        </div>
-      </Tile>
-    )
+    return { key: item.key, time: l.time, end: addMinutesHM(l.time, 30), title: `Lift to ${l.destinationLabel}`, detail: '', notes: '', Icon: Car, r: null }
   }
   const r = item.reminder
-  const Icon = eventIcon(r.title, r.kind)
+  return {
+    key: item.key, time: r.time, end: r.returnTime ?? addMinutesHM(r.time, 120), title: r.title, detail: r.subtitle, notes: r.notes,
+    Icon: eventIcon(r.title, r.kind), r,
+  }
+}
+
+/**
+ * Today's outings, appointments and lifts in one card: the next one open with
+ * its details, the rest as one line each (tap to open). Nothing to answer.
+ */
+function TodayAgenda({ items, today }: { items: DayItem[]; today: ParentToday }) {
+  const hm = localTimeHM(new Date(), today.timeZone)
+  const rows = items.map(agendaRow).sort((a, b) => a.time.localeCompare(b.time))
+  const focus = rows.find((x) => x.end > hm) ?? rows[0]
+  const [open, setOpen] = useState<string | null>(focus?.key ?? null)
   return (
-    <Tile colour={r.kind === 'appointment' ? 't-blue' : 't-teal'} label={r.title} className="event-tile">
-      <div className="trow">
-        <span className="ticon-wrap">
-          <Icon className="ticon" aria-hidden="true" />
-        </span>
-        <span className="ttime">{formatTime12(r.time)}</span>
-      </div>
-      <div className="tfoot">
-        <p className="tkicker">Today</p>
-        <p className="tlabel">{r.title}</p>
-        {r.subtitle && <p className="tdetail">{r.subtitle}</p>}
-        {r.notes && <p className="tsub">{r.notes}</p>}
-        <CarChips r={r} />
-      </div>
+    <Tile colour="t-teal" wide label="Today’s plans" className="agenda">
+      <p className="tkicker agenda-head">
+        <CalendarDays aria-hidden="true" /> Today
+      </p>
+      <ul className="agenda-list">
+        {rows.map((row) => {
+          const isOpen = open === row.key
+          const now = row.time <= hm && hm < row.end
+          return (
+            <li key={row.key} className={`agenda-item event-tile${isOpen ? ' open' : ''}`}>
+              <button type="button" className="agenda-row" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : row.key)}>
+                <row.Icon className="agenda-icon" aria-hidden="true" />
+                <span className="agenda-time">{formatTime12(row.time)}</span>
+                <span className="agenda-title">
+                  {row.title}
+                  {row.detail && <span className="agenda-detail">{row.detail}</span>}
+                </span>
+                {now && <span className="agenda-now">Now</span>}
+                <ChevronDown className="agenda-chev" aria-hidden="true" />
+              </button>
+              {isOpen && (row.notes || row.r) && (
+                <div className="agenda-body">
+                  {row.notes && <p className="tsub">{row.notes}</p>}
+                  {row.r && <CarChips r={row.r} />}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
     </Tile>
   )
 }
@@ -531,11 +561,11 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           {thanks[d.key] ? <ThanksTile done={thanks[d.key]} today={today} /> : <ReminderTile item={d} today={today} onAnswered={answered} />}
         </div>
       ))}
-      {events.map((e) => (
-        <div role="listitem" className="cell event" key={e.key}>
-          <EventTile item={e} />
+      {events.length > 0 && (
+        <div role="listitem" className="cell wide">
+          <TodayAgenda items={events} today={today} />
         </div>
-      ))}
+      )}
       {today.contacts.map((c) => (
         <div role="listitem" className={`cell${fillFor(c.id)}`} key={c.id}>
           <CallTile c={c} today={today} />

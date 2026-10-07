@@ -415,6 +415,21 @@ Hazel now uses Claude where it helps most, with fixed safety rules that never de
 - The browser layout checks now allow for sideways-scrolling strips and for sticky bars over content scrolled
   beneath them. The page itself must still never scroll sideways.
 
+### Eighteenth round: Margaret's screen on a phone
+
+- **One "Today" card instead of a tile per outing.** The next outing (or the one happening now, marked **Now**) is
+  open, with its time large, the class name, notes and the car and pick-up chips. Later outings are one tidy line
+  each: icon, time and title. Tapping a line opens it and closes the other. On a phone this replaced a wall of
+  same-coloured teal tiles.
+- **Compact rows** for Ask Hazel and for Music when it spans the row: icon, words and (for music) the play button
+  on one line, instead of tall, mostly empty tiles.
+- On phones the photo is 16:9 and the header is tighter.
+- The phone page went from about 2,480 px to about 1,650 px tall, so Call Sarah, Puzzles and Music are reached
+  much sooner. Tablets fit everything on one screen.
+- With very large text, each outing line puts the time on one line and the title under it, so words never split.
+  The layout checks now cover outing lines and chips, and allow row-shaped tiles (as wide as the screen) to be
+  88 px tall instead of 140 px.
+
 ## Project layout
 
 ```

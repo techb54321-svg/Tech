@@ -15,7 +15,7 @@ export interface DayData {
   }>
   help: Array<{
     id: string
-    source: 'reminder' | 'lift'
+    source: 'reminder' | 'lift' | 'ask'
     title: string
     occurrenceDate: string | null
     destinationLabel: string | null
@@ -42,6 +42,24 @@ export interface DayData {
     createdAt: string
     enteredBy: string | null
   }>
+  /** Questions the parent asked Hazel that day, newest first. */
+  asks: Array<{
+    id: string
+    question: string
+    answer: string
+    source: 'claude' | 'rules'
+    intent: string
+    offeredHelp: boolean
+    helpRequested: boolean
+    createdAt: string
+  }>
+}
+
+/** How a help request reads in the family area. */
+export function helpTitle(h: DayData['help'][number]): string {
+  if (h.source === 'lift') return `Lift to ${h.destinationLabel}`
+  if (h.source === 'ask') return `Asked Hazel: “${h.title}”`
+  return `Help with “${h.title}”`
 }
 
 export function useDay(hid: string, date: string) {

@@ -205,6 +205,16 @@ The integrations live in `server/integrations/`.
     `PUBLIC_BASE_URL`.
   - The parent is told "a text was sent" only when the provider accepted it.
   - **Not tested against live Twilio** (no credentials here); covered with mocked responses.
+- **AI: `ai.ts` (Claude).** Needs `ANTHROPIC_API_KEY` on the server (the key never reaches the browser), and each
+  household must turn on "AI features" in Family setup. It is off by default because it sends that day's plan to
+  Anthropic.
+  - Uses the official Anthropic SDK with Claude Opus 5.5 (`HAZEL_AI_MODEL` to change). Answers come back as
+    structured JSON checked against a schema. Server-side fallback is on, so a request declined by a safety
+    classifier is retried on Anthropic's recommended model in the same call.
+  - Short timeouts, one retry. Any failure, refusal or timeout falls back to Hazel's built-in answer, which is
+    labelled as such.
+  - **Not tested against the live API here** (no key in this environment). The provider is tested with the real
+    SDK pointed at a local stand-in for the API, which checks the model, headers, effort, schema and parsing.
 - **Ride booking: `transport.ts`.** No authorised ride-booking API is connected. Uber's ride-request API needs
   approved partner access.
   - The quote → explicit "Yes, book it" → "Booked only on provider confirmation" flow is implemented behind a
@@ -349,6 +359,42 @@ database file and keep it.
   `src/brand/hazel.json`.
 - The **welcome screen** now uses the brand: the logo in ivory on charcoal, a gold "Try the demonstration" button
   and outlined secondary buttons. The family area header and the side-by-side view show the logo too.
+
+### Sixteenth round: AI-powered, safely
+
+Hazel now uses Claude where it helps most, with fixed safety rules that never depend on the AI.
+
+- **Ask Hazel (for the parent).** A gold tile under the photo. Tap it, then tap **Tap and speak** (speech
+  recognition where the browser has it), tap a suggested question ("What day is it?", "What's on today?", "When is
+  my car coming?", "Who can I call?") or type. The answer appears in large text on an ivory card and is read aloud,
+  with **Say it again** and **Ask something else**.
+  - Answers use **only today's plan on the parent's screen**: the date and time, outings with pick-up times and
+    car colour, people to call, tomorrow's first item and the home address. Claude is told never to invent
+    anything, to say when it is not sure, and to answer a repeated question just as patiently.
+  - **Fixed safety rules, checked before any AI.** Anything urgent ("I've fallen", "chest pain", "help me",
+    smoke) always gets: "If this is an emergency, call 000 now. I can also let Anna know straight away." Medicine
+    questions always get "I can't help with medicines. Please ask Anna or your doctor." These are never sent to
+    the AI.
+  - When Hazel is unsure, or for anything urgent, **Let Anna know** turns the question into a help request (and a
+    text, if alerts are on).
+  - Every answer says where it came from ("Answer written by Claude…" or "Hazel's own answer…"). A note on the
+    tile says the family can see what is asked.
+  - Without AI, Hazel's built-in answers handle the everyday questions: the day and time, what's on, a named
+    outing, the car, tomorrow, who to call and where home is.
+- **"Describe it" (for family).** On a new reminder, type it in your own words, for example "Pilates next Tuesday
+  at 10, no mat needed. Blue car at 9:30, home by 11:15". Then press **Fill in the form with Hazel**. Claude fills in
+  the type, title, detail in capitals, times, pick-up, car colour and notes, and lists anything it assumed. Reminders
+  repeat daily or not at all, so a weekly class is set for the next date and this is said. Nothing is saved until
+  the family checks it and presses Add reminder. Medication descriptions are declined without asking the AI.
+- **Hazel's note (for family).** On Today, **Write a note about Margaret's day** gives a few plain sentences
+  from the day's records: help requests first, shared reminders, outings, and questions asked more than once.
+  Private routines are never included, and nothing is guessed about health or mood. Without AI, the note is
+  written from the same facts by simple rules and says so.
+- **"Margaret asked Hazel"** lists each question with Hazel's answer and the time, and highlights questions asked
+  several times. Repeated questions can be a sign something is on someone's mind.
+- **In the online preview**, there is no server. The page asks Claude through the viewer's own Claude account,
+  after a one-time permission prompt (the published page declares the `sample` capability). If the viewer
+  declines, or opens the file elsewhere, everything falls back to the built-in answers and says why.
 
 ## Project layout
 

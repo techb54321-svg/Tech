@@ -16,6 +16,8 @@ export const demoSettings: SettingsInput = {
   smsAlerts: false,
   // Margaret's board shows "Call Sarah" only; Anna still receives help requests.
   callContact: false,
+  // The demonstration shows the AI features (when the server or preview has Claude available).
+  aiEnabled: true,
 }
 
 export const demoDestinations: DestinationInput[] = [

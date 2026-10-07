@@ -137,6 +137,26 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
           </span>
         </label>
       </fieldset>
+      <fieldset className="field plain-fieldset">
+        <legend className="label">AI features</legend>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={!!s.aiEnabled}
+            disabled={!info.integrations.ai.configured}
+            onChange={(e) => set('aiEnabled', e.target.checked)}
+          />
+          <span>
+            <strong>Use Claude AI for Ask Hazel, reminder drafts and daily notes</strong>
+            <br />
+            <span className="small muted">
+              {info.integrations.ai.configured
+                ? `When ${s.parentName || 'the parent'} asks Hazel a question, today’s plan on their screen and the question are sent to ${info.integrations.ai.name} to write the answer. Urgent and medicine questions always get Hazel’s fixed answer and are never sent. Off: Hazel uses its simple built-in answers.`
+                : (info.integrations.ai.unavailableReason ?? 'AI is not set up on this server (it needs an Anthropic API key). Ask Hazel still works with simple built-in answers for the day, the time and what is on.')}
+            </span>
+          </span>
+        </label>
+      </fieldset>
       <ErrorBanner error={act.error} onRetry={act.retry} />
       <Saved show={saved} />
       <div>

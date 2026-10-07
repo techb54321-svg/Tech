@@ -20,6 +20,7 @@ import {
   X,
   Ban,
   CircleHelp,
+  MessageCircleQuestion,
 } from 'lucide-react'
 import { api, ApiError, newRequestId } from '../api'
 import { formatTime12, localTimeHM } from '../../shared/time'
@@ -27,6 +28,7 @@ import type { DayItem, MessageStatus, ParentToday, ResponseAction } from '../../
 import { CAR_FILL } from './illustrations'
 import { liveStatus } from './ParentApp'
 import { WordSearchGame } from './WordSearch'
+import { AskHazelPanel } from './AskHazel'
 import { stopSpeaking } from '../speech'
 import { Listen, telHref } from './common'
 
@@ -450,7 +452,7 @@ function useColumns(ref: RefObject<HTMLDivElement | null>) {
 }
 
 export function Board({ today, offline }: { today: ParentToday; offline: boolean }) {
-  const [open, setOpen] = useState<null | 'puzzle'>(null)
+  const [open, setOpen] = useState<null | 'puzzle' | 'ask'>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)
   const cols = useColumns(boardRef)
@@ -503,6 +505,26 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
       {/* Today's photo first, across the top. */}
       <div role="listitem" className="cell wide photo-cell">
         <PhotoTile today={today} />
+      </div>
+      {/* Ask Hazel: speak or tap a question; the answer appears here and is read aloud. */}
+      <div role="listitem" className="cell wide" ref={open === 'ask' ? panelRef : undefined}>
+        {open === 'ask' ? (
+          <Tile colour="t-gold" wide label="Ask Hazel" className="panel">
+            <AskHazelPanel today={today} onClose={() => setOpen(null)} />
+          </Tile>
+        ) : (
+          <Tile colour="t-gold" wide onClick={() => setOpen('ask')} label="Ask Hazel" className="ask-tile">
+            <span className="trow">
+              <span className="ticon-wrap">
+                <MessageCircleQuestion className="ticon" aria-hidden="true" />
+              </span>
+            </span>
+            <span className="tfoot">
+              <span className="tlabel">Ask Hazel</span>
+              <span className="tsub strong">Tap and ask about today</span>
+            </span>
+          </Tile>
+        )}
       </div>
       {due.map((d) => (
         <div role="listitem" className="cell wide" key={d.key}>

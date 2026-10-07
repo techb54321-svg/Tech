@@ -31,6 +31,8 @@ export const settingsSchema = z.object({
   keepAwake: z.boolean().default(false),
   /** Show a "Call …" tile for the family contact (they may prefer only the other people). */
   callContact: z.boolean().default(true),
+  /** Use Claude for Ask Hazel, reminder drafts and daily notes (sends today's plan to Anthropic). Off until family turns it on. */
+  aiEnabled: z.boolean().default(false),
 })
 
 export const destinationSchema = z.object({
@@ -92,6 +94,9 @@ export const arrangedLiftSchema = z.object({
 })
 
 export const clientRequestId = z.string().uuid()
+
+export const askSchema = z.object({ clientRequestId: z.string().uuid(), question: z.string().trim().min(1, 'Ask a question').max(300) })
+export const draftRequestSchema = z.object({ text: z.string().trim().min(3, 'Describe the reminder in a few words').max(1000) })
 
 export const responseSchema = z.object({
   clientRequestId,

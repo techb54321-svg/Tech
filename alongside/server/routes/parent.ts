@@ -22,8 +22,27 @@ import {
 import { LATER_MINUTES, occursOn } from '../../shared/schedule.js'
 import { addDaysISO } from '../../shared/time.js'
 import type { MessageStatus, ParentToday } from '../../shared/types.js'
-import { clientRequestId, responseSchema, tripDestinationSchema } from '../../shared/validation.js'
+import { askSchema, clientRequestId, responseSchema, tripDestinationSchema } from '../../shared/validation.js'
+import { askSystemPrompt, askUserPrompt, hazelContext, ruleAnswer, type HazelAnswer } from '../../shared/hazel.js'
+import { AiUnavailable } from '../integrations/ai.js'
 import { uberDeepLink } from '../integrations/transport.js'
+
+interface AskRow {
+  id: string
+  household_id: string
+  question: string
+  answer: string
+  intent: string
+  source: 'claude' | 'rules'
+  offered_help: number
+  help_request_id: string | null
+  client_request_id: string
+  created_at: string
+}
+const askOut = (a: AskRow) => ({
+  id: a.id, question: a.question, answer: a.answer, intent: a.intent, source: a.source,
+  offerHelp: !!a.offered_help, helpRequested: !!a.help_request_id, createdAt: a.created_at,
+})
 
 // Outings just show on the day; YES / NO answers (from an earlier version) are no longer taken.
 const ACTIONS = new Set(['done', 'later', 'need_help', 'not_today'])
@@ -33,36 +52,115 @@ export function parentRoutes(deps: Deps) {
   const r = Router()
   r.use(requireParent(db))
 
+  /** Everything on the parent's screen today. Also what Ask Hazel answers from. */
+  function parentToday(hh: HouseholdRow, now: Date): ParentToday {
+    const date = todayFor(hh, now)
+    return {
+      demo: !!hh.is_demo,
+      parentName: hh.parent_name,
+      contactName: hh.contact_name,
+      contactPhone: hh.contact_phone,
+      timeZone: hh.time_zone,
+      autoSpeak: !!hh.auto_speak,
+      keepAwake: !!hh.keep_awake,
+      tomorrow: firstItemOn(db, hh, addDaysISO(date, 1)),
+      contacts: listContacts(db, hh, true),
+      photos: listPhotos(db, hh.id, date),
+      songs: listSongs(db, hh.id),
+      date,
+      now: now.toISOString(),
+      items: parentDayItems(db, hh, date, now),
+      destinations: listDestinations(db, hh.id),
+      transport: {
+        providerAvailable: !!deps.transport,
+        providerName: deps.transport?.name ?? null,
+        uberHandoff: true,
+        uberClientId: process.env.UBER_CLIENT_ID || null,
+      },
+    }
+  }
+
   r.get(
     '/today',
     h((req, res) => {
+      res.json(parentToday(getHousehold(db, req.householdId!), deps.now()))
+    }),
+  )
+
+  /**
+   * Ask Hazel. Urgent and medicine questions always get Hazel's fixed answer.
+   * Otherwise Claude answers from today's plan when the server has it and the
+   * family turned AI on; if it is off, slow or fails, the built-in answer is used.
+   */
+  r.post(
+    '/ask',
+    h(async (req, res) => {
+      const body = parse(askSchema, req.body)
       const hh = getHousehold(db, req.householdId!)
-      const now = deps.now()
-      const date = todayFor(hh, now)
-      const out: ParentToday = {
-        demo: !!hh.is_demo,
-        parentName: hh.parent_name,
-        contactName: hh.contact_name,
-        contactPhone: hh.contact_phone,
-        timeZone: hh.time_zone,
-        autoSpeak: !!hh.auto_speak,
-        keepAwake: !!hh.keep_awake,
-        tomorrow: firstItemOn(db, hh, addDaysISO(date, 1)),
-        contacts: listContacts(db, hh, true),
-        photos: listPhotos(db, hh.id, date),
-        songs: listSongs(db, hh.id),
-        date,
-        now: now.toISOString(),
-        items: parentDayItems(db, hh, date, now),
-        destinations: listDestinations(db, hh.id),
-        transport: {
-          providerAvailable: !!deps.transport,
-          providerName: deps.transport?.name ?? null,
-          uberHandoff: true,
-          uberClientId: process.env.UBER_CLIENT_ID || null,
-        },
+      const dup = db.prepare('SELECT * FROM asks WHERE client_request_id=?').get(body.clientRequestId) as AskRow | undefined
+      if (dup) {
+        if (dup.household_id !== hh.id) throw new HttpError(409, 'Duplicate request.')
+        return res.json(askOut(dup))
       }
-      res.json(out)
+      const now = deps.now()
+      const recent = (db.prepare('SELECT COUNT(*) n FROM asks WHERE household_id=? AND created_at > ?')
+        .get(hh.id, new Date(now.getTime() - 3600000).toISOString()) as { n: number }).n
+      if (recent >= 60) throw new HttpError(429, 'Hazel needs a short rest. Please ask again in a little while.')
+
+      const ctx = hazelContext(parentToday(hh, now), now)
+      let reply: HazelAnswer = ruleAnswer(body.question, ctx)
+      if (reply.intent !== 'urgent' && reply.intent !== 'medicine' && deps.ai && hh.ai_enabled) {
+        try {
+          const ai = await deps.ai.ask(askSystemPrompt(), askUserPrompt(ctx, body.question))
+          const answer = ai.answer.trim().slice(0, 600)
+          if (answer) reply = { answer, offerHelp: ai.offerHelp, intent: reply.intent, source: 'claude' }
+        } catch (e) {
+          if (!(e instanceof AiUnavailable)) throw e
+          // Keep the built-in answer.
+        }
+      }
+      const row: AskRow = {
+        id: randomUUID(), household_id: hh.id, question: body.question, answer: reply.answer, intent: reply.intent,
+        source: reply.source, offered_help: reply.offerHelp ? 1 : 0, help_request_id: null,
+        client_request_id: body.clientRequestId, created_at: now.toISOString(),
+      }
+      db.prepare(
+        `INSERT INTO asks (id, household_id, question, answer, intent, source, offered_help, help_request_id, client_request_id, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      ).run(row.id, row.household_id, row.question, row.answer, row.intent, row.source, row.offered_help, null, row.client_request_id, row.created_at)
+      res.status(201).json(askOut(row))
+    }),
+  )
+
+  /** "Let Anna know": turn a question into a help request for the family. */
+  r.post(
+    '/ask/:id/help',
+    h(async (req, res) => {
+      const body = parse(z.object({ clientRequestId }), req.body)
+      const hh = getHousehold(db, req.householdId!)
+      const ask = db.prepare('SELECT * FROM asks WHERE id=? AND household_id=?').get(String(req.params.id), hh.id) as AskRow | undefined
+      if (!ask) throw new HttpError(404, 'That question was not found.')
+      if (ask.help_request_id) {
+        const existing = db.prepare('SELECT message_status FROM help_requests WHERE id=?').get(ask.help_request_id) as { message_status: MessageStatus } | undefined
+        return res.json({ messageStatus: existing?.message_status ?? null, duplicate: true })
+      }
+      const id = randomUUID()
+      tx(db, () => {
+        db.prepare(
+          `INSERT INTO help_requests (id, household_id, source, title, status, message_status, client_request_id, created_at)
+           VALUES (?,?,?,?,?,?,?,?)`,
+        ).run(id, hh.id, 'ask', ask.question.slice(0, 120), 'open', 'not_requested', body.clientRequestId, deps.now().toISOString())
+        db.prepare('UPDATE asks SET help_request_id=? WHERE id=?').run(id, ask.id)
+      })
+      const urgent = ask.intent === 'urgent'
+      const messageStatus = await notifyFamily(
+        hh,
+        id,
+        urgent
+          ? `Hazel: ${hh.parent_name} may need help now. They said: “${ask.question.slice(0, 120)}”. Hazel told them to call 000 if it is an emergency.`
+          : `Hazel: ${hh.parent_name} asked Hazel “${ask.question.slice(0, 120)}” and would like you to know. Open Hazel to see it.`,
+      )
+      res.status(201).json({ messageStatus, duplicate: false })
     }),
   )
 

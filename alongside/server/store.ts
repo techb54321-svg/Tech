@@ -30,6 +30,7 @@ export interface HouseholdRow {
   auto_speak: number
   keep_awake: number
   call_contact: number
+  ai_enabled: number
   is_demo: number
   created_at: string
 }
@@ -52,6 +53,7 @@ export function settingsOf(h: HouseholdRow): Required<SettingsInput> & { isDemo:
     autoSpeak: !!h.auto_speak,
     keepAwake: !!h.keep_awake,
     callContact: h.call_contact !== 0,
+    aiEnabled: h.ai_enabled === 1,
     isDemo: !!h.is_demo,
   }
 }
@@ -60,7 +62,7 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
   const id = randomUUID()
   db.prepare(
     `INSERT INTO households (id, parent_name, time_zone, contact_name, contact_phone, pharmacy_name,
-       pharmacy_phone, sms_alerts, auto_speak, keep_awake, call_contact, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       pharmacy_phone, sms_alerts, auto_speak, keep_awake, call_contact, ai_enabled, is_demo, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
   ).run(
     id,
     s.parentName,
@@ -73,6 +75,7 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
     s.autoSpeak ? 1 : 0,
     s.keepAwake ? 1 : 0,
     s.callContact === false ? 0 : 1,
+    s.aiEnabled ? 1 : 0,
     isDemo ? 1 : 0,
     nowIso(),
   )
@@ -82,9 +85,9 @@ export function createHousehold(db: DB, s: SettingsInput, isDemo = false): strin
 export function updateSettings(db: DB, id: string, s: SettingsInput) {
   db.prepare(
     `UPDATE households SET parent_name=?, time_zone=?, contact_name=?, contact_phone=?, pharmacy_name=?,
-       pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=?, call_contact=? WHERE id=?`,
+       pharmacy_phone=?, sms_alerts=?, auto_speak=?, keep_awake=?, call_contact=?, ai_enabled=? WHERE id=?`,
   ).run(s.parentName, s.timeZone, s.contactName, s.contactPhone, s.pharmacyName ?? '', s.pharmacyPhone ?? '', s.smsAlerts ? 1 : 0,
-    s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, s.callContact === false ? 0 : 1, id)
+    s.autoSpeak ? 1 : 0, s.keepAwake ? 1 : 0, s.callContact === false ? 0 : 1, s.aiEnabled ? 1 : 0, id)
 }
 
 // ---- destinations ---------------------------------------------------------

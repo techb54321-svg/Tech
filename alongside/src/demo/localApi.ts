@@ -42,10 +42,27 @@ import {
   type SettingsInput,
 } from '../../shared/validation'
 import { z as zod } from 'zod'
+import {
+  askSamplePrompt,
+  draftContext,
+  draftSamplePrompt,
+  hazelContext,
+  hazelIntent,
+  ruleAnswer,
+  ruleSummary,
+  summarySamplePrompt,
+  tidyDraft,
+  type DayFacts,
+  type HazelAnswer,
+} from '../../shared/hazel'
+import { askSchema, draftRequestSchema } from '../../shared/validation'
+import { familyStatusLabel } from '../../shared/schedule'
+import { formatLongDate, localTimeHM } from '../../shared/time'
+import { claudeAvailable, claudeJson, claudeText, claudeUnavailableReason } from './claudeSample'
 
 interface Help {
   id: string
-  source: 'reminder' | 'lift'
+  source: 'reminder' | 'lift' | 'ask'
   reminderId: string | null
   occurrenceDate: string | null
   title: string
@@ -77,7 +94,7 @@ interface Trip {
   deleted?: boolean
 }
 /** Bump when the demonstration gains new content, so older saved demos are replaced with a fresh one. */
-const DEMO_VERSION = 9
+const DEMO_VERSION = 10
 
 interface State {
   version: number
@@ -93,7 +110,23 @@ interface State {
   contacts: Array<{ id: string; name: string; phone: string }>
   photos: Array<{ id: string; caption: string; showDate: string }>
   songs: Array<{ id: string; title: string; artist: string }>
+  asks: Ask[]
 }
+interface Ask {
+  id: string
+  question: string
+  answer: string
+  intent: string
+  source: 'claude' | 'rules'
+  offerHelp: boolean
+  helpRequestId: string | null
+  clientRequestId: string
+  createdAt: string
+}
+const askOut = (a: Ask) => ({
+  id: a.id, question: a.question, answer: a.answer, intent: a.intent, source: a.source,
+  offerHelp: a.offerHelp, helpRequested: !!a.helpRequestId, createdAt: a.createdAt,
+})
 
 const KEY = 'alongside.static-demo'
 let memory: State | null = null
@@ -125,6 +158,7 @@ function upgrade(s: State) {
   s.photos ??= []
   s.songs = (s.songs ?? []).map((x) => ({ ...x, artist: x.artist ?? '' }))
   s.help ??= []
+  s.asks ??= []
   s.trips ??= []
   s.responses ??= []
   s.destinations ??= []
@@ -229,6 +263,7 @@ function createDemo(): State {
     reminders: [],
     responses: [],
     help: [],
+    asks: [],
     trips: [],
     media: {},
     contacts: demoContacts.map((c) => ({ id: uuid(), ...c })),
@@ -322,8 +357,67 @@ function familyDay(s: State, date: string) {
   const trips = s.trips
     .filter((x) => !x.deleted && ((x.kind === 'family_arranged' && (x.date ?? '') >= t) || x.createdAt > fortnight))
     .sort((a, b) => ((b.date ?? b.createdAt) + (b.time ?? '') > (a.date ?? a.createdAt) + (a.time ?? '') ? 1 : -1))
-  return { date, statuses, help, trips }
+  return { date, statuses, help, trips, asks: asksOn(s, date) }
 }
+
+/** Everything on the parent's screen today (also what Ask Hazel answers from). */
+function parentToday(s: State): ParentToday {
+  const date = today(s)
+  const tomorrow = parentItems(s, addDaysISO(date, 1))[0]
+  return {
+    demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
+    items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s, true),
+    photos: photos(s, date), songs: songs(s),
+    tomorrow: tomorrow
+      ? tomorrow.type === 'reminder'
+        ? { title: tomorrow.reminder.title, time: tomorrow.reminder.time }
+        : { title: `Lift to ${tomorrow.lift.destinationLabel}`, time: tomorrow.lift.time }
+      : null,
+    transport: { providerAvailable: false, providerName: null, uberHandoff: true, uberClientId: null },
+  }
+}
+
+/** Questions asked to Hazel on a date (household time), newest first. */
+function asksOn(s: State, date: string) {
+  const tz = s.settings.timeZone
+  return s.asks
+    .filter((a) => localDateISO(new Date(a.createdAt), tz) === date)
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .map((a) => ({ ...askOut(a), offeredHelp: a.offerHelp }))
+}
+
+/** What happened on a date, for the daily note. Private routines are left out. */
+function dayFacts(s: State, date: string): DayFacts {
+  const tz = s.settings.timeZone
+  const day = familyDay(s, date)
+  const statuses = day.statuses.filter((x) => x.status !== 'private')
+  const counts = new Map<string, { question: string; times: number }>()
+  for (const a of asksOn(s, date)) {
+    const k = a.question.toLowerCase().replace(/[^a-z0-9 ]+/g, '').trim()
+    const c = counts.get(k)
+    if (c) c.times++
+    else counts.set(k, { question: a.question, times: 1 })
+  }
+  return {
+    parentName: s.settings.parentName,
+    contactName: s.settings.contactName,
+    dateText: formatLongDate(date),
+    routines: statuses
+      .filter((x) => x.kind === 'routine')
+      .map((x) => ({ title: x.title, time: x.time, outcome: x.status === 'done' ? 'Done' : familyStatusLabel(x.kind, x.status as never) })),
+    outings: statuses.filter((x) => x.kind !== 'routine').map((x) => ({ title: x.title, time: x.time })),
+    helpRequests: s.help
+      .filter((h) => localDateISO(new Date(h.createdAt), tz) === date)
+      .map((h) => ({
+        title: h.source === 'lift' ? h.title : h.source === 'ask' ? `Asked Hazel: “${h.title}”` : `Help with “${h.title}”`,
+        time: localTimeHM(new Date(h.createdAt), tz),
+      })),
+    questions: [...counts.values()].sort((a, b) => b.times - a.times).slice(0, 10),
+  }
+}
+
+const NO_CLAUDE_HERE =
+  'Claude is not available in this view of the preview. Open the preview from its claude.ai link to try it; the full app uses its server’s Claude connection.'
 
 const SERVER_ONLY = 'This online preview runs only in your browser. Accounts, device pairing and messages need the full app with its server.'
 
@@ -351,21 +445,45 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
   if (!s) throw new ApiError(401, 'Start the demonstration first.')
 
   // ---------------- parent
-  if (method === 'GET' && p === '/api/parent/today') {
-    const date = today(s)
-    const tomorrow = parentItems(s, addDaysISO(date, 1))[0]
-    const out: ParentToday = {
-      demo: true, ...s.settings, autoSpeak: !!s.settings.autoSpeak, keepAwake: !!s.settings.keepAwake, date, now: nowIso(),
-      items: parentItems(s, date), destinations: destinations(s), contacts: contacts(s, true),
-      photos: photos(s, date), songs: songs(s),
-      tomorrow: tomorrow
-        ? tomorrow.type === 'reminder'
-          ? { title: tomorrow.reminder.title, time: tomorrow.reminder.time }
-          : { title: `Lift to ${tomorrow.lift.destinationLabel}`, time: tomorrow.lift.time }
-        : null,
-      transport: { providerAvailable: false, providerName: null, uberHandoff: true, uberClientId: null },
+  if (method === 'GET' && p === '/api/parent/today') return parentToday(s) as T
+  if (method === 'POST' && p === '/api/parent/ask') {
+    const b = parse(askSchema, body)
+    const dup = s.asks.find((a) => a.clientRequestId === b.clientRequestId)
+    if (dup) return askOut(dup) as T
+    const hourAgo = new Date(Date.now() - 3600000).toISOString()
+    if (s.asks.filter((a) => a.createdAt > hourAgo).length >= 60) throw new ApiError(429, 'Hazel needs a short rest. Please ask again in a little while.')
+    const ctx = hazelContext(parentToday(s))
+    let reply: HazelAnswer = ruleAnswer(b.question, ctx)
+    if (reply.intent !== 'urgent' && reply.intent !== 'medicine' && s.settings.aiEnabled) {
+      const ai = await claudeJson<{ answer?: unknown; offerHelp?: unknown }>(askSamplePrompt(ctx, b.question), 'quick')
+      if (ai.ok && typeof ai.value?.answer === 'string' && ai.value.answer.trim()) {
+        reply = { answer: ai.value.answer.trim().slice(0, 600), offerHelp: ai.value.offerHelp === true, intent: reply.intent, source: 'claude' }
+      }
     }
-    return out as T
+    const a: Ask = {
+      id: uuid(), question: b.question, answer: reply.answer, intent: reply.intent, source: reply.source, offerHelp: reply.offerHelp,
+      helpRequestId: null, clientRequestId: b.clientRequestId, createdAt: nowIso(),
+    }
+    s = load()! // the state may have been replaced while waiting for Claude
+    s.asks.push(a)
+    save(s)
+    return askOut(a) as T
+  }
+  const askHelp = p.match(/^\/api\/parent\/ask\/([^/]+)\/help$/)
+  if (method === 'POST' && askHelp) {
+    const b = parse(zod.object({ clientRequestId }), body)
+    const a = s.asks.find((x) => x.id === askHelp[1])
+    if (!a) throw new ApiError(404, 'That question was not found.')
+    if (a.helpRequestId) return { messageStatus: 'not_requested', duplicate: true } as T
+    const id = uuid()
+    s.help.push({
+      id, source: 'ask', reminderId: null, occurrenceDate: null, title: a.question.slice(0, 120), destinationLabel: null,
+      destinationAddress: null, status: 'open', createdAt: nowIso(), resolvedAt: null, resolvedBy: null,
+      messageStatus: 'not_requested', messageDetail: 'Demonstration: no messages are sent', clientRequestId: b.clientRequestId,
+    })
+    a.helpRequestId = id
+    save(s)
+    return { messageStatus: 'not_requested', duplicate: false } as T
   }
   if (method === 'POST' && p === '/api/parent/responses') {
     const input = parse(responseSchema, body)
@@ -431,12 +549,50 @@ export async function localApi<T>(method: string, path: string, body?: unknown):
       members: [{ name: DEMO_FAMILY_NAME, email: null }],
       integrations: {
         sms: { configured: false, name: 'Twilio SMS' }, transport: null, uberHandoff: true,
+        ai: (await claudeAvailable())
+          ? { configured: true, name: 'Claude, through your Claude account (preview)' }
+          : { configured: false, name: null, unavailableReason: claudeUnavailableReason() },
         notifications: {
           background: false,
           summary: 'Reminders appear only while Hazel is open on the screen. Background notifications are not set up. For alerts when the app is closed, the full app offers a calendar export.',
         },
       },
     } as T
+  }
+  if (method === 'POST' && rest === '/ai/draft') {
+    const { text } = parse(draftRequestSchema, body)
+    if (hazelIntent(text) === 'medicine') {
+      return { draft: null, unsupported: 'Hazel does not handle medicines, so it cannot make medication reminders.', source: 'rules' } as T
+    }
+    if (!s.settings.aiEnabled) throw new ApiError(409, 'AI features are off for this household. Turn them on in Setup, or fill in the form.')
+    const ctx = draftContext(s.settings.parentName, s.settings.contactName, today(s))
+    const ai = await claudeJson<unknown>(draftSamplePrompt(ctx, text), 'default')
+    if (!ai.ok) {
+      if (ai.reason === 'failed') throw new ApiError(502, 'Hazel could not write that just now. Please try again, or fill in the form.')
+      throw new ApiError(503, ai.reason === 'declined' ? 'Claude was not allowed for this preview, so please fill in the form instead.' : NO_CLAUDE_HERE)
+    }
+    const draft = tidyDraft(ai.value, ctx)
+    if (draft.unsupported) return { draft: null, unsupported: draft.unsupported, source: 'claude' } as T
+    return { draft, unsupported: '', source: 'claude' } as T
+  }
+  if (method === 'POST' && rest === '/ai/summary') {
+    const b = parse(zod.object({ date: zod.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }), body ?? {})
+    const facts = dayFacts(s, b.date ?? today(s))
+    if (s.settings.aiEnabled) {
+      const ai = await claudeText(summarySamplePrompt(facts), 'quick')
+      if (ai.ok && ai.value) return { note: ai.value.slice(0, 1500), source: 'claude' } as T
+      return {
+        note: ruleSummary(facts),
+        source: 'rules',
+        reason:
+          ai.ok || ai.reason === 'failed'
+            ? 'Claude could not be reached, so this note was written from the records by simple rules.'
+            : ai.reason === 'declined'
+              ? 'Claude was not allowed for this preview, so this note was written from the records by simple rules.'
+              : `${NO_CLAUDE_HERE} This note was written from the records by simple rules.`,
+      } as T
+    }
+    return { note: ruleSummary(facts), source: 'rules', reason: 'AI features are off for this household, so this note was written from the records by simple rules.' } as T
   }
   if (method === 'GET' && rest === '/day') {
     const date = url.searchParams.get('date') || today(s)

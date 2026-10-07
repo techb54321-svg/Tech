@@ -4,6 +4,7 @@ import { openDb, type DB } from '../server/db'
 import { createApp } from '../server/app'
 import type { MessagingProvider } from '../server/integrations/messaging'
 import type { TransportProvider } from '../server/integrations/transport'
+import type { AiProvider } from '../server/integrations/ai'
 
 export class Clock {
   constructor(public t: Date) {}
@@ -23,11 +24,12 @@ export async function startServer(opts: {
   db?: DB
   messaging?: MessagingProvider
   transport?: TransportProvider | null
+  ai?: AiProvider | null
   clock?: Clock
 } = {}) {
   const db = opts.db ?? openDb(':memory:')
   const clock = opts.clock ?? new Clock(new Date())
-  const app = createApp({ db, messaging: opts.messaging ?? noMessaging, transport: opts.transport ?? null, now: clock.now })
+  const app = createApp({ db, messaging: opts.messaging ?? noMessaging, transport: opts.transport ?? null, ai: opts.ai ?? null, now: clock.now })
   const server: Server = await new Promise((resolve) => {
     const s = app.listen(0, '127.0.0.1', () => resolve(s))
   })

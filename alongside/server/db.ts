@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS responses_occ ON responses(household_id, occurrence_d
 CREATE TABLE IF NOT EXISTS help_requests (
   id TEXT PRIMARY KEY,
   household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-  source TEXT NOT NULL CHECK (source IN ('reminder','lift')),
+  source TEXT NOT NULL CHECK (source IN ('reminder','lift','ask')),
   reminder_id TEXT REFERENCES reminders(id) ON DELETE SET NULL,
   occurrence_date TEXT,
   title TEXT NOT NULL,
@@ -131,6 +131,21 @@ CREATE TABLE IF NOT EXISTS help_requests (
   client_request_id TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL
 );
+
+-- Questions the parent asked Hazel, and what Hazel said (for the family to see).
+CREATE TABLE IF NOT EXISTS asks (
+  id TEXT PRIMARY KEY,
+  household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  intent TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('claude','rules')),
+  offered_help INTEGER NOT NULL DEFAULT 0,
+  help_request_id TEXT REFERENCES help_requests(id) ON DELETE SET NULL,
+  client_request_id TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS asks_by_time ON asks(household_id, created_at);
 
 -- Family photos and voice messages attached to reminders and places.
 CREATE TABLE IF NOT EXISTS media (
@@ -197,6 +212,7 @@ const ADDED_COLUMNS: Array<[table: string, column: string, ddl: string]> = [
   ['households', 'auto_speak', 'INTEGER NOT NULL DEFAULT 0'],
   ['households', 'keep_awake', 'INTEGER NOT NULL DEFAULT 0'],
   ['households', 'call_contact', 'INTEGER NOT NULL DEFAULT 1'],
+  ['households', 'ai_enabled', 'INTEGER NOT NULL DEFAULT 0'],
   ['reminders', 'question', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'subtitle', "TEXT NOT NULL DEFAULT ''"],
   ['reminders', 'pickup_time', 'TEXT'],
@@ -211,21 +227,31 @@ export function openDb(file: string): DB {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
   db.exec(SCHEMA)
-  // Older databases: allow contact photos in the media table (SQLite cannot alter a CHECK).
-  const mediaSql = (db.prepare("SELECT sql FROM sqlite_master WHERE name='media'").get() as { sql: string }).sql
-  if (!mediaSql.includes("'song'")) {
-    db.exec(`BEGIN;
-      ALTER TABLE media RENAME TO media_old;
-      ${SCHEMA.slice(SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media'), SCHEMA.indexOf(');', SCHEMA.indexOf('CREATE TABLE IF NOT EXISTS media')) + 2)}
-      INSERT INTO media SELECT * FROM media_old;
-      DROP TABLE media_old;
-      COMMIT;`)
-  }
+  // Older databases: widen CHECK lists by rebuilding the table (SQLite cannot alter a CHECK).
+  rebuildIfMissing(db, 'media', "'song'")
+  rebuildIfMissing(db, 'help_requests', "'ask'")
   for (const [table, column, ddl] of ADDED_COLUMNS) {
     const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
     if (!cols.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
   }
   return db
+}
+
+/** Recreate `table` from SCHEMA, keeping its rows, when its stored definition lacks `marker`. */
+function rebuildIfMissing(db: DB, table: string, marker: string) {
+  const sql = (db.prepare('SELECT sql FROM sqlite_master WHERE name=?').get(table) as { sql: string }).sql
+  if (sql.includes(marker)) return
+  const start = SCHEMA.indexOf(`CREATE TABLE IF NOT EXISTS ${table} `)
+  const ddl = SCHEMA.slice(start, SCHEMA.indexOf(');', start) + 2)
+  // legacy_alter_table keeps other tables' foreign keys pointing at the name, not the renamed copy.
+  db.exec('PRAGMA foreign_keys=OFF; PRAGMA legacy_alter_table=ON')
+  db.exec(`BEGIN;
+    ALTER TABLE ${table} RENAME TO ${table}_old;
+    ${ddl}
+    INSERT INTO ${table} SELECT * FROM ${table}_old;
+    DROP TABLE ${table}_old;
+    COMMIT;`)
+  db.exec('PRAGMA legacy_alter_table=OFF; PRAGMA foreign_keys=ON')
 }
 
 export const nowIso = () => new Date().toISOString()

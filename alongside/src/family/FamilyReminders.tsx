@@ -5,6 +5,8 @@ import { questionFor } from '../../shared/questions'
 import { CAR_FILL } from '../parent/illustrations'
 import { formatLongDate, formatTime12 } from '../../shared/time'
 import type { Reminder, ReminderKind } from '../../shared/types'
+import type { ReminderDraft } from '../../shared/hazel'
+import { Sparkles } from 'lucide-react'
 import { ConfirmButton, ErrorBanner, Field, KIND_LABEL, Saved, useAction, type FamilyInfo } from './ui'
 
 type Draft = {
@@ -247,6 +249,30 @@ function ReminderForm({
     >
       <h2 id="rf-h">{id ? 'Edit reminder' : 'New reminder'}</h2>
       {!id && (
+        <DescribeIt
+          info={info}
+          onDraft={(dr) =>
+            setD((x) => ({
+              ...x,
+              kind: dr.kind,
+              title: dr.title,
+              time: dr.time,
+              startDate: dr.startDate,
+              repeat: dr.repeat,
+              endDate: '',
+              location: dr.location,
+              notes: dr.notes,
+              question: dr.question,
+              subtitle: dr.subtitle,
+              pickupTime: dr.pickupTime ?? '',
+              returnTime: dr.returnTime ?? '',
+              carColour: dr.carColour,
+              remindMinutesBefore: dr.kind === 'routine' ? 0 : 60,
+            }))
+          }
+        />
+      )}
+      {!id && (
         <div className="field">
           <span className="label">Quick start</span>
           <div className="row templates">
@@ -423,5 +449,86 @@ function ReminderForm({
         </button>
       </div>
     </form>
+  )
+}
+
+/** "Describe it": type the reminder in your own words and Hazel fills in the form below. */
+function DescribeIt({ info, onDraft }: { info: FamilyInfo; onDraft: (d: ReminderDraft) => void }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{ kind: 'ok'; checks: string[] } | { kind: 'note' | 'error'; text: string } | null>(null)
+  if (!info.integrations.ai.configured) return null
+  if (!info.settings.aiEnabled) {
+    return (
+      <p className="hint describe-off">
+        <Sparkles aria-hidden="true" /> Turn on AI features in Setup to describe a reminder in your own words and have Hazel fill in this form.
+      </p>
+    )
+  }
+  return (
+    <div className="field describe">
+      <label className="label" htmlFor="rf-describe">
+        <Sparkles aria-hidden="true" /> Describe it in your own words (optional)
+      </label>
+      <textarea
+        id="rf-describe"
+        rows={3}
+        maxLength={1000}
+        value={text}
+        placeholder="e.g. Pilates next Tuesday at 10, no mat needed. Blue car at 9:30, home by 11:15."
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="row">
+        <button
+          type="button"
+          className="btn secondary"
+          disabled={busy || text.trim().length < 3}
+          aria-busy={busy}
+          onClick={async () => {
+            setBusy(true)
+            setResult(null)
+            try {
+              const r = await api<{ draft: ReminderDraft | null; unsupported: string }>('POST', `/api/family/${info.id}/ai/draft`, { text })
+              if (!r.draft) setResult({ kind: 'note', text: r.unsupported })
+              else {
+                onDraft(r.draft)
+                setResult({ kind: 'ok', checks: r.draft.checks })
+              }
+            } catch (e) {
+              setResult({ kind: 'error', text: e instanceof ApiError ? e.message : 'Could not reach Hazel. Please try again.' })
+            } finally {
+              setBusy(false)
+            }
+          }}
+        >
+          {busy ? 'Hazel is filling in the form…' : 'Fill in the form with Hazel'}
+        </button>
+      </div>
+      {result?.kind === 'ok' && (
+        <div className="banner ok" role="status">
+          <strong>Filled in by Claude. Please check every field before saving.</strong>
+          {result.checks.length > 0 && (
+            <ul className="describe-checks">
+              {result.checks.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {result?.kind === 'note' && (
+        <p className="banner info" role="status">
+          {result.text}
+        </p>
+      )}
+      {result?.kind === 'error' && (
+        <p className="banner err" role="alert">
+          {result.text}
+        </p>
+      )}
+      <span className="hint">
+        Sent to {info.integrations.ai.name ?? 'Claude'} to fill in the form. Nothing is saved until you press Add reminder.
+      </span>
+    </div>
   )
 }

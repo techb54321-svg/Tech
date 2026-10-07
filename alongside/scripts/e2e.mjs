@@ -372,6 +372,17 @@ for (const v of WIDTHS) {
   await page.getByText('All six words found, Margaret.').waitFor()
   await shot(page, v.name, '18-puzzle-done')
   await page.getByRole('button', { name: 'Close word search' }).click()
+
+  // Ask Hazel opens in place; a suggested question gets a plain answer on the tile.
+  await page.getByRole('button', { name: 'Ask Hazel' }).click()
+  await page.getByRole('button', { name: 'What day is it?' }).waitFor()
+  await shot(page, v.name, '19-ask-hazel')
+  await page.getByRole('button', { name: 'What’s on today?' }).click()
+  await page.locator('.ask-a').waitFor()
+  check(await page.getByText('Hazel’s own answer from today’s plan.').isVisible(), `${v.name}: Ask Hazel does not say where its answer came from`)
+  await shot(page, v.name, '19b-ask-hazel-answer')
+  await page.getByRole('button', { name: 'Close Ask Hazel' }).click()
+  check(onHome(page), `${v.name}: Ask Hazel moved to ${page.url()}`)
   check(onHome(page), `${v.name}: puzzle moved to ${page.url()}`)
 
   for (const [path, name] of [
@@ -407,6 +418,12 @@ step('Text at 200%')
   await page.getByRole('button', { name: 'Puzzles' }).click()
   await big()
   await shot(page, 'text-200', '03-puzzle')
+  await page.getByRole('button', { name: 'Close word search' }).click()
+  await page.getByRole('button', { name: 'Ask Hazel' }).click()
+  await page.getByRole('button', { name: 'What day is it?' }).click()
+  await page.locator('.ask-a').waitFor()
+  await big()
+  await shot(page, 'text-200', '04-ask-hazel')
   await ctx.close()
 }
 
@@ -518,6 +535,83 @@ step('Text at 200%')
 }
 
 // Old links to removed screens land on the same board.
+// Ask Hazel: built-in answers (no AI on the test server), voice input, safety, and the family's view.
+step('Ask Hazel')
+{
+  const { ctx, page } = await newDemo({ width: 390, height: 844 })
+  // A stand-in microphone: the browser "hears" a question.
+  await ctx.addInitScript(() => {
+    window.__heard = 'what day is it'
+    window.SpeechRecognition = class {
+      start() {
+        setTimeout(() => {
+          const res = [{ transcript: window.__heard }]
+          res.isFinal = true
+          this.onresult?.({ results: [res] })
+          this.onend?.()
+        }, 50)
+      }
+      abort() { this.onend?.() }
+    }
+    window.__spoken = []
+    window.speechSynthesis.speak = (u) => window.__spoken.push(u.text)
+  })
+  await page.reload()
+  await page.getByRole('button', { name: 'Ask Hazel' }).click()
+  await page.getByRole('button', { name: 'Tap and speak' }).click()
+  await page.locator('.ask-a').waitFor()
+  const weekday = new Intl.DateTimeFormat('en-AU', { weekday: 'long', timeZone: 'Australia/Sydney' }).format(new Date())
+  const said = await page.locator('.ask-a').textContent()
+  check(said.startsWith(`It's ${weekday}`), `ask: spoken question answered "${said}"`)
+  check(await page.getByText('You asked: “what day is it”').isVisible(), 'ask: the heard question is not shown')
+  const spoken = await page.evaluate(() => window.__spoken)
+  check(spoken.length === 1 && spoken[0] === said, `ask: answer was not read aloud (${JSON.stringify(spoken)})`)
+
+  // Urgent: always the fixed answer, and family can be told with one tap.
+  await page.getByRole('button', { name: 'Ask something else' }).click()
+  await page.getByRole('button', { name: 'Type a question instead' }).click()
+  await page.getByLabel('Type your question').fill('I have fallen over')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  await page.locator('.ask-a').waitFor()
+  check((await page.locator('.ask-a').textContent()).includes('call 000'), 'ask: urgent question did not say to call 000')
+  await page.getByRole('button', { name: 'Let Anna know' }).click()
+  await page.getByText('Saved. Anna will see it in Hazel.').waitFor()
+  await page.screenshot({ path: join(shotsDir, '390', '35-ask-urgent.png'), fullPage: true })
+
+  // A failed request offers Try again, with the same question.
+  await page.getByRole('button', { name: 'Ask something else' }).click()
+  await page.route('**/api/parent/ask', (r) => r.abort('internetdisconnected'))
+  await page.getByRole('button', { name: 'Who can I call?' }).click()
+  await page.getByText('That didn’t work. Please try again.').waitFor()
+  await page.unroute('**/api/parent/ask')
+  await page.getByRole('button', { name: 'Try again' }).click()
+  check((await page.locator('.ask-a').textContent()) === 'You can call Sarah. Tap the green Call tile.', 'ask: retry did not answer')
+
+  // Family sees the questions, the help request, and a note written from the records.
+  await page.goto(BASE + '/#/family')
+  await page.getByRole('heading', { name: /Margaret asked Hazel/ }).waitFor()
+  const asked = await page.locator('section', { has: page.locator('#asked-h') }).textContent()
+  check(asked.includes('“what day is it”') && asked.includes('“I have fallen over”') && asked.includes('asked Hazel to tell you'), `family: asked list is "${asked}"`)
+  const help = await page.locator('section', { hasText: 'Help requests' }).first().textContent()
+  check(help.includes('Asked Hazel: “I have fallen over”'), `family: help request from Ask Hazel missing ("${help}")`)
+  await page.getByRole('button', { name: /Write a note about Margaret’s day/ }).click()
+  await page.locator('.note-text').waitFor()
+  const note = await page.locator('.hazel-note').textContent()
+  check(note.includes('asked for help once') && note.includes('simple rules'), `family: note is "${note}"`)
+  await shot(page, '390', '36-family-hazel-note', { parent: false })
+
+  // Without AI on the server: no "Describe it" box, and the AI setting says why.
+  await page.goto(BASE + '/#/family/reminders')
+  await page.getByRole('button', { name: 'Add a reminder' }).click()
+  check((await page.locator('#rf-describe').count()) === 0, 'family: Describe it shown without AI')
+  await page.goto(BASE + '/#/family/setup')
+  const ai = page.getByLabel(/Use Claude AI/)
+  await ai.waitFor()
+  check(await ai.isDisabled(), 'family: AI setting can be turned on without AI on the server')
+  check(await page.getByText('AI is not set up on this server').isVisible(), 'family: AI setting does not explain why it is off')
+  await ctx.close()
+}
+
 step('Old links')
 {
   const { ctx, page } = await newDemo({ width: 390, height: 844 })

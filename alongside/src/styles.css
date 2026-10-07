@@ -1414,7 +1414,7 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 /* Narrow tile (small phone): icon above the word so words never split.
    Very narrow for the text size (enlarged text): one answer per row. */
 @container (max-width: 22rem) {
-  .answer-grid .tile-btn, .yn-row .tile-btn, .place-grid .tile-btn { flex-direction: column; gap: 0.15rem; padding: 0.5rem 0.3rem; line-height: 1.1; }
+  .answer-grid .tile-btn, .yn-row .tile-btn, .place-grid .tile-btn, .ask-actions .tile-btn { flex-direction: column; gap: 0.15rem; padding: 0.5rem 0.3rem; line-height: 1.1; }
 }
 @container (max-width: 13rem) {
   .answer-grid, .yn-row { grid-template-columns: minmax(0, 1fr); }
@@ -1758,3 +1758,56 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .tod .trow { flex-wrap: wrap; }
 .tod .tchip { white-space: normal; }
 .tod .ttime { white-space: normal; }
+
+/* =================== Ask Hazel =================== */
+.tod .t-gold { background-color: #d8b46a; color: #1c1813; }
+.tod .ask-tile .tsub { color: #1c1813; }
+.ask { display: flex; flex-direction: column; gap: 0.9rem; width: 100%; min-width: 0; }
+.ask .tile-close { align-self: flex-end; }
+.tod .ask-mic {
+  min-height: 6rem;
+  font-size: clamp(1.75rem, 6cqi, 2rem);
+  justify-content: center;
+  width: 100%;
+}
+.tod .ask-mic svg { width: 2.4rem; height: 2.4rem; }
+.tod .ask-mic.on { background: #fff; outline: 4px solid #1c1813; outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .tod .ask-mic.on svg { animation: ask-pulse 1.2s ease-in-out infinite; }
+}
+@keyframes ask-pulse { 50% { transform: scale(1.18); } }
+.ask-thinking { display: flex; align-items: center; gap: 0.8rem; font-size: 1.625rem; font-weight: 700; min-height: 6rem; }
+.ask-dots { display: inline-flex; gap: 0.35rem; }
+.ask-dots span { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: currentColor; opacity: 0.35; }
+@media (prefers-reduced-motion: no-preference) {
+  .ask-dots span { animation: ask-dot 1.2s ease-in-out infinite; }
+  .ask-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .ask-dots span:nth-child(3) { animation-delay: 0.4s; }
+}
+@keyframes ask-dot { 40% { opacity: 1; } }
+.ask-reply { display: flex; flex-direction: column; gap: 0.8rem; }
+.ask-q { font-size: 1.375rem; font-weight: 700; }
+.ask-a {
+  font-size: clamp(1.75rem, 6.5cqi, 2.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+  background: #faf7f1;
+  color: #1c1813;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  text-wrap: pretty;
+}
+.ask-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 0.6rem; }
+.ask-source, .ask-note { font-size: 1.25rem; line-height: 1.35; }
+.ask-note { padding-top: 0.25rem; border-top: 1px solid rgba(28, 24, 19, 0.25); }
+.tod .tsub.said { display: inline-flex; align-items: center; gap: 0.4rem; background: #faf7f1; color: #1c1813; border-radius: 0.6rem; padding: 0.3rem 0.8rem; }
+.tod .tsub.said svg { width: 1.4rem; height: 1.4rem; color: #15803d; }
+
+/* =================== Family area: AI features =================== */
+.describe { background: #fbf6ea; border: 1px solid #e5d3a5; border-radius: 0.8rem; padding: 0.9rem 1rem; }
+.describe .label, .hazel-note h2, #asked-h { display: inline-flex; align-items: center; gap: 0.45rem; }
+.describe .label svg, .hazel-note h2 svg, #asked-h svg, .describe-off svg { width: 1.2rem; height: 1.2rem; color: #9a6b12; flex: none; }
+.describe textarea { width: 100%; font: inherit; font-size: 1.0625rem; padding: 0.6rem 0.75rem; border-radius: 0.6rem; border: 1px solid #c9b98f; resize: vertical; }
+.describe-off { display: flex; gap: 0.45rem; align-items: flex-start; }
+.describe-checks { margin: 0.4rem 0 0 1.2rem; }
+.note-text { font-size: 1.1875rem; line-height: 1.5; background: #fbf6ea; border-left: 4px solid #d8b46a; padding: 0.75rem 1rem; border-radius: 0 0.6rem 0.6rem 0; }

@@ -25,6 +25,7 @@ import {
   todayFor,
   updateDestination,
   updateSettings,
+  type HouseholdRow,
 } from '../store.js'
 import {
   arrangedLiftSchema,
@@ -36,11 +37,25 @@ import {
   destinationSchema,
   reminderSchema,
   settingsSchema,
+  draftRequestSchema,
 } from '../../shared/validation.js'
 import { notificationCapability } from '../integrations/notifications.js'
 import { buildIcs } from '../ics.js'
 import { decodeMedia, deleteMedia, saveMedia } from '../media.js'
-import { addDaysISO } from '../../shared/time.js'
+import { addDaysISO, formatLongDate, localTimeHM, zonedTimeToInstant } from '../../shared/time.js'
+import { familyStatusLabel } from '../../shared/schedule.js'
+import {
+  draftContext,
+  draftSystemPrompt,
+  draftUserPrompt,
+  hazelIntent,
+  ruleSummary,
+  summarySystemPrompt,
+  summaryUserPrompt,
+  tidyDraft,
+  type DayFacts,
+} from '../../shared/hazel.js'
+import { AiUnavailable } from '../integrations/ai.js'
 
 const dateQuery = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
 
@@ -122,7 +137,103 @@ export function familyRoutes(deps: Deps) {
           transport: deps.transport ? { id: deps.transport.id, name: deps.transport.name } : null,
           uberHandoff: true,
           notifications: notificationCapability(),
+          ai: { configured: !!deps.ai, name: deps.ai?.name ?? null },
         },
+      })
+    }),
+  )
+
+  /** Questions the parent asked Hazel on a date (household time), newest first. */
+  function asksOn(hh: HouseholdRow, date: string) {
+    const from = new Date(zonedTimeToInstant(date, '00:00', hh.time_zone).getTime()).toISOString()
+    const to = zonedTimeToInstant(addDaysISO(date, 1), '00:00', hh.time_zone).toISOString()
+    return (
+      db
+        .prepare(
+          `SELECT id, question, answer, source, intent, offered_help AS offeredHelp, help_request_id AS helpRequestId, created_at AS createdAt
+           FROM asks WHERE household_id=? AND created_at >= ? AND created_at < ? ORDER BY created_at DESC LIMIT 200`,
+        )
+        .all(hh.id, from, to) as Array<{ id: string; question: string; answer: string; source: string; intent: string; offeredHelp: number; helpRequestId: string | null; createdAt: string }>
+    ).map((a) => ({ ...a, offeredHelp: !!a.offeredHelp, helpRequested: !!a.helpRequestId }))
+  }
+
+  /** What happened on a date, for the daily note. Private routines are left out entirely. */
+  function dayFacts(hh: HouseholdRow, date: string): DayFacts {
+    const tz = hh.time_zone
+    const statuses = familyDayStatuses(db, hh, date, deps.now()).filter((x) => x.status !== 'private')
+    const from = zonedTimeToInstant(date, '00:00', tz).toISOString()
+    const to = zonedTimeToInstant(addDaysISO(date, 1), '00:00', tz).toISOString()
+    const help = db
+      .prepare('SELECT source, title, destination_label AS dest, created_at AS createdAt FROM help_requests WHERE household_id=? AND created_at >= ? AND created_at < ? ORDER BY created_at')
+      .all(hh.id, from, to) as Array<{ source: string; title: string; dest: string | null; createdAt: string }>
+    const counts = new Map<string, { question: string; times: number }>()
+    for (const a of asksOn(hh, date)) {
+      const k = a.question.toLowerCase().replace(/[^a-z0-9 ]+/g, '').trim()
+      const c = counts.get(k)
+      if (c) c.times++
+      else counts.set(k, { question: a.question, times: 1 })
+    }
+    return {
+      parentName: hh.parent_name,
+      contactName: hh.contact_name,
+      dateText: formatLongDate(date),
+      routines: statuses
+        .filter((x) => x.reminder.kind === 'routine')
+        .map((x) => ({ title: x.reminder.title, time: x.reminder.time, outcome: x.status === 'done' ? 'Done' : familyStatusLabel(x.reminder.kind, x.status) })),
+      outings: statuses.filter((x) => x.reminder.kind !== 'routine').map((x) => ({ title: x.reminder.title, time: x.reminder.time })),
+      helpRequests: help.map((x) => ({
+        title: x.source === 'lift' ? `Lift to ${x.dest}` : x.source === 'ask' ? `Asked Hazel: “${x.title}”` : `Help with “${x.title}”`,
+        time: localTimeHM(new Date(x.createdAt), tz),
+      })),
+      questions: [...counts.values()].sort((a, b) => b.times - a.times).slice(0, 10),
+    }
+  }
+
+  /** "Describe it": a family member's words become a reminder draft to check and save. */
+  r.post(
+    '/:hid/ai/draft',
+    member,
+    h(async (req, res) => {
+      const { text } = parse(draftRequestSchema, req.body)
+      const hh = getHousehold(db, req.householdId!)
+      const ctx = draftContext(hh.parent_name, hh.contact_name, todayFor(hh, deps.now()))
+      if (hazelIntent(text) === 'medicine') {
+        return res.json({ draft: null, unsupported: 'Hazel does not handle medicines, so it cannot make medication reminders.', source: 'rules' })
+      }
+      if (!deps.ai) throw new HttpError(503, 'AI is not set up on this server. Please fill in the form instead.')
+      if (!hh.ai_enabled) throw new HttpError(409, 'AI features are off for this household. Turn them on in Setup, or fill in the form.')
+      try {
+        const draft = tidyDraft(await deps.ai.draft(draftSystemPrompt(), draftUserPrompt(ctx, text)), ctx)
+        if (draft.unsupported) return res.json({ draft: null, unsupported: draft.unsupported, source: 'claude' })
+        res.json({ draft, unsupported: '', source: 'claude' })
+      } catch (e) {
+        if (e instanceof AiUnavailable) throw new HttpError(502, 'Hazel could not write that just now. Please try again, or fill in the form.')
+        throw e
+      }
+    }),
+  )
+
+  /** The family's note about a day: written by Claude when it is on, otherwise from the facts by rules. */
+  r.post(
+    '/:hid/ai/summary',
+    member,
+    h(async (req, res) => {
+      const hh = getHousehold(db, req.householdId!)
+      const body = parse(z.object({ date: dateQuery.optional() }), req.body ?? {})
+      const facts = dayFacts(hh, body.date ?? todayFor(hh, deps.now()))
+      if (deps.ai && hh.ai_enabled) {
+        try {
+          const note = (await deps.ai.summarise(summarySystemPrompt(), summaryUserPrompt(facts))).slice(0, 1500)
+          return res.json({ note, source: 'claude' })
+        } catch (e) {
+          if (!(e instanceof AiUnavailable)) throw e
+          return res.json({ note: ruleSummary(facts), source: 'rules', reason: 'Claude could not be reached, so this note was written from the records by simple rules.' })
+        }
+      }
+      res.json({
+        note: ruleSummary(facts),
+        source: 'rules',
+        reason: deps.ai ? 'AI features are off for this household, so this note was written from the records by simple rules.' : 'AI is not set up on this server, so this note was written from the records by simple rules.',
       })
     }),
   )
@@ -164,7 +275,7 @@ export function familyRoutes(deps: Deps) {
            ORDER BY COALESCE(t.date, substr(t.created_at,1,10)) DESC, t.time DESC LIMIT 100`,
         )
         .all(hid, todayFor(hh, deps.now()), new Date(deps.now().getTime() - 14 * 86400000).toISOString())
-      res.json({ date, statuses, help, trips })
+      res.json({ date, statuses, help, trips, asks: asksOn(hh, date) })
     }),
   )
 

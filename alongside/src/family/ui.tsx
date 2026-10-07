@@ -12,6 +12,7 @@ export interface FamilyInfo {
     autoSpeak: boolean
     keepAwake: boolean
     callContact: boolean
+    aiEnabled: boolean
     isDemo: boolean
   }
   today: string
@@ -25,6 +26,7 @@ export interface FamilyInfo {
     transport: { id: string; name: string } | null
     uberHandoff: boolean
     notifications: { background: boolean; summary: string }
+    ai: { configured: boolean; name: string | null; unavailableReason?: string }
   }
 }
 

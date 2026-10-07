@@ -92,39 +92,44 @@ export function PairDevice({ onPaired }: { onPaired: () => Promise<void> }) {
   }
 
   return (
-    <main className="w-wrap">
-      <h1 tabIndex={-1}>Set up this device</h1>
-      <p>
-        A family member creates a one-time code in <strong>Family setup → Access</strong>. Enter it here to connect this
-        device to your parent’s Hazel.
-      </p>
-      <form onSubmit={submit} className="btn-stack">
-        <label className="big-label" htmlFor="pair-code">
-          Code
-        </label>
-        <input
-          id="pair-code"
-          className="big-input"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          autoComplete="one-time-code"
-          autoCapitalize="characters"
-          inputMode="text"
-          placeholder="ABCD-1234"
-          required
-        />
-        {error && (
-          <p className="banner err" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="big-btn green medium" disabled={busy} aria-busy={busy}>
-          {busy ? 'Connecting…' : 'Connect'}
-        </button>
-        <button type="button" className="big-btn plain medium" onClick={() => navigate('/welcome')}>
-          Back
-        </button>
-      </form>
-    </main>
+    <div className="w-page">
+      <main className="w-wrap">
+        <HazelLogo tone="dark" className="w-logo-small" />
+        <h1 tabIndex={-1} className="w-title">Set up this device</h1>
+        <ol className="w-steps">
+          <li>
+            On a family member’s phone, open <strong>Family area → Access</strong> and choose <strong>Create device code</strong>.
+          </li>
+          <li>Type the code below. This phone or tablet then shows your parent’s Hazel screen.</li>
+        </ol>
+        <form onSubmit={submit} className="btn-stack">
+          <label className="w-label" htmlFor="pair-code">
+            Code
+          </label>
+          <input
+            id="pair-code"
+            className="big-input w-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            autoComplete="one-time-code"
+            autoCapitalize="characters"
+            inputMode="text"
+            placeholder="ABCD-1234"
+            required
+          />
+          {error && (
+            <p className="banner err" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="big-btn blue medium" disabled={busy} aria-busy={busy}>
+            {busy ? 'Connecting…' : 'Connect'}
+          </button>
+          <button type="button" className="big-btn plain medium" onClick={() => navigate('/welcome')}>
+            Back
+          </button>
+        </form>
+      </main>
+    </div>
   )
 }

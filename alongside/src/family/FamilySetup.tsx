@@ -84,7 +84,7 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
         <Field id="st-tz" label="Time zone" hint="Reminder times and “today” follow this zone, including daylight saving" error={act.fields.timeZone}>
           <TimeZoneSelect id="st-tz" value={s.timeZone} onChange={(v) => set('timeZone', v)} />
         </Field>
-        <Field id="st-cn" label="Family contact name" hint="The green button says “Call [name]”" error={act.fields.contactName}>
+        <Field id="st-cn" label="Family contact name" hint="Shown on the “Call …” tile and asked when help is needed" error={act.fields.contactName}>
           <input id="st-cn" value={s.contactName} maxLength={40} onChange={(e) => set('contactName', e.target.value)} required />
         </Field>
         <Field id="st-cp" label="Family contact phone" error={act.fields.contactPhone}>
@@ -142,7 +142,7 @@ function SettingsForm({ info, refresh }: { info: FamilyInfo; refresh: () => Prom
         <label className="check">
           <input
             type="checkbox"
-            checked={!!s.aiEnabled}
+            checked={!!s.aiEnabled && info.integrations.ai.configured}
             disabled={!info.integrations.ai.configured}
             onChange={(e) => set('aiEnabled', e.target.checked)}
           />

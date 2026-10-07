@@ -63,6 +63,12 @@ async function inspect(page, label, { parent = true } = {}) {
           const r = p.getBoundingClientRect()
           if (b.bottom <= r.top + 1 || b.top >= r.bottom - 1) return true
         }
+        // A sideways-scrolling strip (the family area's section pills): items past its edge are reached by scrolling.
+        const ox = getComputedStyle(p).overflowX
+        if (ox === 'auto' || ox === 'scroll') {
+          const r = p.getBoundingClientRect()
+          if (b.left < r.left - 1 || b.right > r.right + 1) return true
+        }
       }
       return false
     }
@@ -92,7 +98,15 @@ async function inspect(page, label, { parent = true } = {}) {
           out.clipped.push('text outside box: ' + n.textContent.trim().slice(0, 30))
       }
     }
-    const controls = [...document.querySelectorAll('button, a, input')].filter(visible)
+    // Sticky or fixed bars (the family header and section pills) float over content scrolled beneath them by design.
+    const pinned = (el) => {
+      for (let p = el; p && p !== document.body; p = p.parentElement) {
+        const pos = getComputedStyle(p).position
+        if (pos === 'sticky' || pos === 'fixed') return true
+      }
+      return false
+    }
+    const controls = [...document.querySelectorAll('button, a, input')].filter(visible).filter((el) => !pinned(el))
     for (let i = 0; i < controls.length; i++)
       for (let j = i + 1; j < controls.length; j++) {
         if (controls[i].contains(controls[j]) || controls[j].contains(controls[i])) continue

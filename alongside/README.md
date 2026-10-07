@@ -396,6 +396,25 @@ Hazel now uses Claude where it helps most, with fixed safety rules that never de
   after a one-time permission prompt (the published page declares the `sample` capability). If the viewer
   declines, or opens the file elsewhere, everything falls back to the built-in answers and says why.
 
+### Seventeenth round: the family area and device setup on a phone
+
+- **A cleaner family area** on phones:
+  - A slim sticky header: the Hazel logo, a gold "← Margaret's screen" button and a Sign out icon.
+  - The sections (Today, Reminders, Lifts, Photos & music, Setup, Access) are one row of icon pills that stays at
+    the top and scrolls sideways. Before, they wrapped onto two rows.
+  - The demonstration notice is a slim strip with "Side by side" and "Restart demo".
+  - Warm background, soft rounded cards, charcoal primary buttons instead of generic blue, and gold focus rings.
+- **Real on/off switches in Setup.** Each setting reads like a phone's settings screen: the title and a short
+  explanation on the left, a switch on the right, hairlines between rows and small section headings. Save is
+  full width on phones.
+- **Fixed:** the "AI features" switch showed as on (greyed out) when AI was not set up. It now shows as off. A
+  hint still said "the green button says Call [name]"; it now describes the Call tile.
+- **"Set up this device"** now matches the welcome screen: the logo on charcoal, two numbered steps, a large code
+  box with spaced capitals, a gold Connect button and an outlined Back button. Also fixed: on computers, hovering
+  an outlined button on these dark screens turned it pale with unreadable text.
+- The browser layout checks now allow for sideways-scrolling strips and for sticky bars over content scrolled
+  beneath them. The page itself must still never scroll sideways.
+
 ## Project layout
 
 ```

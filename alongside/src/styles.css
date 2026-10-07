@@ -435,7 +435,7 @@ a {
   border: 1.5px solid rgba(243, 239, 231, 0.35);
 }
 .w-page .big-btn.blue { background: #d8b46a; color: #1c1813; border-color: #d8b46a; }
-.w-page .big-btn:hover { border-color: #f3efe7; }
+.w-page .big-btn:hover { border-color: #f3efe7; background: rgba(243, 239, 231, 0.08); }
 .w-page .big-btn.blue:hover { background: #e2c27e; }
 .w-wrap p { font-size: 1.25rem; }
 
@@ -1811,3 +1811,239 @@ table.week .cell { width: 2.4rem; height: 2.4rem; text-align: center; border-rad
 .describe-off { display: flex; gap: 0.45rem; align-items: flex-start; }
 .describe-checks { margin: 0.4rem 0 0 1.2rem; }
 .note-text { font-size: 1.1875rem; line-height: 1.5; background: #fbf6ea; border-left: 4px solid #d8b46a; padding: 0.75rem 1rem; border-radius: 0 0.6rem 0.6rem 0; }
+
+/* =================== Family area: refreshed for phones =================== */
+.f {
+  --f-ink: #1f1c18;
+  --f-soft: #6b6258;
+  --f-line: #e6ddcf;
+  --f-card: #fffdf9;
+  --f-accent: #8a5a12;
+  background: #f5f0e7;
+  color: var(--f-ink);
+}
+.f-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding: 0.6rem 1rem;
+  box-shadow: 0 1px 0 rgba(216, 180, 106, 0.35);
+}
+.f-header-inner { flex-wrap: nowrap; }
+.f-header-actions { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+.f-back,
+.f-signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 239, 231, 0.35);
+  background: transparent;
+  color: #f3efe7;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.f-back { background: #d8b46a; border-color: #d8b46a; color: #1c1813; }
+.f-back svg, .f-signout svg { width: 1.1rem; height: 1.1rem; flex: none; }
+.f-header select { border-radius: 999px; padding: 0.35rem 0.6rem; }
+
+/* Sections: one scrolling row of pills with icons, under the header. */
+.f-tabs {
+  position: sticky;
+  top: 3.65rem;
+  z-index: 15;
+  max-width: none;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  background: #f5f0e7;
+  border-bottom: 1px solid var(--f-line);
+  scroll-snap-type: x proximity;
+}
+.f-tabs::-webkit-scrollbar { display: none; }
+.f-tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--f-line);
+  background: var(--f-card);
+  font-size: 1rem;
+  white-space: nowrap;
+  scroll-snap-align: start;
+}
+.f-tabs a svg { width: 1.1rem; height: 1.1rem; flex: none; color: var(--f-accent); }
+.f-tabs a[aria-current='page'] { background: #1f2228; border-color: #1f2228; color: #f6f2ea; }
+.f-tabs a[aria-current='page'] svg { color: #d8b46a; }
+@media (min-width: 64rem) {
+  .f-tabs { justify-content: center; }
+}
+
+.f-main { gap: 1rem; padding-top: 1rem; }
+.f-main h1 { font-size: 1.6rem; letter-spacing: -0.01em; }
+.f-main h2 { font-size: 1.2rem; }
+
+/* Demonstration notice: a slim strip, not a block. */
+.demo-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.9rem;
+  background: #fbf1d9;
+  border: 1px solid #e2c98e;
+  color: #5c3d0b;
+  font-size: 0.95rem;
+}
+.demo-strip-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.f .btn.small-btn-f { min-height: 2.4rem; padding: 0.3rem 0.8rem; font-size: 0.95rem; }
+
+.f .card {
+  background: var(--f-card);
+  border: 1px solid var(--f-line);
+  border-radius: 1.1rem;
+  padding: 1.1rem;
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.05);
+}
+.f .muted, .f .field .hint { color: var(--f-soft); }
+
+/* Buttons: charcoal primary, quiet outline secondary. */
+.f .btn {
+  border-radius: 0.8rem;
+  border: 1.5px solid #1f2228;
+  background: #1f2228;
+  color: #f6f2ea;
+  min-height: 2.9rem;
+}
+.f .btn:hover { background: #33373f; }
+.f .btn.secondary { background: var(--f-card); color: var(--f-ink); border-color: #cfc3b0; }
+.f .btn.secondary:hover { background: #f3ece0; border-color: #a8987f; }
+.f .btn.danger { background: var(--f-card); color: #9b1c1c; border-color: #e3a3a3; }
+.f .linklike { color: var(--f-accent); }
+.f .f-main a:not(.btn) { color: var(--f-accent); }
+.f .f-tabs a { color: var(--f-ink); }
+.f .f-tabs a[aria-current='page'] { color: #f6f2ea; }
+
+/* Fields */
+.f .field input,
+.f .field select,
+.f .field textarea {
+  border: 1.5px solid #cfc3b0;
+  border-radius: 0.75rem;
+  background: #fff;
+  min-height: 3rem;
+}
+.f .field input:focus-visible,
+.f .field select:focus-visible,
+.f .field textarea:focus-visible { outline: 3px solid #d8b46a; outline-offset: 1px; border-color: #8a6a2a; }
+
+/* Settings: label on the left, an on/off switch on the right, a hairline between rows. */
+.f .check:has(> input[type='checkbox']) {
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0;
+}
+.f .plain-fieldset .check + .check,
+.f .check + .check { border-top: 1px solid var(--f-line); }
+.f .check > input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 3.25rem;
+  height: 1.95rem;
+  margin: 0;
+  border-radius: 999px;
+  background: #cdc3b3;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex: none;
+}
+.f .check > input[type='checkbox']::before {
+  content: '';
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+.f .check > input[type='checkbox']:checked { background: #2f7d4f; }
+.f .check > input[type='checkbox']:checked::before { transform: translateX(1.3rem); }
+.f .check > input[type='checkbox']:disabled { opacity: 0.45; cursor: not-allowed; }
+.f .check > input[type='checkbox']:focus-visible { outline: 3px solid #d8b46a; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .f .check > input[type='checkbox'],
+  .f .check > input[type='checkbox']::before { transition: none; }
+}
+.f .plain-fieldset > legend {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--f-soft);
+  margin-bottom: 0.1rem;
+}
+.f .plain-fieldset { border-top: 1px solid var(--f-line); padding-top: 0.6rem; }
+
+.f .list > li { border: 1px solid var(--f-line); border-radius: 0.9rem; background: #fff; }
+.f .pill { border-width: 1px; }
+.f .banner { border-width: 1px; border-radius: 0.9rem; }
+
+/* Narrow phones: the logo alone, short buttons, a full-width Save. */
+@media (max-width: 560px) {
+  .f-brand-area { display: none; }
+  .f-logo { width: 6.25rem; }
+  .f-signout-text { display: none; }
+  .f-signout { padding: 0.3rem 0.65rem; }
+  .f .form > div:last-child > .btn:only-child { width: 100%; }
+}
+
+/* =================== Set up this device =================== */
+.w-logo-small { display: block; width: 9rem; height: auto; margin-bottom: 0.5rem; }
+.w-page .w-title { font-size: 2.25rem; color: #f3efe7; }
+.w-steps { margin: 0 0 0.5rem 1.4rem; display: grid; gap: 0.6rem; font-size: 1.25rem; line-height: 1.45; color: #d9d3c8; }
+.w-steps strong { color: #f3efe7; }
+.w-label { font-size: 1.25rem; font-weight: 700; color: #f3efe7; }
+.w-page .w-code {
+  background: #1b1e25;
+  color: #f3efe7;
+  border: 1.5px solid rgba(243, 239, 231, 0.35);
+  border-radius: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.w-page .w-code::placeholder { color: rgba(243, 239, 231, 0.35); }
+.w-page .w-code:focus-visible { outline: 3px solid #d8b46a; outline-offset: 2px; }
+
+/* Setting rows sit inside a .field fieldset: keep their descriptions regular weight. */
+.f .field > label.check { font-weight: 400; }
+/* The section pills scroll sideways: fade the right edge so it reads as more to see. */
+@media (max-width: 64rem) {
+  .f-tabs { -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+}
+/* Switches inside a .field group must not take the text-field sizing. */
+.f .field .check > input[type='checkbox'] { width: 3.25rem; height: 1.95rem; min-height: 0; padding: 0; border: 0; }
+@media (max-width: 400px) {
+  .f-back-extra { display: none; }
+  .f-header { padding-inline: 0.75rem; }
+}
+.f .card ol, .f .card ul:not(.list) { margin: 0; padding-left: 1.4rem; display: grid; gap: 0.35rem; }

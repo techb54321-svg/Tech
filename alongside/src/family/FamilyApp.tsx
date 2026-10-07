@@ -10,14 +10,15 @@ import { FamilySetup, TimeZoneSelect } from './FamilySetup'
 import { FamilyAccess } from './FamilyAccess'
 import { FamilyMedia } from './FamilyMedia'
 import { HazelLogo } from '../brand/HazelLogo'
+import { ArrowLeft, BellRing, CalendarDays, Car, Images, KeyRound, LogOut, Settings } from 'lucide-react'
 
 const TABS = [
-  { path: '/family', label: 'Today' },
-  { path: '/family/reminders', label: 'Reminders' },
-  { path: '/family/lifts', label: 'Lifts' },
-  { path: '/family/media', label: 'Photos & music' },
-  { path: '/family/setup', label: 'Setup' },
-  { path: '/family/access', label: 'Access' },
+  { path: '/family', label: 'Today', Icon: CalendarDays },
+  { path: '/family/reminders', label: 'Reminders', Icon: BellRing },
+  { path: '/family/lifts', label: 'Lifts', Icon: Car },
+  { path: '/family/media', label: 'Photos & music', Icon: Images },
+  { path: '/family/setup', label: 'Setup', Icon: Settings },
+  { path: '/family/access', label: 'Access', Icon: KeyRound },
 ]
 
 const HH_KEY = 'alongside.household'
@@ -74,8 +75,16 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
             <HazelLogo className="f-logo" />
             <span className="f-brand-area">Family area</span>
           </span>
-          <div className="row">
-            {me.parent && <a href="#/">Back to {me.parent.parentName}’s screen</a>}
+          <div className="f-header-actions">
+            {me.parent && (
+              <a className="f-back" href="#/" aria-label={`Back to ${me.parent.parentName}’s screen`}>
+                <ArrowLeft aria-hidden="true" />
+                <span>
+                  {me.parent.parentName}
+                  <span className="f-back-extra">’s screen</span>
+                </span>
+              </a>
+            )}
             {me.family!.households.length > 1 && (
               <select
                 aria-label="Household"
@@ -97,8 +106,9 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
               </select>
             )}
             {!STATIC_DEMO && (
-              <button className="linklike" onClick={signOut}>
-                Sign out · {me.family!.name}
+              <button className="f-signout" onClick={signOut} aria-label={`Sign out ${me.family!.name}`}>
+                <LogOut aria-hidden="true" />
+                <span className="f-signout-text">Sign out</span>
               </button>
             )}
           </div>
@@ -107,35 +117,38 @@ function Household({ me, hid, path, reloadMe }: { me: Me; hid: string; path: str
       <nav className="f-tabs" aria-label="Family area sections">
         {TABS.map((t) => (
           <a key={t.path} href={`#${t.path}`} aria-current={t.path === tab.path ? 'page' : undefined}>
+            <t.Icon aria-hidden="true" />
             {t.label}
           </a>
         ))}
       </nav>
       <main className="f-main">
         {info?.settings.isDemo && (
-          <div className="banner demo">
-            <span>
-              <strong>Demonstration.</strong> Fictional people and places. No calls, texts or bookings are made.
-              {STATIC_DEMO ? ' Changes stay in this browser only.' : ' Changes are kept for three days.'}
+          <div className="demo-strip">
+            <span className="demo-strip-text">
+              <strong>Demonstration</strong> · fictional people and places. No calls, texts or bookings.
+              {STATIC_DEMO ? ' Changes stay in this browser.' : ' Kept for three days.'}
             </span>
-            {!embedded && (
-              <a className="btn secondary" href="#/both">
-                See both screens side by side
-              </a>
-            )}
-            <button
-              className="btn secondary"
-              disabled={restart.busy}
-              onClick={() =>
-                restart.run(async () => {
-                  await api('POST', '/api/demo/start')
-                  await reloadMe()
-                  navigate('/', true)
-                })
-              }
-            >
-              Start the demonstration again
-            </button>
+            <span className="demo-strip-actions">
+              {!embedded && (
+                <a className="btn secondary small-btn-f" href="#/both">
+                  Side by side
+                </a>
+              )}
+              <button
+                className="btn secondary small-btn-f"
+                disabled={restart.busy}
+                onClick={() =>
+                  restart.run(async () => {
+                    await api('POST', '/api/demo/start')
+                    await reloadMe()
+                    navigate('/', true)
+                  })
+                }
+              >
+                Restart demo
+              </button>
+            </span>
           </div>
         )}
         <ErrorBanner error={restart.error} onRetry={restart.retry} />

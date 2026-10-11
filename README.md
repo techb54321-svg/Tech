@@ -117,3 +117,9 @@ automated narrated journey to each cell type.
 
 Everything is procedurally generated geometry (no external 3D model files), so the
 single HTML file is completely self-contained apart from the Three.js library.
+
+## Also in this repo
+
+- **[Hazel](hazel/)** — a gentle daily companion app for older family members
+  (My Day, Call Family, Get Help, and a Family View for setting it up). See
+  [`hazel/README.md`](hazel/README.md).

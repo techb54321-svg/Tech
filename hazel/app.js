@@ -115,14 +115,21 @@ function applySize() {
 // Navigation (uses browser history so the phone's back button works)
 // ---------------------------------------------------------------------------
 
-const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, error: '' };
+// `confirming` holds the item awaiting an on-screen "are you sure?" ('activity:12', 'contact:3', 'reset').
+const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, error: '', confirming: null };
+
+// history can be unavailable in some embedded frames; navigation still works without it.
+function remember(state, replace) {
+  try {
+    replace ? history.replaceState(state, '') : history.pushState(state, '');
+  } catch { /* ignore */ }
+}
 
 function go(screen, id = null, { replace = false } = {}) {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   if (screen === 'home') ui.unlocked = false;
-  Object.assign(ui, { screen, id, error: '' });
-  const state = { screen, id };
-  replace ? history.replaceState(state, '') : history.pushState(state, '');
+  Object.assign(ui, { screen, id, error: '', confirming: null });
+  remember({ screen, id }, replace);
   render();
   window.scrollTo(0, 0);
   app.querySelector('h1, .page-title, .logo')?.focus?.({ preventScroll: true });
@@ -131,7 +138,7 @@ function go(screen, id = null, { replace = false } = {}) {
 window.addEventListener('popstate', e => {
   const s = e.state || { screen: 'home', id: null };
   if (s.screen === 'home') ui.unlocked = false;
-  Object.assign(ui, { screen: s.screen, id: s.id, error: '' });
+  Object.assign(ui, { screen: s.screen, id: s.id, error: '', confirming: null });
   render();
 });
 
@@ -389,7 +396,9 @@ const familyPanels = {
           <button class="primary">Save settings</button>
         </form>
         <div class="divider"></div>
-        <button class="secondary" data-action="reset-done">Reset today's completed activities</button>
+        ${ui.confirming === 'reset'
+          ? confirmBox("Reset today's completed activities?", 'reset-done', null, 'Yes, reset')
+          : `<button class="secondary" data-action="ask" data-confirm="reset">Reset today's completed activities</button>`}
         <div class="notice" style="margin-top:14px">Hazel saves information only on this device. It does not synchronise across devices, and the PIN is a light lock, not strong security.</div>
       </div>`;
   },
@@ -428,19 +437,32 @@ function contactCard(c) {
     : `<button class="call missing" data-action="no-phone" data-id="${c.id}" aria-label="Call ${esc(c.name)} (no number yet)">☎</button>`;
   return `<div class="contact">
     <span class="face" aria-hidden="true">${esc(c.emoji)}</span>
-    <div class="who">${esc(c.name)}<div class="muted">${esc(c.relation)}</div></div>
+    <div class="who">${esc(c.name)}<div class="muted">${esc(c.relation)}</div>${c.phone ? `<div class="muted phone">${esc(c.phone)}</div>` : ''}</div>
     ${call}
   </div>`;
 }
 
 function manageRow(emoji, label, kind, id, detailHtml = '') {
+  if (ui.confirming === `${kind}:${id}`) {
+    return confirmBox(`Remove ${label}?`, `remove-${kind}`, id, 'Yes, remove');
+  }
   return `<div class="row">
     <span class="row-emoji" aria-hidden="true">${esc(emoji)}</span>
     <span class="row-text">${esc(label)}${detailHtml ? `<div class="tiny">${detailHtml}</div>` : ''}</span>
     <span class="row-actions">
       <button class="edit" data-go="${kind}Form" data-id="${id}" aria-label="Edit ${esc(label)}">Edit</button>
-      <button class="delete" data-action="remove-${kind}" data-id="${id}" aria-label="Remove ${esc(label)}">Remove</button>
+      <button class="delete" data-action="ask" data-confirm="${kind}:${id}" aria-label="Remove ${esc(label)}">Remove</button>
     </span>
+  </div>`;
+}
+
+function confirmBox(question, action, id, yesLabel) {
+  return `<div class="confirm" role="group" aria-label="${esc(question)}">
+    <p>${esc(question)}</p>
+    <div class="confirm-actions">
+      <button class="delete" data-action="${action}" ${id != null ? `data-id="${id}"` : ''} data-autofocus>${yesLabel}</button>
+      <button class="edit" data-action="cancel">No, keep it</button>
+    </div>
   </div>`;
 }
 
@@ -472,6 +494,7 @@ function weekSummary() {
 function render() {
   const screen = screens[ui.screen] ? ui.screen : 'home';
   app.innerHTML = screens[screen]() + '<div class="foot">Hazel 🌿 A brighter day, one step at a time.</div>';
+  app.querySelector('[data-autofocus]')?.focus();
 }
 
 // ---------------------------------------------------------------------------
@@ -481,6 +504,15 @@ function render() {
 const actions = {
   tab(el) {
     ui.tab = el.dataset.tab;
+    ui.confirming = null;
+    render();
+  },
+  ask(el) {
+    ui.confirming = el.dataset.confirm;
+    render();
+  },
+  cancel() {
+    ui.confirming = null;
     render();
   },
   finish(_, id) {
@@ -515,20 +547,26 @@ const actions = {
   },
   'remove-activity'(_, id) {
     const a = findActivity(id);
-    if (!a || !confirm(`Remove “${a.title}”?`)) return;
-    data.activities = data.activities.filter(x => x.id !== id);
-    save();
+    ui.confirming = null;
+    if (a) {
+      data.activities = data.activities.filter(x => x.id !== id);
+      save();
+      toast(`Removed “${a.title}”.`);
+    }
     render();
   },
   'remove-contact'(_, id) {
     const c = findContact(id);
-    if (!c || !confirm(`Remove ${c.name}?`)) return;
-    data.contacts = data.contacts.filter(x => x.id !== id);
-    save();
+    ui.confirming = null;
+    if (c) {
+      data.contacts = data.contacts.filter(x => x.id !== id);
+      save();
+      toast(`Removed ${c.name}.`);
+    }
     render();
   },
   'reset-done'() {
-    if (!confirm("Reset today's completed activities?")) return;
+    ui.confirming = null;
     data.completed[dayKey()] = [];
     save();
     toast("Today's progress has been reset.");
@@ -625,9 +663,12 @@ setInterval(() => {
 // ---------------------------------------------------------------------------
 
 applySize();
-history.replaceState({ screen: 'home', id: null }, '');
+remember({ screen: 'home', id: null }, true);
 render();
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => { /* offline support is optional */ });
-}
+// Offline support is optional: it is unavailable from file:// and in some embedded frames.
+try {
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+} catch { /* ignore */ }

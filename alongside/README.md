@@ -430,6 +430,28 @@ Hazel now uses Claude where it helps most, with fixed safety rules that never de
   The layout checks now cover outing lines and chips, and allow row-shaped tiles (as wide as the screen) to be
   88 px tall instead of 140 px.
 
+### Nineteenth round: a home screen like a senior tablet (GrandPad / Oscar Senior style)
+
+The look follows senior tablets such as GrandPad and Oscar Senior. No code, artwork or branding is taken from
+either product.
+
+- **Bright ivory page.** The day and time sit in a solid green band at the top, like a tablet's top bar.
+- **White cards.** Today's photo (in a white frame) and the "Today" plans are cards on the page.
+- **App buttons.** Ask Hazel, Call Sarah, Music and Puzzles are big app buttons in a regular grid. Each is a
+  coloured icon square with its name beneath, in plain words rather than capitals.
+- **The person to call** is a round initial, or the family's photo of them if one was added. A small phone badge
+  sits on the corner. Music shows a play or pause badge.
+- **Columns.** Phones have two app buttons across; tablets have four in one row, at the same size as on a phone.
+  On a small phone (320 px), or with very large text, the buttons stack. Then the icon sits beside the name on a
+  small phone, and above it with very large text.
+- **Nothing moves to another screen.** Ask Hazel and the word search still open in place, in their own colour.
+  A reminder to answer is still a solid orange card at the top.
+- **Layout checks.**
+  - Tablets may show four app buttons across; phones still show at most two.
+  - Every app button must have an icon.
+  - The split-word check now also covers the clock, the greeting and the photo caption. It caught "Margare / t"
+    and "11:3 / 6" at 200% text, which are now fixed.
+
 ## Project layout
 
 ```

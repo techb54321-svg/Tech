@@ -136,7 +136,7 @@ async function inspect(page, label, { parent = true } = {}) {
         if (!visible(el)) return
         if (px(el) < 24 || (px(el) < 32 && el.closest('.ftile').getBoundingClientRect().width > 220)) out.small.push(`tile label ${px(el)}px: ${el.textContent.trim().slice(0, 20)}`)
       })
-      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail, .board-bar, .agenda-time, .agenda-title, .tchip').forEach((el) => {
+      document.querySelectorAll('.tlabel, .tile-btn, .tsub, .tdetail, .board-bar, .agenda-time, .agenda-title, .tchip, .clock-time, .clock-day, main h1, .tphoto-title').forEach((el) => {
         if (!visible(el)) return
         const words = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
         const rg = document.createRange()
@@ -335,7 +335,7 @@ for (const v of WIDTHS) {
   check(!/driving|Sue the carer/i.test(text), `${v.name}: who is driving still shown`)
   check(!/glass of water/i.test(text), `${v.name}: the water reminder is still in the demonstration`)
   check(!/Alongside/.test(await page.locator('body').innerText()) && (await page.title()) === 'Hazel', `${v.name}: the old name is still shown`)
-  // Big tiles: never more than two to a row.
+  // Big app buttons: never more than two to a row on a phone, four on a tablet.
   const perRow = await page.evaluate(() => {
     const tops = {}
     for (const c of document.querySelectorAll('.board > .cell')) {
@@ -344,7 +344,12 @@ for (const v of WIDTHS) {
     }
     return Math.max(...Object.values(tops))
   })
-  check(perRow <= 2, `${v.name}/home: ${perRow} tiles in a row`)
+  const most = v.width >= 700 ? 4 : 2
+  check(perRow <= most, `${v.name}/home: ${perRow} tiles in a row`)
+  // Like a senior tablet's home screen: each app button is a coloured icon with its name.
+  const apps = (await page.locator('.board .ftile.app .tlabel').allTextContents()).map((t) => t.trim())
+  check(['Ask Hazel', 'Call Sarah', 'Music', 'Puzzles'].every((a) => apps.includes(a)), `${v.name}/home: app buttons are ${apps.join(', ')}`)
+  check((await page.locator('.board .ftile.app .app-icon').count()) === apps.length, `${v.name}/home: an app button has no icon`)
 
   await answerAllDue(page)
   const tea = 'Have you had a cup of tea?'

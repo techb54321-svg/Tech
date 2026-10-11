@@ -1,7 +1,8 @@
-// The parent's whole app is this one screen: a grid of flat colour tiles.
-// Nothing moves to another screen. Today's photo sits across the top; reminders,
-// outings, calls, music and the word search all work inside their tiles.
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+// The parent's whole app is this one screen, laid out like a senior tablet's
+// home screen: today's photo and plans as cards, then big app buttons (a
+// coloured icon square with its name beneath). Nothing moves to another
+// screen: calls, music, Ask Hazel and the word search all open in place.
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Car,
   Check,
@@ -20,7 +21,7 @@ import {
   X,
   Ban,
   CircleHelp,
-  MessageCircleQuestion,
+  Mic,
   CalendarDays,
   ChevronDown,
 } from 'lucide-react'
@@ -75,6 +76,16 @@ function Tile({
     <div className={cls} role="group" aria-label={label}>
       {children}
     </div>
+  )
+}
+
+/** The coloured square on an app button, like an icon on a tablet's home screen. A badge can sit on its corner. */
+function AppIcon({ Icon, badge, round, children }: { Icon?: typeof Car; badge?: ReactNode; round?: boolean; children?: ReactNode }) {
+  return (
+    <span className={`app-icon${round ? ' round' : ''}`} aria-hidden="true">
+      {Icon ? <Icon /> : children}
+      {badge && <span className="app-badge">{badge}</span>}
+    </span>
   )
 }
 
@@ -322,13 +333,9 @@ function CallTile({ c, today }: { c: ParentToday['contacts'][number]; today: Par
   }, [shown])
   const body = (
     <>
-      {c.photoUrl ? (
-        <img className="tface" src={c.photoUrl} alt="" />
-      ) : (
-        <span className="ticon-wrap">
-          <Phone className="ticon" aria-hidden="true" />
-        </span>
-      )}
+      <AppIcon round badge={<Phone />}>
+        {c.photoUrl ? <img className="tface" src={c.photoUrl} alt="" /> : <span className="app-initial">{c.name.slice(0, 1)}</span>}
+      </AppIcon>
       <span className="tfoot">
         <span className="tlabel">Call {c.name}</span>
         {shown && (
@@ -342,13 +349,13 @@ function CallTile({ c, today }: { c: ParentToday['contacts'][number]; today: Par
   // A real saved number opens the phone's dialler directly.
   if (!today.demo && c.phone) {
     return (
-      <Tile colour="t-green" href={telHref(c.phone)} onClick={() => setShown(true)} label={`Call ${c.name}`}>
+      <Tile colour="t-green" className="app" href={telHref(c.phone)} onClick={() => setShown(true)} label={`Call ${c.name}`}>
         {body}
       </Tile>
     )
   }
   return (
-    <Tile colour="t-green" onClick={() => setShown(true)} label={`Call ${c.name}`}>
+    <Tile colour="t-green" className="app" onClick={() => setShown(true)} label={`Call ${c.name}`}>
       {body}
     </Tile>
   )
@@ -414,16 +421,9 @@ function MusicTile({ today }: { today: ParentToday }) {
       .catch(() => setError('This device could not play the song.'))
   }
   return (
-    <Tile colour="t-rose" label="Music" className="music-tile">
+    <Tile colour="t-rose" label="Music" className="app music-tile">
       <button type="button" className="music-main" onClick={toggle} aria-pressed={playing} aria-label={`${playing ? 'Stop' : 'Play'} ${song.title}`}>
-        <span className="trow">
-          <span className="ticon-wrap">
-            <Music className="ticon" aria-hidden="true" />
-          </span>
-          <span className="tplay" aria-hidden="true">
-            {playing ? <Pause /> : <Play />}
-          </span>
-        </span>
+        <AppIcon Icon={Music} badge={playing ? <Pause /> : <Play />} />
         <span className="tfoot">
           <span className="tlabel">{playing ? 'Playing' : 'Music'}</span>
           <span className="tsub strong">{song.title}</span>
@@ -454,38 +454,9 @@ function MusicTile({ today }: { today: ParentToday }) {
 
 // ---------------------------------------------------------------- the board
 
-/**
- * How many columns the board's grid has right now: 2, or 1 with very large text.
- * Worked out the same way as the CSS (a column is at least 8.25rem), rather than read back from the
- * grid, which would also count any extra column a stretched tile had created.
- */
-function useColumns(ref: RefObject<HTMLDivElement | null>) {
-  const [cols, setCols] = useState(2)
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const measure = () => {
-      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      const width = el.clientWidth
-      const most = 2
-      const gap = parseFloat(getComputedStyle(el).columnGap) || 0
-      const min = Math.max(8.25 * rem, (width - (most - 1) * gap) / most - 0.5)
-      setCols(Math.max(1, Math.min(most, Math.floor((width + gap) / (min + gap)))))
-    }
-    measure()
-    // The board's height changes with the text size too, so this also catches enlarged text.
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [ref])
-  return cols
-}
-
 export function Board({ today, offline }: { today: ParentToday; offline: boolean }) {
   const [open, setOpen] = useState<null | 'puzzle' | 'ask'>(null)
   const panelRef = useRef<HTMLDivElement | null>(null)
-  const boardRef = useRef<HTMLDivElement | null>(null)
-  const cols = useColumns(boardRef)
   // Answered tiles stay (as thank-yous) for a few seconds even after the day reloads.
   const [thanks, setThanks] = useState<Record<string, Thanks>>({})
   const answered = (t: Thanks) => {
@@ -523,38 +494,13 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
     }
   }, [open])
 
-  // Small tiles after the full-row ones: people to call, puzzles and music. The last one
-  // stretches to fill its row; an open puzzle takes a full row of its own.
   const hasMusic = today.songs.length > 0
-  const smallTiles = [...today.contacts.map((c) => c.id), ...(open === 'puzzle' ? [] : ['puzzle']), ...(hasMusic ? ['music'] : [])]
-  const rest = smallTiles.length % cols
-  const fillFor = (key: string) => (rest !== 0 && key === smallTiles[smallTiles.length - 1] ? ` fill-${cols - rest + 1}` : '')
 
   return (
-    <div className="board" role="list" aria-label="Today" ref={boardRef}>
+    <div className="board" role="list" aria-label="Today">
       {/* Today's photo first, across the top. */}
       <div role="listitem" className="cell wide photo-cell">
         <PhotoTile today={today} />
-      </div>
-      {/* Ask Hazel: speak or tap a question; the answer appears here and is read aloud. */}
-      <div role="listitem" className="cell wide" ref={open === 'ask' ? panelRef : undefined}>
-        {open === 'ask' ? (
-          <Tile colour="t-gold" wide label="Ask Hazel" className="panel">
-            <AskHazelPanel today={today} onClose={() => setOpen(null)} />
-          </Tile>
-        ) : (
-          <Tile colour="t-gold" wide onClick={() => setOpen('ask')} label="Ask Hazel" className="ask-tile">
-            <span className="trow">
-              <span className="ticon-wrap">
-                <MessageCircleQuestion className="ticon" aria-hidden="true" />
-              </span>
-            </span>
-            <span className="tfoot">
-              <span className="tlabel">Ask Hazel</span>
-              <span className="tsub strong">Tap and ask about today</span>
-            </span>
-          </Tile>
-        )}
       </div>
       {due.map((d) => (
         <div role="listitem" className="cell wide" key={d.key}>
@@ -566,12 +512,33 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           <TodayAgenda items={events} today={today} />
         </div>
       )}
+      {/* The app buttons. Ask Hazel: speak or tap a question; the answer appears here and is read aloud. */}
+      <div role="listitem" className={`cell${open === 'ask' ? ' wide' : ' app-cell'}`} ref={open === 'ask' ? panelRef : undefined}>
+        {open === 'ask' ? (
+          <Tile colour="t-gold" wide label="Ask Hazel" className="panel">
+            <AskHazelPanel today={today} onClose={() => setOpen(null)} />
+          </Tile>
+        ) : (
+          <Tile colour="t-gold" onClick={() => setOpen('ask')} label="Ask Hazel" className="app">
+            <AppIcon Icon={Mic} />
+            <span className="tfoot">
+              <span className="tlabel">Ask Hazel</span>
+              <span className="tsub">Ask about today</span>
+            </span>
+          </Tile>
+        )}
+      </div>
       {today.contacts.map((c) => (
-        <div role="listitem" className={`cell${fillFor(c.id)}`} key={c.id}>
+        <div role="listitem" className="cell app-cell" key={c.id}>
           <CallTile c={c} today={today} />
         </div>
       ))}
-      <div role="listitem" className={`cell${open === 'puzzle' ? ' wide' : fillFor('puzzle')}`} ref={open === 'puzzle' ? panelRef : undefined}>
+      {hasMusic && (
+        <div role="listitem" className="cell app-cell">
+          <MusicTile today={today} />
+        </div>
+      )}
+      <div role="listitem" className={`cell${open === 'puzzle' ? ' wide' : ' app-cell'}`} ref={open === 'puzzle' ? panelRef : undefined}>
         {open === 'puzzle' ? (
           <Tile colour="t-purple" wide label="Word search" className="panel">
             <button type="button" className="tile-close" onClick={() => setOpen(null)} aria-label="Close word search">
@@ -581,10 +548,8 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
             <WordSearchGame parentName={today.parentName} />
           </Tile>
         ) : (
-          <Tile colour="t-purple" onClick={() => setOpen('puzzle')} label="Puzzles">
-            <span className="ticon-wrap">
-              <Puzzle className="ticon" aria-hidden="true" />
-            </span>
+          <Tile colour="t-purple" className="app" onClick={() => setOpen('puzzle')} label="Puzzles">
+            <AppIcon Icon={Puzzle} />
             <span className="tfoot">
               <span className="tlabel">Puzzles</span>
               <span className="tsub">Word search</span>
@@ -592,11 +557,6 @@ export function Board({ today, offline }: { today: ParentToday; offline: boolean
           </Tile>
         )}
       </div>
-      {hasMusic && (
-        <div role="listitem" className={`cell${fillFor('music')}`}>
-          <MusicTile today={today} />
-        </div>
-      )}
       <div role="listitem" className="cell wide bar">
         <a className="board-bar" href="#/family">
           Family setup{today.demo ? ' · Demo' : ''}

@@ -1,3 +1,8 @@
+> **Also in this repo:** [`clip-forge/`](clip-forge/) — a browser app that makes
+> "breakout" social video ads in 3 clicks: your flat picture sits on a 3D
+> phone / TV / picture frame and pops out of the screen. Exports MP4. See its
+> README to run it.
+
 # 🩸 3D Blood Vessel Explorer
 
 An interactive, fully 3D simulation of the inside of a blood vessel. Fly through

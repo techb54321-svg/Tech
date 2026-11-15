@@ -25,8 +25,13 @@ body { margin: 0; background: var(--page); }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; border: 0; }
 button, a { touch-action: manipulation; } /* no double-tap zoom delay */
-/* Where nothing needs to scroll under the finger, a press that slides still counts (see SLIDE_BUTTONS in app.js). */
-.prompt-card button, .prompt-card a, [data-emergency] { touch-action: none; }
+/* A press that slides still counts (see SLIDE_BUTTONS in app.js). On the person's own screens an
+   up-and-down drag still scrolls the page and presses nothing; only a sideways slide counts. On a
+   card nothing has to scroll under the buttons, so a slide in any direction counts, unless the
+   card is too tall for the screen and has to scroll as a whole. */
+.app[data-person] :is(button, a):not(.hold) { touch-action: pan-y pinch-zoom; }
+.prompt-card :is(button, a) { touch-action: none; }
+.prompt-card.scrolls :is(button, a) { touch-action: pan-y pinch-zoom; }
 a { color: inherit; }
 img { max-width: 100%; }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
@@ -57,19 +62,24 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .hero.afternoon { background: linear-gradient(180deg, #eaf4ff 0%, #f6f8ec 58%, #ffe6ab 100%); }
 .hero.evening { background: linear-gradient(180deg, #fff1e3 0%, #ffd9bd 55%, #f6ab85 100%); }
 .hero.night { background: linear-gradient(180deg, #0f1b3d 0%, #1b2a59 60%, #2a3d70 100%); color: #f4f6ff; }
-/* Help sits in the same corner of the first screen as on every other screen. */
-.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
-.hero-top .help-btn { position: relative; z-index: 1; }
+/* Help sits in the same corner of the first screen as on every other screen, with "read this to me"
+   and bigger writing beside it. When all three do not fit on one line, those two move below and
+   Help stays in its corner. */
+.hero-top { position: relative; z-index: 1; display: flex; flex-direction: row-reverse; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 2px; }
+.hero-tools { display: flex; gap: 6px; margin-right: auto; }
+.tool { background: #ffffffc4; color: var(--ink); padding: 13px 9px; border-radius: 16px; font-size: 1.25rem; font-weight: 750; min-height: 50px; }
+.hero.night .tool { background: #2a3763; color: #eef1fb; }
 .hero.night .help-btn { background: #6b2a2a; color: #ffe9e9; }
-.brand { font-size: 1rem; font-weight: 800; letter-spacing: .4px; opacity: .85; }
 .greeting { margin: 4px 0 0; font-size: 1.5rem; font-weight: 790; line-height: 1.15; overflow-wrap: break-word; }
 .clock { display: block; margin: 0 auto; padding: 0; background: none; color: inherit; font-size: 3.5rem; font-weight: 850; letter-spacing: -2px; line-height: 1.08; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .daypart { font-size: 1.6rem; font-weight: 800; line-height: 1.15; }
 .date { font-size: 1.3rem; font-weight: 700; margin-top: 3px; }
 /* "Have I taken my tablets?" is answered beside the clock, on the first screen of every device. */
 .taken { position: relative; z-index: 1; font-size: 1.25rem; font-weight: 750; line-height: 1.25; margin: 6px auto 0; max-width: 22em; overflow-wrap: break-word; }
+.taken span { display: inline-block; background: #ffffffd9; border-radius: 12px; padding: 3px 12px; } /* readable on every sky, morning to evening */
 .taken.ok { color: var(--green-ink); }
 .taken.warn { color: var(--amber-ink); }
+.hero.night .taken span { background: none; padding: 0; }
 .hero.night .taken.ok { color: #bfe8c9; }
 .hero.night .taken.warn { color: #ffd98a; }
 .rest { font-size: 1.3rem; font-weight: 650; line-height: 1.35; margin: 10px auto 0; max-width: 17em; }
@@ -89,8 +99,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .hero.night .hill.two { background: #2b3a5c; }
 .hero.night .hill.three { background: #1f2c48; }
 .sound-hint {
-  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); white-space: nowrap;
-  background: #142344e6; color: #fff; padding: 7px 14px; border-radius: 99px; font-size: 1.15rem; font-weight: 700;
+  position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 20px); text-align: center;
+  background: #142344e6; color: #fff; padding: 7px 14px; border-radius: 22px; font-size: 1.25rem; font-weight: 700; line-height: 1.25;
 }
 
 .content { padding: max(22px, env(safe-area-inset-top)) 18px 30px; }
@@ -160,12 +170,16 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .attention-note { font-size: 1.3rem; line-height: 1.35; margin: 0 0 6px; overflow-wrap: break-word; }
 .attention .primary { margin-bottom: 2px; }
 .attention .pair { align-items: stretch; gap: 8px; }
-.attention .pair .primary, .attention .pair .secondary { margin: 6px 0 2px; padding: 12px 8px; font-size: 1.15rem; display: grid; place-items: center; }
+.attention .pair .primary, .attention .pair .secondary { margin: 6px 0 2px; padding: 12px 8px; font-size: 1.25rem; display: grid; place-items: center; }
 .attention .caution { background: none; padding: 0; margin: 0 0 6px; }
 .attention .call-now { margin: 6px 0 2px; padding: 12px; }
 .hero.compact { padding-bottom: 14px; }
 .hero.compact .landscape { display: none; }
-.hero.compact .sound-hint { position: static; transform: none; display: inline-block; margin-top: 8px; white-space: normal; }
+.hero.compact .sound-hint { position: static; transform: none; display: inline-block; margin-top: 8px; }
+/* On a small phone with something to do now, the greeting makes way so the button below stays on the first screen. */
+@media (max-height: 700px) and (max-width: 699px) {
+  .hero.compact .greeting { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
 .hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; } /* a held finger that drifts must not turn into a scroll */
 
 /* My Day */
@@ -174,7 +188,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .next-head > div { min-width: 0; }
 .next-head h2 { font-size: 1.7rem; line-height: 1.15; margin: 0; overflow-wrap: break-word; }
 .next-head p { margin: 3px 0 0; font-size: 1.3rem; font-weight: 700; }
-.earlier-note { background: #fff3d9; border-radius: 14px; padding: 12px 14px; font-size: 1.25rem; font-weight: 650; line-height: 1.4; }
+.earlier-heading { color: var(--amber-ink); margin-bottom: 2px; }
+.earlier-note { font-size: 1.25rem; font-weight: 650; line-height: 1.4; margin: 0 0 4px; }
 .item {
   width: 100%; text-align: left; padding: 14px 13px; border-radius: 20px; background: #f6f8fc;
   margin: 11px 0; display: flex; align-items: center; gap: 12px; min-height: 92px; color: var(--ink);
@@ -239,7 +254,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   width: 76px; height: 76px; border-radius: 50%; background: #fff6e6; display: grid;
   place-items: center; font-size: 2.8rem; flex-shrink: 0; overflow: hidden;
 }
-.who { flex: 1; font-size: 1.5rem; font-weight: 790; min-width: 0; line-height: 1.15; overflow-wrap: break-word; }
+.who { flex: 1; font-size: 1.5rem; font-weight: 790; min-width: 0; line-height: 1.15; overflow-wrap: break-word; hyphens: none; }
 .who .muted { display: block; font-size: 1.25rem; font-weight: 550; margin-top: 3px; color: var(--ink); }
 .who .phone, .number { font-variant-numeric: tabular-nums; }
 .who .phone { font-size: 1.25rem; white-space: nowrap; }
@@ -250,6 +265,13 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   padding: 13px 15px; flex-shrink: 0;
 }
 .call.missing { background: #c8d0dc; color: #3d4b66; }
+/* On a phone the name keeps the width and the pill sits underneath, so no word is broken in two. */
+@media (max-width: 480px) {
+  .contact { flex-wrap: wrap; }
+  .who { flex-basis: calc(100% - 100px); }
+  .who .phone { white-space: normal; }
+  .contact .call { flex-basis: 100%; text-align: center; margin-top: 4px; }
+}
 
 /* Get Help */
 .emergency-call {
@@ -330,7 +352,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .confirm-actions button { padding: 13px 16px; font-size: 1rem; }
 /* On the person's own screens the question and its answers are large. */
 .content > .confirm p { font-size: 1.3rem; line-height: 1.35; }
-.content > .confirm .confirm-actions button { font-size: 1.2rem; padding: 15px 16px; min-height: 58px; flex: 1 1 100%; }
+.content > .confirm .confirm-actions button { font-size: 1.25rem; padding: 15px 16px; min-height: 58px; flex: 1 1 100%; }
 .tiny { font-size: .9rem; color: #4f5d76; line-height: 1.5; }
 .divider { height: 1px; background: #e4e8f0; margin: 18px 0; }
 .skip { display: block; margin: 6px auto 0; background: none; text-decoration: underline; color: #46546e; padding: 13px; font-size: 1.25rem; min-height: 48px; }
@@ -388,13 +410,17 @@ fieldset.field legend { padding: 0; }
 .prompt-card {
   background: #fff; border-radius: 28px; padding: 22px 20px 12px; width: 100%; max-width: 460px; text-align: center;
   box-shadow: 0 20px 60px #0007; margin: auto; animation: pop .35s ease-out;
-  max-height: calc(100dvh - 32px); overflow-y: auto; /* at the largest writing every button can still be reached */
+  /* The words scroll if they must; the buttons are always on the screen, whatever the writing size.
+     Only if even the buttons do not fit does the whole card scroll. */
+  display: flex; flex-direction: column; max-height: calc(100dvh - 32px); overflow-y: auto;
 }
+.prompt-body { flex: 1 1 auto; min-height: 5.5rem; overflow-y: auto; overscroll-behavior: contain; }
+.prompt-actions { flex: none; }
+.prompt-card.more .prompt-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4rem), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 2.4rem), transparent); } /* there is more to read below */
 @keyframes pop { from { transform: scale(.92); } }
 /* An important reminder also catches the eye from across the room. */
 .prompt-card.urgent { animation: pop .35s ease-out, urgent 1.6s ease-in-out .35s 12; }
 @keyframes urgent { 50% { box-shadow: 0 0 0 14px #ffd166, 0 20px 60px #0007; } }
-.sheet-call .primary { position: sticky; bottom: 0; }
 .prompt-card .help-btn { display: block; width: 100%; margin: 10px 0 8px; }
 .prompt-card .call-now { margin: 8px 0; }
 .prompt-card .oops { margin-top: 22px; } /* well clear of OK */
@@ -404,7 +430,24 @@ fieldset.field legend { padding: 0; }
   width: 116px; height: 116px; margin: 0 auto 6px; border-radius: 26px; display: grid; place-items: center;
   font-size: 4.2rem; background: linear-gradient(145deg, #f8e1bb, #cce7ce); overflow: hidden;
 }
-@media (max-height: 720px) { .prompt-pic { width: 76px; height: 76px; font-size: 2.8rem; border-radius: 20px; } }
+/* A short screen: the picture shrinks (and goes, with bigger writing) and the buttons sit closer together. */
+@media (max-height: 720px) {
+  .prompt-pic { width: 76px; height: 76px; font-size: 2.8rem; border-radius: 20px; }
+  :root:not([data-size='normal']) :is(.prompt-pic, .done-tick) { display: none; }
+  .prompt-card { padding: 16px 16px 8px; }
+  .prompt-actions .primary { padding: 12px; min-height: 56px; margin: 6px 0; }
+  .prompt-actions .secondary { padding: 11px; min-height: 52px; margin: 6px 0; }
+  .prompt-actions .help-btn { margin: 6px 0; padding: 10px 16px; }
+  .prompt-actions .skip { padding: 8px; min-height: 44px; margin-top: 2px; }
+  .prompt-card .oops { margin-top: 12px; }
+  .big-number.again { display: none; } /* the emergency number is already in the heading: the name and address get the room */
+}
+/* A tablet on its side: the words on the left, the buttons on the right, so nothing is below the edge. */
+@media (orientation: landscape) and (min-width: 700px) and (max-height: 900px) {
+  .prompt-card { max-width: min(980px, 94vw); flex-direction: row; align-items: center; gap: 26px; padding: 20px 24px; overflow: hidden; }
+  .prompt-body, .prompt-actions { flex: 1 1 0; min-width: 0; min-height: 0; max-height: calc(100dvh - 72px); overflow-y: auto; }
+  .prompt-pic { width: 96px; height: 96px; font-size: 3.4rem; }
+}
 .prompt-when { font-size: 1.25rem; font-weight: 700; color: var(--ink-soft); margin: 6px 0 0; }
 .prompt-card h2 { font-size: 2.2rem; line-height: 1.1; margin: 4px 0 8px; overflow-wrap: break-word; }
 .prompt-note { font-size: 1.35rem; line-height: 1.4; margin: 0 0 12px; overflow-wrap: break-word; }
@@ -432,8 +475,9 @@ fieldset.field legend { padding: 0; }
 /* Night: the screens the person uses are dark, so the device is not a lamp and says plainly that it is night. */
 .app[data-night] { background: #17234a; color: #eef1fb; }
 .app[data-night] .content > * { filter: brightness(.8) saturate(.85); }
-.app[data-night] .content > :is(.page-title, .lead, .muted, .section-heading, .celebrate, .topbar, .home-tools) { filter: none; color: #eef1fb; }
-.app[data-night] :is(.next-card, .activity-card, .notyet, .details, .notice, .empty, .earlier-note, .caution, .attention, .example-note, .confirm, .say-card, .safe-space) { color: var(--ink); }
+.app[data-night] .content > :is(.page-title, .lead, .muted, .section-heading, .celebrate, .topbar, .home-tools, .earlier-note) { filter: none; color: #eef1fb; }
+.app[data-night] .content > .earlier-heading { color: #ffd98a; }
+.app[data-night] :is(.next-card, .activity-card, .notyet, .details, .notice, .empty, .caution, .attention, .example-note, .confirm, .say-card, .safe-space) { color: var(--ink); }
 .app[data-night] :is(.home-tools button, .back) { background: #2a3763; color: #eef1fb; }
 .app[data-night] .help-btn { background: #6b2a2a; color: #ffe9e9; }
 .app[data-night] .foot { color: #b4bedd; }
@@ -455,10 +499,15 @@ fieldset.field legend { padding: 0; }
   .app { max-width: 1180px; }
   .app[data-screen='home'] { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; }
   .app[data-screen='home'] { overflow: clip; }
-  /* The clock stays put and whole on its half while the buttons scroll beside it. */
-  .app[data-screen='home'] .hero { display: flex; flex-direction: column; justify-content: center; padding-bottom: 150px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); }
-  .app[data-screen='home'] .hero-top { position: absolute; top: 22px; left: 22px; right: 22px; }
+  /* The clock stays put and whole on its half while the buttons scroll beside it. The words are
+     centred in the space under the Help row and never run up into it, however big the writing. */
+  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); overflow-y: auto; }
+  .app[data-screen='home'] .hero-main { margin: auto 0; }
   .app[data-screen='home'] .clock { font-size: min(4.6rem, 9.6vw); }
+  .app[data-screen='home'] .greeting { font-size: min(1.5rem, 3.3vw); }
+  .app[data-screen='home'] .daypart { font-size: min(1.6rem, 3.5vw); }
+  .app[data-screen='home'] :is(.date, .taken, .rest) { font-size: min(1.25rem, 2.8vw); }
+  .app[data-screen='home'] .hero-top :is(.tool, .help-btn) { font-size: min(1.25rem, 2.7vw); }
   .app[data-screen='home'] .home-content { align-self: center; padding-top: 22px; }
   .app[data-screen='home'] .foot { grid-column: 1 / -1; }
   .app:not([data-screen='home']) .content { max-width: 760px; margin: 0 auto; }

@@ -9,39 +9,54 @@ No accounts, no server, no build step. Everything stays on the one device.
 
 - **Tells them what time of day it is.** The time, "Monday morning" and the date
   are the biggest things on the screen. At night the screen goes dark and says
-  it is night time and that everything is fine.
+  it is night time. It says "everything is fine" only when nothing important is
+  waiting to be ticked.
 - **Comes to them when something is due.** A chime, a spoken reminder and a
   card that fills the screen, with one big button: **I've done this**. Important
   things (tablets) chime louder and keep coming back for an hour. Opening Hazel
-  late, or answering another card first, still brings the reminder up. After the
-  hour it stays at the top of the first screen, asked about carefully, until it
-  is ticked or the next important thing is due.
+  late, or answering another card first, still brings the reminder up, and
+  "Remind me in 10 minutes" is always kept, across midnight too. After the hour
+  it stays at the top of the first screen, asked about carefully, until it is
+  ticked or the next important thing is due; after that it is only named beside
+  the clock.
+- **Every button stays on the screen.** On a reminder the words scroll if they
+  must, but the buttons never leave the screen, at any writing size or on a
+  tablet lying on its side.
 - **Never tells anyone to take a late dose.** Hazel only knows about the tap, so
   once tablets are more than an hour late the instruction is replaced by the
   family's own advice from the pharmacist ("If it is before 12 noon, take them
-  now…"), or by "Check your pill box. Don't take extra." A repeated reminder
-  asks "Already taken them?" first. The voice always says what the screen says.
+  now…"), or by "Check your pill box. Don't take extra." That advice is for the
+  same day only: the next morning Hazel says the tablets were not ticked and to
+  ask before taking them. A repeated reminder asks "Already taken them?"
+  instead of repeating the instruction, and a warning given beforehand never
+  includes it. The voice always says what the screen says.
 - **Answers "have I taken my tablets?"** beside the clock on the first screen:
-  "✓ Morning tablets, done at 8:06 am", or "Morning tablets: not ticked". After
-  midnight it says whether last night's were ticked. Tablets can't be ticked
-  hours early, and a tick just after midnight is recorded for the night it
-  belongs to.
+  "✓ Morning tablets, done at 8:06 am", or "Morning tablets: not ticked". A tick
+  made an hour or more late reads "ticked off at 2:45 pm", because that is when
+  the button was pressed, not when the tablets were taken. After midnight it
+  says whether last night's were ticked. Tablets can't be ticked hours early,
+  and a tick just after midnight is recorded for the night it belongs to.
 - **Calls people by tapping their face.** The whole card is the button, with a
   real photo. The number then stays on screen in large print in case the device
   can't start the call. On a device that can't ring at all (a tablet with no
   SIM), Hazel says so and shows the number to dial on the phone.
 - **Gets help in one or two taps.** A Help button sits in the same corner of
-  every screen, including the first, and on every reminder card ("I need help").
+  every screen, including the first, and on every card that comes up ("I need
+  help").
   Get Help → Call 000 (or the right number for the country), with "Tell them: my
   name is…, I am at…" on screen. A reminder never covers the Get Help screen.
   There is a calming screen for 2 am, and a "My details" card for a paramedic.
 - **Forgives a shaky hand.** Taps that land straight after the screen changes
   are ignored, so a double tap can't tick something by accident. A press that
-  slides still counts on the buttons that matter. Anything ticked or removed can
-  be taken back, and the reminder then comes round again.
-- **Always goes back to the clock.** Every screen returns by itself, so nothing
-  left open can stop the reminders.
-- **Reads itself aloud**, and the writing can be made bigger from the first screen.
+  slides still counts on every button the person uses, but trying to scroll
+  never presses anything: an up-and-down drag scrolls, and only a sideways
+  slide counts where the page moves. Anything ticked or removed can be taken
+  back, and the reminder then comes round again.
+- **Always goes back to the clock.** Every screen returns by itself, and the
+  first screen scrolls back to the top, so nothing left open can stop the
+  reminders or hide the time.
+- **Reads itself aloud and makes the writing bigger** from two buttons in the
+  top corner of the first screen, beside Help.
 
 ## What it does for the family
 
@@ -49,19 +64,25 @@ Open **Family settings** from the first screen (press and hold for two seconds,
 or enter the PIN if one is set).
 
 - **Set-up in a couple of minutes**: who it is for, country, people to call, and
-  a routine picked from common items.
+  a routine picked from common items. Until that is done, Family settings is the
+  set-up form, so the country (and so the emergency number) is always confirmed.
+  Something whose time has already passed today starts tomorrow, so it is never
+  shown or recorded as missed at a time when it did not exist.
 - **A real calendar**: every day, chosen days ("bin night"), every 2 weeks,
   every month, or one date (an appointment, with an optional warning beforehand
   and a call button on the reminder). "Coming up" and "Tomorrow" appear by
   themselves, and old appointments remove themselves.
 - **"If it is late"** on each tablets item: the pharmacist's advice for a late
-  or missed dose, shown and spoken in place of the instructions after an hour.
+  or missed dose, shown and spoken in place of the instructions after an hour,
+  on that day only.
 - **A note on the first screen** ("I'll come over on Saturday") that takes itself
   down after a date.
 - **What was ticked, and when**, for two weeks, by name, with tablets first.
   For anything not ticked it says what Hazel knows: the reminder was shown at
-  8:00 pm, the tick was taken back, or Hazel was not open at the time. Each day
-  shows when Hazel was on the screen. Days before set-up are left out.
+  8:00 pm (only counted while Hazel was really on the screen), the tick was
+  taken back, no reminder was shown, or Hazel was not open at the time. Each
+  day shows when Hazel was on the screen. Days before set-up are left out, and
+  something removed keeps the ticks it already had.
 - **Getting the record off the device**: copy the last 7 days as text, send it
   with the device's own share button, or switch on "Tell Sarah" buttons, which
   open a ready-written text message for the person to send.
@@ -69,8 +90,13 @@ or enter the PIN if one is set).
 - **Details for an emergency**: full name, address, date of birth, conditions,
   medicines, allergies, doctor.
 - **"Is Hazel ready?"** checklist, **Try a reminder now**, and a **backup copy**
-  to restore after a new or cleared device. A forgotten PIN is cleared with a
-  backup copy without losing the ticks recorded since.
+  to restore after a new or cleared device. The copy has no spaces in it, so an
+  email program that wraps long lines cannot damage it. A forgotten PIN is
+  cleared with a backup copy without losing the ticks recorded since.
+- **Nothing typed is thrown away without a word.** A panel is saved before
+  another button or the Back button leaves it, and a half-filled form asks
+  first. Left alone, Hazel keeps what was typed and goes back to the clock, but
+  never puts a new PIN or a different country in force without Save.
 
 ## What it cannot do
 

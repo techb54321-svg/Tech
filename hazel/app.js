@@ -73,6 +73,10 @@ const SEED = {
   ],
 };
 
+// A browser without its own time or date picker hands back whatever was typed, so check before keeping it.
+const validTime = v => typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+const validDay = v => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(v);
+
 const ABOUT_FIELDS = ['fullName', 'dob', 'address', 'conditions', 'medicines', 'allergies', 'doctor', 'doctorPhone', 'notes'];
 
 // Turns anything (old saved data, a pasted backup, nothing at all) into well-formed data.
@@ -80,9 +84,9 @@ function normalize(raw, fromStorage) {
   const d = raw && typeof raw === 'object' ? raw : {};
   const str = (v, max = 600) => (typeof v === 'string' ? v.slice(0, max) : '');
   const photo = v => (typeof v === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length < 400000 ? v : '');
-  const timeOr = (v, fallback) => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : fallback);
+  const timeOr = (v, fallback) => (validTime(v) ? v : fallback);
   const time = v => timeOr(v, '09:00');
-  const day = v => (typeof v === 'string' && /^\d{4}-\d\d-\d\d$/.test(v) ? v : '');
+  const day = v => (validDay(v) ? v : '');
   const id = v => (Number.isFinite(Number(v)) ? Number(v) : newId());
 
   const activities = (Array.isArray(d.activities) ? d.activities : []).filter(a => a && typeof a === 'object').map(a => ({
@@ -113,10 +117,10 @@ function normalize(raw, fromStorage) {
   // completed: { 'YYYY-MM-DD': { activityId: 'HH:MM' } }. Older versions stored a plain list of ids.
   const completed = {};
   if (d.completed && typeof d.completed === 'object') {
-    for (const [day, v] of Object.entries(d.completed)) {
-      if (!/^\d{4}-\d\d-\d\d$/.test(day) || !v || typeof v !== 'object') continue;
+    for (const [key, v] of Object.entries(d.completed)) {
+      if (!day(key) || !v || typeof v !== 'object') continue;
       const entries = Array.isArray(v) ? v.map(x => [x, '']) : Object.entries(v);
-      completed[day] = Object.fromEntries(entries.map(([k, t]) => [k, /^\d\d:\d\d$/.test(t) ? t : '']));
+      completed[key] = Object.fromEntries(entries.map(([k, t]) => [k, validTime(t) ? t : '']));
     }
   }
 
@@ -125,7 +129,8 @@ function normalize(raw, fromStorage) {
   if (d.undone && typeof d.undone === 'object') {
     for (const [key, v] of Object.entries(d.undone)) {
       if (!day(key) || !v || typeof v !== 'object') continue;
-      undone[key] = Object.fromEntries(Object.entries(v).map(([k, u]) => [k, { was: str(u?.was, 5), at: str(u?.at, 5) }]));
+      undone[key] = Object.fromEntries(Object.entries(v).filter(([, u]) => validTime(u?.at))
+        .map(([k, u]) => [k, { was: validTime(u.was) ? u.was : '', at: u.at }]));
     }
   }
 
@@ -587,7 +592,7 @@ const screens = {
         <div class="date">${fmt({ day: 'numeric', month: 'long', year: 'numeric' })}</div>
         ${part === 'night' ? `<p class="rest">${restMessage()}</p>` : ''}
         <div class="landscape" aria-hidden="true"><div class="sun"></div><div class="hill one"></div><div class="hill two"></div><div class="hill three"></div></div>
-        ${data.sound && !armed && todays().length ? '<div class="sound-hint">🔔 Tap once to turn on the chime</div>' : ''}
+        ${data.setup && data.sound && !armed && todays().length ? '<div class="sound-hint">🔔 Tap once to turn on the chime</div>' : ''}
       </section>
       <section class="content home-content">
         ${data.setup ? '' : `<button class="example-banner" data-go="setup"><strong>Hazel is not set up yet.</strong> This is an example day. Family: tap here to set it up ›</button>`}
@@ -744,7 +749,7 @@ const screens = {
 
   about() {
     const a = data.about;
-    const born = a.dob && /^\d{4}-\d\d-\d\d$/.test(a.dob) ? parseDay(a.dob) : null;
+    const born = validDay(a.dob) ? parseDay(a.dob) : null;
     const age = born ? Math.floor((new Date() - born) / (365.2425 * 864e5)) : null;
     const row = (label, value) => (value ? `<div class="detail"><span>${label}</span><b>${esc(value)}</b></div>` : '');
     const any = ABOUT_FIELDS.some(f => a[f]);
@@ -872,7 +877,7 @@ const screens = {
           <label class="field">Who they are<input name="relation" maxlength="45" value="${esc(c?.relation)}" placeholder="e.g. Daughter, Neighbour, Doctor"></label>
           <label class="field">Phone number
             <span class="hint">People without a number are not shown on the Call screen.</span>
-            <input name="phone" value="${esc(c?.phone)}" inputmode="tel" autocomplete="off" placeholder="e.g. 0412 345 678"></label>
+            <input name="phone" value="${esc(c?.phone)}" inputmode="${(c?.method || 'phone') === 'phone' ? 'tel' : 'email'}" autocomplete="off" placeholder="e.g. 0412 345 678"></label>
           <fieldset class="field">
             <legend>How Hazel calls them</legend>
             <span class="hint">A tablet without a SIM cannot make ordinary phone calls. On an iPad, FaceTime works over Wi-Fi (a number or an email address). Try it from the Call screen before you leave.</span>
@@ -1034,7 +1039,7 @@ const familyPanels = {
     return `
       <div class="family">
         <h3 tabindex="-1">Details for an emergency</h3>
-        <p class="tiny" style="margin-top:0">Anyone holding this device can read these under Get Help, My details. That is the point: a paramedic or nurse can see them. Only add what you are happy for a helper to see. Their name and address are also shown on the Emergency screen, so they know what to tell the operator.</p>
+        <p class="tiny" style="margin-top:0">Anyone holding this device can read these under Get Help, My details. That is the point: a paramedic or nurse can see them. Only add what you are happy for a helper to see. Their name and address are also shown when the emergency number is called, so they know what to tell the operator.</p>
         <form novalidate data-form="about">
           ${field('fullName', 'Full name', 'placeholder="e.g. Margaret Anne Wilson"')}
           ${field('dob', 'Date of birth', 'type="date"')}
@@ -1275,7 +1280,7 @@ function homeSpeech() {
 
 // `focus` is a selector for the element that should have focus afterwards, so
 // keyboard and screen-reader users don't get dropped back to the top of the page.
-function render(focus) {
+function render(...focus) {
   let screen = screens[ui.screen] ? ui.screen : 'home';
   // Edit forms sit behind the family PIN, even when reached with the Back button.
   if (data.pin && !ui.unlocked && needsPin(screen)) screen = 'family';
@@ -1284,7 +1289,7 @@ function render(focus) {
   app.toggleAttribute('data-night', dayPart() === 'night' && screen !== 'family' && !FORM_SCREENS.includes(screen));
   app.innerHTML = screens[screen]() + '<div class="foot">Hazel 🌿 A brighter day, one step at a time.</div>';
   lastLive = liveText();
-  const target = app.querySelector('[data-autofocus]') || (focus && app.querySelector(focus));
+  const target = ['[data-autofocus]', ...focus].filter(Boolean).map(sel => app.querySelector(sel)).find(Boolean);
   target?.focus({ preventScroll: true });
 }
 
@@ -1512,7 +1517,8 @@ const actions = {
   },
   finish(_, id) {
     const a = findActivity(id);
-    if (!a) return;
+    if (!a || !occursOn(a) || tooEarly(a)) return;
+    if (isDone(id)) return render();
     markDone(id);
     if (!save()) toast(NOT_SAVED);
     if (ui.screen === 'activity') {
@@ -1540,7 +1546,7 @@ const actions = {
   'prompt-done'(_, id) {
     const a = findActivity(id);
     if (!a) return closeSheet();
-    markDone(id);
+    if (!isDone(id)) markDone(id);
     if (!save()) toast(NOT_SAVED);
     render();
     showDone(a);
@@ -1611,7 +1617,7 @@ const actions = {
     const i = data.contacts.findIndex(c => c.id === id);
     if (i > 0) [data.contacts[i - 1], data.contacts[i]] = [data.contacts[i], data.contacts[i - 1]];
     if (!save()) toast(NOT_SAVED);
-    render(`[data-action="contact-up"][data-id="${id}"], .family h3`);
+    render(`[data-action="contact-up"][data-id="${id}"]`, '.family h3[tabindex]');
   },
   // Fills in the Add form for the commonest kinds of thing, so each takes a few taps.
   template(el) {
@@ -1651,10 +1657,10 @@ const actions = {
         data.activities.splice(i, 0, a);
         if (tick !== undefined) (data.completed[dayKey()] ??= {})[id] = tick;
         saved(`“${a.title}” is back.`);
-        render('.family h3');
+        render('.family h3[tabindex]');
       } } });
     }
-    render('.family h3');
+    render('.family h3[tabindex]');
   },
   'remove-contact'(_, id) {
     const i = data.contacts.findIndex(x => x.id === id);
@@ -1665,16 +1671,16 @@ const actions = {
       saved(`Removed ${c.name}.`, { action: { label: 'Put them back', run() {
         data.contacts.splice(i, 0, c);
         saved(`${c.name} is back.`);
-        render('.family h3');
+        render('.family h3[tabindex]');
       } } });
     }
-    render('.family h3');
+    render('.family h3[tabindex]');
   },
   'reset-done'() {
     ui.confirming = null;
     delete data.completed[dayKey()];
     saved("Today's ticks have been cleared.");
-    render('.family h3');
+    render('.family h3[tabindex]');
   },
   summary() {
     ui.summary = weekSummaryText();
@@ -1695,11 +1701,11 @@ const actions = {
     applySettings();
     saved('Restored from the copy.');
     if (ui.screen === 'setup') return go('family', null, { replace: true });
-    render('.family h3');
+    render('.family h3[tabindex]');
   },
   forgot() {
     ui.forgot = true;
-    render('.family h3');
+    render('.family h3[tabindex]');
   },
   'skip-setup'() {
     data.setup = true;
@@ -1725,11 +1731,12 @@ const forms = {
     const repeat = f.elements.repeat.value || 'daily';
     const days = [...f.querySelectorAll('input[name="days"]:checked')].map(i => Number(i.value));
     const date = f.elements.date.value;
+    if (!validTime(f.elements.time.value)) return showError(f, 'Please give the time, like 08:00 or 14:30.', 'time');
     if (repeat === 'weekly' && !days.length) return showError(f, 'Please choose at least one day of the week.', 'days');
-    if (repeat === 'once' && !date) return showError(f, 'Please choose the date.', 'date');
+    if (repeat === 'once' && !validDay(date)) return showError(f, 'Please choose the date.', 'date');
     const existing = findActivity(ui.id);
     const fields = {
-      time: f.elements.time.value || '10:00',
+      time: f.elements.time.value,
       title,
       note: f.elements.note.value.trim(),
       emoji: f.elements.emoji.value || existing?.emoji || ACTIVITY_PICTURES[0],
@@ -1770,12 +1777,13 @@ const forms = {
     history.back();
   },
   note(f) {
-    data.note = { text: f.elements.text.value.trim(), from: f.elements.from.value.trim(), until: f.elements.until.value };
+    data.note = { text: f.elements.text.value.trim(), from: f.elements.from.value.trim(), until: validDay(f.elements.until.value) ? f.elements.until.value : '' };
     dirty = false;
     saved(data.note.text ? 'Note saved. It is on the home screen now.' : 'Note removed.');
     render('form[data-form="note"] .primary');
   },
   about(f) {
+    if (f.elements.dob.value && !validDay(f.elements.dob.value)) return showError(f, 'Please give the date of birth as year-month-day, like 1946-03-04.', 'dob');
     for (const name of ABOUT_FIELDS) data.about[name] = f.elements[name].value.trim();
     dirty = false;
     saved('Details saved.');
@@ -1789,8 +1797,8 @@ const forms = {
     data.size = f.elements.size.value || 'normal';
     data.sound = f.elements.sound.checked;
     data.awake = f.elements.awake.checked;
-    if (f.elements.nightFrom.value) data.nightFrom = f.elements.nightFrom.value;
-    if (f.elements.nightTo.value) data.nightTo = f.elements.nightTo.value;
+    if (validTime(f.elements.nightFrom.value)) data.nightFrom = f.elements.nightFrom.value;
+    if (validTime(f.elements.nightTo.value)) data.nightTo = f.elements.nightTo.value;
     data.pin = pin;
     if (pin) ui.unlocked = true;
     applySettings();
@@ -1816,7 +1824,7 @@ const forms = {
   },
   erase(f) {
     if (f.elements.word.value.trim().toUpperCase() !== 'ERASE') return showError(f, 'Type the word ERASE to confirm.', 'word');
-    Object.assign(data, normalize(SEED, false));
+    Object.assign(data, normalize({ ...SEED, region: data.region }, false));
     applySettings();
     saved('Hazel has been erased on this device and is showing the example again.');
     go('home', null, { replace: true });
@@ -1835,7 +1843,7 @@ const forms = {
       contacts.push({ id: newId() + i, name, relation: f.elements['crel' + i].value.trim(), phone, method: 'phone', emoji: CONTACT_PICTURES[i], photo: '' });
     }
     const activities = ROUTINES.filter(r => f.elements['r-' + r.key].checked).map((r, i) => ({
-      id: newId() + 10 + i, time: f.elements['t-' + r.key].value || r.time, title: r.title, emoji: r.emoji, note: r.note,
+      id: newId() + 10 + i, time: validTime(f.elements['t-' + r.key].value) ? f.elements['t-' + r.key].value : r.time, title: r.title, emoji: r.emoji, note: r.note,
       photo: '', repeat: 'daily', days: [], date: '', must: r.emoji === '💊', lead: 0, contactId: null,
     }));
     Object.assign(data, {
@@ -1854,7 +1862,7 @@ const forms = {
 // Show a form problem next to the Save button without re-rendering, so nothing typed is lost.
 function showError(form, message, field) {
   form.querySelector('.error')?.remove();
-  form.querySelector('.primary, .secondary, button.delete').insertAdjacentHTML('beforebegin', `<p class="error" role="alert">${esc(message)}</p>`);
+  form.querySelector('button:not([type="button"])').insertAdjacentHTML('beforebegin', `<p class="error" role="alert">${esc(message)}</p>`);
   const target = form.elements[field];
   (target instanceof RadioNodeList ? target[0] : target)?.focus();
 }
@@ -1869,6 +1877,8 @@ let dirty = false; // something has been typed into a family form and not saved
 document.addEventListener('click', e => {
   arm();
   lastTouch = Date.now();
+  const wasHeld = held; // this tap is the finger lifting after a press and hold
+  held = false;
   // Taps straight after the screen changes are dropped (see guard). Keyboard presses are not taps.
   if (e.detail !== 0 && Date.now() < guardUntil) {
     e.preventDefault();
@@ -1881,9 +1891,8 @@ document.addEventListener('click', e => {
   // Family settings opens with a press and hold, so it isn't wandered into. A plain tap explains.
   const hold = e.target.closest('[data-hold]');
   if (hold) {
-    if (held) held = false;
-    else if (e.detail === 0) go(hold.dataset.hold);
-    else toast('For family: press and hold this button for two seconds.');
+    if (e.detail === 0) go(hold.dataset.hold);
+    else if (!wasHeld) toast('For family: press and hold this button for two seconds.');
     return;
   }
   const el = e.target.closest('[data-go], [data-action]');
@@ -1941,6 +1950,7 @@ app.addEventListener('change', async e => {
     save();
   }
   if (t.name === 'emoji' && t.value === '💊' && t.form?.elements.must) t.form.elements.must.checked = true;
+  if (t.name === 'method') t.form.elements.phone.inputMode = t.value === 'phone' ? 'tel' : 'email';
   if (t.matches('input[data-photo]') && t.files?.[0]) {
     try {
       ui.photo = await readPhoto(t.files[0]);

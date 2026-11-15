@@ -150,7 +150,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .hero.compact { padding-bottom: 14px; }
 .hero.compact .landscape { display: none; }
 .hero.compact .sound-hint { position: static; transform: none; display: inline-block; margin-top: 8px; white-space: normal; }
-.hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; } /* a held finger that drifts must not turn into a scroll */
 
 /* My Day */
 .next-card { background: #eaf7e7; border-radius: 21px; padding: 17px; margin: 15px 0; }

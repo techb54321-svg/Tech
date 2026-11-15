@@ -10,25 +10,37 @@ No accounts, no server, no build step. Everything stays on the one device.
 - **Tells them what time of day it is.** The time, "Monday morning" and the date
   are the biggest things on the screen. At night the screen goes dark and says
   it is night time and that everything is fine.
-- **Comes to them when something is due.** A soft chime, a spoken reminder and a
-  card that fills the screen, with one button: **I've done this**. Important
-  things (tablets) keep coming back for an hour, then stay at the top of the
-  first screen until they are answered.
-- **Answers "have I taken my tablets?"** Every tick is stamped with the time and
-  shown on the first screen ("Morning tablets, done at 8:06 am"). After midnight
-  it still says last night's were taken. Tablets can't be ticked hours early,
-  and something missed hours ago is asked about carefully ("Check your pill box.
-  Don't take extra.") instead of being offered as if it were due.
+- **Comes to them when something is due.** A chime, a spoken reminder and a
+  card that fills the screen, with one big button: **I've done this**. Important
+  things (tablets) chime louder and keep coming back for an hour. Opening Hazel
+  late, or answering another card first, still brings the reminder up. After the
+  hour it stays at the top of the first screen, asked about carefully, until it
+  is ticked or the next important thing is due.
+- **Never tells anyone to take a late dose.** Hazel only knows about the tap, so
+  once tablets are more than an hour late the instruction is replaced by the
+  family's own advice from the pharmacist ("If it is before 12 noon, take them
+  now…"), or by "Check your pill box. Don't take extra." A repeated reminder
+  asks "Already taken them?" first. The voice always says what the screen says.
+- **Answers "have I taken my tablets?"** beside the clock on the first screen:
+  "✓ Morning tablets, done at 8:06 am", or "Morning tablets: not ticked". After
+  midnight it says whether last night's were ticked. Tablets can't be ticked
+  hours early, and a tick just after midnight is recorded for the night it
+  belongs to.
 - **Calls people by tapping their face.** The whole card is the button, with a
   real photo. The number then stays on screen in large print in case the device
-  can't start the call.
-- **Gets help in two taps.** Get Help → Call 000 (or the right number for the
-  country), with "Tell them: my name is…, I am at…" on screen while it rings.
-  A Help button sits in the same corner of every screen. There is a calming
-  screen for 2 am, and a "My details" card for a paramedic or nurse.
+  can't start the call. On a device that can't ring at all (a tablet with no
+  SIM), Hazel says so and shows the number to dial on the phone.
+- **Gets help in one or two taps.** A Help button sits in the same corner of
+  every screen, including the first, and on every reminder card ("I need help").
+  Get Help → Call 000 (or the right number for the country), with "Tell them: my
+  name is…, I am at…" on screen. A reminder never covers the Get Help screen.
+  There is a calming screen for 2 am, and a "My details" card for a paramedic.
 - **Forgives a shaky hand.** Taps that land straight after the screen changes
-  are ignored, so a double tap can't tick something by accident. Anything
-  ticked or removed can be taken back.
+  are ignored, so a double tap can't tick something by accident. A press that
+  slides still counts on the buttons that matter. Anything ticked or removed can
+  be taken back, and the reminder then comes round again.
+- **Always goes back to the clock.** Every screen returns by itself, so nothing
+  left open can stop the reminders.
 - **Reads itself aloud**, and the writing can be made bigger from the first screen.
 
 ## What it does for the family
@@ -38,18 +50,27 @@ or enter the PIN if one is set).
 
 - **Set-up in a couple of minutes**: who it is for, country, people to call, and
   a routine picked from common items.
-- **A real week**: every day, chosen days ("bin night"), or one date (an
-  appointment, with an optional warning beforehand). "Coming up" and "Tomorrow"
-  appear by themselves, and old appointments remove themselves.
+- **A real calendar**: every day, chosen days ("bin night"), every 2 weeks,
+  every month, or one date (an appointment, with an optional warning beforehand
+  and a call button on the reminder). "Coming up" and "Tomorrow" appear by
+  themselves, and old appointments remove themselves.
+- **"If it is late"** on each tablets item: the pharmacist's advice for a late
+  or missed dose, shown and spoken in place of the instructions after an hour.
 - **A note on the first screen** ("I'll come over on Saturday") that takes itself
   down after a date.
-- **What was ticked, and when**, for two weeks, by name, with a text summary to
-  paste into the family chat. A tick that was taken back is noted.
+- **What was ticked, and when**, for two weeks, by name, with tablets first.
+  For anything not ticked it says what Hazel knows: the reminder was shown at
+  8:00 pm, the tick was taken back, or Hazel was not open at the time. Each day
+  shows when Hazel was on the screen. Days before set-up are left out.
+- **Getting the record off the device**: copy the last 7 days as text, send it
+  with the device's own share button, or switch on "Tell Sarah" buttons, which
+  open a ready-written text message for the person to send.
 - **People**: photos, order, and how each is called (phone or FaceTime).
 - **Details for an emergency**: full name, address, date of birth, conditions,
   medicines, allergies, doctor.
 - **"Is Hazel ready?"** checklist, **Try a reminder now**, and a **backup copy**
-  to restore after a new or cleared device (also the way back from a forgotten PIN).
+  to restore after a new or cleared device. A forgotten PIN is cleared with a
+  backup copy without losing the ticks recorded since.
 
 ## What it cannot do
 
@@ -57,10 +78,13 @@ Hazel is a web page with local storage. Be clear with the family about this:
 
 - **It only reminds while it is open on the screen.** Stand the device where the
   person sits, keep it plugged in, leave Hazel showing, and tap the screen once
-  after opening so the sound is switched on.
-- **Nothing reaches the family's own phones.** The record lives on the device.
-  Seeing it from elsewhere, changing the plan remotely, or an alert when tablets
-  are not ticked all need a server and accounts.
+  after opening so the sound is switched on. Notifications can be allowed in
+  Settings, but they only help while Hazel is open behind another app; they
+  cannot wake a device that has closed it.
+- **Nothing reaches the family's own phones by itself.** The record lives on the
+  device, and a "Tell Sarah" message still has to be sent by hand. Seeing the
+  record from elsewhere, changing the plan remotely, or an automatic alert when
+  tablets are not ticked all need a server and accounts.
 - **It is not an alarm and not a medical record.** A tick means the button was
   tapped. Someone at risk of falls still needs a pendant or watch alarm, and
   the pill box or pharmacy pack still does the real work.
@@ -88,7 +112,9 @@ Screen**. Hazel then opens like an app and keeps working without the internet.
 
 ## Emergency numbers
 
-The country is chosen at set-up (guessed from the device's time zone, and always
-shown for the family to confirm): Australia 000, New Zealand 111, United Kingdom
-999, Ireland 112, United States and Canada 911, elsewhere 112. Help lines shown
-alongside are listed in `REGIONS` at the top of `app.js`.
+The country is chosen at set-up. It is guessed from the device's time zone when
+that is clear, and otherwise the family must choose it; it is never assumed.
+Australia 000, New Zealand 111, United Kingdom 999, Ireland 112, United States
+and Canada 911. For any other country the family types the local number (112 is
+offered as a start). Help lines shown alongside are listed in `REGIONS` at the
+top of `app.js`; check them for your area before relying on them.

@@ -1,5 +1,5 @@
 // Offline support: cache the app shell, serve it cache-first, refresh in the background.
-const CACHE = 'hazel-v2';
+const CACHE = 'hazel-v3';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {
@@ -27,5 +27,14 @@ self.addEventListener('fetch', e => {
       }).catch(() => cached);
       return cached || fresh;
     })
+  );
+});
+
+// A reminder notification (shown when Hazel is open but behind another app) brings Hazel to the front.
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then(list => (list[0] ? list[0].focus() : self.clients.openWindow('./')))
   );
 });

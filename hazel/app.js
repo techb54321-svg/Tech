@@ -13,23 +13,25 @@ const ACTIVITY_PICTURES = ['📅', '💊', '☕', '🥤', '🍽️', '🍲', '�
 const CONTACT_PICTURES = ['👩', '👨', '👩‍🦰', '👨‍🦳', '👵', '👴', '👧', '👦', '🧑‍⚕️', '🏡', '💚'];
 
 // Emergency numbers and help lines differ by country. Family picks one in setup.
+// `name` is the short name used on the "Calling" card; `label` is the full line on the Get Help screen.
 const REGIONS = {
-  au: { name: 'Australia', locale: 'en-AU', emergency: '000', spoken: 'Triple Zero', lines: [
-    { label: 'Lifeline. Someone to talk to, any time', number: '13 11 14' },
-    { label: 'healthdirect. Health advice from a nurse', number: '1800 022 222' }] },
-  nz: { name: 'New Zealand', locale: 'en-NZ', emergency: '111', spoken: '1 1 1', lines: [
-    { label: 'Need to talk? Free call, any time', number: '1737' },
-    { label: 'Healthline. Health advice from a nurse', number: '0800 611 116' }] },
-  uk: { name: 'United Kingdom', locale: 'en-GB', emergency: '999', spoken: '9 9 9', lines: [
-    { label: 'Samaritans. Someone to talk to, any time', number: '116 123' },
-    { label: 'NHS 111. Health advice', number: '111' }] },
-  ie: { name: 'Ireland', locale: 'en-IE', emergency: '112', spoken: '1 1 2', lines: [
-    { label: 'Samaritans. Someone to talk to, any time', number: '116 123' }] },
-  us: { name: 'United States', locale: 'en-US', emergency: '911', spoken: '9 1 1', lines: [
-    { label: '988 Lifeline. Someone to talk to, any time', number: '988' }] },
-  ca: { name: 'Canada', locale: 'en-CA', emergency: '911', spoken: '9 1 1', lines: [
-    { label: '988. Someone to talk to, any time', number: '988' }] },
-  other: { name: 'Another country (112)', locale: 'en-GB', emergency: '112', spoken: '1 1 2', lines: [] },
+  au: { name: 'Australia', locale: 'en-AU', emergency: '000', lines: [
+    { name: 'Lifeline', label: 'Lifeline. Someone to talk to, any time', number: '13 11 14' },
+    { name: '1800MEDICARE', label: '1800MEDICARE. Health advice from a nurse, any time', number: '1800 633 422' }] },
+  nz: { name: 'New Zealand', locale: 'en-NZ', emergency: '111', lines: [
+    { name: '1737 Need to talk?', label: 'Need to talk? Free call or text, any time', number: '1737' },
+    { name: 'Healthline', label: 'Healthline. Health advice from a nurse', number: '0800 611 116' }] },
+  uk: { name: 'United Kingdom', locale: 'en-GB', emergency: '999', lines: [
+    { name: 'Samaritans', label: 'Samaritans. Someone to talk to, any time', number: '116 123' },
+    { name: 'NHS 111', label: 'NHS 111. Health advice (England, Scotland and Wales)', number: '111' }] },
+  ie: { name: 'Ireland', locale: 'en-IE', emergency: '112', lines: [
+    { name: 'Samaritans', label: 'Samaritans. Someone to talk to, any time', number: '116 123' }] },
+  us: { name: 'United States', locale: 'en-US', emergency: '911', lines: [
+    { name: '988 Lifeline', label: '988 Lifeline. Someone to talk to, any time', number: '988' }] },
+  ca: { name: 'Canada', locale: 'en-CA', emergency: '911', lines: [
+    { name: '988 helpline', label: '988 helpline. Someone to talk to, any time', number: '988' }] },
+  // The family types the local emergency number; 112 works on mobile phones in most countries.
+  other: { name: 'Another country', locale: 'en-GB', emergency: '112', lines: [] },
 };
 
 // Common parts of a day, offered during setup so a routine takes seconds to build.
@@ -53,18 +55,20 @@ const CALL_METHODS = {
 
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Monday first
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// How often something happens. 'fortnight' and 'monthly' count from the item's date.
+const REPEATS = [['daily', 'Every day'], ['weekly', 'Some days'], ['once', 'One day only'], ['fortnight', 'Every 2 weeks'], ['monthly', 'Every month']];
+const DATED_REPEATS = ['once', 'fortnight', 'monthly'];
 
 // What a fresh install shows: an example day, clearly marked, until family sets Hazel up.
+// No tablets here: nobody should be shown invented medicine times.
 const SEED = {
   setup: false,
   activities: [
-    { id: 1, time: '08:00', title: 'Morning tablets', emoji: '💊', note: 'Take your morning tablets with a glass of water.' },
     { id: 2, time: '08:30', title: 'Breakfast', emoji: '🍽️', note: 'Time for some breakfast.' },
     { id: 3, time: '10:30', title: 'Have a drink', emoji: '☕', note: 'Make yourself a cup of tea or a glass of water.' },
     { id: 4, time: '12:30', title: 'Lunch', emoji: '🍲', note: 'It is time to enjoy your lunch.' },
     { id: 5, time: '15:00', title: 'A short walk', emoji: '🌳', note: 'Enjoy some fresh air, if you feel like it.' },
     { id: 6, time: '18:00', title: 'Dinner', emoji: '🍽️', note: 'Time for dinner.' },
-    { id: 7, time: '20:00', title: 'Evening tablets', emoji: '💊', note: 'Take your evening tablets with a glass of water.' },
   ],
   contacts: [
     { id: 1, name: 'Sarah', relation: 'Daughter', phone: '', emoji: '👩' },
@@ -87,25 +91,48 @@ function normalize(raw, fromStorage) {
   const timeOr = (v, fallback) => (validTime(v) ? v : fallback);
   const time = v => timeOr(v, '09:00');
   const day = v => (validDay(v) ? v : '');
-  const id = v => (Number.isFinite(Number(v)) ? Number(v) : newId());
-
-  const activities = (Array.isArray(d.activities) ? d.activities : []).filter(a => a && typeof a === 'object').map(a => ({
-    id: id(a.id),
+  const list = v => (Array.isArray(v) ? v : []).filter(x => x && typeof x === 'object');
+  const days = v => (v && typeof v === 'object' && !Array.isArray(v) ? Object.entries(v).filter(([key, x]) => day(key) && x && typeof x === 'object') : []);
+  // Two things must never share an id, or ticking one would tick the other.
+  const ids = () => {
+    const seen = new Set();
+    return v => {
+      let n = Number.isFinite(Number(v)) ? Number(v) : newId();
+      while (seen.has(n)) n = newId();
+      seen.add(n);
+      return n;
+    };
+  };
+  const activityId = ids();
+  const contactId = ids();
+  const schedule = a => ({
     time: time(a.time),
+    repeat: REPEATS.some(r => r[0] === a.repeat) ? a.repeat : 'daily',
+    days: Array.isArray(a.days) ? [...new Set(a.days.map(Number).filter(n => n >= 0 && n <= 6))] : [],
+    date: day(a.date),
+    from: day(a.from), // the day it was added, so earlier days are not reported as missed
+  });
+
+  const activities = list(d.activities).map(a => ({
+    id: activityId(a.id),
     title: str(a.title, 70) || 'Activity',
     emoji: str(a.emoji, 16) || '🌷',
     note: str(a.note, 220),
+    ifLate: str(a.ifLate, 220), // the family's own instruction for when it is well past its time
     photo: photo(a.photo),
-    repeat: ['daily', 'weekly', 'once'].includes(a.repeat) ? a.repeat : 'daily',
-    days: Array.isArray(a.days) ? [...new Set(a.days.map(Number).filter(n => n >= 0 && n <= 6))] : [],
-    date: day(a.date),
+    ...schedule(a),
     // Important things (tablets) keep coming back until they are ticked.
     must: typeof a.must === 'boolean' ? a.must : a.emoji === '💊',
     lead: [30, 60, 120].includes(Number(a.lead)) ? Number(a.lead) : 0, // minutes of warning before an appointment
     contactId: a.contactId != null && a.contactId !== '' && Number.isFinite(Number(a.contactId)) ? Number(a.contactId) : null,
   }));
-  const contacts = (Array.isArray(d.contacts) ? d.contacts : []).filter(c => c && typeof c === 'object').map(c => ({
-    id: id(c.id),
+  // Things removed from the routine, kept so the family record of earlier days stays true.
+  const retired = list(d.retired).map(r => ({
+    id: Number(r.id), title: str(r.title, 70) || 'Activity', emoji: str(r.emoji, 16) || '🌷', must: r.must === true,
+    ...schedule(r), removed: day(r.removed),
+  })).filter(r => Number.isFinite(r.id) && r.removed);
+  const contacts = list(d.contacts).map(c => ({
+    id: contactId(c.id),
     name: str(c.name, 45) || 'Someone',
     relation: str(c.relation, 45),
     phone: str(c.phone, 60),
@@ -134,17 +161,38 @@ function normalize(raw, fromStorage) {
     }
   }
 
+  // When Hazel was showing on the screen: { day: [['06:02', '21:40'], ...] }
+  const seen = {};
+  for (const [key, v] of days(d.seen)) {
+    if (Array.isArray(v)) seen[key] = v.filter(x => Array.isArray(x) && validTime(x[0]) && validTime(x[1])).slice(0, 40).map(x => [x[0], x[1]]);
+  }
+  // When each reminder card was first shown, and whether the chime could sound: { day: { id: { at, sound } } }
+  const raised = {};
+  for (const [key, v] of days(d.raised)) {
+    raised[key] = Object.fromEntries(Object.entries(v).filter(([, r]) => validTime(r?.at)).map(([k, r]) => [k, { at: r.at, sound: r.sound === true }]));
+  }
+
   const about = {};
   for (const f of ABOUT_FIELDS) about[f] = str(d.about?.[f]);
 
+  // Data saved by an older version counts as "set up" once it has been made someone's own.
+  const setup = typeof d.setup === 'boolean' ? d.setup : !!fromStorage && (!!str(d.person) || contacts.some(c => c.phone));
+  const firstRecord = [...Object.keys(completed), ...Object.keys(undone)].sort()[0];
+  const pin = String(d.pin ?? '');
+  const emergency = String(d.emergency ?? '');
+
   return {
-    v: 2,
-    // Data saved by an older version counts as "set up" once it has been made someone's own.
-    setup: typeof d.setup === 'boolean' ? d.setup : !!fromStorage && (!!str(d.person) || contacts.some(c => c.phone)),
+    v: 3,
+    setup,
+    // The day Hazel was set up here. Days before it are never reported as missed.
+    since: day(d.since) || (setup ? firstRecord || dayKey() : ''),
     person: str(d.person, 35),
-    region: REGIONS[d.region] ? d.region : 'au',
+    region: REGIONS[d.region] ? d.region : guessRegion() || 'other',
+    emergency: /^\d{2,6}$/.test(emergency) ? emergency : '', // the local number, when the country is not in the list
+    calls: ['yes', 'no'].includes(d.calls) ? d.calls : '', // can this device make an ordinary phone call? '' = not tried yet
+    tell: d.tell === true, // offer a ready-written text message to the first person
     size: ['normal', 'large', 'largest'].includes(d.size) ? d.size : 'normal',
-    pin: /^\d{4,8}$/.test(d.pin) ? d.pin : '',
+    pin: /^\d{4,8}$/.test(pin) ? pin : '',
     sound: d.sound !== false,
     awake: d.awake !== false,
     nightFrom: timeOr(d.nightFrom, '21:00'),
@@ -154,23 +202,26 @@ function normalize(raw, fromStorage) {
     about,
     activities,
     contacts,
+    retired,
     completed,
     undone,
+    seen,
+    raised,
   };
 }
 
-// A first guess at the country from the device's time zone. The family confirms it during set-up.
+// A first guess at the country from the device's time zone, or '' when it can't tell. The family
+// confirms it during set-up, because the emergency number depends on it.
 function guessRegion() {
   let zone = '';
-  try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { /* keep the default */ }
-  if (zone.startsWith('Australia/')) return 'au';
+  try { zone = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch { /* no guess */ }
+  if (zone.startsWith('Australia/') || zone === 'Antarctica/Macquarie') return 'au';
   if (['Pacific/Auckland', 'Pacific/Chatham'].includes(zone)) return 'nz';
-  if (zone === 'Europe/London') return 'uk';
+  if (['Europe/London', 'Europe/Belfast', 'Europe/Jersey', 'Europe/Guernsey', 'Europe/Isle_of_Man'].includes(zone)) return 'uk';
   if (zone === 'Europe/Dublin') return 'ie';
-  if (/^America\/(Toronto|Vancouver|Edmonton|Winnipeg|Halifax|St_Johns|Regina|Montreal|Moncton|Whitehorse|Yellowknife|Iqaluit)/.test(zone)) return 'ca';
-  if (/^America\/(New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Boise|Indiana|Kentucky|North_Dakota|Juneau)|^Pacific\/Honolulu/.test(zone)) return 'us';
-  if (/^(Europe|Asia|Africa)\//.test(zone)) return 'other';
-  return 'au';
+  if (/^(America\/(Toronto|Vancouver|Edmonton|Winnipeg|Halifax|St_Johns|Regina|Montreal|Moncton|Whitehorse|Yellowknife|Iqaluit|Dawson|Dawson_Creek|Goose_Bay|Swift_Current|Rankin_Inlet|Glace_Bay|Fort_Nelson|Inuvik|Cambridge_Bay|Resolute|Thunder_Bay|Nipigon|Rainy_River|Atikokan|Pangnirtung|Creston|Blanc-Sablon)|Canada\/.*)$/.test(zone)) return 'ca';
+  if (/^America\/(New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Detroit|Boise|Indiana|Indianapolis|Fort_Wayne|Knox_IN|Kentucky|Louisville|North_Dakota|Juneau|Adak|Nome|Sitka|Metlakatla|Yakutat|Menominee|Puerto_Rico|St_Thomas|Shiprock)|^Pacific\/(Honolulu|Guam|Pago_Pago|Saipan)$|^US\//.test(zone)) return 'us';
+  return '';
 }
 
 function load() {
@@ -178,15 +229,17 @@ function load() {
   try {
     stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_KEY) || 'null');
   } catch { /* storage blocked or corrupt: start fresh */ }
-  return stored ? normalize(stored, true) : normalize({ ...SEED, region: guessRegion() }, false);
+  return stored ? normalize(stored, true) : normalize({ ...SEED, region: guessRegion() || 'other' }, false);
 }
 
 // Returns false when the browser refuses to store anything (private mode, blocked site data, full).
 function save() {
   // Drop old history and long-past appointments so storage doesn't grow forever.
   const cutoff = dayKey(daysAgo(KEEP_DAYS));
-  for (const k of Object.keys(data.completed)) if (k < cutoff) delete data.completed[k];
-  for (const k of Object.keys(data.undone)) if (k < cutoff) delete data.undone[k];
+  for (const record of [data.completed, data.undone, data.seen, data.raised]) {
+    for (const k of Object.keys(record)) if (k < cutoff) delete record[k];
+  }
+  data.retired = data.retired.filter(r => r.removed >= cutoff);
   data.activities = data.activities.filter(a => a.repeat !== 'once' || !a.date || a.date >= cutoff);
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -223,19 +276,29 @@ const parseDay = key => { const [y, m, d] = key.split('-').map(Number); return n
 const nowHHMM = () => new Date().toTimeString().slice(0, 5);
 const toMinutes = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
 const NOW_WINDOW = 60; // minutes an activity stays "Now" after its start time
+const EARLY_WINDOW = 60; // an important thing can't be ticked more than this many minutes before its time
+const LATE_WINDOW = 15; // minutes a promised reminder is still kept after its window has closed
+const SNOOZE_MINUTES = 10;
+const MUST_WINDOW = 60; // minutes an important reminder keeps coming back before it rests on the home screen
 function daysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n); // calendar arithmetic, so daylight-saving changes don't skip a day
   return d;
 }
-function newId() { return Date.now() + Math.floor(Math.random() * 1000); }
+// Unique by construction: several are made in the same millisecond during set-up.
+let idSeq = 0;
+function newId() { return Date.now() * 1000 + (idSeq++ % 1000); }
 
 const data = load();
 const canStore = storageWorks();
 
-const region = () => REGIONS[data.region] || REGIONS.au;
+function region() {
+  const r = REGIONS[data.region] || REGIONS.other;
+  return data.region === 'other' && data.emergency ? { ...r, emergency: data.emergency } : r;
+}
 const fmt = (opts, date = new Date()) => new Intl.DateTimeFormat(region().locale, opts).format(date);
-const clockText = (date = new Date()) => fmt({ hour: 'numeric', minute: '2-digit' }, date);
+// Always am/pm: "8:00 pm" is what the wording everywhere else uses, whatever the country's habit.
+const clockText = (date = new Date()) => fmt({ hour: 'numeric', minute: '2-digit', hour12: true }, date);
 function timeText(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
   const d = new Date();
@@ -271,30 +334,53 @@ const findContact = id => data.contacts.find(c => c.id === id);
 const telHref = phone => 'tel:' + String(phone).replace(/[^+\d]/g, '');
 // FaceTime also accepts an email address, so only strip a phone number down to its digits.
 const callHref = c => CALL_METHODS[c.method].scheme + (c.phone.includes('@') ? encodeURIComponent(c.phone.trim()) : c.phone.replace(/[^+\d]/g, ''));
-const callLink = (c, cls, label) => `<a class="${cls}" href="${esc(callHref(c))}" data-number="${esc(c.phone)}" data-name="${esc(c.name)}">${label}</a>`;
+// A tablet without a SIM cannot make an ordinary phone call. Once the family has said so, Hazel
+// shows the number to dial on a real phone instead of pretending to ring.
+const cannotRing = method => data.calls === 'no' && method === 'phone';
+// Anything that calls someone. Tapping it also puts the number on screen in large print.
+function callTag(method, href, number, name, cls, inner, extra = '') {
+  const attrs = `class="${cls}" data-number="${esc(number)}" data-name="${esc(name)}" ${extra}`;
+  return cannotRing(method) ? `<button type="button" ${attrs}>${inner}</button>` : `<a href="${esc(href)}" ${attrs}>${inner}</a>`;
+}
+const callLink = (c, cls, label) => callTag(c.method, callHref(c), c.phone, c.name, cls, label);
+const callVerb = c => (cannotRing(c.method) ? 'Ring' : CALL_METHODS[c.method].verb);
+// Someone can be reached only with a real number (or a FaceTime address), not just any text.
+const hasNumber = c => !!c && (/\d/.test(c.phone) || c.phone.includes('@'));
 // People the person can actually reach. Before set-up the examples are shown even without numbers.
-const reachable = () => data.contacts.filter(c => c.phone || !data.setup);
-const helper = () => data.contacts.find(c => c.phone);
+const reachable = () => data.contacts.filter(c => hasNumber(c) || !data.setup);
+const helper = () => data.contacts.find(hasNumber);
 
 function occursOn(a, d = new Date()) {
-  if (a.repeat === 'once') return a.date === dayKey(d);
+  const key = dayKey(d);
+  if (a.from && key < a.from) return false; // it had not been added yet
+  if (a.repeat === 'once') return a.date === key;
   if (a.repeat === 'weekly') return a.days.includes(d.getDay());
+  if (a.repeat === 'fortnight') return !!a.date && key >= a.date && Math.round((parseDay(key) - parseDay(a.date)) / 864e5) % 14 === 0;
+  if (a.repeat === 'monthly') {
+    if (!a.date || key < a.date) return false;
+    const lastOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return d.getDate() === Math.min(parseDay(a.date).getDate(), lastOfMonth); // the 31st falls on the last day of a shorter month
+  }
   return true;
 }
 const byTime = (a, b) => a.time.localeCompare(b.time);
 const todays = (d = new Date()) => data.activities.filter(a => occursOn(a, d)).sort(byTime);
+const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 function scheduleText(a) {
-  if (a.repeat === 'once') return a.date ? fmt({ weekday: 'short', day: 'numeric', month: 'short' }, parseDay(a.date)) : 'One day';
+  const date = a.date ? parseDay(a.date) : null;
+  if (a.repeat === 'once') return date ? fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date) : 'One day';
+  if (a.repeat === 'fortnight') return date ? `Every 2 weeks from ${fmt({ weekday: 'short', day: 'numeric', month: 'short' }, date)}` : 'Every 2 weeks';
+  if (a.repeat === 'monthly') return date ? `Every month on the ${ordinal(date.getDate())}` : 'Every month';
   if (a.repeat === 'weekly' && a.days.length < 7) return DAY_ORDER.filter(d => a.days.includes(d)).map(d => DAY_NAMES[d]).join(', ');
   return 'Every day';
 }
 
-// The time something was ticked off today: 'HH:MM', '' if the time wasn't recorded, undefined if not done.
-const doneAt = id => data.completed[dayKey()]?.[id];
-const isDone = id => doneAt(id) !== undefined;
-const doneText = id => (doneAt(id) ? `Done at ${timeText(doneAt(id))}` : 'Done today');
-function markDone(id) {
-  (data.completed[dayKey()] ??= {})[id] = nowHHMM();
+// The time something was ticked off: 'HH:MM', '' if the time wasn't recorded, undefined if not done.
+const doneAt = (id, day = dayKey()) => data.completed[day]?.[id];
+const isDone = (id, day) => doneAt(id, day) !== undefined;
+const doneText = (id, day) => (doneAt(id, day) ? `Done at ${timeText(doneAt(id, day))}` : 'Done today');
+function markDone(id, day = dayKey()) {
+  (data.completed[day] ??= {})[id] = nowHHMM();
 }
 
 // 'done', 'now', 'upcoming', or 'earlier' (its time has passed and it wasn't ticked off). An activity is
@@ -311,36 +397,82 @@ function statusOf(a) {
 const focusActivity = () => todays().find(a => ['now', 'upcoming'].includes(statusOf(a)));
 const earlierNotDone = () => todays().filter(a => statusOf(a) === 'earlier');
 const minutesLate = a => toMinutes(nowHHMM()) - toMinutes(a.time);
-const EARLY_WINDOW = 60; // an important thing can't be ticked more than this many minutes before its time
 const tooEarly = a => a.must && minutesLate(a) < -EARLY_WINDOW;
 
-// Important things ticked off yesterday evening. Shown until today's first activity, so that after
-// midnight nobody thinks last night's tablets were missed.
+// Tablets get extra care: Hazel only knows about the tap, so it never tells anyone to take a dose
+// that is well past its time. The family's own instruction (from the pharmacist) comes first.
+const isTablets = a => a.emoji === '💊';
+const TABLET_CAUTION = "Not sure if you've had them? Check your pill box. Don't take extra.";
+const lateAdvice = a => a.ifLate || (isTablets(a) ? TABLET_CAUTION : 'Not ticked off yet. Have you done it?');
+// Past its hour: the instruction makes way for the careful wording.
+const needsCare = (a, late = minutesLate(a)) => late >= NOW_WINDOW && (isTablets(a) || !!a.ifLate);
+
+// An important thing due late in the evening keeps its hour past midnight: { a, day, late }.
+function carried() {
+  const now = toMinutes(nowHHMM());
+  if (now >= MUST_WINDOW) return null;
+  const y = daysAgo(1);
+  const day = dayKey(y);
+  const a = data.activities.filter(x => x.must && occursOn(x, y) && !isDone(x.id, day) && now + 1440 - toMinutes(x.time) < MUST_WINDOW).sort(byTime).pop();
+  return a ? { a, day, late: now + 1440 - toMinutes(a.time) } : null;
+}
+
+// Last night's important things: ticked (with the time) or not. Shown until today's first activity,
+// so that after midnight the question "did I take my tablets?" still has an answer either way.
 function lastNight() {
   const first = todays()[0];
   if (first && minutesLate(first) >= 0) return [];
-  const done = data.completed[dayKey(daysAgo(1))] || {};
-  return data.activities.filter(a => a.must && done[a.id] && done[a.id] >= '17:00').map(a => ({ a, at: done[a.id] }));
+  const y = daysAgo(1);
+  const day = dayKey(y);
+  const held = carried()?.a;
+  // "Not ticked" is only said about a night Hazel was already set up for.
+  const known = !!data.since && data.since <= day;
+  return data.activities.filter(a => a.must && a.time >= '17:00' && a !== held && occursOn(a, y)).sort(byTime)
+    .map(a => ({ a, at: doneAt(a.id, day) })).filter(x => x.at !== undefined || known);
 }
-const lastNightText = ({ a, at }) => `Last night: ${a.title}, done at ${timeText(at)}`;
-const MUST_HOURS = 6; // how long an important, unticked item stays at the top of the home screen
+const lastNightText = ({ a, at }) => (at === undefined
+  ? `Last night: ${a.title} not ticked. ${a.ifLate || (isTablets(a) ? "Check your pill box. Don't take extra." : '')}`.trim()
+  : `Last night: ${a.title}, done${at ? ' at ' + timeText(at) : ''}`);
 
 // What belongs at the top of the home screen: the most recent important thing that is due and not
-// ticked, otherwise whatever is on now.
-function attentionItem() {
+// ticked (it stays until it is answered), otherwise whatever is on now. Returns { a, late, day }.
+function attention() {
   const list = todays();
-  const must = list.filter(a => a.must && !isDone(a.id) && minutesLate(a) >= 0 && minutesLate(a) < MUST_HOURS * 60).pop();
-  return must || list.find(a => statusOf(a) === 'now');
+  const must = list.filter(a => a.must && !isDone(a.id) && minutesLate(a) >= 0).pop();
+  if (must) return { a: must, late: minutesLate(must), day: dayKey() };
+  const held = carried();
+  if (held) return held;
+  const now = list.find(a => statusOf(a) === 'now');
+  return now ? { a: now, late: minutesLate(now), day: dayKey() } : null;
 }
+const attentionItem = () => attention()?.a;
 
-// Appointments and anything special tomorrow, soonest first: [{ a, date }]
+// The answer to "have I taken my tablets?", kept beside the clock on the first screen: last night's,
+// today's ticked ones with their times, and any that are past their time and not ticked.
+function tabletLines() {
+  const shown = attentionItem();
+  const lines = lastNight().map(x => ({ cls: x.at === undefined ? 'warn' : 'ok', text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) }));
+  for (const a of todays().filter(x => x.must && x !== shown)) {
+    if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${a.title}, ${doneText(a.id).toLowerCase()}` });
+    else if (minutesLate(a) >= NOW_WINDOW) lines.push({ cls: 'warn', text: `${a.title}: not ticked` });
+  }
+  return lines.slice(-3);
+}
+const sentence = s => (/[.!?]$/.test(s) ? s : s + '.');
+
+// Appointments and anything special coming up, soonest first: [{ a, date }]. Dated things are looked
+// for a month ahead; a weekly thing (bin night) is only mentioned the day before.
 function comingUp() {
-  const today = dayKey();
-  const tomorrow = daysAgo(-1);
-  const limit = dayKey(daysAgo(-30));
-  const dated = data.activities.filter(a => a.repeat === 'once' && a.date > today && a.date <= limit).map(a => ({ a, date: a.date }));
-  const weekly = data.activities.filter(a => a.repeat === 'weekly' && a.days.length < 7 && occursOn(a, tomorrow)).map(a => ({ a, date: dayKey(tomorrow) }));
-  return [...dated, ...weekly].sort((x, y) => x.date.localeCompare(y.date) || byTime(x.a, y.a));
+  const out = [];
+  for (const a of data.activities) {
+    if (a.repeat === 'daily' || (a.repeat === 'weekly' && a.days.length === 7)) continue;
+    const reach = a.repeat === 'weekly' ? 1 : 30;
+    for (let i = 1; i <= reach; i++) {
+      const d = daysAgo(-i);
+      if (occursOn(a, d)) { out.push({ a, date: dayKey(d) }); break; }
+    }
+  }
+  return out.sort((x, y) => x.date.localeCompare(y.date) || byTime(x.a, y.a));
 }
 const whenText = date => (date === dayKey(daysAgo(-1)) ? 'Tomorrow' : fmt({ weekday: 'long', day: 'numeric', month: 'long' }, parseDay(date)));
 function tomorrowLine() {
@@ -349,21 +481,71 @@ function tomorrowLine() {
 }
 const noteShown = () => !!data.note.text && (!data.note.until || data.note.until >= dayKey());
 
-// What was planned and what was ticked off on a given day, for Family View.
+// What was planned and what was ticked off on a given day, for Family View. Days before Hazel was
+// set up have nothing planned, and something removed since still counts on the days it was there.
 function dayRecord(d) {
-  const done = data.completed[dayKey(d)] || {};
-  const planned = data.activities.filter(a => occursOn(a, d)).sort(byTime);
-  const isToday = dayKey(d) === dayKey();
+  const key = dayKey(d);
+  if (!data.since || key < data.since) return { planned: [], done: [], missed: [] };
+  const done = data.completed[key] || {};
+  const gone = data.retired.filter(r => key < r.removed && occursOn(r, d));
+  const planned = [...data.activities.filter(a => occursOn(a, d)), ...gone].sort(byTime);
+  const isToday = key === dayKey();
   const missed = planned.filter(a => !(a.id in done) && (!isToday || statusOf(a) === 'earlier'));
   return { planned, done: planned.filter(a => a.id in done), missed };
 }
 
+// --- When Hazel was showing -------------------------------------------------
+// Reminders only happen while Hazel is open on the screen. Keeping a note of when it was lets the
+// family tell "reminded and not answered" from "Hazel was not open".
+
+let beat = null; // { day, at, saved }: the last time the heartbeat ran
+function heartbeat(final = false) {
+  if (!data.setup || (!final && document.visibilityState !== 'visible')) return;
+  const day = dayKey();
+  const now = nowHHMM();
+  const spans = (data.seen[day] ??= []);
+  const last = spans[spans.length - 1];
+  const running = beat && beat.day === day && last && Date.now() - beat.at < 150_000;
+  if (running) last[1] = now;
+  else if (final) return;
+  else if (spans.length >= 40) last[1] = now; // a device that keeps dozing: keep the list short
+  else spans.push([now, now]);
+  const saved = beat?.saved ?? 0;
+  beat = { day, at: Date.now(), saved };
+  if (final || !running || Date.now() - saved > 5 * 60_000) {
+    beat.saved = Date.now();
+    save();
+  }
+}
+// Was Hazel showing at some point in the `minutes` after `hhmm` on that day? null = no record kept.
+function wasOpen(day, hhmm, minutes = NOW_WINDOW) {
+  const spans = data.seen[day];
+  if (!spans) return Object.keys(data.seen).some(k => k < day) ? false : null;
+  const end = toMinutes(hhmm) + minutes;
+  return spans.some(([from, to]) => toMinutes(from) <= end && toMinutes(to) >= toMinutes(hhmm));
+}
+function openText(day) {
+  const spans = data.seen[day];
+  if (!spans?.length) return wasOpen(day, '00:00') === false ? 'Hazel was not open on this day.' : '';
+  const shown = spans.slice(0, 4).map(([from, to]) => (from === to ? timeText(from) : `${timeText(from)} to ${timeText(to)}`));
+  return `Hazel was showing: ${shown.join(', ')}${spans.length > 4 ? ', and more' : ''}.`;
+}
+
 // --- Sound, voice and keeping the screen on -------------------------------
 
-// Browsers only allow sound after the person has touched the page once.
+// Browsers only allow sound after the person has touched the page once, and can switch it off again
+// (after a phone call, or when the page has been behind another app). Every tap switches it back on.
 let armed = false;
 let audio = null;
+const soundOn = () => data.sound && armed && audio?.state === 'running';
+const soundHintNeeded = () => data.setup && data.sound && todays().length > 0 && (!armed || (!!audio && audio.state !== 'running'));
+function resumeAudio() {
+  try {
+    if (audio && audio.state !== 'running') audio.resume?.()?.catch?.(() => {});
+  } catch { /* ignore */ }
+}
 function arm() {
+  resumeAudio();
   if (armed) return;
   armed = true;
   try {
@@ -374,26 +556,51 @@ function arm() {
     if ('speechSynthesis' in window) speechSynthesis.speak(new SpeechSynthesisUtterance(''));
   } catch { /* ignore */ }
   requestWakeLock();
-  setTimeout(() => app.querySelector('.sound-hint')?.remove(), 0);
+  // The strip goes, and what was below it moves up: a second tap must not land on that.
+  setTimeout(() => {
+    const hint = app.querySelector('.sound-hint');
+    if (hint) { hint.remove(); guard(); }
+  }, 0);
 }
 
-// A soft two-note chime.
-function chime() {
-  if (!data.sound || !audio) return;
+// A soft two-note chime. For important things it is louder, plays three times and the device buzzes.
+function chime(strong = false) {
+  if (!data.sound) return;
+  try {
+    if (strong && armed) navigator.vibrate?.([400, 200, 400, 200, 400]); // browsers refuse it before the first tap
+  } catch { /* ignore */ }
+  if (!audio) return;
+  resumeAudio();
   try {
     const t = audio.currentTime;
-    [[659.25, 0], [523.25, 0.45]].forEach(([freq, at]) => {
+    const notes = strong
+      ? [[659.25, 0], [523.25, 0.45], [659.25, 1.6], [523.25, 2.05], [783.99, 3.2], [523.25, 3.65]]
+      : [[659.25, 0], [523.25, 0.45]];
+    notes.forEach(([freq, at]) => {
       const osc = audio.createOscillator();
       const gain = audio.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, t + at);
-      gain.gain.exponentialRampToValueAtTime(0.3, t + at + 0.03);
+      gain.gain.exponentialRampToValueAtTime(strong ? 0.5 : 0.3, t + at + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.0001, t + at + 1.4);
       osc.connect(gain).connect(audio.destination);
       osc.start(t + at);
       osc.stop(t + at + 1.5);
     });
+  } catch { /* ignore */ }
+}
+
+// If Hazel is open but behind another app (during a call, say), a reminder also shows as a
+// notification, when the family has allowed that. It cannot wake a device that has closed Hazel.
+function notify(title, body) {
+  try {
+    if (!('Notification' in window) || Notification.permission !== 'granted' || document.visibilityState === 'visible') return;
+    const options = { body, tag: 'hazel-reminder', requireInteraction: true, vibrate: [400, 200, 400] };
+    const plain = () => { try { new Notification(title, options); } catch { /* not allowed here */ } };
+    const sw = navigator.serviceWorker;
+    if (!sw?.getRegistration) return plain();
+    sw.getRegistration().then(reg => (reg ? reg.showNotification(title, options) : plain())).catch(plain);
   } catch { /* ignore */ }
 }
 
@@ -425,6 +632,7 @@ function speak(text, { quiet = false, el = null } = {}) {
       el.dataset.label = el.textContent;
       el.textContent = '⏹ Stop reading';
       speakingEl = el;
+      guard(); // the button has just changed under the finger
     };
     u.onend = u.onerror = restore;
     speechSynthesis.speak(u);
@@ -453,13 +661,22 @@ function releaseWakeLock() {
 // A short message at the bottom of the screen, optionally with one button (such as "Put it back").
 let toastTimer;
 let toastRun = null;
+let byKeyboard = false; // the last button was pressed with a key, not a finger
 function toast(message, { action = null } = {}) {
   const el = document.getElementById('toast');
   el.innerHTML = `<span>${esc(message)}</span>${action ? `<button data-action="toast-action">${esc(action.label)}</button>` : ''}`;
   toastRun = action ? action.run : null;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; toastRun = null; }, action ? 12000 : 6000);
+  // Someone using a keyboard gets the button under their fingers, and longer to reach it.
+  const keys = action && byKeyboard;
+  if (keys) el.querySelector('button').focus();
+  toastTimer = setTimeout(() => {
+    const hadFocus = el.contains(document.activeElement);
+    el.hidden = true;
+    toastRun = null;
+    if (hadFocus) focusHeading();
+  }, keys ? 30000 : action ? 12000 : 6000);
 }
 
 function applySettings() {
@@ -494,17 +711,20 @@ function readPhoto(file) {
 
 // confirming: the item awaiting an on-screen "are you sure?" ('activity:12', 'contact:3', 'reset', 'restore')
 // photo: a photo chosen in an edit form but not saved yet (undefined = unchanged, '' = removed)
-const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, summary: '', forgot: false };
+const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false };
 
 const FORM_SCREENS = ['activityForm', 'contactForm', 'setup'];
 
 // A shaky hand often taps twice. After the screen changes, taps are ignored for a moment so the
 // second one can't land on a button that has just appeared under the finger.
+// (Measured on a clock that never jumps, so correcting the device's time cannot freeze the screen.)
 let guardUntil = 0;
 function guard(ms = 700) {
-  guardUntil = Math.max(guardUntil, Date.now() + ms);
+  guardUntil = Math.max(guardUntil, performance.now() + ms);
 }
+let tickGuardUntil = 0; // after "Well done" closes by itself, a slow tap on OK must not tick what is underneath
 const needsPin = screen => FORM_SCREENS.includes(screen);
+const FAMILY_SCREENS = ['family', ...FORM_SCREENS];
 
 // history can be unavailable in some embedded frames; navigation still works without it.
 function remember(state, replace) {
@@ -516,7 +736,8 @@ function remember(state, replace) {
 function enter(screen, id) {
   hush();
   if (screen === 'home') ui.unlocked = false;
-  Object.assign(ui, { screen, id, confirming: null, photo: undefined, backup: '', restore: null, summary: '', forgot: false });
+  if (screen === 'setup' && data.setup) screen = 'family'; // set-up runs once; after that it would wipe what is there
+  Object.assign(ui, { screen, id, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false });
   dirty = false;
 }
 
@@ -534,12 +755,34 @@ function focusHeading() {
   app.querySelector('h1, .page-title')?.focus({ preventScroll: true });
 }
 
+// Hazel itself steps back after a tick or a save. That is not the person pressing Back.
+let ownBack = false;
+function stepBack() {
+  ownBack = true;
+  setTimeout(() => { ownBack = false; }, 1000);
+  history.back();
+}
+
 window.addEventListener('popstate', e => {
-  const s = e.state || { screen: 'home', id: null };
+  const own = ownBack;
+  ownBack = false;
+  // Back while a card is showing closes the card and leaves the page behind it where it was.
+  // An important reminder stays: it has to be answered.
+  if (sheet && !own) {
+    remember({ screen: ui.screen, id: ui.id }, false);
+    if (!(reminder && findActivity(reminder.id)?.must)) closeSheet();
+    return;
+  }
+  let s = e.state || { screen: 'home', id: null };
+  // Without a PIN, Family settings opens only with the press and hold, never with the Back button.
+  if (!data.pin && FAMILY_SCREENS.includes(s.screen) && !ui.unlocked && !(s.screen === 'setup' && !data.setup)) {
+    s = { screen: 'home', id: null };
+    remember(s, true);
+  }
   enter(s.screen, s.id);
   render();
   guard();
-  focusHeading();
+  if (!sheet) focusHeading();
 });
 
 // Every screen the person uses has Help in the same corner, so it is never more than a tap away.
@@ -557,7 +800,8 @@ const TIPS = `<details class="tips" open>
   <ul>
     <li><b>Leave Hazel open on a stand.</b> It can only chime while it is showing on the screen. Keep the tablet or phone plugged in where they sit, and tap the screen once after opening Hazel so the sound is switched on.</li>
     <li><b>Add it to the home screen.</b> In the browser's menu choose “Add to Home Screen”. Hazel then opens like an app and works without the internet.</li>
-    <li><b>Try a call from the Call screen.</b> Make sure it really rings from this device.</li>
+    <li><b>Try a call from the Call screen</b>, then say in Settings whether it rang. A tablet with no SIM cannot ring an ordinary number, and Hazel then shows the number to dial on the phone instead.</li>
+    <li><b>Ask the pharmacist what to do about a late dose</b>, and type it into each tablets item (“If it is late”). Hazel then gives that advice instead of a general caution.</li>
     <li><b>Hazel is not an alarm.</b> Someone at risk of falls still needs a pendant or watch alarm. Hazel cannot tell anyone that something is wrong.</li>
     <li><b>It is a memory aid, not a medical record.</b> Keep using the pill box or pharmacy pack. A tick only means the button was tapped.</li>
     <li><b>Make a backup copy</b> in Settings when you are done, and keep it somewhere safe.</li>
@@ -566,7 +810,7 @@ const TIPS = `<details class="tips" open>
 
 const CALM_NIGHT = 'You are safe at home. It is night time, and everything is fine. Take a slow breath. You can rest, or you can talk to someone.';
 const CALM_MESSAGE = "You are safe. Take your time. You don't have to do everything at once. You can call someone you know.";
-const TABLET_CAUTION = "Not sure if you've already had them? Check your pill box. Don't take extra. Ask family or your pharmacist first.";
+const SIZE_NEXT = { normal: 'Bigger writing', large: 'Biggest writing', largest: 'Normal writing' }; // what the next tap does
 
 const screens = {
   home() {
@@ -582,26 +826,26 @@ const screens = {
           ${bigTile('blue stack', 'contacts', '📞', 'Call Someone', [names || 'Family and friends'])}
           ${bigTile('pink stack', 'help', '🛟', 'Get Help', ['Emergency and support'])}
         </div>`;
-    // With something to do now, the picture makes way so the buttons below stay on screen.
+    // Help sits in the same corner here as on every other screen, whatever else is showing. With
+    // something to do now, the picture makes way so the buttons below stay on screen.
     return `
       <section class="hero ${part} ${top ? 'compact' : ''}">
-        <div class="brand"><span aria-hidden="true">🌿</span> Hazel</div>
+        <div class="hero-top"><div class="brand"><span aria-hidden="true">🌿</span> Hazel</div><button class="help-btn" data-go="help">🛟 Help</button></div>
         <h1 class="greeting" tabindex="-1">${esc(greeting())}</h1>
         <button class="clock" data-action="read-home" aria-label="${clockText()}. Tap to hear the time and what is next.">${clockText()}</button>
         <div class="daypart">${esc(partLine())}</div>
         <div class="date">${fmt({ day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        ${tabletLines().map(l => `<p class="taken ${l.cls}">${esc(l.text)}</p>`).join('')}
         ${part === 'night' ? `<p class="rest">${restMessage()}</p>` : ''}
         <div class="landscape" aria-hidden="true"><div class="sun"></div><div class="hill one"></div><div class="hill two"></div><div class="hill three"></div></div>
-        ${data.setup && data.sound && !armed && todays().length ? '<div class="sound-hint">🔔 Tap once to turn on the chime</div>' : ''}
+        ${soundHintNeeded() ? '<div class="sound-hint">🔔 Tap once to turn on the chime</div>' : ''}
       </section>
       <section class="content home-content">
-        ${data.setup ? '' : `<button class="example-banner" data-go="setup"><strong>Hazel is not set up yet.</strong> This is an example day. Family: tap here to set it up ›</button>`}
-        ${top
-          ? top + duo + dayTile + note // something to do now: answer it, with Call and Help right beneath
-          : note + dayTile + duo}
+        ${data.setup ? '' : `<button class="example-banner" data-go="setup"><strong>Hazel is not set up yet.</strong> This is only an example day. Family: tap here to set it up ›</button>`}
+        ${top || ''}${duo}${dayTile}${note}
         <div class="home-tools">
           <button data-action="read-home">🔊 Read this to me</button>
-          <button data-action="bigger">🔍 ${data.size === 'largest' ? 'Smaller writing' : 'Bigger writing'}</button>
+          <button data-action="bigger">🔍 ${SIZE_NEXT[data.size]}</button>
           ${data.pin ? '<button data-go="family">⚙ Family settings</button>' : '<button data-hold="family" class="hold">⚙ Family settings</button>'}
         </div>
       </section>`;
@@ -634,7 +878,7 @@ const screens = {
         <h1 class="page-title" tabindex="-1">🗓️ My Day</h1>
         <p class="lead">${todayLong()}${list.length ? ` · ${doneCount} of ${list.length} done` : ''}</p>
         ${list.length ? '<button class="secondary small" data-action="read-day">🔊 Read my day aloud</button>' : ''}
-        ${lastNight().map(x => `<p class="last-night">✓ ${esc(lastNightText(x))}</p>`).join('')}
+        ${lastNight().map(x => `<p class="last-night ${x.at === undefined ? 'warn' : ''}">${x.at === undefined ? '' : '✓ '}${esc(lastNightText(x))}</p>`).join('')}
         ${nextCard}
         ${earlier ? `<p class="earlier-note">${earlier === 1 ? "One thing from earlier today isn't ticked off yet. Tap it if you have done it." : earlier + " things from earlier today aren't ticked off yet. Tap each one you have done."}</p>` : ''}
         <h2 class="section-heading">Today</h2>
@@ -645,6 +889,7 @@ const screens = {
             <span class="name">${esc(a.title)}<span class="when">${whenText(date)}, ${timeText(a.time)}</span></span>
             <span class="chevron" aria-hidden="true">›</span>
           </button>`).join('')}` : ''}
+        ${list.length ? tellLink(todayText(), n => `📱 Send today to ${n}`) : ''}
       </section>`;
   },
 
@@ -653,13 +898,13 @@ const screens = {
     if (!a) return screens.day();
     const today = occursOn(a);
     const done = today && isDone(a.id);
-    const status = today ? statusOf(a) : 'future';
-    const tablets = a.emoji === '💊';
+    const tablets = isTablets(a);
     const early = today && !done && tooEarly(a);
+    const care = today && !done && !early && needsCare(a); // well past its time: no instruction to take it now
     const before = lastNight().find(x => x.a === a);
     let buttons;
     if (done) {
-      buttons = `<div class="done-panel"><span aria-hidden="true">✓</span> ${doneText(a.id)}${tablets ? '<small>You have taken these today. No need to take them again.</small>' : ''}</div>
+      buttons = `<div class="done-panel"><span aria-hidden="true">✓</span> ${doneText(a.id)}${tablets ? '<small>You ticked these off today. No need to take them again.</small>' : ''}</div>
         ${ui.confirming === 'undo'
           ? `<div class="confirm" role="group" aria-label="Is this wrong?">
               <p>Hazel has this as ${doneText(a.id).toLowerCase()}. Is that wrong?</p>
@@ -671,10 +916,10 @@ const screens = {
           : '<button class="secondary small" data-action="ask" data-confirm="undo">This is wrong</button>'}`;
     } else if (early) {
       // Too early to tick: no instructions and no button, so nothing invites taking tablets at the wrong time.
-      buttons = `<div class="notyet"><b>Not yet.</b> This is for ${timeText(a.time)}. It is ${clockText()} now.${before ? `<small>✓ ${esc(lastNightText(before))}</small>` : ''}</div>`;
+      buttons = `<div class="notyet"><b>Not yet.</b> This is for ${timeText(a.time)}. It is <span data-now>${clockText()}</span> now.${before ? `<small class="${before.at === undefined ? 'warn' : ''}">${before.at === undefined ? '' : '✓ '}${esc(lastNightText(before))}</small>` : ''}</div>`;
     } else if (today) {
-      buttons = `${tablets && status === 'earlier' ? `<p class="caution">${TABLET_CAUTION}</p>` : ''}
-        <button class="primary" data-action="finish" data-id="${a.id}">✓ &nbsp;I've done this</button>`;
+      buttons = `${care ? `<p class="caution">This was for ${timeText(a.time)}. ${esc(lateAdvice(a))}${a.ifLate ? '' : ' Ask family or your pharmacist first.'}</p>` : ''}
+        <button class="primary" data-action="finish" data-id="${a.id}">✓ &nbsp;${care ? "Yes, I've done this" : "I've done this"}</button>`;
     } else {
       const next = comingUp().find(x => x.a === a);
       buttons = `<p class="celebrate">${next ? `This is ${next.date === dayKey(daysAgo(-1)) ? 'tomorrow' : 'on ' + whenText(next.date)}.` : 'This is not on today.'}</p>`;
@@ -683,25 +928,29 @@ const screens = {
     return `
       <section class="content">
         ${backButton('day', 'Back to My Day', true)}
+        ${exampleNote()}
         <div class="photo" aria-hidden="true">${a.photo ? `<img src="${esc(a.photo)}" alt="">` : esc(a.emoji)}</div>
         <div class="activity-card">
           <div class="counter">${timeText(a.time)}</div>
           <h1 class="activity-title" tabindex="-1">${esc(a.title)}</h1>
-          ${a.note && !done && !early ? `<p class="activity-note">${esc(a.note)}</p>` : ''}
+          ${a.note && !done && !early && !care ? `<p class="activity-note">${esc(a.note)}</p>` : ''}
         </div>
         ${buttons}
-        ${who?.phone ? callLink(who, 'secondary call-now', `📞 ${CALL_METHODS[who.method].verb} ${esc(who.name)}`) : ''}
+        ${hasNumber(who) ? callLink(who, 'secondary call-now', `📞 ${callVerb(who)} ${esc(who.name)}`) : ''}
         <button class="secondary" data-action="speak-activity" data-id="${a.id}">🔊 Read this out loud</button>
       </section>`;
   },
 
   contacts() {
+    const lead = !helper() ? 'There is nobody to call yet. A family member can add phone numbers in Family settings.'
+      : data.calls === 'no' ? 'This device cannot make phone calls. Tap a person to see their number, then ring them on the phone.'
+      : 'Tap a person to call them.';
     return `
       <section class="content">
         ${backButton('home', 'Back to home', true)}
         ${exampleNote()}
         <h1 class="page-title" tabindex="-1">📞 Call Someone</h1>
-        <p class="lead">${helper() ? 'Tap a person to call them.' : 'There is nobody to call yet. A family member can add phone numbers in Family settings.'}</p>
+        <p class="lead">${lead}</p>
         ${reachable().map(contactCard).join('')}
       </section>`;
   },
@@ -709,23 +958,23 @@ const screens = {
   help() {
     const r = region();
     const main = helper();
+    const dial = cannotRing('phone');
     return `
       <section class="content">
         ${backButton()}
         ${exampleNote()}
         <h1 class="page-title" tabindex="-1">🛟 Get Help</h1>
-        <a class="big red" href="tel:${r.emergency}" data-number="${r.emergency}" data-name="${r.emergency}" data-emergency>
+        ${callTag('phone', 'tel:' + r.emergency, r.emergency, r.emergency, 'big red', `
           <span class="emoji" aria-hidden="true">🚑</span>
-          <span><strong>Call ${r.emergency}</strong><small>Emergency: ambulance, fire or police</small></span>
-        </a>
+          <span><strong>${dial ? `Dial ${r.emergency} on the phone` : `Call ${r.emergency}`}</strong><small>${dial ? 'This device cannot ring. Use the house phone or a mobile.' : 'Emergency: ambulance, fire or police'}</small></span>`, 'data-emergency')}
         ${main
           ? callLink(main, 'big blue', `<span class="emoji" aria-hidden="true">📞</span>
-               <span><strong>Call ${esc(main.name)}</strong><small>${esc(main.relation || 'Family')}</small></span>`)
+               <span><strong>${cannotRing(main.method) ? 'Ring' : 'Call'} ${esc(main.name)}</strong><small>${esc(main.relation || 'Family')}</small></span>`)
           : data.setup ? '' : bigTile('blue', 'contacts', '📞', 'Call someone', ['Family and friends'])}
         ${bigTile('green', 'calm', '💬', "I'm feeling worried", ['Hear a calming message'])}
         ${bigTile('yellow', 'about', '🪪', 'My details', ['For a doctor, nurse or ambulance'])}
         ${r.lines.length ? `<div class="notice lines"><strong>Someone to talk to</strong>${r.lines.map(l =>
-          `<a class="link" href="${telHref(l.number)}" data-number="${l.number}" data-name="${esc(l.label.split('.')[0])}">${l.label}: <span class="number">${l.number}</span></a>`).join('')}</div>` : ''}
+          callTag('phone', telHref(l.number), l.number, l.name, 'link', `${l.label}: <span class="number">${l.number}</span>`)).join('')}</div>` : ''}
       </section>`;
   },
 
@@ -738,11 +987,11 @@ const screens = {
         <div class="safe-space" aria-hidden="true"><span class="breathe">🌷</span></div>
         <h1 class="page-title" style="margin-top:23px" tabindex="-1">You're not alone</h1>
         <p class="activity-note">${esc(night ? CALM_NIGHT : CALM_MESSAGE)}</p>
-        <p class="lead">It is ${clockText()}, ${esc(partLine())}. Breathe in slowly, and out slowly.</p>
+        <p class="lead">It is <span data-now>${clockText()}</span>, ${esc(partLine())}. Breathe in slowly, and out slowly.</p>
         <button class="primary" data-action="speak-calm">🔊 Read this to me</button>
-        ${line ? `<a class="big blue" href="${telHref(line.number)}" data-number="${line.number}" data-name="${esc(line.label.split('.')[0])}">
+        ${line ? callTag('phone', telHref(line.number), line.number, line.name, 'big blue', `
           <span class="emoji" aria-hidden="true">💬</span>
-          <span><strong>Talk to someone now</strong><small>${esc(line.label.split('.')[0])}, open day and night: ${line.number}</small></span></a>` : ''}
+          <span><strong>Talk to someone now</strong><small>${esc(line.name)}, open day and night: ${line.number}</small></span>`) : ''}
         ${helper() ? bigTile('green', 'contacts', '📞', 'Call someone', ['Someone you know']) : ''}
       </section>`;
   },
@@ -750,7 +999,9 @@ const screens = {
   about() {
     const a = data.about;
     const born = validDay(a.dob) ? parseDay(a.dob) : null;
-    const age = born ? Math.floor((new Date() - born) / (365.2425 * 864e5)) : null;
+    const now = new Date();
+    // Counted on the calendar, so it is right on the day before and the morning of a birthday.
+    const age = born ? now.getFullYear() - born.getFullYear() - (now.getMonth() < born.getMonth() || (now.getMonth() === born.getMonth() && now.getDate() < born.getDate()) ? 1 : 0) : null;
     const row = (label, value) => (value ? `<div class="detail"><span>${label}</span><b>${esc(value)}</b></div>` : '');
     const any = ABOUT_FIELDS.some(f => a[f]);
     return `
@@ -760,7 +1011,8 @@ const screens = {
         <h1 class="page-title" tabindex="-1">🪪 My details</h1>
         <p class="lead">Show this to a doctor, nurse or ambulance officer.</p>
         ${any ? `<div class="details">
-          ${row('Name', a.fullName || data.person)}
+          ${row('Name', a.fullName)}
+          ${row('Known as', data.person)}
           ${row('Born', born ? `${fmt({ day: 'numeric', month: 'long', year: 'numeric' }, born)} (age ${age})` : '')}
           ${row('Address', a.address)}
           ${row('Health conditions', a.conditions)}
@@ -780,17 +1032,17 @@ const screens = {
           ${backButton()}
           <div class="family-banner"><h2 tabindex="-1" class="page-title">👪 Family settings</h2><p>Enter the family PIN to continue.</p></div>
           <form novalidate data-form="unlock">
-            <label class="field">PIN<input name="pin" inputmode="numeric" autocomplete="off" maxlength="8" required data-autofocus></label>
+            <label class="field">PIN<input name="pin" inputmode="numeric" autocomplete="off" maxlength="8" required ${ui.forgot ? '' : 'data-autofocus'}></label>
             <button class="primary">Open Family settings</button>
           </form>
           ${ui.forgot ? `<div class="family">
             <h3 tabindex="-1">Forgot the PIN?</h3>
             <form novalidate data-form="restore">
-              <label class="field">Restore from a backup copy
-                <span class="hint">Paste a copy made earlier with “Make a backup copy”. Everything comes back, and the PIN is cleared.</span>
+              <label class="field">Use a backup copy
+                <span class="hint">Paste a copy made earlier with “Make a backup copy”. If the copy was made with this PIN, Hazel simply unlocks and nothing else changes. Otherwise the people, routine and details are replaced by the copy, and the ticks already recorded on this device are kept. Either way the PIN is cleared.</span>
                 <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
               ${ui.confirming === 'restore'
-                ? confirmBox('Replace everything in Hazel on this device with this copy?', 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+                ? confirmBox('Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.', 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
                 : '<button class="secondary">Restore</button>'}
             </form>
             <div class="divider"></div>
@@ -837,13 +1089,13 @@ const screens = {
           <fieldset class="field">
             <legend>When</legend>
             <div class="choices text-choices">
-              ${[['daily', 'Every day'], ['weekly', 'Some days'], ['once', 'One day only']].map(([v, l]) =>
+              ${REPEATS.map(([v, l]) =>
                 `<label><input type="radio" name="repeat" value="${v}" ${repeat === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
             </div>
             <div class="choices text-choices when-weekly" ${repeat === 'weekly' ? '' : 'hidden'}>
               ${DAY_ORDER.map(d => `<label><input type="checkbox" name="days" value="${d}" ${a?.days?.includes(d) ? 'checked' : ''}><span>${DAY_NAMES[d]}</span></label>`).join('')}
             </div>
-            <label class="field when-once" ${repeat === 'once' ? '' : 'hidden'}>Date<input type="date" name="date" value="${esc(a?.date)}" min="${dayKey()}"></label>
+            <label class="field when-once" ${DATED_REPEATS.includes(repeat) ? '' : 'hidden'}><span class="date-label">${repeat === 'once' ? 'Date' : 'Starting on'}</span><input type="date" name="date" value="${esc(a?.date)}"></label>
           </fieldset>
           <label class="field">Give a warning beforehand
             <span class="hint">For appointments: Hazel also says it is coming up, so there is time to get ready.</span>
@@ -853,12 +1105,16 @@ const screens = {
             <span class="hint">Short and kind works best. Hazel reads this aloud. For tablets, say which ones and where they are kept.</span>
             <textarea name="note" rows="3" maxlength="220" placeholder="e.g. Take the tablets in today's box with a glass of water">${esc(a?.note)}</textarea>
           </label>
-          <label class="toggle"><input type="checkbox" name="must" ${a?.must ? 'checked' : ''}><span><b>Important: keep reminding</b><small>For tablets and anything that must not be missed. Hazel repeats the reminder for an hour, then keeps it at the top of the home screen until it is ticked.</small></span></label>
+          <label class="toggle"><input type="checkbox" name="must" ${a?.must ? 'checked' : ''}><span><b>Important: keep reminding</b><small>For tablets and anything that must not be missed. Hazel chimes louder and repeats the reminder for an hour. After that it stays at the top of the home screen, asked about carefully, until it is ticked or the next important thing is due.</small></span></label>
+          <label class="field">If it is late
+            <span class="hint">For tablets: ask the pharmacist what to do about a late or missed dose and type it here, for example “If it is before 12 noon, take them now. After that, leave them and wait for tonight.” Once the item is more than an hour late, Hazel shows and says this instead of the instructions above. Left blank, Hazel says to check the pill box and not to take extra.</span>
+            <textarea name="ifLate" rows="2" maxlength="220">${esc(a?.ifLate)}</textarea>
+          </label>
           ${pictureChoices('emoji', ACTIVITY_PICTURES, a?.emoji || ACTIVITY_PICTURES[0])}
           ${photoPicker(photo, 'A photo of the real thing (the tablet box, the front door) is easier to recognise.')}
-          ${data.contacts.some(c => c.phone) ? `<label class="field">Add a call button for
-            <span class="hint">For things like “Ring Sarah” or a doctor's phone appointment.</span>
-            <select name="contactId"><option value="">Nobody</option>${data.contacts.filter(c => c.phone).map(c =>
+          ${data.contacts.some(hasNumber) ? `<label class="field">Add a call button for
+            <span class="hint">For things like “Ring Sarah” or a doctor's phone appointment. The button is on the reminder too.</span>
+            <select name="contactId"><option value="">Nobody</option>${data.contacts.filter(hasNumber).map(c =>
               `<option value="${c.id}" ${a?.contactId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>` : ''}
           <button class="primary">Save</button>
         </form>
@@ -868,6 +1124,7 @@ const screens = {
   contactForm() {
     const c = findContact(ui.id);
     const photo = ui.photo ?? c?.photo ?? '';
+    const byPhone = (c?.method || 'phone') === 'phone';
     return `
       <section class="content">
         ${backButton('family', 'Back to Family settings')}
@@ -875,9 +1132,9 @@ const screens = {
         <form novalidate data-form="contact">
           <label class="field">Name<input name="name" maxlength="45" value="${esc(c?.name)}" placeholder="e.g. Sarah" required></label>
           <label class="field">Who they are<input name="relation" maxlength="45" value="${esc(c?.relation)}" placeholder="e.g. Daughter, Neighbour, Doctor"></label>
-          <label class="field">Phone number
+          <label class="field"><span class="phone-label">${byPhone ? 'Phone number' : 'Phone number or email address'}</span>
             <span class="hint">People without a number are not shown on the Call screen.</span>
-            <input name="phone" value="${esc(c?.phone)}" inputmode="${(c?.method || 'phone') === 'phone' ? 'tel' : 'email'}" autocomplete="off" placeholder="e.g. 0412 345 678"></label>
+            <input name="phone" value="${esc(c?.phone)}" inputmode="${byPhone ? 'tel' : 'email'}" autocomplete="off" placeholder="${byPhone ? 'e.g. 0412 345 678' : 'e.g. 0412 345 678 or sarah@example.com'}"></label>
           <fieldset class="field">
             <legend>How Hazel calls them</legend>
             <span class="hint">A tablet without a SIM cannot make ordinary phone calls. On an iPad, FaceTime works over Wi-Fi (a number or an email address). Try it from the Call screen before you leave.</span>
@@ -901,9 +1158,10 @@ const screens = {
           <h3 class="step">1. Who is Hazel for?</h3>
           <label class="field">What they like to be called<input name="person" maxlength="35" value="${esc(data.person)}" placeholder="e.g. Mum, Margaret, Pop" required></label>
           <label class="field">Country
-            <span class="hint">Sets the emergency number and help lines.</span>
-            <select name="region">${regionOptions()}</select>
+            <span class="hint">Sets the emergency number and help lines. Please check it is right.</span>
+            <select name="region">${regionOptions(!guessRegion())}</select>
           </label>
+          ${emergencyField(!guessRegion())}
 
           <h3 class="step">2. People they can call</h3>
           <p class="hint">The first person is the one Hazel suggests when they need help. Add more, and photos, later.</p>
@@ -926,7 +1184,9 @@ const screens = {
           ${TIPS}
           <button class="primary">Start using Hazel</button>
         </form>
-        <button class="skip" data-action="skip-setup">Keep the example and edit it myself</button>
+        ${ui.confirming === 'skip'
+          ? confirmBox(`The emergency number on this device will be ${region().emergency} (${region().name}). Is that right?`, 'skip-confirm', null, 'Yes, that is right', 'No, let me change it')
+          : '<button class="skip" data-action="skip-setup">Keep the example and edit it myself</button>'}
         <div class="family">
           <h3>Already set up before?</h3>
           <form novalidate data-form="restore">
@@ -944,13 +1204,17 @@ const screens = {
 
 // What is still missing before the family can rely on Hazel. Shown above the tabs until all done.
 function readyCard() {
+  const tablets = data.activities.filter(a => a.must && isTablets(a));
   const checks = [
-    [!!helper(), 'Someone to call, with a number that works from this device', 'People'],
+    [!!helper(), 'Someone to call, with a phone number entered', 'People'],
+    [!!data.calls, data.calls === 'no' ? 'Calls: this device cannot ring, so Hazel shows the number to dial' : 'A call tried from this device, and the answer given in Settings', 'Settings'],
     [!!(data.about.fullName && data.about.address), 'Full name and address, for an emergency', 'Details'],
     [data.activities.length > 0, 'At least one thing in the routine', 'Routine'],
-    [!!data.backedUp, 'A backup copy made and kept somewhere safe', 'Settings'],
+    // Worth doing, but the card does not wait for it.
+    ...(tablets.length ? [[tablets.every(a => a.ifLate), 'What to do about a late dose, from the pharmacist, on each tablets item', 'Routine', true]] : []),
+    [!!data.backedUp, data.backedUp ? `A backup copy made on ${fmt({ day: 'numeric', month: 'long' }, parseDay(data.backedUp))}. Keep it somewhere safe` : 'A backup copy made and kept somewhere safe', 'Settings'],
   ];
-  if (!data.setup || checks.every(c => c[0])) return '';
+  if (!data.setup || checks.every(c => c[0] || c[3])) return '';
   return `<div class="family ready">
     <h3>Is Hazel ready?</h3>
     ${checks.map(([ok, label, tab]) => `<div class="check ${ok ? 'yes' : ''}"><span aria-hidden="true">${ok ? '✓' : '○'}</span><span>${label}${ok ? '' : ` <b>(${tab} tab)</b>`}</span></div>`).join('')}
@@ -961,14 +1225,14 @@ function readyCard() {
 const familyPanels = {
   progress() {
     const mark = (a, d, isToday) => {
-      const at = data.completed[dayKey(d)]?.[a.id];
+      const key = dayKey(d);
+      const at = data.completed[key]?.[a.id];
       if (at !== undefined) return `<span class="ok">✓ ${at ? timeText(at) : 'ticked'}</span>`;
-      const back = data.undone[dayKey(d)]?.[a.id];
-      const taken = back ? `<small class="taken-back">ticked${back.was ? ' ' + timeText(back.was) : ''}, taken back ${timeText(back.at)}</small>` : '';
-      if (!isToday) return `<span class="missed-tag">Not ticked</span>${taken}`;
-      if (back) return `<span class="missed-tag">Not ticked</span>${taken}`;
-      const st = statusOf(a);
-      return st === 'earlier' ? '<span class="missed-tag">Not ticked</span>' : st === 'now' ? '<span class="now-tag">Due now</span>' : timeText(a.time);
+      const st = isToday && !data.undone[key]?.[a.id] ? statusOf(a) : 'earlier';
+      if (st === 'now') return '<span class="now-tag">Due now</span>';
+      if (st === 'upcoming') return timeText(a.time);
+      const why = whyNotTicked(a, key);
+      return `<span class="missed-tag">Not ticked</span>${why ? `<small class="taken-back">${esc(why)}</small>` : ''}`;
     };
     const days = [];
     for (let i = 0; i < 14; i++) {
@@ -976,10 +1240,14 @@ const familyPanels = {
       const rec = dayRecord(d);
       if (!rec.planned.length) continue;
       const label = i === 0 ? 'Today' : i === 1 ? 'Yesterday' : fmt({ weekday: 'long', day: 'numeric', month: 'short' }, d);
+      // Important things first and in bold: they are what the family is looking for.
+      const missed = [...rec.missed.filter(a => a.must).map(a => `<b>${esc(a.title)}</b>`), ...rec.missed.filter(a => !a.must).map(a => esc(a.title))];
+      const open = openText(dayKey(d));
       days.push(`<details class="day-record" ${i === 0 ? 'open' : ''}>
         <summary><b>${label}</b><span class="progress-time">${rec.done.length} of ${rec.planned.length}</span>
-          ${rec.missed.length ? `<span class="missed">Not ticked: ${rec.missed.map(a => esc(a.title)).join(', ')}</span>` : ''}</summary>
+          ${missed.length ? `<span class="missed">Not ticked: ${missed.join(', ')}</span>` : ''}</summary>
         ${rec.planned.map(a => `<div class="progress"><span>${esc(a.emoji)} ${esc(a.title)}${a.must ? ' <span class="must-tag">important</span>' : ''}</span><span class="progress-time">${mark(a, d, i === 0)}</span></div>`).join('')}
+        ${open ? `<p class="tiny seen-line">${esc(open)}</p>` : ''}
       </details>`);
     }
     return `
@@ -1001,8 +1269,9 @@ const familyPanels = {
         <h3>What was ticked, and when</h3>
         ${days.join('') || '<p class="muted">Nothing planned yet.</p>'}
         <button class="secondary" data-action="summary">Copy the last 7 days as text</button>
+        ${navigator.share ? '<button class="secondary" data-action="share-summary">Send the last 7 days…</button>' : ''}
         ${ui.summary ? `<textarea class="copy-box" rows="6" readonly aria-label="Summary of the last 7 days">${esc(ui.summary)}</textarea>` : ''}
-        <p class="tiny">A tick is recorded when someone taps “I’ve done this”. Hazel can’t check that it really happened. Past days are shown against the routine as it is today.</p>
+        <p class="tiny">A tick is recorded when someone taps “I’ve done this”. Hazel can’t check that it really happened. Days before Hazel was set up, and things before they were added, are left out. Reminders only happen while Hazel is showing on the screen, so each day also says when it was.</p>
       </div>`;
   },
 
@@ -1026,7 +1295,7 @@ const familyPanels = {
         <h3 tabindex="-1">People to call</h3>
         <p class="tiny" style="margin-top:0">The first person with a phone number is the one Hazel offers on the Get Help screen.</p>
         ${data.contacts.map((c, i) => manageRow(c.photo ? photoThumb(c.photo) : esc(c.emoji), c.name, 'contact', c.id,
-          `${esc(c.relation)}${c.phone ? ' · ' + esc(c.phone) : ' · <strong>no phone number yet</strong>'}`, c.name,
+          `${esc(c.relation)}${hasNumber(c) ? ' · ' + esc(c.phone) + (c.method === 'phone' ? '' : ' · ' + CALL_METHODS[c.method].label) : ' · <strong>no phone number yet</strong>'}`, c.name,
           i > 0 ? `<button class="edit" data-action="contact-up" data-id="${c.id}" aria-label="Move ${esc(c.name)} up">↑</button>` : '')).join('')}
         <button class="primary" data-go="contactForm">+ Add a person</button>
       </div>`;
@@ -1066,6 +1335,15 @@ const familyPanels = {
             <span class="hint">Sets the emergency number (${region().emergency}) and help lines.</span>
             <select name="region">${regionOptions()}</select>
           </label>
+          ${emergencyField()}
+          <fieldset class="field">
+            <legend>Can this device make phone calls?</legend>
+            <span class="hint">Try a call from the Call screen first. A tablet with no SIM usually cannot ring an ordinary number. If you choose No, Hazel stops offering to call and shows the number to dial on the house phone or a mobile, including the emergency number. FaceTime people are still called from here.</span>
+            <div class="choices text-choices">
+              ${[['', 'Not tried yet'], ['yes', 'Yes, it rang'], ['no', 'No, it cannot']].map(([v, l]) =>
+                `<label><input type="radio" name="calls" value="${v}" ${data.calls === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+            </div>
+          </fieldset>
           <fieldset class="field">
             <legend>Writing size</legend>
             <div class="choices text-choices">
@@ -1080,7 +1358,10 @@ const familyPanels = {
           <p class="hint">Between these times the home screen goes dark and says it is night time.</p>
           ${check('sound', 'Chime and speak reminders', 'When something is due, Hazel chimes, says it aloud and shows it on screen.')}
           <button type="button" class="secondary small" data-action="test-reminder">🔔 Try a reminder now</button>
+          ${'Notification' in window ? `<button type="button" class="secondary small" data-action="notify-allow">🔔 ${Notification.permission === 'granted' ? 'Notifications are allowed on this device' : 'Also show a notification'}</button>
+            <p class="hint">Helps only when Hazel is open but behind another app, for example during a call. It cannot wake a device that has closed Hazel.</p>` : ''}
           ${check('awake', 'Keep the screen on', 'So Hazel can sit on a stand as a clock. Keep the device plugged in.')}
+          ${check('tell', `Offer “Tell ${esc(helper()?.name || 'the family')}” buttons`, 'After an important thing is ticked, and on My Day, Hazel offers a button that opens a text message to the first person, already written. They still have to press Send, and the device must be able to send messages. Nothing is sent by Hazel itself.')}
           <label class="field">Family PIN
             <span class="hint">Optional. Stops these settings being opened by accident. Leave blank for no PIN.</span>
             <input name="pin" inputmode="numeric" pattern="\\d{4,8}" maxlength="8" value="${esc(data.pin)}" placeholder="4 to 8 digits" autocomplete="off">
@@ -1124,23 +1405,23 @@ function bigTile(color, to, emoji, title, lines = []) {
 }
 
 // The one thing to do now sits at the top of the home screen with its own tick button, so answering
-// it is a single tap. An important thing that was missed hours ago is asked about carefully instead.
+// it is a single tap. An important thing that is past its hour is asked about carefully instead.
 function attentionCard() {
-  const a = attentionItem();
-  if (!a) return '';
-  const late = minutesLate(a);
-  const overdue = late >= 120;
+  const top = attention();
+  if (!top) return '';
+  const { a, late, day } = top;
+  const overdue = late >= NOW_WINDOW;
   const friend = helper();
+  const who = findContact(a.contactId);
   return `<div class="attention ${overdue ? 'overdue' : ''}">
-    <span class="pill now">${late < NOW_WINDOW ? 'Now' : 'From earlier today'}</span>
+    <span class="pill now">${!data.setup ? 'Example' : overdue ? 'From earlier today' : 'Now'}</span>
     <div class="next-head">${thumb(a)}<div><h2>${esc(a.title)}</h2><p>${timeText(a.time)}</p></div></div>
-    ${overdue
-      ? `<p class="caution">${a.emoji === '💊' ? "Not sure if you've had them? Check your pill box. Don't take extra." : 'Not ticked off yet. Have you done it?'}</p>`
-      : a.note ? `<p class="attention-note">${esc(a.note)}</p>` : ''}
+    ${overdue ? `<p class="caution">${esc(lateAdvice(a))}</p>` : a.note ? `<p class="attention-note">${esc(a.note)}</p>` : ''}
     <div class="${overdue && friend ? 'pair' : ''}">
-      <button class="primary" data-action="finish" data-id="${a.id}">✓ &nbsp;${overdue ? "Yes, I've done this" : "I've done this"}</button>
+      <button class="primary" data-action="finish" data-id="${a.id}" data-day="${day}">✓ &nbsp;${overdue ? "Yes, I've done this" : "I've done this"}</button>
       ${overdue && friend ? callLink(friend, 'secondary', `📞 Ask ${esc(friend.name)}`) : ''}
     </div>
+    ${!overdue && hasNumber(who) ? callLink(who, 'secondary call-now', `📞 ${callVerb(who)} ${esc(who.name)}`) : ''}
   </div>`;
 }
 
@@ -1150,20 +1431,17 @@ function dayTileLines() {
   const night = dayPart() === 'night';
   const shown = attentionItem();
   const next = list.find(a => statusOf(a) === 'upcoming');
-  // Nothing is nagged about at bed time.
-  const earlier = night ? 0 : earlierNotDone().filter(a => a !== shown).length;
+  // Nothing is nagged about at bed time. Important things are named beside the clock instead.
+  const earlier = night ? 0 : earlierNotDone().filter(a => a !== shown && !a.must).length;
   const main = beforeDawn() ? 'Nothing to do until morning'
     : next ? `Next: ${next.title}, ${timeText(next.time)}`
     : list.every(a => isDone(a.id)) ? 'All done for today 🌷'
     : night ? 'Nothing to do until morning' : 'Nothing else planned today';
-  // Anything special later today, the important things already done (with their times), and tomorrow.
+  // Anything special later today, and tomorrow.
   const special = list.find(a => a.repeat !== 'daily' && a !== next && statusOf(a) === 'upcoming');
-  const doneMust = list.filter(a => a.must && isDone(a.id)).slice(-2).map(a => ({ cls: 'ok', text: `✓ ${a.title}, ${doneText(a.id).toLowerCase()}` }));
   return [main,
     earlier ? { cls: 'warn', text: `${earlier} from earlier not ticked off yet` } : '',
     special ? `Today: ${special.title}, ${timeText(special.time)}` : '',
-    ...lastNight().slice(0, 2).map(x => ({ cls: 'ok', text: '✓ ' + lastNightText(x) })),
-    ...doneMust,
     next ? '' : tomorrowLine()];
 }
 
@@ -1185,18 +1463,22 @@ function activityItem(a) {
 
 // The whole card is the button: a big target for an unsteady hand.
 function contactCard(c) {
+  const can = hasNumber(c);
   const inner = `
     <span class="face" aria-hidden="true">${c.photo ? `<img src="${esc(c.photo)}" alt="">` : esc(c.emoji)}</span>
-    <span class="who">${esc(c.name)}${c.relation ? `<span class="muted">${esc(c.relation)}</span>` : ''}${c.phone ? `<span class="muted phone">${esc(c.phone)}</span>` : '<span class="muted">No number yet</span>'}</span>
-    <span class="call ${c.phone ? '' : 'missing'}" aria-hidden="true">${c.phone ? CALL_METHODS[c.method].verb : '—'}</span>`;
-  return c.phone
-    ? `<a class="contact" href="${esc(callHref(c))}" data-number="${esc(c.phone)}" data-name="${esc(c.name)}" aria-label="${CALL_METHODS[c.method].verb} ${esc(c.name)}${c.relation ? ', ' + esc(c.relation) : ''}">${inner}</a>`
+    <span class="who">${esc(c.name)}${c.relation ? `<span class="muted">${esc(c.relation)}</span>` : ''}${can ? `<span class="muted phone ${c.phone.includes('@') ? 'address' : ''}">${esc(c.phone)}</span>` : '<span class="muted">No number yet</span>'}</span>
+    <span class="call ${can ? '' : 'missing'}" aria-hidden="true">${!can ? '—' : cannotRing(c.method) ? 'Number' : CALL_METHODS[c.method].verb}</span>`;
+  return can
+    ? callTag(c.method, callHref(c), c.phone, c.name, 'contact', inner, `aria-label="${callVerb(c)} ${esc(c.name)}${c.relation ? ', ' + esc(c.relation) : ''}"`)
     : `<button class="contact" data-action="no-phone" data-id="${c.id}" aria-label="${esc(c.name)}, no phone number yet">${inner}</button>`;
 }
 
 function manageRow(iconHtml, label, kind, id, detailHtml = '', name = label, extraHtml = '') {
   if (ui.confirming === `${kind}:${id}`) {
-    return confirmBox(`Remove ${name}?`, `remove-${kind}`, id, 'Yes, remove');
+    // Removing a person takes their call button off anything that used them: say so first.
+    const used = kind === 'contact' ? data.activities.filter(a => a.contactId === id).map(a => a.title) : [];
+    const loses = used.length ? ` ${used.join(', ')} will lose ${used.length > 1 ? 'their' : 'its'} call button.` : '';
+    return confirmBox(`Remove ${name}?${loses}`, `remove-${kind}`, id, 'Yes, remove');
   }
   return `<div class="row">
     <span class="row-emoji" aria-hidden="true">${iconHtml}</span>
@@ -1241,8 +1523,25 @@ function photoPicker(photo, hint) {
   </fieldset>`;
 }
 
-const regionOptions = () => Object.entries(REGIONS).map(([k, r]) =>
-  `<option value="${k}" ${data.region === k ? 'selected' : ''}>${r.name}${k === 'other' ? '' : ` (${r.emergency})`}</option>`).join('');
+// `ask`: the country could not be guessed, so the family has to choose it rather than accept a default.
+const regionOptions = (ask = false) => (ask ? '<option value="" selected disabled>Choose the country</option>' : '')
+  + Object.entries(REGIONS).map(([k, r]) =>
+    `<option value="${k}" ${!ask && data.region === k ? 'selected' : ''}>${r.name}${k === 'other' ? '' : ` (${r.emergency})`}</option>`).join('');
+// For a country that is not in the list, the family types the local emergency number.
+const emergencyField = (ask = false) => `<label class="field when-other" ${!ask && data.region === 'other' ? '' : 'hidden'}>Emergency number in this country
+    <span class="hint">The number for an ambulance, for example 112, 119 or 192. Hazel shows it on the Get Help screen.</span>
+    <input name="emergency" inputmode="numeric" maxlength="6" value="${esc(data.emergency || '112')}" autocomplete="off"></label>`;
+const validEmergency = v => /^\d{2,6}$/.test(v);
+
+// What Hazel knows about something that was not ticked: a tick that was taken back, whether its
+// reminder was shown, or that Hazel was not open at the time.
+function whyNotTicked(a, day) {
+  const back = data.undone[day]?.[a.id];
+  if (back) return `ticked${back.was ? ' ' + timeText(back.was) : ''}, taken back ${timeText(back.at)}`;
+  const shown = data.raised[day]?.[a.id];
+  if (shown) return `reminder shown ${timeText(shown.at)}${shown.sound ? '' : ', without sound'}`;
+  return wasOpen(day, a.time) === false ? 'Hazel was not open then' : '';
+}
 
 function weekSummaryText() {
   const lines = [`Hazel summary${data.person ? ' for ' + data.person : ''}, week to ${fmt({ weekday: 'short', day: 'numeric', month: 'short' })}`];
@@ -1250,26 +1549,60 @@ function weekSummaryText() {
     const d = daysAgo(i);
     const rec = dayRecord(d);
     if (!rec.planned.length) continue;
-    const done = data.completed[dayKey(d)] || {};
-    const important = rec.done.filter(a => a.must).map(a => `${a.title}${done[a.id] ? ' ' + timeText(done[a.id]) : ''}`);
-    lines.push(`${fmt({ weekday: 'short', day: 'numeric', month: 'short' }, d)}: ${rec.done.length} of ${rec.planned.length} ticked off.`
-      + (important.length ? ` Ticked: ${important.join(', ')}.` : '')
-      + (rec.missed.length ? ` Not ticked: ${rec.missed.map(a => a.title).join(', ')}.` : ''));
+    const key = dayKey(d);
+    const done = data.completed[key] || {};
+    // Important things first, each by name, because they are what the family is looking for.
+    const must = rec.planned.filter(a => a.must).map(a => {
+      if (a.id in done) return `${a.title} ${done[a.id] ? timeText(done[a.id]) : 'ticked'}`;
+      if (!rec.missed.includes(a)) return `${a.title} not due yet`;
+      const why = whyNotTicked(a, key);
+      return `${a.title} NOT TICKED${why ? ` (${why})` : ''}`;
+    });
+    const other = rec.planned.filter(a => !a.must);
+    const otherMissed = rec.missed.filter(a => !a.must).map(a => a.title);
+    const parts = [];
+    if (must.length) parts.push(must.join('; ') + '.');
+    if (other.length) parts.push(`${must.length ? 'Other things: ' : ''}${other.filter(a => a.id in done).length} of ${other.length} ticked${otherMissed.length ? ` (not ticked: ${otherMissed.join(', ')})` : ''}.`);
+    const open = openText(key);
+    lines.push(`${fmt({ weekday: 'short', day: 'numeric', month: 'short' }, d)}: ${parts.join(' ')}${open ? ' ' + open : ''}`);
   }
-  lines.push('(A tick means someone tapped "I\'ve done this" on Hazel.)');
+  lines.push('(A tick means someone tapped "I\'ve done this" on Hazel. Days before Hazel was set up are left out.)');
   return lines.join('\n');
 }
 
+// A short account of today, for a text message to the family.
+function todayText() {
+  const list = todays();
+  const must = list.filter(a => a.must).map(a => (isDone(a.id) ? `${a.title} ticked${doneAt(a.id) ? ' ' + timeText(doneAt(a.id)) : ''}`
+    : minutesLate(a) >= 0 ? `${a.title} NOT ticked` : `${a.title} due ${timeText(a.time)}`));
+  return `Hazel${data.person ? ' for ' + data.person : ''}, ${fmt({ weekday: 'short', day: 'numeric', month: 'short' })} at ${clockText()}. `
+    + `${must.length ? must.join('. ') + '. ' : ''}${list.filter(a => isDone(a.id)).length} of ${list.length} ticked off today.`;
+}
+// A text message (or an email, for a FaceTime address), already written, to the first person. The
+// person still has to press Send: Hazel itself sends nothing. Only offered when the family turns it on.
+function tellLink(text, label) {
+  const c = helper();
+  if (!data.tell || !data.setup || !c) return '';
+  const body = encodeURIComponent(text);
+  const href = c.phone.includes('@') ? `mailto:${encodeURIComponent(c.phone.trim())}?subject=Hazel&body=${body}` : `sms:${c.phone.replace(/[^+\d]/g, '')}?&body=${body}`;
+  return `<a class="secondary tell" href="${esc(href)}">${esc(label(c.name))}</a>`;
+}
+
+// What "Read this to me" says on the first screen: everything the screen shows, in the same order.
 function homeSpeech() {
+  const top = attention();
   const next = focusActivity();
-  const earlier = earlierNotDone();
+  const night = dayPart() === 'night';
+  const earlier = earlierNotDone().filter(a => a !== top?.a && !a.must);
   return [
     `${greeting()}.`,
     `It is ${clockText()}, ${partLine()}, ${fmt({ day: 'numeric', month: 'long' })}.`,
-    dayPart() === 'night' ? restMessage() : '',
-    noteShown() ? `A note${data.note.from ? ' from ' + data.note.from : ''}: ${data.note.text}.` : '',
-    beforeDawn() ? '' : next ? (statusOf(next) === 'now' ? `It is time for: ${next.title}.` : `Next is ${next.title}, at ${timeText(next.time)}.`) : '',
-    earlier.length && dayPart() !== 'night' ? `Not ticked off from earlier: ${earlier.map(a => a.title).join(', ')}.` : '',
+    ...tabletLines().map(l => sentence(l.text.replace('✓ ', ''))),
+    night ? restMessage() : '',
+    noteShown() ? sentence(`A note${data.note.from ? ' from ' + data.note.from : ''}: ${data.note.text}`) : '',
+    !top ? '' : top.late < NOW_WINDOW ? `It is time for: ${top.a.title}.` : `Not ticked off yet: ${top.a.title}, from ${timeText(top.a.time)}. ${sentence(lateAdvice(top.a))}`,
+    beforeDawn() || !next || next === top?.a ? '' : statusOf(next) === 'now' ? `It is time for: ${next.title}.` : `Next is ${next.title}, at ${timeText(next.time)}.`,
+    earlier.length && !night ? `Not ticked off from earlier: ${earlier.map(a => a.title).join(', ')}.` : '',
     next ? '' : tomorrowLine(),
   ].filter(Boolean).join(' ');
 }
@@ -1278,8 +1611,9 @@ function homeSpeech() {
 // Rendering
 // ---------------------------------------------------------------------------
 
-// `focus` is a selector for the element that should have focus afterwards, so
-// keyboard and screen-reader users don't get dropped back to the top of the page.
+// `focus` is a list of selectors, tried in order, for the element that should have focus afterwards,
+// so keyboard and screen-reader users don't get dropped back to the top of the page.
+let shownDay = ''; // the day the screen was last drawn for
 function render(...focus) {
   let screen = screens[ui.screen] ? ui.screen : 'home';
   // Edit forms sit behind the family PIN, even when reached with the Back button.
@@ -1289,17 +1623,19 @@ function render(...focus) {
   app.toggleAttribute('data-night', dayPart() === 'night' && screen !== 'family' && !FORM_SCREENS.includes(screen));
   app.innerHTML = screens[screen]() + '<div class="foot">Hazel 🌿 A brighter day, one step at a time.</div>';
   lastLive = liveText();
+  shownDay = dayKey();
   const target = ['[data-autofocus]', ...focus].filter(Boolean).map(sel => app.querySelector(sel)).find(Boolean);
   target?.focus({ preventScroll: true });
 }
+const FAMILY_HEADING = '.family h3[tabindex]';
 
 // Everything on Home and My Day that changes with the time of day.
 let lastLive = '';
 function liveText() {
-  const top = attentionItem();
-  const late = top ? minutesLate(top) : 0;
-  return [dayKey(), greeting(), partLine(), top?.id, late >= NOW_WINDOW, late >= 120, noteShown(), tomorrowLine(),
-    lastNight().length, todays().map(a => a.id + statusOf(a) + tooEarly(a)).join()].join('|');
+  const top = attention();
+  return [dayKey(), greeting(), partLine(), top?.a.id, top?.day, top ? top.late >= NOW_WINDOW : '', noteShown(), tomorrowLine(),
+    soundHintNeeded(), tabletLines().map(l => l.text).join(),
+    todays().map(a => a.id + statusOf(a) + tooEarly(a) + needsCare(a)).join()].join('|');
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,7 +1643,7 @@ function liveText() {
 // ---------------------------------------------------------------------------
 
 const promptEl = document.body.appendChild(Object.assign(document.createElement('div'), { className: 'prompt', hidden: true }));
-let sheet = null; // what is showing: { kind: 'reminder' | 'done' | 'call', returnFocus, timer }
+let sheet = null; // what is showing: { kind: 'reminder' | 'ahead' | 'done' | 'call' | 'test', returnFocus, timer }
 
 function openSheet(kind, html, focusSelector) {
   const returnFocus = sheet ? sheet.returnFocus : document.activeElement;
@@ -1337,15 +1673,20 @@ function closeSheet() {
 }
 
 // After a tick: say plainly what was recorded and when, with a way to take it back.
-function showDone(a) {
+function showDone(a, day = dayKey()) {
   const left = todays().filter(x => !isDone(x.id)).length;
   openSheet('done', `
     <div class="done-tick" aria-hidden="true">✓</div>
     <h2 id="sheet-title">Well done</h2>
-    <p class="prompt-note"><b>${esc(a.title)}</b><br>${doneText(a.id)}${left ? '' : '<br>That is everything for today 🌷'}</p>
+    <p class="prompt-note"><b>${esc(a.title)}</b><br>${doneText(a.id, day)}${left ? '' : '<br>That is everything for today 🌷'}${data.setup ? '' : '<br>This is only an example.'}</p>
     <button class="primary" data-action="sheet-close">OK</button>
-    <button class="skip" data-action="sheet-undo" data-id="${a.id}">Oops, I haven't done it yet</button>`, '.primary');
-  sheet.timer = setTimeout(closeSheet, 6000);
+    ${a.must ? tellLink(`${data.person ? data.person + ': ' : ''}${a.title} ticked off at ${clockText()}. (Sent from Hazel)`, n => `📱 Tell ${n}`) : ''}
+    <button class="secondary oops" data-action="sheet-undo" data-id="${a.id}" data-day="${day}">Oops, I haven't done it yet</button>`, '.primary');
+  // Left alone it goes away by itself. A slow tap aimed at OK must then not tick whatever is underneath.
+  sheet.timer = setTimeout(() => {
+    closeSheet();
+    tickGuardUntil = performance.now() + 3000;
+  }, 15000);
 }
 
 // Some devices can't start a call from a web page. The link still tries, and the number stays on
@@ -1353,15 +1694,22 @@ function showDone(a) {
 function showCalling(link) {
   const number = link.dataset.number;
   const emergency = 'emergency' in link.dataset;
-  const name = data.about.fullName || data.person;
+  const dial = link.tagName === 'BUTTON'; // the family has said this device cannot ring
+  const who = link.dataset.name || number;
+  const address = number.includes('@');
+  const heading = emergency ? `${dial ? 'Dial' : 'Call'} ${number}` : dial ? `Ring ${who}` : `Calling ${who}`;
+  const how = dial ? 'This device cannot make the call. Use the house phone or a mobile, and dial:'
+    : emergency ? `If you cannot hear it ringing, dial ${esc(number)} on a phone now:`
+    : address ? 'If the call does not start, open FaceTime and call:'
+    : 'If the call does not start, dial this on your phone:';
   openSheet('call', `
     ${emergency ? '' : '<div class="prompt-pic" aria-hidden="true">📞</div>'}
-    <h2 id="sheet-title">Calling ${esc(link.dataset.name || number)}</h2>
-    <p class="prompt-note">If the call does not start, dial this on your phone:</p>
-    <p class="big-number">${esc(number)}</p>
+    <h2 id="sheet-title">${esc(heading)}</h2>
+    <p class="prompt-note">${how}</p>
+    <p class="big-number ${address ? 'address' : ''}">${esc(number)}</p>
     ${emergency ? `<div class="say-card">
       <strong>Tell them</strong>
-      ${name ? `<p>My name is <b>${esc(name)}</b>.</p>` : ''}
+      ${data.about.fullName ? `<p>My name is <b>${esc(data.about.fullName)}</b>.</p>` : ''}
       ${data.about.address ? `<p>I am at <b>${esc(data.about.address)}</b>.</p>` : '<p>Where you are, and what has happened.</p>'}
       <p>Stay on the phone. They will tell you what to do.</p>
     </div>` : ''}
@@ -1374,71 +1722,126 @@ function showCalling(link) {
 // Reminders: when something is due, Hazel chimes, says it aloud and shows it
 // ---------------------------------------------------------------------------
 
-const LATE_WINDOW = 15; // minutes after its time that opening Hazel still raises the reminder
-const SNOOZE_MINUTES = 10;
-const MUST_WINDOW = 60; // minutes an important reminder keeps coming back before it rests on the home screen
-const QUIET_SCREENS = ['family', 'about', 'calm', ...FORM_SCREENS]; // never interrupted by a reminder
-const prompted = {}; // activity id -> day it was last raised
+// Screens a reminder never interrupts: the family's own, and the ones someone in trouble is using.
+// Every one of them goes back to the clock by itself (see tick), so none can silence Hazel for long.
+const QUIET_SCREENS = ['family', 'about', 'calm', 'help', ...FORM_SCREENS];
+const prompted = {}; // activity id -> day its reminder card was last opened
 const snoozed = {}; // activity id -> { at: time in ms to raise it again, day }
-let reminder = null; // the reminder on screen: { id, announced, nextAnnounce }
+let reminder = null; // the reminder on screen: { id, day, repeat, announced, nextAnnounce, until, html }
+const snooze = id => { snoozed[id] = { at: Date.now() + SNOOZE_MINUTES * 60_000, day: dayKey() }; };
 
-// The reminder to raise now, if any. Important things go first.
+// The reminder to raise now, if any. Important things go first. An ordinary thing is raised while it
+// is "now"; an important one at any point in its hour, so opening Hazel late still brings it up.
 function dueReminder(onlyImportant = false) {
   const today = dayKey();
   const due = todays().filter(a => {
     if (isDone(a.id) || (onlyImportant && !a.must)) return false;
     const late = minutesLate(a);
-    const snooze = snoozed[a.id];
-    if (snooze?.day === today) {
-      if (Date.now() < snooze.at) return false;
-      return a.must ? late >= 0 && late < MUST_WINDOW : statusOf(a) === 'now';
-    }
-    return late >= 0 && late < LATE_WINDOW && prompted[a.id] !== today;
+    if (late < 0) return false;
+    const inWindow = a.must ? late < MUST_WINDOW : statusOf(a) === 'now';
+    const wait = snoozed[a.id];
+    // A promised reminder is kept, even if its hour runs out in the meantime.
+    if (wait?.day === today) return Date.now() >= wait.at && (inWindow || Date.now() < wait.at + LATE_WINDOW * 60_000);
+    return inWindow && prompted[a.id] !== today;
   });
   return due.find(a => a.must) || due[0];
 }
 
+// Minutes since the reminder's time, counting across midnight.
+const reminderLate = a => minutesLate(a) + (reminder.day === dayKey() ? 0 : 1440);
+
+// The words on the card. They follow the clock, and change once the reminder is being repeated:
+// Hazel only knows about the tap, so every repeat allows for "already taken".
+function reminderText(a, late, repeat) {
+  const care = needsCare(a, late);
+  return `<p class="prompt-when">It's <span data-now>${clockText()}</span>. ${late >= 5 ? `From ${timeText(a.time)}:` : 'Time for:'}</p>
+      <h2 id="sheet-title">${esc(a.title)}</h2>
+      ${care ? `<p class="prompt-note caution">${esc(lateAdvice(a))}</p>` : a.note ? `<p class="prompt-note">${esc(a.note)}</p>` : ''}
+      ${repeat && !care && isTablets(a) ? `<p class="prompt-ask">Already taken them? Press “I've done this”. Not sure? Check your pill box. Don't take extra.</p>` : ''}`;
+}
+function reminderSpeech(a, late, repeat) {
+  const now = `It is ${clockText()}.`;
+  if (needsCare(a, late)) return `${now} ${a.title}, from ${timeText(a.time)}, is not ticked off. ${sentence(lateAdvice(a))}`;
+  if (!repeat) return `${now} Time for: ${a.title}. ${a.note}`;
+  return isTablets(a)
+    ? `${now} Have you taken your ${a.title}? If you have, press: I've done this. If you are not sure, check your pill box. Don't take extra.`
+    : `${now} ${a.title}. Have you done this? If you have, press: I've done this.`;
+}
+
 // Chime, then say it. Important things are repeated: after 3 minutes, at 10, then every 10.
 function announce(a) {
-  chime();
+  const repeat = reminder.repeat || reminder.announced > 0;
+  const words = reminderSpeech(a, reminderLate(a), repeat);
+  chime(a.must);
   if (data.sound && armed) {
     setTimeout(() => {
-      if (reminder?.id === a.id) speak(`It is ${clockText()}. Time for: ${a.title}. ${a.note}`, { quiet: true });
-    }, 1200);
+      if (reminder?.id === a.id) speak(words, { quiet: true });
+    }, a.must ? 3600 : 1200);
   }
+  notify(`Hazel: ${a.title}`, a.must ? 'This is waiting on Hazel.' : a.note);
   const gaps = a.must ? [3, 7, 10, 10, 10, 10] : [3];
   const gap = gaps[reminder.announced++];
   reminder.nextAnnounce = gap ? Date.now() + gap * 60_000 : Infinity;
 }
 
+// Kept for the family: that the reminder really was shown, when, and whether the chime could sound.
+function recordRaised(a) {
+  const day = dayKey();
+  if ((data.raised[day] ??= {})[a.id]) return;
+  data.raised[day][a.id] = { at: nowHHMM(), sound: soundOn() };
+  save();
+}
+
 function openReminder(a) {
+  const repeat = prompted[a.id] === dayKey(); // it has been on screen before today
   prompted[a.id] = dayKey();
   delete snoozed[a.id];
+  const who = findContact(a.contactId);
+  const html = reminderText(a, minutesLate(a), repeat);
   openSheet('reminder', `
       <div class="prompt-pic" aria-hidden="true">${a.photo ? `<img src="${esc(a.photo)}" alt="">` : esc(a.emoji)}</div>
-      <p class="prompt-when">It's ${clockText()}. Time for:</p>
-      <h2 id="sheet-title">${esc(a.title)}</h2>
-      ${a.note ? `<p class="prompt-note">${esc(a.note)}</p>` : ''}
+      <div class="prompt-text">${html}</div>
       <button class="primary" data-action="prompt-done" data-id="${a.id}">✓ &nbsp;I've done this</button>
       <button class="secondary" data-action="prompt-snooze" data-id="${a.id}">Remind me in ${SNOOZE_MINUTES} minutes</button>
-      ${a.must ? '' : '<button class="skip" data-action="sheet-close">Not now</button>'}`, '.primary');
-  reminder = { id: a.id, announced: 0, nextAnnounce: 0 };
+      ${hasNumber(who) ? callLink(who, 'secondary call-now', `📞 ${callVerb(who)} ${esc(who.name)}`) : ''}
+      ${a.must ? '' : '<button class="skip" data-action="sheet-close">Not now</button>'}
+      <button class="help-btn sheet-help" data-action="prompt-help" data-id="${a.id}">🛟 I need help</button>`, '.primary');
+  promptEl.firstElementChild.classList.toggle('urgent', a.must);
+  // Every card stays up for at least ten minutes, so one that was promised or opened late is not whisked away.
+  reminder = { id: a.id, day: dayKey(), repeat, announced: 0, nextAnnounce: 0, until: Date.now() + SNOOZE_MINUTES * 60_000, html };
+  recordRaised(a);
   announce(a);
 }
 
 function checkReminders() {
+  // A warning about something later must not hold up the real thing.
+  if (sheet?.kind === 'ahead') {
+    const due = dueReminder();
+    if (due) openReminder(due);
+    return;
+  }
   if (sheet && sheet.kind !== 'reminder') return;
   if (reminder) {
     const a = findActivity(reminder.id);
+    const sameDay = reminder.day === dayKey();
+    const late = a ? reminderLate(a) : -1;
     // Take it down once it has been done elsewhere or its time has passed. It then shows as not
-    // ticked off; an important one stays at the top of the home screen.
-    const late = a ? minutesLate(a) : -1;
-    const over = !a || !occursOn(a) || isDone(a.id) || late < 0 || (a.must ? late >= MUST_WINDOW : statusOf(a) !== 'now');
-    if (over) return closeSheet();
-    // An important reminder takes the place of an ordinary one that is still waiting for an answer.
+    // ticked off; an important one stays at the top of the home screen. One raised late in the
+    // evening keeps its hour past midnight.
+    const expired = a && Date.now() >= reminder.until && (a.must ? late >= MUST_WINDOW : !sameDay || statusOf(a) !== 'now');
+    if (!a || !occursOn(a, parseDay(reminder.day)) || isDone(a.id, reminder.day) || late < 0 || expired) return closeSheet();
+    // An important reminder, or a warning about an appointment, takes the place of an ordinary
+    // reminder that is still waiting for an answer.
     const urgent = a.must ? null : dueReminder(true);
     if (urgent) return openReminder(urgent);
+    const warning = a.must ? null : dueHeadsUp();
+    if (warning) return openHeadsUp(warning);
     if (Date.now() >= reminder.nextAnnounce) announce(a);
+    const html = reminderText(a, late, reminder.repeat || reminder.announced > 1);
+    if (html !== reminder.html) {
+      reminder.html = html;
+      promptEl.querySelector('.prompt-text').innerHTML = html;
+    }
     return;
   }
   // An example routine must never chime as if it were real.
@@ -1449,24 +1852,26 @@ function checkReminders() {
   if (ahead) openHeadsUp(ahead);
 }
 
-// "At 2:00 pm today: Podiatrist". An earlier warning for appointments, so there is time to get ready.
+// "Coming up at 2:00 pm: Podiatrist". An earlier warning for appointments, so there is time to get
+// ready. It is given at the first free moment from then until the appointment.
 function dueHeadsUp() {
   const today = dayKey();
   return todays().find(a => {
     const until = -minutesLate(a);
-    return a.lead && !isDone(a.id) && until > 0 && until <= a.lead && a.lead - until < LATE_WINDOW && prompted['ahead' + a.id] !== today;
+    return a.lead && !isDone(a.id) && until > 0 && until <= a.lead && prompted['ahead' + a.id] !== today;
   });
 }
 function openHeadsUp(a) {
   prompted['ahead' + a.id] = dayKey();
   openSheet('ahead', `
       <div class="prompt-pic" aria-hidden="true">${a.photo ? `<img src="${esc(a.photo)}" alt="">` : esc(a.emoji)}</div>
-      <p class="prompt-when">It's ${clockText()}. Coming up at ${timeText(a.time)}:</p>
+      <p class="prompt-when">It's <span data-now>${clockText()}</span>. Coming up at ${timeText(a.time)}:</p>
       <h2 id="sheet-title">${esc(a.title)}</h2>
       ${a.note ? `<p class="prompt-note">${esc(a.note)}</p>` : ''}
       <button class="primary" data-action="sheet-close">OK</button>`, '.primary');
   chime();
   if (data.sound && armed) setTimeout(() => speak(`It is ${clockText()}. Coming up at ${timeText(a.time)}: ${a.title}. ${a.note}`, { quiet: true }), 1200);
+  notify(`Hazel: ${a.title} at ${timeText(a.time)}`, a.note);
   sheet.timer = setTimeout(closeSheet, 10 * 60_000);
 }
 
@@ -1474,12 +1879,16 @@ function openHeadsUp(a) {
 function testReminder() {
   openSheet('test', `
       <div class="prompt-pic" aria-hidden="true">🔔</div>
-      <p class="prompt-when">It's ${clockText()}. Time for:</p>
+      <p class="prompt-when">It's <span data-now>${clockText()}</span>. Time for:</p>
       <h2 id="sheet-title">A test reminder</h2>
-      <p class="prompt-note">This is how Hazel looks and sounds when something is due. If you could not hear it, turn the volume up.</p>
+      <p class="prompt-note">${data.sound
+        ? 'This is how Hazel looks and sounds when something important is due. If you could not hear it, turn the volume up.'
+        : 'This is how Hazel looks when something is due. The chime and voice are switched off (“Chime and speak reminders”), so this test is silent.'}</p>
       <button class="primary" data-action="sheet-close">OK, that works</button>`, '.primary');
-  chime();
-  if (data.sound) setTimeout(() => speak(`It is ${clockText()}. This is a test reminder from Hazel.`, { quiet: true }), 1200);
+  promptEl.firstElementChild.classList.add('urgent');
+  chime(true);
+  if (data.sound) setTimeout(() => speak(`It is ${clockText()}. This is a test reminder from Hazel.`, { quiet: true }), 3600);
+  sheet.timer = setTimeout(closeSheet, 60_000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1490,80 +1899,137 @@ async function copyText(text, okMessage) {
   try {
     await navigator.clipboard.writeText(text);
     toast(okMessage);
+    return true;
   } catch {
     const box = app.querySelector('.copy-box');
     box?.focus();
     box?.select();
     toast('Press and hold the text in the box, then choose Copy.');
+    return false;
   }
+}
+
+// Hazel counts as set up from the first real change, and the family record starts that day.
+function markSetup() {
+  data.setup = true;
+  data.since ||= dayKey();
+}
+
+// Takes a tick back, keeps a note of it for the family, and brings the reminder round again if the
+// thing is still within its time. Returns null if there was no tick, else whether it will remind.
+function takeBack(id, day = dayKey()) {
+  const was = doneAt(id, day);
+  if (was === undefined) return null;
+  (data.undone[day] ??= {})[id] = { was, at: nowHHMM() };
+  delete data.completed[day][id];
+  delete prompted[id];
+  const a = findActivity(id);
+  const late = a && day === dayKey() ? minutesLate(a) : -1;
+  const again = late >= 0 && (a.must ? late < MUST_WINDOW : statusOf(a) === 'now');
+  if (again) snooze(id);
+  else if (a) prompted[id] = dayKey(); // well past its time: it waits on the home screen instead
+  return again;
+}
+const takenBackText = again => `Okay, not ticked.${again ? ` Hazel will remind you again in ${SNOOZE_MINUTES} minutes.` : ''}`;
+
+// Family settings has one Save button per panel. Anything typed is saved before another button
+// redraws the page, so it is never thrown away without a word. False means there was a problem
+// with what was typed, and it is showing.
+let dirtyForm = '';
+function saveTyped() {
+  if (!dirty || ui.screen !== 'family' || !['note', 'about', 'settings'].includes(dirtyForm)) return true;
+  const form = app.querySelector(`form[data-form="${dirtyForm}"]`);
+  if (!form) return true;
+  forms[dirtyForm](form);
+  return !dirty;
 }
 
 const actions = {
   tab(el) {
+    if (!saveTyped()) return;
     Object.assign(ui, { tab: el.dataset.tab, confirming: null, backup: '', restore: null, summary: '' });
     dirty = false;
     render('[role="tab"][aria-selected="true"]');
   },
   ask(el) {
+    if (!saveTyped()) return;
     ui.confirming = el.dataset.confirm;
     render();
     guard();
+    app.querySelector('.confirm')?.scrollIntoView({ block: 'nearest' }); // both answers on screen
   },
   cancel() {
     const was = ui.confirming;
     ui.confirming = null;
     ui.restore = null;
-    render(`[data-confirm="${was}"]`);
+    render(`[data-confirm="${was}"]`, '[data-action="skip-setup"]');
   },
-  finish(_, id) {
+  finish(el, id) {
     const a = findActivity(id);
-    if (!a || !occursOn(a) || tooEarly(a)) return;
-    if (isDone(id)) return render();
-    markDone(id);
+    if (!a || performance.now() < tickGuardUntil) return;
+    const day = el?.dataset.day || dayKey();
+    if (day !== dayKey()) {
+      // Last night's important thing, still within its hour after midnight.
+      const held = carried();
+      if (!held || held.a !== a || held.day !== day) return render();
+    } else if (!occursOn(a) || tooEarly(a)) {
+      return render();
+    }
+    if (isDone(id, day)) return render();
+    markDone(id, day);
     if (!save()) toast(NOT_SAVED);
     if (ui.screen === 'activity') {
       // Activities are opened from My Day, so step back to that entry rather than adding another.
       let fromDay = false;
       try { fromDay = history.state?.screen === 'activity'; } catch { /* ignore */ }
-      if (fromDay) history.back();
+      if (fromDay) stepBack();
       else go('day', null, { replace: true });
     } else {
       render('h1, .page-title');
     }
-    showDone(a);
+    showDone(a, day);
   },
   undo(_, id) {
-    const was = doneAt(id);
-    if (was === undefined) return;
-    // Keep a note for the family that a tick was taken back, and when.
-    (data.undone[dayKey()] ??= {})[id] = { was, at: nowHHMM() };
-    delete data.completed[dayKey()][id];
+    const again = takeBack(id);
+    if (again === null) return;
     ui.confirming = null;
-    if (!save()) toast(NOT_SAVED);
+    toast(save() ? takenBackText(again) : NOT_SAVED);
     render('[data-action="finish"]');
     guard();
   },
   'prompt-done'(_, id) {
     const a = findActivity(id);
     if (!a) return closeSheet();
-    if (!isDone(id)) markDone(id);
+    // A card answered just after midnight is recorded for the day it was raised.
+    const day = reminder?.id === id ? reminder.day : dayKey();
+    if (day === dayKey() && (!occursOn(a) || tooEarly(a))) {
+      closeSheet();
+      return render();
+    }
+    if (!isDone(id, day)) markDone(id, day);
     if (!save()) toast(NOT_SAVED);
     render();
-    showDone(a);
+    showDone(a, day);
   },
   'prompt-snooze'(_, id) {
-    snoozed[id] = { at: Date.now() + SNOOZE_MINUTES * 60_000, day: dayKey() };
+    snooze(id);
     closeSheet();
     toast(`Okay. Hazel will remind you again in ${SNOOZE_MINUTES} minutes.`);
+  },
+  // Help is one tap away even while a reminder is waiting. The reminder comes back afterwards.
+  'prompt-help'(_, id) {
+    snooze(id);
+    closeSheet();
+    go('help');
   },
   'sheet-close'() {
     closeSheet();
   },
-  'sheet-undo'(_, id) {
-    delete data.completed[dayKey()]?.[id];
-    if (!save()) toast(NOT_SAVED);
+  'sheet-undo'(el, id) {
+    const again = takeBack(id, el.dataset.day || dayKey());
     closeSheet();
     render();
+    if (again !== null) toast(save() ? takenBackText(again) : NOT_SAVED);
   },
   'test-reminder'() {
     testReminder();
@@ -1574,9 +2040,27 @@ const actions = {
     document.getElementById('toast').hidden = true;
     run?.();
   },
+  // Says what the screen says, so the voice can never tell someone to take tablets that the
+  // screen says are done, not yet due, or hours late.
   'speak-activity'(el, id) {
     const a = findActivity(id);
-    if (a) speak(`${a.title}. ${a.note}${occursOn(a) && isDone(a.id) ? '. ' + doneText(a.id) + '.' : ''}`, { el });
+    if (!a) return;
+    const today = occursOn(a);
+    let words;
+    if (today && isDone(a.id)) {
+      words = `${doneText(a.id)}.${isTablets(a) ? ' You ticked these off today. No need to take them again.' : ''}`;
+    } else if (today && tooEarly(a)) {
+      const before = lastNight().find(x => x.a === a);
+      words = `Not yet. This is for ${timeText(a.time)}. It is ${clockText()} now.${before ? ' ' + sentence(lastNightText(before)) : ''}`;
+    } else if (today && needsCare(a)) {
+      words = `This was for ${timeText(a.time)}. ${sentence(lateAdvice(a))}${a.ifLate ? '' : ' Ask family or your pharmacist first.'}`;
+    } else if (today) {
+      words = `${timeText(a.time)}. ${a.note}`;
+    } else {
+      const next = comingUp().find(x => x.a === a);
+      words = `${next ? `This is ${next.date === dayKey(daysAgo(-1)) ? 'tomorrow' : 'on ' + whenText(next.date)}, at ${timeText(a.time)}.` : 'This is not on today.'} ${a.note}`;
+    }
+    speak(`${a.title}. ${words}`, { el });
   },
   'read-day'(el) {
     const list = todays();
@@ -1584,7 +2068,7 @@ const actions = {
     const say = (label, items, f) => (items.length ? `${label}: ${items.map(f).join(', ')}.` : '');
     speak([
       `It is ${clockText()}, ${partLine()}.`,
-      ...lastNight().map(x => lastNightText(x) + '.'),
+      ...lastNight().map(x => sentence(lastNightText(x))),
       say('Done', list.filter(a => isDone(a.id)), a => `${a.title}${doneAt(a.id) ? ' at ' + timeText(doneAt(a.id)) : ''}`),
       say('Now', list.filter(a => statusOf(a) === 'now'), a => a.title),
       say('Not ticked off from earlier', list.filter(a => statusOf(a) === 'earlier'), a => a.title),
@@ -1593,8 +2077,9 @@ const actions = {
       soon ? `Coming up: ${soon.a.title}, ${whenText(soon.date)} at ${timeText(soon.a.time)}.` : '',
     ].filter(Boolean).join(' '), { el });
   },
+  // Tapping the clock reads too. Either way the tools button turns into "Stop reading".
   'read-home'(el) {
-    speak(homeSpeech(), { el: el.classList.contains('clock') ? null : el }); // the clock keeps showing the time
+    speak(homeSpeech(), { el: app.querySelector('.home-tools [data-action="read-home"]') || el });
   },
   'read-note'() {
     speak(`${data.note.from ? 'A note from ' + data.note.from : 'A note for you'}. ${data.note.text}`);
@@ -1602,12 +2087,18 @@ const actions = {
   'speak-calm'(el) {
     speak(`${dayPart() === 'night' ? CALM_NIGHT : CALM_MESSAGE} It is ${clockText()}, ${partLine()}.`, { el });
   },
-  bigger() {
+  bigger(el) {
+    hush(); // the Stop button is about to be redrawn
     const sizes = ['normal', 'large', 'largest'];
+    const before = el.getBoundingClientRect().top;
     data.size = sizes[(sizes.indexOf(data.size) + 1) % sizes.length];
     applySettings();
     if (!save()) toast(NOT_SAVED);
     render('[data-action="bigger"]');
+    // Keep the button under the finger, so the next tap makes the writing bigger again.
+    const after = app.querySelector('[data-action="bigger"]')?.getBoundingClientRect().top;
+    if (after != null) window.scrollBy(0, after - before);
+    guard();
   },
   'no-phone'(_, id) {
     const c = findContact(id);
@@ -1617,7 +2108,8 @@ const actions = {
     const i = data.contacts.findIndex(c => c.id === id);
     if (i > 0) [data.contacts[i - 1], data.contacts[i]] = [data.contacts[i], data.contacts[i - 1]];
     if (!save()) toast(NOT_SAVED);
-    render(`[data-action="contact-up"][data-id="${id}"]`, '.family h3[tabindex]');
+    // Focus stays on the row that moved: its arrow, or its Edit button once it is at the top.
+    render(`[data-action="contact-up"][data-id="${id}"]`, `[data-go="contactForm"][data-id="${id}"]`, FAMILY_HEADING);
   },
   // Fills in the Add form for the commonest kinds of thing, so each takes a few taps.
   template(el) {
@@ -1630,6 +2122,7 @@ const actions = {
     pick('emoji', kind === 'tablets' ? '💊' : kind === 'appointment' ? '🩺' : '🗑️');
     f.querySelector('.when-weekly').hidden = kind !== 'weekly';
     f.querySelector('.when-once').hidden = kind !== 'appointment';
+    f.querySelector('.date-label').textContent = 'Date';
     if (!f.elements.title.value) f.elements.title.value = kind === 'tablets' ? 'Morning tablets' : '';
     if (kind === 'tablets') f.elements.time.value = '08:00';
     if (kind === 'tablets' && !f.elements.note.value) f.elements.note.value = 'Take your tablets with a glass of water.';
@@ -1643,77 +2136,144 @@ const actions = {
     pick.querySelector('.photo-preview').innerHTML = '<span aria-hidden="true">📷</span>';
     pick.querySelector('[data-action="photo-remove"]').hidden = true;
     pick.querySelector('.file-btn').firstChild.textContent = 'Choose a photo';
-    pick.querySelector('input').value = '';
+    const input = pick.querySelector('input');
+    input.value = '';
+    input.focus(); // the button that was pressed has just hidden itself
   },
   'remove-activity'(_, id) {
     const i = data.activities.findIndex(x => x.id === id);
     ui.confirming = null;
-    if (i >= 0) {
-      const [a] = data.activities.splice(i, 1);
-      const tick = data.completed[dayKey()]?.[id];
-      delete data.completed[dayKey()]?.[id];
-      data.setup = true;
-      saved(`Removed “${a.title}”.`, { action: { label: 'Put it back', run() {
-        data.activities.splice(i, 0, a);
-        if (tick !== undefined) (data.completed[dayKey()] ??= {})[id] = tick;
-        saved(`“${a.title}” is back.`);
-        render('.family h3[tabindex]');
-      } } });
-    }
-    render('.family h3[tabindex]');
+    if (i < 0) return render(FAMILY_HEADING);
+    const [a] = data.activities.splice(i, 1);
+    const tick = data.completed[dayKey()]?.[id];
+    delete data.completed[dayKey()]?.[id];
+    // Kept for the family record, so earlier days still show what was planned and what was ticked.
+    data.retired.push({ id: a.id, title: a.title, emoji: a.emoji, must: a.must, time: a.time, repeat: a.repeat, days: a.days, date: a.date, from: a.from, removed: dayKey() });
+    markSetup();
+    render(FAMILY_HEADING);
+    saved(`Removed “${a.title}”.`, { action: { label: 'Put it back', run() {
+      data.activities.splice(i, 0, a);
+      data.retired = data.retired.filter(r => r.id !== a.id);
+      if (tick !== undefined) (data.completed[dayKey()] ??= {})[id] = tick;
+      saved(`“${a.title}” is back.`);
+      render(FAMILY_HEADING);
+    } } });
   },
   'remove-contact'(_, id) {
     const i = data.contacts.findIndex(x => x.id === id);
     ui.confirming = null;
-    if (i >= 0) {
-      const [c] = data.contacts.splice(i, 1);
-      data.setup = true;
-      saved(`Removed ${c.name}.`, { action: { label: 'Put them back', run() {
-        data.contacts.splice(i, 0, c);
-        saved(`${c.name} is back.`);
-        render('.family h3[tabindex]');
-      } } });
-    }
-    render('.family h3[tabindex]');
+    if (i < 0) return render(FAMILY_HEADING);
+    const [c] = data.contacts.splice(i, 1);
+    const used = data.activities.filter(a => a.contactId === id);
+    for (const a of used) a.contactId = null;
+    markSetup();
+    render(FAMILY_HEADING);
+    saved(`Removed ${c.name}.`, { action: { label: 'Put them back', run() {
+      data.contacts.splice(i, 0, c);
+      for (const a of used) a.contactId = c.id;
+      saved(`${c.name} is back.`);
+      render(FAMILY_HEADING);
+    } } });
   },
   'reset-done'() {
     ui.confirming = null;
     delete data.completed[dayKey()];
     saved("Today's ticks have been cleared.");
-    render('.family h3[tabindex]');
+    render(FAMILY_HEADING);
   },
   summary() {
+    if (!saveTyped()) return;
     ui.summary = weekSummaryText();
     render('[data-action="summary"]');
     copyText(ui.summary, 'Copied. Paste it into a message to the family.');
   },
+  // Hands the summary to the device's own Messages, Mail or other sharing.
+  'share-summary'() {
+    if (!saveTyped()) return;
+    try {
+      navigator.share({ text: weekSummaryText() }).catch(() => {});
+    } catch { toast('This device cannot share from here. Use “Copy the last 7 days as text”.'); }
+  },
   backup() {
-    data.backedUp = dayKey();
-    save();
-    ui.backup = BACKUP_PREFIX + JSON.stringify(data);
+    if (!saveTyped()) return;
+    ui.backup = BACKUP_PREFIX + JSON.stringify({ ...data, backedUp: dayKey() });
     render('[data-action="backup"]');
-    copyText(ui.backup, 'Copied. Paste it into an email or message to yourself.');
+    // The checklist is only ticked once the copy has really been made.
+    copyText(ui.backup, 'Copied. Paste it into an email or message to yourself.').then(ok => { if (ok) markBackedUp(); });
   },
   'restore-apply'() {
     if (!ui.restore) return;
-    Object.assign(data, ui.restore);
-    Object.assign(ui, { restore: null, confirming: null, unlocked: true });
+    // After a forgotten PIN the ticks recorded on this device since the copy was made are kept.
+    const copy = ui.restore;
+    Object.assign(data, ui.keepHistory ? {
+      ...copy,
+      since: [data.since, copy.since].filter(Boolean).sort()[0] || dayKey(),
+      completed: { ...copy.completed, ...data.completed },
+      undone: { ...copy.undone, ...data.undone },
+      seen: { ...copy.seen, ...data.seen },
+      raised: { ...copy.raised, ...data.raised },
+    } : copy);
+    Object.assign(ui, { restore: null, keepHistory: false, confirming: null, unlocked: true, forgot: false });
     applySettings();
+    try { navigator.storage?.persist?.(); } catch { /* optional */ }
     saved('Restored from the copy.');
     if (ui.screen === 'setup') return go('family', null, { replace: true });
-    render('.family h3[tabindex]');
+    render(FAMILY_HEADING);
   },
   forgot() {
     ui.forgot = true;
-    render('.family h3[tabindex]');
+    render(FAMILY_HEADING);
   },
+  // Keeping the example still needs the country confirmed: the emergency number depends on it.
   'skip-setup'() {
-    data.setup = true;
-    ui.unlocked = true;
+    const f = app.querySelector('form[data-form="setup"]');
+    const pick = f.elements.region.value;
+    if (!REGIONS[pick]) return showError(f, 'Please choose the country first, so the emergency number is right.', 'region');
+    const emergency = f.elements.emergency.value.trim();
+    if (pick === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
+    data.region = pick;
+    data.emergency = pick === 'other' ? emergency : '';
+    ui.confirming = 'skip';
+    render();
+    guard();
+    app.querySelector('.confirm')?.scrollIntoView({ block: 'nearest' });
+  },
+  'skip-confirm'() {
+    markSetup();
+    Object.assign(ui, { unlocked: true, confirming: null });
+    applySettings();
     if (!save()) toast(NOT_SAVED);
     go('family', null, { replace: true });
   },
+  'notify-allow'() {
+    try {
+      Notification.requestPermission().then(answer => {
+        toast(answer === 'granted' ? 'Notifications are allowed on this device.' : 'Notifications are not allowed here. Check the browser or device settings.');
+        if (ui.screen === 'family' && !dirty) render('[data-action="notify-allow"]');
+      });
+    } catch { toast('This device cannot show notifications.'); }
+  },
 };
+
+// Reads a pasted backup copy. Email and messaging apps wrap long lines, add a signature, or turn
+// straight quotes curly, so the copy is found inside whatever surrounds it.
+function readBackup(text) {
+  const not = { ok: false, message: 'That does not look like a Hazel backup copy. Paste the whole thing, starting with HAZEL-BACKUP.' };
+  const cut = { ok: false, message: 'This copy looks cut short or changed. Copy it again from where you kept it, all the way to the last }.' };
+  const start = text.search(/hazel-backup:/i);
+  let body = start >= 0 ? text.slice(start + BACKUP_PREFIX.length) : text;
+  const open = body.indexOf('{');
+  const close = body.lastIndexOf('}');
+  if (open < 0 || close < open) return start >= 0 ? cut : not;
+  body = body.slice(open, close + 1).replace(/[\r\n]+/g, ''); // a real copy has no line breaks of its own
+  for (const attempt of [body, body.replace(/[“”]/g, '"').replace(/[‘’]/g, "'")]) {
+    try {
+      const parsed = JSON.parse(attempt);
+      return parsed && Array.isArray(parsed.activities) && Array.isArray(parsed.contacts) ? { ok: true, data: parsed } : not;
+    } catch { /* try the next reading */ }
+  }
+  return cut;
+}
 
 const forms = {
   unlock(f) {
@@ -1728,37 +2288,51 @@ const forms = {
   activity(f) {
     const title = f.elements.title.value.trim();
     if (!title) return showError(f, 'Please say what it is.', 'title');
-    const repeat = f.elements.repeat.value || 'daily';
+    const repeat = REPEATS.some(r => r[0] === f.elements.repeat.value) ? f.elements.repeat.value : 'daily';
+    const dated = DATED_REPEATS.includes(repeat);
     const days = [...f.querySelectorAll('input[name="days"]:checked')].map(i => Number(i.value));
     const date = f.elements.date.value;
+    const existing = findActivity(ui.id);
     if (!validTime(f.elements.time.value)) return showError(f, 'Please give the time, like 08:00 or 14:30.', 'time');
     if (repeat === 'weekly' && !days.length) return showError(f, 'Please choose at least one day of the week.', 'days');
-    if (repeat === 'once' && !validDay(date)) return showError(f, 'Please choose the date.', 'date');
-    const existing = findActivity(ui.id);
+    if (dated && !validDay(date)) return showError(f, repeat === 'once' ? 'Please choose the date.' : 'Please choose the first date.', 'date');
+    if (repeat === 'once' && date < dayKey() && date !== existing?.date) return showError(f, 'That date has already passed. Please check the date.', 'date');
     const fields = {
       time: f.elements.time.value,
       title,
       note: f.elements.note.value.trim(),
+      ifLate: f.elements.ifLate.value.trim(),
       emoji: f.elements.emoji.value || existing?.emoji || ACTIVITY_PICTURES[0],
       photo: ui.photo ?? existing?.photo ?? '',
       repeat,
       days: repeat === 'weekly' ? days : [],
-      date: repeat === 'once' ? date : '',
+      date: dated ? date : '',
       must: f.elements.must.checked,
       lead: Number(f.elements.lead.value) || 0,
       contactId: f.elements.contactId?.value ? Number(f.elements.contactId.value) : null,
     };
-    existing ? Object.assign(existing, fields) : data.activities.push({ id: newId(), ...fields });
-    data.setup = true;
+    if (existing) {
+      // A new time or day is a new appointment as far as reminders go.
+      if (existing.time !== fields.time || existing.repeat !== fields.repeat || existing.date !== fields.date || existing.days.join() !== fields.days.join()) {
+        delete prompted[existing.id];
+        delete prompted['ahead' + existing.id];
+        delete snoozed[existing.id];
+      }
+      Object.assign(existing, fields);
+    } else {
+      data.activities.push({ id: newId(), from: dayKey(), ...fields });
+    }
+    markSetup();
     ui.tab = 'activities';
     saved('Saved.');
-    history.back();
+    stepBack();
   },
   contact(f) {
     const name = f.elements.name.value.trim();
     if (!name) return showError(f, 'Please enter a name.', 'name');
     const phone = f.elements.phone.value.trim();
     const method = CALL_METHODS[f.elements.method.value] ? f.elements.method.value : 'phone';
+    if (method === 'phone' && phone.includes('@')) return showError(f, 'That is an email address. Choose FaceTime below, or enter a phone number.', 'phone');
     const emailOk = method !== 'phone' && /^\S+@\S+\.\S+$/.test(phone);
     if (phone && !emailOk && phone.replace(/[^\d]/g, '').length < 3) return showError(f, 'That phone number looks too short.', 'phone');
     const existing = findContact(ui.id);
@@ -1771,13 +2345,16 @@ const forms = {
       photo: ui.photo ?? existing?.photo ?? '',
     };
     existing ? Object.assign(existing, fields) : data.contacts.push({ id: newId(), ...fields });
-    data.setup = true;
+    markSetup();
     ui.tab = 'contacts';
     saved('Saved.');
-    history.back();
+    stepBack();
   },
   note(f) {
-    data.note = { text: f.elements.text.value.trim(), from: f.elements.from.value.trim(), until: validDay(f.elements.until.value) ? f.elements.until.value : '' };
+    const until = f.elements.until.value;
+    if (until && !validDay(until)) return showError(f, 'Please give the date as year-month-day, like 2026-03-04.', 'until');
+    if (until && until < dayKey() && f.elements.text.value.trim()) return showError(f, 'That date has already passed, so the note would not be shown.', 'until');
+    data.note = { text: f.elements.text.value.trim(), from: f.elements.from.value.trim(), until };
     dirty = false;
     saved(data.note.text ? 'Note saved. It is on the home screen now.' : 'Note removed.');
     render('form[data-form="note"] .primary');
@@ -1792,8 +2369,14 @@ const forms = {
   settings(f) {
     const pin = f.elements.pin.value.trim();
     if (pin && !/^\d{4,8}$/.test(pin)) return showError(f, 'The PIN must be 4 to 8 digits, or left blank.', 'pin');
+    const place = REGIONS[f.elements.region.value] ? f.elements.region.value : data.region;
+    const emergency = f.elements.emergency.value.trim();
+    if (place === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
     data.person = f.elements.person.value.trim();
-    data.region = REGIONS[f.elements.region.value] ? f.elements.region.value : 'au';
+    data.region = place;
+    data.emergency = place === 'other' ? emergency : '';
+    data.calls = ['yes', 'no'].includes(f.elements.calls.value) ? f.elements.calls.value : '';
+    data.tell = f.elements.tell.checked;
     data.size = f.elements.size.value || 'normal';
     data.sound = f.elements.sound.checked;
     data.awake = f.elements.awake.checked;
@@ -1808,23 +2391,28 @@ const forms = {
     render('form[data-form="settings"] .primary');
   },
   restore(f) {
-    let parsed = null;
-    try {
-      const text = f.elements.backup.value.trim();
-      parsed = JSON.parse(text.startsWith(BACKUP_PREFIX) ? text.slice(BACKUP_PREFIX.length) : text);
-    } catch { /* handled below */ }
-    if (!parsed || !Array.isArray(parsed.activities) || !Array.isArray(parsed.contacts)) {
-      return showError(f, 'That does not look like a Hazel backup copy. Paste the whole thing, starting with HAZEL-BACKUP.', 'backup');
+    if (!saveTyped()) return;
+    const read = readBackup(f.elements.backup.value);
+    if (!read.ok) return showError(f, read.message, 'backup');
+    const locked = !!data.pin && !ui.unlocked; // reached from "Forgot the PIN?"
+    // A copy made with this very PIN proves who is asking: just unlock, and leave everything else alone.
+    if (locked && String(read.data.pin ?? '') === data.pin) {
+      data.pin = '';
+      Object.assign(ui, { unlocked: true, forgot: false });
+      saved('That copy was made with this PIN, so Hazel is unlocked and the PIN is cleared. Nothing else was changed.');
+      render();
+      return focusHeading();
     }
-    // From the "Forgot the PIN?" screen the copy comes back without its PIN.
-    ui.restore = normalize({ ...parsed, setup: true, ...(ui.unlocked || !data.pin ? {} : { pin: '' }) }, true);
+    ui.restore = normalize({ ...read.data, setup: true, ...(locked ? { pin: '' } : {}) }, true);
+    ui.keepHistory = locked;
     ui.confirming = 'restore';
     render();
     guard();
   },
   erase(f) {
     if (f.elements.word.value.trim().toUpperCase() !== 'ERASE') return showError(f, 'Type the word ERASE to confirm.', 'word');
-    Object.assign(data, normalize({ ...SEED, region: data.region }, false));
+    // The country stays: the emergency number must not quietly change back to a default.
+    Object.assign(data, normalize({ ...SEED, region: data.region, emergency: data.emergency, calls: data.calls }, false));
     applySettings();
     saved('Hazel has been erased on this device and is showing the example again.');
     go('home', null, { replace: true });
@@ -1832,6 +2420,10 @@ const forms = {
   setup(f) {
     const person = f.elements.person.value.trim();
     if (!person) return showError(f, 'Please say what they like to be called.', 'person');
+    const place = f.elements.region.value;
+    if (!REGIONS[place]) return showError(f, 'Please choose the country, so the emergency number is right.', 'region');
+    const emergency = f.elements.emergency.value.trim();
+    if (place === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
     const pin = f.elements.pin.value.trim();
     if (pin && !/^\d{4,8}$/.test(pin)) return showError(f, 'The PIN must be 4 to 8 digits, or left blank.', 'pin');
     const contacts = [];
@@ -1840,15 +2432,16 @@ const forms = {
       const phone = f.elements['cphone' + i].value.trim();
       if (!name && !phone) continue;
       if (!name) return showError(f, 'Please give a name for that phone number.', 'cname' + i);
-      contacts.push({ id: newId() + i, name, relation: f.elements['crel' + i].value.trim(), phone, method: 'phone', emoji: CONTACT_PICTURES[i], photo: '' });
+      if (phone && phone.replace(/[^\d]/g, '').length < 3) return showError(f, 'That phone number looks too short.', 'cphone' + i);
+      contacts.push({ id: newId(), name, relation: f.elements['crel' + i].value.trim(), phone, method: 'phone', emoji: CONTACT_PICTURES[i], photo: '' });
     }
-    const activities = ROUTINES.filter(r => f.elements['r-' + r.key].checked).map((r, i) => ({
-      id: newId() + 10 + i, time: validTime(f.elements['t-' + r.key].value) ? f.elements['t-' + r.key].value : r.time, title: r.title, emoji: r.emoji, note: r.note,
-      photo: '', repeat: 'daily', days: [], date: '', must: r.emoji === '💊', lead: 0, contactId: null,
+    const activities = ROUTINES.filter(r => f.elements['r-' + r.key].checked).map(r => ({
+      id: newId(), time: validTime(f.elements['t-' + r.key].value) ? f.elements['t-' + r.key].value : r.time, title: r.title, emoji: r.emoji, note: r.note,
+      ifLate: '', photo: '', repeat: 'daily', days: [], date: '', from: dayKey(), must: r.emoji === '💊', lead: 0, contactId: null,
     }));
     Object.assign(data, {
-      setup: true, person, pin, region: REGIONS[f.elements.region.value] ? f.elements.region.value : 'au',
-      contacts, activities, completed: {}, undone: {},
+      setup: true, since: dayKey(), person, pin, region: place, emergency: place === 'other' ? emergency : '',
+      contacts, activities, retired: [], completed: {}, undone: {}, seen: {}, raised: {},
     });
     applySettings();
     try { navigator.storage?.persist?.(); } catch { /* optional */ }
@@ -1859,46 +2452,72 @@ const forms = {
   },
 };
 
-// Show a form problem next to the Save button without re-rendering, so nothing typed is lost.
+// Show a form problem right under the field it is about, without re-rendering, so nothing typed is
+// lost and the message is on screen where the cursor lands.
 function showError(form, message, field) {
   form.querySelector('.error')?.remove();
-  form.querySelector('button:not([type="button"])').insertAdjacentHTML('beforebegin', `<p class="error" role="alert">${esc(message)}</p>`);
+  const html = `<p class="error" role="alert">${esc(message)}</p>`;
   const target = form.elements[field];
-  (target instanceof RadioNodeList ? target[0] : target)?.focus();
+  const input = target instanceof RadioNodeList ? target[0] : target;
+  const holder = input?.closest('label.field, .person-row, .choices');
+  if (holder) holder.insertAdjacentHTML('afterend', html);
+  else form.querySelector('button:not([type="button"])').insertAdjacentHTML('beforebegin', html);
+  input?.focus();
 }
 
 // ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
 
-let lastTouch = Date.now();
+let lastTouch = performance.now(); // on a clock that never jumps, like the tap guard
 let dirty = false; // something has been typed into a family form and not saved
 
 document.addEventListener('click', e => {
   arm();
-  lastTouch = Date.now();
+  lastTouch = performance.now();
+  byKeyboard = e.detail === 0;
   const wasHeld = held; // this tap is the finger lifting after a press and hold
   held = false;
-  // Taps straight after the screen changes are dropped (see guard). Keyboard presses are not taps.
-  if (e.detail !== 0 && Date.now() < guardUntil) {
+  // A screen left showing over midnight is redrawn before anything on it can be ticked, so a tap
+  // can never record tonight's tablets on a button drawn yesterday.
+  if (!sheet && LIVE_SCREENS.includes(ui.screen) && dayKey() !== shownDay) {
     e.preventDefault();
+    render('h1, .page-title');
+    guard(800);
     return;
   }
-  // A call link: let it try to start the call, and put the number on screen in case it can't.
-  const call = e.target.closest('a[data-number]');
-  if (call) return showCalling(call);
+  // Taps straight after the screen changes are dropped (see guard). Keyboard presses are not taps.
+  if (e.detail !== 0 && performance.now() < guardUntil) {
+    e.preventDefault();
+    // On the emergency button, silence could read as "it doesn't work".
+    if (e.target.closest('[data-emergency]')) toast('Press the red button once more.');
+    return;
+  }
+  // Something that calls: let a link try to start the call, and put the number on screen in case it can't.
+  const call = e.target.closest('[data-number]');
+  if (call) {
+    if (reminder) snooze(reminder.id); // the reminder that was showing comes back after the call
+    return showCalling(call);
+  }
 
   // Family settings opens with a press and hold, so it isn't wandered into. A plain tap explains.
   const hold = e.target.closest('[data-hold]');
   if (hold) {
-    if (e.detail === 0) go(hold.dataset.hold);
-    else if (!wasHeld) toast('For family: press and hold this button for two seconds.');
+    if (e.detail === 0) {
+      ui.unlocked = true;
+      go(hold.dataset.hold);
+    } else if (!wasHeld) {
+      toast('For family: press and hold this button for two seconds.');
+    }
     return;
   }
   const el = e.target.closest('[data-go], [data-action]');
   if (!el) return;
   const id = el.dataset.id ? Number(el.dataset.id) : null;
-  if (el.dataset.go) return go(el.dataset.go, id);
+  if (el.dataset.go) {
+    if (!saveTyped()) return; // leaving Family settings: keep what was typed
+    return go(el.dataset.go, id);
+  }
   actions[el.dataset.action]?.(el, id);
 });
 
@@ -1912,29 +2531,89 @@ document.addEventListener('pointerdown', e => {
   clearTimeout(holdTimer);
   holdTimer = setTimeout(() => {
     held = true;
+    ui.unlocked = true; // opened on purpose: it stays reachable until the clock is showing again
     go(el.dataset.hold);
   }, HOLD_MS);
 });
-for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, () => clearTimeout(holdTimer));
+for (const type of ['pointerup', 'pointercancel']) {
+  document.addEventListener(type, () => {
+    clearTimeout(holdTimer);
+    setTimeout(() => { held = false; }, 0); // after the click that follows, if there is one
+  });
+}
 document.addEventListener('contextmenu', e => {
   if (e.target.closest('[data-hold]')) e.preventDefault(); // a long press must not open the browser's menu
 });
 
+// A trembling finger often slides a little while pressing, and the browser then does not count it
+// as a tap. On the buttons that matter most (every card that fills the screen, and the emergency
+// button) a press that starts and ends on the same button counts, however far it slid.
+const SLIDE_BUTTONS = '.prompt-card button, .prompt-card a, [data-emergency]';
+let press = null;
+document.addEventListener('pointerdown', e => {
+  const el = e.pointerType === 'mouse' ? null : e.target.closest(SLIDE_BUTTONS);
+  press = el ? { el, x: e.clientX, y: e.clientY } : null;
+});
+document.addEventListener('pointercancel', () => { press = null; });
+document.addEventListener('pointerup', e => {
+  if (!press) return;
+  const { el, x, y } = press;
+  press = null;
+  const travel = Math.hypot(e.clientX - x, e.clientY - y);
+  // Under 12px the browser sends its own click. If both arrive, the tap guard drops the second.
+  if (travel < 12 || travel > 60 || !el.contains(document.elementFromPoint(e.clientX, e.clientY))) return;
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+});
+
 document.addEventListener('keydown', e => {
   arm();
-  lastTouch = Date.now();
-  // Escape closes a sheet, except an important reminder, which has to be answered.
-  if (e.key === 'Escape' && sheet && !(reminder && findActivity(reminder.id)?.must)) closeSheet();
+  lastTouch = performance.now();
+  if (e.key === 'Escape') {
+    // Escape closes a sheet, except an important reminder, which has to be answered. Otherwise it
+    // answers "No" to a question that is showing.
+    if (sheet) {
+      if (!(reminder && findActivity(reminder.id)?.must)) closeSheet();
+    } else if (ui.confirming) {
+      actions.cancel();
+    }
+    return;
+  }
+  // In the longer forms the Enter (or Go) key moves to the next box. Saving half a form by
+  // accident would leave Hazel set up with no people and no tablets.
+  if (e.key === 'Enter' && e.target.matches?.('input:not([type="checkbox"]):not([type="radio"]):not([type="file"])')
+    && e.target.closest('form[data-form="setup"], form[data-form="activity"], form[data-form="contact"]')) {
+    e.preventDefault();
+    const fields = [...e.target.form.querySelectorAll('input, select, textarea, button')].filter(x => !x.disabled && x.type !== 'file' && x.offsetParent);
+    fields[fields.indexOf(e.target) + 1]?.focus();
+  }
 });
+
+// Reading and scrolling count as using the screen, so a slow reader is not sent back to the clock.
+for (const type of ['scroll', 'wheel', 'pointerdown', 'touchstart']) {
+  window.addEventListener(type, () => { lastTouch = performance.now(); }, { passive: true, capture: true });
+}
 
 app.addEventListener('submit', e => {
   e.preventDefault();
   forms[e.target.dataset.form]?.(e.target);
 });
 
-app.addEventListener('input', () => {
-  lastTouch = Date.now();
+app.addEventListener('input', e => {
+  lastTouch = performance.now();
+  const name = e.target.form?.dataset.form || '';
+  // Typing a PIN, or pasting a copy to restore, is not an unsaved change.
+  if (['unlock', 'restore', 'erase'].includes(name)) return;
   dirty = true;
+  dirtyForm = name;
+});
+
+// The backup counts as made once it has really been copied, by the button or by hand.
+function markBackedUp() {
+  data.backedUp = dayKey();
+  save();
+}
+document.addEventListener('copy', e => {
+  if (ui.backup && e.target?.closest?.('.copy-box')) markBackedUp();
 });
 
 app.addEventListener('change', async e => {
@@ -1942,15 +2621,23 @@ app.addEventListener('change', async e => {
   if (t.name === 'repeat') {
     const form = t.form;
     form.querySelector('.when-weekly').hidden = t.value !== 'weekly';
-    form.querySelector('.when-once').hidden = t.value !== 'once';
+    form.querySelector('.when-once').hidden = !DATED_REPEATS.includes(t.value);
+    form.querySelector('.date-label').textContent = t.value === 'once' ? 'Date' : 'Starting on';
   }
+  if (t.name === 'region') t.form.querySelector('.when-other').hidden = t.value !== 'other';
   if (t.name === 'size' && t.checked) { // show the new writing size straight away
     data.size = t.value;
     applySettings();
     save();
   }
   if (t.name === 'emoji' && t.value === '💊' && t.form?.elements.must) t.form.elements.must.checked = true;
-  if (t.name === 'method') t.form.elements.phone.inputMode = t.value === 'phone' ? 'tel' : 'email';
+  if (t.name === 'method') { // FaceTime also takes an email address
+    const phone = t.form.elements.phone;
+    const byPhone = t.value === 'phone';
+    phone.inputMode = byPhone ? 'tel' : 'email';
+    phone.placeholder = byPhone ? 'e.g. 0412 345 678' : 'e.g. 0412 345 678 or sarah@example.com';
+    t.form.querySelector('.phone-label').textContent = byPhone ? 'Phone number' : 'Phone number or email address';
+  }
   if (t.matches('input[data-photo]') && t.files?.[0]) {
     try {
       ui.photo = await readPhoto(t.files[0]);
@@ -1966,15 +2653,27 @@ app.addEventListener('change', async e => {
 });
 
 // The heartbeat: keeps the clock right, raises reminders, and returns an abandoned screen to the clock.
+// Every screen goes back by itself, because reminders only happen from the clock: the person's own
+// screens after 3 minutes, and the quiet ones (which a reminder never interrupts) after 10, or 30
+// when a family member is in the middle of typing.
 const RESTING_SCREENS = ['day', 'activity', 'contacts', 'help'];
 const LIVE_SCREENS = ['home', 'day', 'activity', 'calm'];
 function tick() {
+  const now = clockText();
   const clock = app.querySelector('.clock');
-  if (clock && !clock.dataset.label) clock.textContent = clockText();
+  if (clock) {
+    clock.textContent = now;
+    clock.setAttribute('aria-label', `${now}. Tap to hear the time and what is next.`);
+  }
+  // Anywhere the time is written (a card left on screen, the calming screen) follows the clock.
+  for (const el of document.querySelectorAll('[data-now]')) if (el.textContent !== now) el.textContent = now;
+  heartbeat();
   checkReminders();
 
-  const idle = Date.now() - lastTouch;
-  if (!sheet && ((RESTING_SCREENS.includes(ui.screen) && idle > 3 * 60_000) || (ui.screen === 'family' && !dirty && idle > 10 * 60_000))) {
+  const idle = performance.now() - lastTouch;
+  const limit = RESTING_SCREENS.includes(ui.screen) ? 3 : QUIET_SCREENS.includes(ui.screen) ? (dirty ? 30 : 10) : 0;
+  if (!sheet && limit && idle > limit * 60_000) {
+    saveTyped(); // a half-finished family form is kept if it can be
     return go('home');
   }
   // Redraw whatever the person may have left showing, so it is never yesterday's answer.
@@ -1990,10 +2689,12 @@ function tick() {
 setInterval(tick, 15_000);
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible') return;
+  if (document.visibilityState !== 'visible') return heartbeat(true);
+  resumeAudio();
   requestWakeLock();
   tick();
 });
+window.addEventListener('pagehide', () => heartbeat(true));
 
 // ---------------------------------------------------------------------------
 // Start
@@ -2003,6 +2704,7 @@ applySettings();
 remember({ screen: 'home', id: null }, true);
 render();
 requestWakeLock();
+heartbeat();
 checkReminders();
 
 // Offline support is optional: it is unavailable from file:// and in some embedded frames.

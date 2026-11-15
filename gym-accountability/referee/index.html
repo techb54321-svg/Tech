@@ -24,6 +24,10 @@
   .err{color:#ff8a8c;font-size:14px}
   .brand{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}.brand span{color:var(--accent)}
   .pull{border-left:3px solid var(--accent);padding:6px 12px;color:var(--muted);font-size:14px;margin:10px 0}
+  .step{display:flex;gap:10px;align-items:flex-start;margin:12px 0}.step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#1a1200;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .topic{display:flex;gap:8px;margin-top:6px}.topic code{flex:1;background:#0b0d12;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;word-break:break-all}
+  .topic button{width:auto;padding:10px 14px;font-size:14px}
+  a.btnlink{display:block;text-align:center;text-decoration:none;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px;background:#12151d;font-weight:700}
 </style>
 </head>
 <body>
@@ -69,6 +73,16 @@
     <p class="small muted" style="margin-top:10px">Not for you? Just tell <span id="n2">them</span>. No hard feelings, and they'll find someone else to fear.</p>
   </div>
   <div class="card done" id="done" style="display:none"></div>
+  <div class="card" id="ntfy-setup" style="display:none">
+    <h2>Last step: get the alerts</h2>
+    <div class="step"><div class="n">1</div><div>Install the free <b>ntfy</b> app.
+      <a class="btnlink" id="store-ios" href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">App Store (iPhone)</a>
+      <a class="btnlink" id="store-android" href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">Google Play (Android)</a></div></div>
+    <div class="step"><div class="n">2</div><div>Open it, tap <b>+</b>, and paste this topic name. Leave the server as ntfy.sh.
+      <div class="topic"><code id="topic"></code><button id="copy-topic">Copy</button></div></div></div>
+    <div class="step"><div class="n">3</div><div>That's it. You'll get a ping every time <span class="n3">they</span> check in.</div></div>
+    <p class="small muted">No app? Open <a id="topic-web" style="color:var(--accent)" target="_blank" rel="noopener"></a> in a browser and tap Subscribe instead. Keep the topic name to yourself; anyone who has it can read the alerts.</p>
+  </div>
 </main>
 <script>
 (() => {
@@ -76,6 +90,7 @@
   const g = k => q.get(k) || '';
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const DN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const topic = g('tp');
   const name = g('n') || 'Your friend', ref = g('r'), target = +g('t') || 3, pledge = +g('p') || 0, conseq = g('c'), d = +g('d') || 1, mode = g('m') || 'manual', gym = g('g'), hour = g('h') === '' ? 9 : +g('h'), server = g('s'), token = g('k'), dep = +g('dep') || 0;
   const money = n => n.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
   const hour12 = h => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
@@ -115,7 +130,16 @@
     }
     $('agree-card').style.display = 'none';
     $('done').style.display = 'block';
-    $('done').innerHTML = `<b>Good. Thank you.</b><p class="small">Now tell ${esc(name)} directly, for example reply "I'm in" to their message, so they can confirm it in the app.${mode === 'push' ? ' They will also send you a short setup for the ntfy notifications.' : ''}</p>`;
+    $('done').innerHTML = `<b>Good. Thank you.</b><p class="small">Tell ${esc(name)} you're in, for example reply "I'm in" to their message, so they can confirm it in the app.</p>`;
+    if (mode === 'push' && topic) {
+      $('ntfy-setup').style.display = 'block';
+      $('topic').textContent = topic;
+      document.querySelectorAll('.n3').forEach(e => e.textContent = name);
+      const web = 'https://ntfy.sh/' + encodeURIComponent(topic); $('topic-web').href = web; $('topic-web').textContent = 'ntfy.sh/' + topic;
+      const ua = navigator.userAgent; if (/android/i.test(ua)) $('store-ios').style.display = 'none'; else if (/iphone|ipad|ipod/i.test(ua)) $('store-android').style.display = 'none';
+      $('copy-topic').onclick = async () => { try { await navigator.clipboard.writeText(topic); $('copy-topic').textContent = 'Copied'; } catch { $('copy-topic').textContent = 'Select it'; } };
+      $('ntfy-setup').scrollIntoView({ behavior:'smooth', block:'start' });
+    }
   };
 })();
 </script>

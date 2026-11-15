@@ -196,24 +196,14 @@
       <textarea id="s-conseq" placeholder="e.g. a political party I can't stand. My referee sends it and I get the receipt."></textarea>
       <h2 style="margin-top:18px">How the referee hears from you</h2>
       <div class="days" id="s-mode">
-        <label class="on"><input type="radio" name="mode" value="manual" checked>Manual</label>
-        <label><input type="radio" name="mode" value="auto">Automatic</label>
+        <label class="on"><input type="radio" name="mode" value="auto" checked>Push app</label>
+        <label><input type="radio" name="mode" value="manual">Manual</label>
       </div>
-      <p class="small muted" id="s-mode-help">Manual: you tap send, which means you can also not tap send. Automatic: the app tells your referee itself. You can guess which one works.</p>
+      <p class="small muted" id="s-mode-help"></p>
       <div id="ch-auto" class="chbox">
-        <div class="days" id="s-auto-kind" style="margin-top:10px">
-          <label class="on"><input type="radio" name="autokind" value="sms" checked>Weekly text message</label>
-          <label><input type="radio" name="autokind" value="ntfy">Push app</label>
-        </div>
-        <div id="auto-sms">
-          <p class="small" style="margin:10px 0 6px">One text to your referee every <b id="s-sms-dayname">Monday</b> with last week's verdict, sent by a tiny free server of your own, even if you never open the app. Ten-minute setup, once: <a href="sms-server/" target="_blank" rel="noopener" style="color:var(--accent)">open the guide</a>.</p>
-          <label>Server address</label><input type="url" id="s-sms-url" placeholder="https://ironclad-sms.yourname.workers.dev" autocapitalize="off" />
-          <label>Secret (APP_SECRET from the setup)</label><input type="text" id="s-sms-secret" autocapitalize="off" autocomplete="off" />
-          <label>Send the weekly text at</label>
-          <select id="s-sms-hour"></select>
-        </div>
+        <p class="small" id="auto-kept" style="display:none;margin:10px 0 6px"></p>
         <div id="auto-ntfy">
-          <p class="small" style="margin:10px 0 6px">Every check-in, live, with the photo. Your referee installs one free app, <b>ntfy</b>. Send them the setup and they're done in a minute.</p>
+          <p class="small" style="margin:10px 0 6px">Nothing to set up on your side. The invitation you send after signing walks your referee through installing ntfy. Already know they have it? Send the setup now.</p>
           <button type="button" id="s-share-setup" class="btn-block">📤 Share setup with referee</button>
           <input type="hidden" id="s-ntfy" />
         </div>
@@ -548,7 +538,7 @@ function renderToday(){
   if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 Zero slack. Today is a gym day whether you planned it or not.']);
   if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} stuck in the outbox${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
   if (!ag && !tampered) banners.push(['warn',`🤝 ${esc(cfg.referee.name)} hasn't said yes yet. Until they do, this is a diary, not a contract.${cfg.channel.type==='sms' ? ' No weekly texts go out before that.' : ''} <button style="padding:6px 10px;margin-left:6px" id="btn-invite2">Invite</button>`]);
-  if (!channelActive()) banners.push(['warn','📨 Reports are manual, which means you can skip them. Settings → Edit contract → Automatic fixes that.']);
+  if (!channelActive()) banners.push(['warn','📨 Reports are manual, which means you can skip them. Settings → Edit contract → Push app fixes that.']);
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
@@ -669,11 +659,9 @@ function initSetupForm(prefill){
     showMap(c.gym.lat, c.gym.lng);
     const ch = c.channel || { type:'none' };
     document.querySelector(`#s-mode input[value="${ch.type==='none'?'manual':'auto'}"]`).checked = true;
-    document.querySelector(`#s-auto-kind input[value="${ch.type==='sms'||ch.type==='none'?'sms':'ntfy'}"]`).checked = true;
     $('s-ntfy').value = ch.type==='ntfy' ? ch.topic : '';
-    $('s-sms-url').value = ch.type==='sms' ? ch.url : ''; $('s-sms-secret').value = ch.type==='sms' ? ch.secret : ''; $('s-sms-hour').value = ch.type==='sms' ? ch.sendHour : 9;
-    keptChannel = (ch.type!=='none' && ch.type!=='ntfy' && ch.type!=='sms') ? ch : null;
-  } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="manual"]').checked = true; document.querySelector('#s-auto-kind input[value="sms"]').checked = true; $('s-ntfy').value=''; $('s-sms-url').value=''; $('s-sms-secret').value=''; $('s-sms-hour').value=9; }
+    keptChannel = (ch.type!=='none' && ch.type!=='ntfy') ? ch : null;
+  } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="auto"]').checked = true; $('s-ntfy').value=''; }
   updateChannelUI();
 }
 $('s-remind-h').innerHTML = [...Array(12)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
@@ -742,27 +730,25 @@ $('s-search').addEventListener('keydown', e => { if (e.key==='Enter') { e.preven
 function randomTopic(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let t='gym-'; for (let i=0;i<10;i++) t+=a[Math.floor(Math.random()*a.length)]; return t; }
 let keptChannel = null; // an advanced channel configured before the simple mode switch
 function modeAuto(){ return document.querySelector('#s-mode input:checked').value === 'auto'; }
-function autoKind(){ return document.querySelector('#s-auto-kind input:checked').value; }
-function hourLabel(h){ return `${((h+11)%12)+1}:00 ${h<12?'AM':'PM'}`; }
-$('s-sms-hour').innerHTML = [...Array(24)].map((_,h)=>`<option value="${h}" ${h===9?'selected':''}>${hourLabel(h)}</option>`).join('');
 function updateChannelUI(){
   document.querySelectorAll('#s-mode label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
-  document.querySelectorAll('#s-auto-kind label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
-  $('ch-auto').classList.toggle('on', modeAuto());
-  const sms = autoKind()==='sms';
-  $('auto-sms').style.display = sms ? 'block' : 'none';
-  $('auto-ntfy').style.display = sms ? 'none' : 'block';
-  $('s-sms-dayname').textContent = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][+$('s-weekstart').value] || 'Monday';
-  if (modeAuto() && !sms && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
+  const auto = modeAuto();
+  $('ch-auto').classList.toggle('on', auto);
+  $('s-mode-help').textContent = auto
+    ? 'Your referee sees every check-in the moment it happens, photo included, plus the weekly verdict. They install one free app. You do nothing.'
+    : "You send each report yourself. Which means you can also not send it. Pick this only if your referee won't install anything.";
+  $('auto-kept').style.display = keptChannel ? 'block' : 'none';
+  $('auto-ntfy').style.display = keptChannel ? 'none' : 'block';
+  if (keptChannel) $('auto-kept').textContent = keptChannel.type==='sms' ? 'Connected to your weekly text-message server. Nothing to change here.' : 'Connected through your custom channel. Nothing to change here.';
+  if (auto && !keptChannel && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
 }
-document.querySelectorAll('#s-mode input, #s-auto-kind input').forEach(i => i.onchange = updateChannelUI);
+document.querySelectorAll('#s-mode input').forEach(i => i.onchange = updateChannelUI);
 $('s-weekstart').addEventListener('change', updateChannelUI);
 $('s-refname').addEventListener('input', () => { $('s-dep-ref').textContent = $('s-refname').value.trim() || 'your referee'; });
 $('s-pledge').addEventListener('change', () => { if (!cfg) $('s-deposit').value = Math.max(0, +$('s-pledge').value||0) * 4; });
 function normPhone(p){ const d = String(p||'').replace(/[^\d+]/g,''); return d.startsWith('+') ? '+' + d.slice(1).replace(/\+/g,'') : d; }
 function readChannel(){
   if (!modeAuto()) return { type:'none' };
-  if (autoKind()==='sms') return { type:'sms', url:$('s-sms-url').value.trim().replace(/\/+$/,''), secret:$('s-sms-secret').value.trim(), sendHour:+$('s-sms-hour').value };
   if (keptChannel) return keptChannel;
   return { type:'ntfy', topic:$('s-ntfy').value.trim() };
 }
@@ -1011,7 +997,7 @@ async function markPaid(){
 }
 
 /* ---------- automatic delivery to the referee ---------- */
-const CH_NAMES = { none:'manual', sms:'weekly text', telegram:'automatic', ntfy:'automatic', discord:'automatic', webhook:'automatic' };
+const CH_NAMES = { none:'manual', sms:'weekly text', telegram:'automatic', ntfy:'push app', discord:'automatic', webhook:'automatic' };
 function dataUrlToBlob(d){ const [h,b]=d.split(','); const mime=h.match(/:(.*?);/)[1]; const bin=atob(b); const arr=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime}); }
 async function deliver(msg, ch){
   ch = ch || cfg.channel;
@@ -1108,6 +1094,7 @@ function refereePageUrl(token){
   const base = new URL('referee/', location.href).href;
   const p = new URLSearchParams({ n:cfg.name, r:cfg.referee.name, t:cfg.target, p:cfg.pledge, c:cfg.consequence||'', d:cfg.weekStart, g:cfg.gym.label||'', dep: depositLeft(), m: cfg.channel.type==='sms' ? 'sms' : channelActive() ? 'push' : 'manual' });
   if (cfg.channel.type==='sms') { p.set('h', cfg.channel.sendHour ?? 9); p.set('s', cfg.channel.url); if (token) p.set('k', token); }
+  if (cfg.channel.type==='ntfy') p.set('tp', cfg.channel.topic);
   return base + '?' + p.toString();
 }
 async function inviteReferee(){

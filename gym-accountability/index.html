@@ -811,7 +811,7 @@ $('checkin').onclick = async () => {
 $('checkout').onclick = async () => {
   const btn=$('checkout'), msg=$('checkout-msg');
   const minutes = Math.floor((Date.now()-active.start)/60000);
-  if (minutes < cfg.minMinutes && !confirm(`Only ${minutes} minutes. Checking out now will NOT count toward this week. Check out anyway?`)) return;
+  if (minutes < cfg.minMinutes && !(await ask({ title:`Only ${minutes} minutes`, body:`Checking out now will <b>not</b> count toward this week. Stay to ${cfg.minMinutes} minutes or check out anyway?`, okLabel:'Check out anyway (no credit)', danger:true, cancelLabel:'Keep training' }))) return;
   btn.disabled=true; msg.textContent='Verifying you are still at the gym…';
   let verified=false, endDist=null, reason='';
   try { const pos = await getPosition(); const g = atGym(pos); endDist=g.dist; if (g.ok) verified=true; else reason=`checked out ${g.dist} m away from gym`; }
@@ -904,7 +904,7 @@ $('btn-freeze').onclick = () => {
 };
 async function markPaid(){
   const o = owed();
-  if (!confirm(`Confirm you have actually paid ${money(o)} as promised?`)) return;
+  if (!(await ask({ title:'Mark as paid', body:`Confirm you have actually paid ${money(o)} to ${esc(cfg.referee.name)} as promised. They get a message asking them to confirm.`, okLabel:'Yes, I paid' }))) return;
   await append({ type:'paid', amount:o }); renderToday(); toast('Recorded. Honour intact.');
   notifyReferee('paid', `💵 ${cfg.name} marked ${money(o)} as paid to you. Please confirm you actually received it.`);
 }
@@ -991,6 +991,16 @@ function escalate(st){
 }
 
 /* ---------- sheets ---------- */
+function ask({ title, body, okLabel='OK', cancelLabel='Cancel', danger=false, input=null }){
+  return new Promise(res => {
+    openSheet(`<h3>${esc(title)}</h3>${body?`<p class="small muted">${body}</p>`:''}${input?`<input type="text" id="ask-input" placeholder="${esc(input.placeholder||'')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-top:10px" />`:''}
+      <button class="btn-block ${danger?'btn-danger':'btn-primary'}" style="margin-top:14px" id="ask-ok">${esc(okLabel)}</button><button class="btn-block" style="margin-top:8px" id="sheet-close">${esc(cancelLabel)}</button>`);
+    const done = v => { closeSheet(); res(v); };
+    $('ask-ok').onclick = () => done(input ? $('ask-input').value : true);
+    $('sheet-close').onclick = () => done(null);
+    if (input) { const i=$('ask-input'); setTimeout(()=>i.focus(), 50); i.addEventListener('keydown', e => { if (e.key==='Enter') done(i.value); }); }
+  });
+}
 function openSheet(html){ $('sheet').innerHTML = html; $('modal').classList.add('show'); const c=$('sheet-close'); if (c) c.onclick=closeSheet; }
 function closeSheet(){ $('modal').classList.remove('show'); }
 $('modal').onclick = e => { if (e.target===$('modal')) closeSheet(); };
@@ -1045,19 +1055,23 @@ $('import-file').onchange = async () => {
     const saved = ledger; ledger = data.ledger;
     const ok = await verifyLedger();
     if (!ok) { ledger = saved; throw new Error('that backup fails hash verification'); }
-    if (ledger.length < saved.length && !confirm(`This backup has ${ledger.length} entries; you currently have ${saved.length}. Replace anyway?`)) { ledger = saved; return; }
+    if (ledger.length < saved.length && !(await ask({ title:'Shorter backup', body:`This backup has ${ledger.length} entries; you currently have ${saved.length}. Replace anyway?`, okLabel:'Replace', danger:true }))) { ledger = saved; return; }
     cfg = data.cfg; active = data.active||null; save(LS.cfg,cfg); save(LS.ledger,ledger); save(LS.active,active);
     await append({ type:'import', count: ledger.length });
     setIntegrity(true); toast('Backup restored.'); render(); show('today');
   } catch(e){ toast('Import failed: '+e.message, 5000); }
 };
-$('btn-reset').onclick = () => {
+const norm = t => String(t||'').toLowerCase().replace(/[^a-z ]/g,'').replace(/\s+/g,' ').trim();
+$('btn-reset').onclick = async () => {
   const phrase = 'I am quitting on myself';
-  const typed = prompt(`Type exactly: ${phrase}`);
-  if (typed !== phrase) return toast('Not wiped.');
-  if (!confirm('Last chance. Export first? Cancel to go back.')) return;
+  const typed = await ask({ title:'Wipe everything', body:`This deletes the contract, every session and the whole ledger on this phone. Type the phrase to continue:<br><b>${phrase}</b>`, okLabel:'Wipe it', danger:true, input:{ placeholder: phrase } });
+  if (typed===null) return;
+  if (norm(typed) !== norm(phrase)) return toast(`That didn't match. You typed: "${typed}"`, 5000);
+  const sure = await ask({ title:'Last chance', body:'Export a backup first if you want to keep the record. Wiping cannot be undone.', okLabel:'Yes, wipe everything', danger:true, cancelLabel:'Go back' });
+  if (!sure) return;
   Object.values(LS).forEach(k=>localStorage.removeItem(k));
-  cfg=null; ledger=[]; active=null; setIntegrity(true); render();
+  cfg=null; ledger=[]; active=null; outbox=[]; setIntegrity(true); render(); window.scrollTo(0,0);
+  toast('Wiped. Clean slate.');
 };
 $('btn-edit').onclick = () => { initSetupForm(cfg); show('setup'); window.scrollTo(0,0); };
 

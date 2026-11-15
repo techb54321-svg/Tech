@@ -120,6 +120,6 @@ single HTML file is completely self-contained apart from the Three.js library.
 
 ## Also in this repo
 
-- **[Hazel](hazel/)** — a gentle daily companion app for older family members
-  (My Day, Call Family, Get Help, and a Family View for setting it up). See
+- **[Hazel](hazel/)** — a day clock that reminds, a simple way to call family,
+  and help close at hand, set up by the family for an older person. See
   [`hazel/README.md`](hazel/README.md).

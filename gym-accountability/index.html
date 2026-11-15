@@ -13,6 +13,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Ironclad" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Ironclad" />
+<meta property="og:title" content="Ironclad: make quitting expensive" />
+<meta property="og:description" content="Gym accountability with teeth. GPS-verified check-ins, a friend holding your deposit, and a log you can't fake." />
+<meta property="og:image" content="https://techb54321-svg.github.io/Tech/gym-accountability/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet" />
@@ -332,6 +340,17 @@
   .step{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
   .step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#1a1200;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
 
+  /* install */
+  .inst-hero{display:flex;align-items:center;gap:14px;margin:6px 0 8px}
+  .inst-hero img{width:64px;height:64px;border-radius:16px;box-shadow:0 12px 30px -10px rgba(255,110,30,.7)}
+  .inst-steps{margin:14px 0 4px;display:flex;flex-direction:column;gap:10px}
+  .inst-steps div{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:var(--bg2);border:1px solid var(--line);font-size:15px}
+  .inst-steps i{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#1a0d00;font-style:normal;font-weight:800;display:grid;place-items:center;font-size:13px}
+  .inst-steps svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-4px}
+  .inst-arrow{display:flex;justify-content:center;margin-top:6px;color:var(--accent);animation:bob 1.4s ease-in-out infinite}
+  .inst-arrow svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+  @keyframes bob{50%{transform:translateY(6px)}}
+
   /* celebration */
   #confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
   #celebrate{position:fixed;inset:0;z-index:59;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;opacity:0;transition:opacity .35s;background:radial-gradient(circle at 50% 45%,rgba(var(--glow),.18),rgba(7,8,12,.94) 60%);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
@@ -589,7 +608,7 @@
     <div class="card">
       <h2>Belt and braces</h2>
       <div class="list">
-        <div class="li"><div class="badge"><svg class="ico"><use href="#i-phone"/></svg></div><div><b>Install the app</b><span class="muted" id="install-hint">Browser menu → Add to Home Screen. Out of sight is out of mind, and out of mind is out of the gym.</span></div></div>
+        <div class="li"><div class="badge"><svg class="ico"><use href="#i-phone"/></svg></div><div><b>Install the app</b><span class="muted" id="install-hint">Out of sight is out of mind, and out of mind is out of the gym.</span><button id="btn-install" class="btn-block">Put Ironclad on my home screen</button></div></div>
         <div class="li"><div class="badge"><svg class="ico"><use href="#i-cal"/></svg></div><div><b>Reminders in your calendar</b><span class="muted">Web apps can't wake your phone. Your calendar can: alerts on gym days and a "week closes tonight" alarm.</span><button id="btn-ics" class="btn-block">Add to my calendar</button></div></div>
         <div class="li"><div class="badge"><svg class="ico"><use href="#i-bell"/></svg></div><div><b>Nudges</b><span class="muted">While the app is open. Cheap insurance.</span><button id="btn-notify" class="btn-block">Enable notifications</button></div></div>
         <div class="li"><div class="badge"><svg class="ico"><use href="#i-down"/></svg></div><div><b>Back up the ledger</b><span class="muted">A lost phone shouldn't mean a lost record. Export after each week.</span>
@@ -630,7 +649,7 @@
 <script>
 (() => {
 'use strict';
-const LS = { cfg:'ironclad.cfg', ledger:'ironclad.ledger', active:'ironclad.active', notified:'ironclad.notified', outbox:'ironclad.outbox', escalated:'ironclad.escalated', tamperSent:'ironclad.tamperSent' };
+const LS = { cfg:'ironclad.cfg', ledger:'ironclad.ledger', active:'ironclad.active', notified:'ironclad.notified', outbox:'ironclad.outbox', escalated:'ironclad.escalated', tamperSent:'ironclad.tamperSent', installSeen:'ironclad.installSeen' };
 const DAY = 86400000;
 const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const $ = id => document.getElementById(id);
@@ -988,7 +1007,7 @@ function renderSettings(){
     ['Deposit', hasDeposit() ? `${money(deposited())} handed over, ${money(depositLeft())} left` : 'none'], ['Forfeits go to', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? 'Notifications on ✓' : 'Enable notifications';
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
+  if (isStandalone()) { $('install-hint').textContent = "Installed. You're running the app. Good."; $('btn-install').style.display = 'none'; }
 }
 
 /* ---------- setup form ---------- */
@@ -1677,6 +1696,39 @@ $('s-cancel').onclick = () => { show('settings'); toast('Nothing changed.'); };
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
 document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); await settleWeeks(); renderToday(); flushOutbox(); checkRefereeAgreement(true); } });
 
+/* ---------- install to home screen ---------- */
+let deferredInstall = null;
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; setTimeout(() => maybeOfferInstall(), 1200); });
+addEventListener('appinstalled', () => { deferredInstall = null; save(LS.installSeen, Date.now()); closeSheet(); toast('Installed. Ironclad is on your home screen now.', 4500); });
+const SHARE_SVG = '<svg viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5M5 12v8h14v-8"/></svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+function installSheet(){
+  const head = `<div class="inst-hero"><img src="icon-192.png" alt=""><div><h3 style="margin:0">Put Ironclad on your home screen</h3><p class="small muted" style="margin:2px 0 0">One tap away when you walk into the gym. Opens full screen, works offline.</p></div></div>`;
+  if (deferredInstall) {
+    openSheet(head + `<button class="btn-primary btn-block big-btn" style="margin-top:12px" id="inst-go">Install Ironclad</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Not now</button>`);
+    $('inst-go').onclick = async () => { const ev = deferredInstall; deferredInstall = null; closeSheet(); try { ev.prompt(); const c = await ev.userChoice; if (c && c.outcome === 'dismissed') toast('No problem. It lives in Settings when you want it.'); } catch {} };
+  } else if (IS_IOS) {
+    openSheet(head + `<div class="inst-steps">
+        <div><i>1</i><span>Tap ${SHARE_SVG} <b>Share</b> in Safari's toolbar. On newer iPhones it's under <b>⋯</b>.</span></div>
+        <div><i>2</i><span>Scroll down and tap ${PLUS_SVG} <b>Add to Home Screen</b>.</span></div>
+        <div><i>3</i><span>Tap <b>Add</b>. Then open Ironclad from your home screen.</span></div>
+      </div><div class="inst-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16M6 14l6 6 6-6"/></svg></div>
+      <button class="btn-block" style="margin-top:6px" id="sheet-close">Got it</button>`);
+  } else {
+    openSheet(head + `<div class="inst-steps"><div><i>1</i><span>Open your browser menu (<b>⋮</b> or <b>⋯</b>).</span></div><div><i>2</i><span>Choose <b>Install app</b> or <b>Add to Home Screen</b>.</span></div></div><button class="btn-block" style="margin-top:12px" id="sheet-close">Got it</button>`);
+  }
+}
+function maybeOfferInstall(tries = 0){
+  if (isStandalone() || (!deferredInstall && !IS_IOS)) return;
+  if (Date.now() - (+load(LS.installSeen, 0) || 0) < 7 * DAY) return;
+  if ($('modal').classList.contains('show') || active) { if (tries < 20) setTimeout(() => maybeOfferInstall(tries + 1), 4000); return; }
+  save(LS.installSeen, Date.now());
+  installSheet();
+}
+$('btn-install').onclick = () => { if (isStandalone()) return toast("You're already in the app."); installSheet(); };
+
 let pendingConn = null;
 function readConnectHash(){
   const m = location.hash.match(/connect=([^&]+)/); if (!m) return false;
@@ -1709,6 +1761,7 @@ async function offerConnection(){
     sendTamperAlert(); flushOutbox(); checkRefereeAgreement(true);
   } else render();
   offerConnection();
+  setTimeout(() => maybeOfferInstall(), 2500);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 })();

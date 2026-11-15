@@ -52,6 +52,8 @@ jobs:
           cp -r clip-forge/dist/. site/clip-forge/
           mkdir -p site/gym-accountability
           cp -r gym-accountability/. site/gym-accountability/
+          mkdir -p site/ironclad
+          cp -r gym-accountability/landing/. site/ironclad/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

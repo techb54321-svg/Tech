@@ -118,6 +118,7 @@
   .savebar{position:sticky;bottom:12px;z-index:4;display:flex;gap:10px;padding:12px 0 0;margin-top:14px;background:linear-gradient(to bottom,rgba(23,27,37,0),var(--card) 40%)}
   body.has-nav .savebar{bottom:calc(84px + env(safe-area-inset-bottom))}
   .savebar button{flex:1}.savebar .btn-primary{flex:2}
+  .timepick{display:flex;align-items:center;gap:8px}.timepick select{flex:1}.timepick span{color:var(--muted);font-weight:800}
   .or{text-align:center;color:var(--muted);font-size:12px;margin:10px 0 6px;letter-spacing:.08em;text-transform:uppercase}
   @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#0b0d12 } }
 </style>
@@ -169,7 +170,13 @@
       <label>Planned gym days (so we know when to nag)</label>
       <div class="days" id="s-days"></div>
       <label>Nag time on gym days</label>
-      <input type="time" id="s-remind" value="17:00" />
+      <div class="timepick">
+        <select id="s-remind-h" aria-label="Hour"></select>
+        <span>:</span>
+        <select id="s-remind-m" aria-label="Minute"></select>
+        <select id="s-remind-ap" aria-label="AM or PM"><option value="AM">AM</option><option value="PM">PM</option></select>
+      </div>
+      <input type="hidden" id="s-remind" value="17:00" />
       <label class="check"><input type="checkbox" id="s-photo" checked /> Photo at every check-in (proof your referee can see)</label>
 
       <h2 style="margin-top:18px">The stakes</h2>
@@ -635,7 +642,7 @@ function renderSettings(){
   const c = cfg;
   $('cfg-view').innerHTML = [
     ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
-    ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
+    ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Nag time', fmtRemind(c.remindTime)],
     ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
     ['Deposit', hasDeposit() ? `${money(deposited())} handed over, ${money(depositLeft())} left` : 'none'], ['Forfeits go to', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
@@ -651,11 +658,12 @@ function initSetupForm(prefill){
   $('s-submit').textContent = prefill ? 'Save changes' : 'Sign it. No take-backs.';
   [$('s-dep-ref').closest('label'), $('s-deposit'), $('s-deposit').nextElementSibling].forEach(el => { if (el) el.style.display = prefill ? 'none' : ''; });
   $('s-cancel').style.display = prefill ? 'block' : 'none';
+  if (!prefill) setRemind('17:00');
   $('s-days').innerHTML = [1,2,3,4,5,6,0].map(d=>`<label class="${(c.planDays||[1,3,5]).includes(d)?'on':''}"><input type="checkbox" value="${d}" ${(c.planDays||[1,3,5]).includes(d)?'checked':''}>${DN[d]}</label>`).join('');
   $('s-days').querySelectorAll('label').forEach(l=>l.onclick=()=>setTimeout(()=>l.classList.toggle('on', l.querySelector('input').checked),0));
   if (prefill) {
     $('s-name').value=c.name; $('s-lat').value=c.gym.lat; $('s-lng').value=c.gym.lng; $('s-gym').value=c.gym.label||''; $('s-radius').value=c.radius; $('s-min').value=c.minMinutes;
-    $('s-target').value=c.target; $('s-weekstart').value=c.weekStart; $('s-remind').value=c.remindTime; $('s-photo').checked=c.requirePhoto;
+    $('s-target').value=c.target; $('s-weekstart').value=c.weekStart; setRemind(c.remindTime); $('s-photo').checked=c.requirePhoto;
     $('s-refname').value=c.referee.name; $('s-refphone').value=c.referee.phone||''; $('s-refemail').value=c.referee.email||''; $('s-pledge').value=c.pledge; $('s-deposit').value=0; $('s-conseq').value=c.consequence||''; $('s-freeze').value=c.freezesPerQuarter;
     $('s-agree').checked = true;
     showMap(c.gym.lat, c.gym.lng);
@@ -668,6 +676,22 @@ function initSetupForm(prefill){
   } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="manual"]').checked = true; document.querySelector('#s-auto-kind input[value="sms"]').checked = true; $('s-ntfy').value=''; $('s-sms-url').value=''; $('s-sms-secret').value=''; $('s-sms-hour').value=9; }
   updateChannelUI();
 }
+$('s-remind-h').innerHTML = [...Array(12)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+$('s-remind-m').innerHTML = [...Array(12)].map((_,i)=>`<option value="${i*5}">${pad(i*5)}</option>`).join('');
+function setRemind(v){
+  const [h, m] = String(v||'17:00').split(':').map(Number);
+  $('s-remind-h').value = String(((h + 11) % 12) + 1);
+  $('s-remind-m').value = String(Math.min(55, Math.round((m||0) / 5) * 5));
+  $('s-remind-ap').value = h < 12 ? 'AM' : 'PM';
+  syncRemind();
+}
+function syncRemind(){
+  const h12 = +$('s-remind-h').value, m = +$('s-remind-m').value, pm = $('s-remind-ap').value === 'PM';
+  const h = (h12 % 12) + (pm ? 12 : 0);
+  $('s-remind').value = `${pad(h)}:${pad(m)}`;
+}
+['s-remind-h','s-remind-m','s-remind-ap'].forEach(id => $(id).addEventListener('change', syncRemind));
+function fmtRemind(v){ const [h,m] = String(v).split(':').map(Number); return `${((h+11)%12)+1}:${pad(m)} ${h<12?'AM':'PM'}`; }
 function setGymLocation(lat, lng, label, msg){
   $('s-lat').value = (+lat).toFixed(6); $('s-lng').value = (+lng).toFixed(6);
   if (label && !$('s-gym').value.trim()) $('s-gym').value = label;
@@ -788,6 +812,7 @@ $('s-locate').onclick = async () => {
   catch(e){ $('s-locmsg').textContent = e.message; }
 };
 function readSetupForm(){
+  syncRemind();
   const planDays = [...$('s-days').querySelectorAll('input:checked')].map(i=>+i.value);
   return {
     name: $('s-name').value.trim(),

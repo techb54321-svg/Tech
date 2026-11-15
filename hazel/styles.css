@@ -190,6 +190,7 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   /* With bigger writing the card keeps its name, time and words, and gives up its label and picture. */
   :root:not([data-size='normal']) .attention :is(.pill, .thumb) { display: none; }
   :root:not([data-size='normal']) .attention .next-head { margin: 0 0 4px; }
+  :root:not([data-size='normal']) .hero.compact .taken.same { display: none; } /* the card just below names it */
 }
 .hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; } /* a held finger that drifts must not turn into a scroll */
 
@@ -468,16 +469,6 @@ fieldset.field legend { padding: 0; }
   .prompt-body, .prompt-actions { flex: 1 1 0; min-width: 0; min-height: 0; max-height: calc(100dvh - 72px); overflow-y: auto; }
   .prompt-pic { width: 96px; height: 96px; font-size: 3.4rem; }
 }
-/* A phone on its side is very short: no picture, a smaller heading, and the buttons two abreast under the green one. */
-@media (max-height: 480px) {
-  .prompt-card :is(.prompt-pic, .done-tick) { display: none; }
-  .prompt-card h2 { font-size: 1.6rem; }
-  .prompt-card { padding: 12px 16px; gap: 16px; }
-  .prompt-card .prompt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: center; }
-  .prompt-card .prompt-actions > * { margin: 0; min-height: 44px; padding: 8px 10px; }
-  .prompt-card .prompt-actions .primary { grid-column: 1 / -1; }
-  .prompt-body, .prompt-actions { max-height: calc(100dvh - 56px); }
-}
 .prompt-when { font-size: 1.25rem; font-weight: 700; color: var(--ink-soft); margin: 6px 0 0; }
 .prompt-card h2 { font-size: 2.2rem; line-height: 1.1; margin: 4px 0 8px; overflow-wrap: break-word; }
 .prompt-note { font-size: 1.35rem; line-height: 1.4; margin: 0 0 12px; overflow-wrap: break-word; }
@@ -488,6 +479,24 @@ fieldset.field legend { padding: 0; }
 .prompt-card .say-card { text-align: left; margin: 0 0 12px; font-size: 1.25rem; }
 .big-number { font-size: 2.4rem; font-weight: 850; line-height: 1.15; margin: 4px 0 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
 .big-number.address { font-size: 1.5rem; }
+/* A phone on its side is very short: no picture, a smaller heading, and the buttons two abreast under
+   the green one. (After the rules above, so that the smaller heading wins.) */
+@media (max-height: 480px) {
+  .prompt-card :is(.prompt-pic, .done-tick) { display: none; }
+  .prompt-card h2 { font-size: 1.6rem; }
+  .prompt-card { padding: 12px 16px; gap: 16px; }
+  /* Buttons that do not all fit run off the bottom, where they can be scrolled to; never off the top. */
+  .prompt-card .prompt-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; flex: 1.35 1 0; }
+  .prompt-card .prompt-actions > * { margin: 0; min-height: 44px; padding: 8px 10px; }
+  .prompt-card .prompt-actions .primary { grid-column: 1 / -1; }
+  .prompt-body, .prompt-actions { max-height: calc(100dvh - 56px); }
+  /* Well done: a bigger OK, with "Oops, I haven't done it yet" well clear of it. */
+  .prompt-card.sheet-done .prompt-actions { row-gap: 22px; }
+  .prompt-card.sheet-done .prompt-actions .primary { min-height: 52px; }
+  /* Calling: one or two buttons, so the number to dial and "Tell them" get the room. */
+  .prompt-card.sheet-call .prompt-actions { flex: 0 0 30%; grid-template-columns: 1fr; }
+  .prompt-card.sheet-call:has(.big-number.again) .prompt-note { display: none; } /* the heading already says "Call 000" */
+}
 
 .toast {
   position: fixed; left: 16px; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); margin: 0 auto;
@@ -532,7 +541,7 @@ fieldset.field legend { padding: 0; }
   .app[data-screen='home'] { overflow: clip; }
   /* The clock stays put and whole on its half while the buttons scroll beside it. The words are
      centred in the space under the Help row and never run up into it, however big the writing. */
-  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); overflow: hidden; }
+  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); overflow-y: auto; }
   .app[data-screen='home'] .hero.compact { padding-bottom: 14px; }
   .app[data-screen='home'] .landscape { overflow: hidden; } /* the hills hang below the panel: clipped, so the panel has nothing to scroll */
   .app[data-screen='home'] .hero-main { margin: auto 0; }

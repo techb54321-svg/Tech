@@ -452,16 +452,18 @@ function lastNight() {
   if (first && minutesLate(first) >= 0) return [];
   const y = daysAgo(1);
   const day = dayKey(y);
-  const held = carriedAll().map(x => x.a); // still inside their hour: their card says what to do
+  const inHour = carriedAll().map(x => x.a); // still inside their hour after midnight: due now
+  const top = attention()?.a; // the card at the top of the first screen says what to do about that one
   // "Not ticked" is only said about a night Hazel was already set up for.
   const known = !!data.since && data.since <= day;
-  return data.activities.filter(a => a.must && a.time >= '17:00' && !held.includes(a) && occursOn(a, y)).sort(byTime)
-    .map(a => ({ a, at: doneAt(a.id, day) })).filter(x => x.at !== undefined || known);
+  return data.activities.filter(a => a.must && a.time >= '17:00' && a !== top && occursOn(a, y)).sort(byTime)
+    .map(a => ({ a, at: doneAt(a.id, day), due: inHour.includes(a) })).filter(x => x.at !== undefined || known);
 }
 // The family's "if it is late" advice was written for the same day ("if it is before 10 pm, take
 // them now"), so it is never repeated the next morning, when it would read as "take them now".
-const lastNightText = ({ a, at }) => (at === undefined
-  ? `Last night: ${a.title} not ticked.${isTablets(a) ? ` Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` : ''}`
+// One still inside its hour is due now, and its card comes back: no advice about asking first.
+const lastNightText = ({ a, at, due }) => (at === undefined
+  ? `Last night: ${a.title} not ticked.${isTablets(a) && !due ? ` Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` : ''}`
   : `Last night: ${a.title}, ${tickWords(a, at)}`);
 
 // What belongs at the top of the home screen: the latest important thing that is due, until it is
@@ -483,16 +485,24 @@ function attention() {
 // The answer to "have I taken my tablets?", kept beside the clock on the first screen: last night's,
 // today's ticked ones with their times, and any that are past their time and not ticked.
 function tabletLines() {
-  const lines = lastNight().map(x => ({ cls: x.at === undefined ? 'warn' : 'ok', text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) }));
+  const night = lastNight();
+  // Two or more of last night's tablets not ticked: one line, with the advice said once.
+  const missed = night.filter(x => x.at === undefined && isTablets(x.a) && !x.due);
+  const lines = [];
+  for (const x of night) {
+    if (missed.length < 2 || !missed.includes(x)) lines.push({ cls: x.at === undefined ? 'warn' : 'ok', text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) });
+    else if (x === missed[0]) lines.push({ cls: 'warn', text: `Last night: ${listText(missed.map(m => m.a.title))} not ticked. Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` });
+  }
   const top = attention()?.a;
   for (const a of todays().filter(x => x.must)) {
     if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${a.title}, ${doneText(a.id).toLowerCase()}` });
     // Past its hour, or due and not the one in the card below: either way it is named here.
-    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: 'warn', text: `${a.title}: not ticked` });
+    // On a small phone with bigger writing, the line for the one in the card can make way for the card's buttons.
+    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: a === top ? 'warn same' : 'warn', text: `${a.title}: not ticked` });
   }
   // Room for three. What is not ticked is never the line that is dropped.
-  const warn = lines.filter(l => l.cls === 'warn').slice(-3);
-  const ok = warn.length < 3 ? lines.filter(l => l.cls !== 'warn').slice(warn.length - 3) : [];
+  const warn = lines.filter(l => l.cls.startsWith('warn')).slice(-3);
+  const ok = warn.length < 3 ? lines.filter(l => !l.cls.startsWith('warn')).slice(warn.length - 3) : [];
   return lines.filter(l => warn.includes(l) || ok.includes(l));
 }
 const sentence = s => (/[.!?]$/.test(s) ? s : s + '.');
@@ -524,7 +534,8 @@ function dayRecord(d) {
   const key = dayKey(d);
   if (!data.since || key < data.since) return { planned: [], done: [], missed: [] };
   const done = data.completed[key] || {};
-  const gone = data.retired.filter(r => (key < r.removed || (key === r.removed && (r.id in done || r.time <= r.removedAt))) && occursOn(r, d));
+  const gone = data.retired.filter(r => (key < r.removed || (key === r.removed && (r.id in done || r.time <= r.removedAt))) && occursOn(r, d))
+    .filter((r, i, all) => !all.slice(i + 1).some(x => x.id === r.id)); // one entry per thing: the later (this device's) one
   const active = data.activities.filter(a => occursOn(a, d));
   const planned = [...active, ...gone.filter(r => !active.some(a => a.id === r.id))].sort(byTime);
   const isToday = key === dayKey();
@@ -1279,7 +1290,9 @@ const screens = {
           <button class="primary">Start using Hazel</button>
         </form>
         ${ui.confirming === 'skip'
-          ? confirmBox(`${ui.skipLoses ? 'Keep the example? The name, people and PIN typed above will not be used. ' : ''}The emergency number on this device will be ${region().emergency} (${region().name}). Is that right?`, 'skip-confirm', null, 'Yes, that is right', 'No, let me change it')
+          ? (ui.skipLoses
+            ? confirmBox(`Keep the example? ${ui.skipLoses} The emergency number on this device will be ${region().emergency} (${region().name}).`, 'skip-confirm', null, 'Yes, keep the example', 'No, go back to the form')
+            : confirmBox(`The emergency number on this device will be ${region().emergency} (${region().name}). Is that right?`, 'skip-confirm', null, 'Yes, that is right', 'No, let me change it'))
           : '<button class="skip" data-action="skip-setup">Keep the example and edit it myself</button>'}
         <div class="family">
           <h3>Already set up before?</h3>
@@ -1492,7 +1505,7 @@ const familyPanels = {
         <form novalidate data-form="restore">
           <label class="field">Restore from a copy<textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
           ${ui.confirming === 'restore'
-            ? confirmBox(`${copyLine()}Replace everything in Hazel on this device with this copy?`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+            ? confirmBox(`${copyLine()}Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
             : '<button class="secondary">Restore</button>'}
         </form>
         <div class="divider"></div>
@@ -2341,7 +2354,9 @@ const actions = {
   'sheet-close'() {
     const kind = sheet?.kind;
     closeSheet();
-    if (kind === 'reminder' || kind === 'call') tickGuardUntil = performance.now() + 2500; // as above
+    // As above, after any card: a second press must not tick what was underneath it (the "coming up"
+    // card can sit over a reminder that was just put off).
+    if (kind) tickGuardUntil = performance.now() + 2500;
   },
   'sheet-help'() {
     closeSheet();
@@ -2557,24 +2572,33 @@ const actions = {
   },
   'restore-apply'() {
     if (!ui.restore) return;
-    // After a forgotten PIN the ticks recorded on this device since the copy was made are kept, and
-    // so is the record of anything that is in the routine here but not in the copy.
+    // On a device already in use, what happened on it (ticks, when Hazel was showing, reminders) is
+    // kept, so a dose ticked this morning is never asked for again. After a forgotten PIN so is the
+    // record of anything that is in the routine here but not in the copy.
     const copy = ui.restore;
     const fresh = ui.screen === 'setup'; // a new or cleared device
     const calls = data.calls;
+    const happened = fresh ? {} : {
+      since: [data.since, copy.since].filter(Boolean).sort()[0] || dayKey(),
+      completed: { ...copy.completed, ...data.completed },
+      undone: { ...copy.undone, ...data.undone },
+      seen: { ...copy.seen, ...data.seen },
+      raised: { ...copy.raised, ...data.raised },
+    };
     Object.assign(data, ui.keepHistory ? {
       ...copy,
       // Anything the copy brings that is not in the routine here starts afresh, so it is not blamed
       // for days it was not there and is never listed twice beside its own removed entry.
       activities: copy.activities.map(a => (data.activities.some(x => x.id === a.id) ? a : { ...a, from: startDay(a.time, a.repeat) })),
       since: data.since || copy.since || dayKey(),
-      retired: [...copy.retired, ...data.retired.filter(r => !copy.retired.some(c => c.id === r.id)),
+      // This device's own record of an item it still has is the true one here.
+      retired: [...copy.retired.filter(c => !data.activities.some(a => a.id === c.id)), ...data.retired.filter(r => !copy.retired.some(c => c.id === r.id)),
         ...data.activities.filter(a => !copy.activities.some(c => c.id === a.id)).map(retire)],
       completed: { ...copy.completed, ...data.completed },
       undone: { ...copy.undone, ...data.undone },
       seen: { ...copy.seen, ...data.seen },
       raised: { ...copy.raised, ...data.raised },
-    } : copy);
+    } : { ...copy, ...happened });
     // Whether calls work is a fact about the device, not the copy: a new device is asked to try one,
     // and a device that has already answered keeps its answer.
     data.calls = fresh ? '' : calls;
@@ -2599,8 +2623,12 @@ const actions = {
     data.region = pick;
     data.emergency = pick === 'other' ? emergency : '';
     ui.confirming = 'skip';
-    // Keeping the example means what was typed above is not used: the question says so.
-    ui.skipLoses = ['person', 'pin', 'cname0', 'cphone0', 'cname1', 'cphone1', 'cname2', 'cphone2'].some(n => f.elements[n].value.trim());
+    // Keeping the example means what was filled in above is not used: the question says so.
+    const typed = n => f.elements[n].value.trim();
+    const lost = [typed('person') && 'name', ['cname0', 'cphone0', 'cname1', 'cphone1', 'cname2', 'cphone2'].some(typed) && 'people', typed('pin') && 'PIN',
+      ROUTINES.some(r => f.elements['r-' + r.key].checked !== r.on || f.elements['t-' + r.key].value !== r.time) && 'routine'].filter(Boolean);
+    const tablets = ROUTINES.some(r => isTablets(r) && f.elements['r-' + r.key].checked);
+    ui.skipLoses = lost.length ? `The ${listText(lost)} filled in above will not be used${tablets ? ', and the example has no tablets' : ''}.` : false;
     renderKeeping();
     guard();
     app.querySelector('.confirm')?.scrollIntoView({ block: 'nearest' });
@@ -2661,6 +2689,7 @@ const forms = {
     const days = [...f.querySelectorAll('input[name="days"]:checked')].map(i => Number(i.value));
     const date = f.elements.date.value;
     const existing = findActivity(ui.id);
+    const wasLater = !!existing && existing.from > dayKey(); // it was going to start on a later day
     if (!validTime(f.elements.time.value)) return showError(f, 'Please give the time, like 08:00 or 14:30.', 'time');
     if (repeat === 'weekly' && !days.length) return showError(f, 'Please choose at least one day of the week.', 'days');
     if (dated && !validDay(date)) return showError(f, repeat === 'once' ? 'Please choose the date.' : 'Please choose the first date.', 'date');
@@ -2700,7 +2729,10 @@ const forms = {
     // Say so only when today would have been one of its days, and name the day it really first happens.
     const made = existing || data.activities[data.activities.length - 1];
     const first = made.from > dayKey() && occursOn({ ...made, from: '' }) ? firstDay(made) : '';
-    saved(first ? `Saved. “${title}” starts ${startsText(first)}, because ${timeText(fields.time)} has already passed today.` : 'Saved.');
+    // One that was going to start later and now starts today is reminded today: the family is told.
+    const nowToday = wasLater && made.from <= dayKey() && occursOn(made);
+    saved(first ? `Saved. “${title}” starts ${startsText(first)}, because ${timeText(fields.time)} has already passed today.`
+      : nowToday ? `Saved. “${title}” now starts today, at ${timeText(fields.time)}.` : 'Saved.');
     stepBack();
   },
   contact(f) {
@@ -2744,7 +2776,7 @@ const forms = {
   },
   // `unattended`: nobody pressed Save. Hazel is keeping what was typed before going back to the clock,
   // so the things that could lock the family out or change the emergency number are left as they were.
-  settings(f, unattended = false) {
+  settings(f, unattended = false, bySave = false) {
     const pin = f.elements.pin.value.trim();
     const place = REGIONS[f.elements.region.value] ? f.elements.region.value : data.region;
     const emergency = f.elements.emergency.value.trim();
@@ -2757,9 +2789,9 @@ const forms = {
     if (!unattended) {
       if (pin && !/^\d{4,8}$/.test(pin)) return showError(f, 'The PIN must be 4 to 8 digits, or left blank.', 'pin');
       if (place === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
-      // The one-off country question is answered by changing the country, or by saving after
-      // "No, change the country". Saving something else on this panel does not answer it.
-      if (differs.country || ui.regionAsked) data.regionOk = true;
+      // The one-off country question is answered by changing the country, or by pressing Save after
+      // "No, change the country". Saving something else, or the save made on leaving, does not answer it.
+      if (differs.country || (ui.regionAsked && bySave)) data.regionOk = true;
       data.region = place;
       data.emergency = place === 'other' ? emergency : '';
       data.calls = calls;
@@ -3028,7 +3060,7 @@ for (const type of ['scroll', 'wheel', 'pointerdown', 'touchstart']) {
 
 app.addEventListener('submit', e => {
   e.preventDefault();
-  forms[e.target.dataset.form]?.(e.target);
+  forms[e.target.dataset.form]?.(e.target, false, true); // pressed Save
 });
 
 app.addEventListener('input', e => {

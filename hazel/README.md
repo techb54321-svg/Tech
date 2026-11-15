@@ -75,7 +75,7 @@ or enter the PIN if one is set).
   Something whose time has already passed today starts tomorrow, so it is never
   shown or recorded as missed at a time when it did not exist. The Routine list
   says which things have not started yet, and moving one to later today starts
-  it today after all.
+  it today after all (Hazel says so when it is saved).
 - **A real calendar**: every day, chosen days ("bin night"), every 2 weeks,
   every month, or one date (an appointment, with an optional warning beforehand
   and a call button on the reminder). "Coming up" and "Tomorrow" appear by
@@ -100,11 +100,13 @@ or enter the PIN if one is set).
 - **"Is Hazel ready?"** checklist, **Try a reminder now**, and a **backup copy**
   to restore after a new or cleared device. The copy has no spaces in it, so an
   email program that wraps long lines cannot damage it. Before a copy replaces
-  anything, Hazel says whose it is and when it was made. A forgotten PIN is
-  cleared with a backup copy without losing the ticks recorded since.
+  anything, Hazel says whose it is and when it was made. On a device already in
+  use, the ticks recorded on it are kept, so a dose ticked that morning is never
+  asked for again. A forgotten PIN is cleared with a backup copy the same way.
 - **Nothing typed is thrown away without a word.** A panel is saved before
   another button or the Back button leaves it, and a half-filled form asks
-  first. A question asked on the set-up screen leaves the form filled in. Left
+  first. A question asked on the set-up screen leaves the form filled in, and
+  "Keep the example" says which of the things filled in will not be used. Left
   alone, Hazel goes back to the clock: a panel is saved (but never a new PIN, a
   different country or the calls answer, and the panel then says so), and a
   half-filled form is kept as typed and is there again when it is next opened.

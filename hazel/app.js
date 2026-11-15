@@ -190,9 +190,9 @@ function normalize(raw, fromStorage) {
     person: str(d.person, 35),
     region: REGIONS[d.region] ? d.region : guessRegion() || 'other',
     emergency: /^\d{2,6}$/.test(emergency) ? emergency : '', // the local number, when the country is not in the list
-    // Has the family confirmed the country? An earlier version chose one by itself, so data it saved is
-    // asked about once, unless the device's own time zone agrees.
-    regionOk: typeof d.regionOk === 'boolean' ? d.regionOk : !(setup && Number(d.v || 0) < 3 && guessRegion() !== d.region),
+    // Has the family confirmed the country? Earlier versions could choose one by themselves, so data
+    // saved without this answer is asked about once, unless the device's own time zone agrees.
+    regionOk: typeof d.regionOk === 'boolean' ? d.regionOk : !(setup && guessRegion() !== d.region),
     calls: ['yes', 'no'].includes(d.calls) ? d.calls : '', // can this device make an ordinary phone call? '' = not tried yet
     tell: d.tell === true, // offer a ready-written text message to the first person
     size: ['normal', 'large', 'largest'].includes(d.size) ? d.size : 'normal',
@@ -390,7 +390,12 @@ const doneAt = (id, day = dayKey()) => data.completed[day]?.[id];
 const isDone = (id, day) => doneAt(id, day) !== undefined;
 // How a tick is described. One made an hour or more after the time says when the button was pressed,
 // because that is all Hazel knows: "done at 2:45 pm" would read as the time the tablets were taken.
-const tickWords = (a, at) => (!at ? 'done' : `${a && toMinutes(at) - toMinutes(a.time) >= NOW_WINDOW ? 'ticked off' : 'done'} at ${timeText(at)}`);
+function tickWords(a, at) {
+  if (!at) return 'done';
+  let late = a ? toMinutes(at) - toMinutes(a.time) : 0;
+  if (a?.must && late < -EARLY_WINDOW) late += 1440; // an important thing cannot be ticked that early: it was ticked after midnight
+  return `${late >= NOW_WINDOW ? 'ticked off' : 'done'} at ${timeText(at)}`;
+}
 function doneText(id, day) {
   const words = tickWords(findActivity(id), doneAt(id, day));
   return words === 'done' ? 'Done today' : words[0].toUpperCase() + words.slice(1);
@@ -420,18 +425,25 @@ const tooEarly = a => a.must && minutesLate(a) < -EARLY_WINDOW;
 const isTablets = a => a.emoji === '💊';
 const TABLET_CAUTION = "Not sure if you've had them? Check your pill box. Don't take extra.";
 const lateAdvice = a => a.ifLate || (isTablets(a) ? TABLET_CAUTION : 'Not ticked off yet. Have you done it?');
+// The same for a reminder card, which can be for last night: the family's advice was written for
+// the day itself, so after midnight the card says what the first screen says.
+const lateWords = (a, day) => (day === dayKey() ? lateAdvice(a)
+  : isTablets(a) ? `Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` : 'Not ticked off yet. Have you done it?');
 // Past its hour: the instruction makes way for the careful wording.
 const needsCare = (a, late = minutesLate(a)) => late >= NOW_WINDOW && (isTablets(a) || !!a.ifLate);
 
-// An important thing due late in the evening keeps its hour past midnight: { a, day, late }.
-function carried() {
+// An important thing due late in the evening keeps its hour past midnight. Every one of last
+// night's that is still inside its hour and not ticked, earliest first: [{ a, day, late }].
+function carriedAll() {
   const now = toMinutes(nowHHMM());
-  if (now >= MUST_WINDOW) return null;
+  if (now >= MUST_WINDOW) return [];
   const y = daysAgo(1);
   const day = dayKey(y);
-  const a = data.activities.filter(x => x.must && occursOn(x, y) && !isDone(x.id, day) && now + 1440 - toMinutes(x.time) < MUST_WINDOW).sort(byTime).pop();
-  return a ? { a, day, late: now + 1440 - toMinutes(a.time) } : null;
+  return data.activities.filter(x => x.must && occursOn(x, y) && !isDone(x.id, day) && now + 1440 - toMinutes(x.time) < MUST_WINDOW).sort(byTime)
+    .map(a => ({ a, day, late: now + 1440 - toMinutes(a.time) }));
 }
+// The latest of them: the one the first screen and My Day show as "Now".
+const carried = () => carriedAll().pop() || null;
 
 // Last night's important things: ticked (with the time) or not. Shown until today's first activity,
 // so that after midnight the question "did I take my tablets?" still has an answer either way.
@@ -440,10 +452,10 @@ function lastNight() {
   if (first && minutesLate(first) >= 0) return [];
   const y = daysAgo(1);
   const day = dayKey(y);
-  const held = carried()?.a;
+  const held = carriedAll().map(x => x.a); // still inside their hour: their card says what to do
   // "Not ticked" is only said about a night Hazel was already set up for.
   const known = !!data.since && data.since <= day;
-  return data.activities.filter(a => a.must && a.time >= '17:00' && a !== held && occursOn(a, y)).sort(byTime)
+  return data.activities.filter(a => a.must && a.time >= '17:00' && !held.includes(a) && occursOn(a, y)).sort(byTime)
     .map(a => ({ a, at: doneAt(a.id, day) })).filter(x => x.at !== undefined || known);
 }
 // The family's "if it is late" advice was written for the same day ("if it is before 10 pm, take
@@ -457,7 +469,10 @@ const lastNightText = ({ a, at }) => (at === undefined
 // beside the clock, never offered again at bed time). Otherwise whatever is on now. Returns { a, late, day }.
 function attention() {
   const list = todays();
-  const must = list.filter(a => a.must && minutesLate(a) >= 0).pop();
+  const due = list.filter(a => a.must && minutesLate(a) >= 0);
+  // An important thing still inside its hour and not ticked comes first (the latest, if there are
+  // two close together), so ticking the later one does not hide the earlier one.
+  const must = due.filter(a => !isDone(a.id) && minutesLate(a) < MUST_WINDOW).pop() || due.pop();
   if (must && !isDone(must.id)) return { a: must, late: minutesLate(must), day: dayKey() };
   const held = carried();
   if (held) return held;
@@ -469,9 +484,11 @@ function attention() {
 // today's ticked ones with their times, and any that are past their time and not ticked.
 function tabletLines() {
   const lines = lastNight().map(x => ({ cls: x.at === undefined ? 'warn' : 'ok', text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) }));
+  const top = attention()?.a;
   for (const a of todays().filter(x => x.must)) {
     if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${a.title}, ${doneText(a.id).toLowerCase()}` });
-    else if (minutesLate(a) >= NOW_WINDOW) lines.push({ cls: 'warn', text: `${a.title}: not ticked` });
+    // Past its hour, or due and not the one in the card below: either way it is named here.
+    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: 'warn', text: `${a.title}: not ticked` });
   }
   // Room for three. What is not ticked is never the line that is dropped.
   const warn = lines.filter(l => l.cls === 'warn').slice(-3);
@@ -508,7 +525,8 @@ function dayRecord(d) {
   if (!data.since || key < data.since) return { planned: [], done: [], missed: [] };
   const done = data.completed[key] || {};
   const gone = data.retired.filter(r => (key < r.removed || (key === r.removed && (r.id in done || r.time <= r.removedAt))) && occursOn(r, d));
-  const planned = [...data.activities.filter(a => occursOn(a, d)), ...gone].sort(byTime);
+  const active = data.activities.filter(a => occursOn(a, d));
+  const planned = [...active, ...gone.filter(r => !active.some(a => a.id === r.id))].sort(byTime);
   const isToday = key === dayKey();
   const missed = planned.filter(a => !(a.id in done) && (!isToday || statusOf(a) === 'earlier'));
   return { planned, done: planned.filter(a => a.id in done), missed };
@@ -751,7 +769,7 @@ function readPhoto(file) {
 
 // confirming: the item awaiting an on-screen "are you sure?" ('activity:12', 'contact:3', 'reset', 'restore')
 // photo: a photo chosen in an edit form but not saved yet (undefined = unchanged, '' = removed)
-const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false, leave: null };
+const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false, leave: null, regionAsked: false, skipLoses: false };
 
 const FORM_SCREENS = ['activityForm', 'contactForm', 'setup'];
 
@@ -780,7 +798,9 @@ function enter(screen, id) {
   // Until Hazel is set up, Family settings is the set-up form: both ways through it confirm the
   // country, so the emergency number is never left as a guess.
   if (screen === 'family' && !data.setup) screen = 'setup';
-  Object.assign(ui, { screen, id, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false });
+  Object.assign(ui, { screen, id, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false, regionAsked: false, skipLoses: false });
+  if (draft && draft.screen === screen && draft.id === id) ui.photo = draft.photo; // a form left half-filled comes back as it was
+  if (leftOut?.seen && screen !== 'family') leftOut = null;
   dirty = false;
 }
 
@@ -863,7 +883,7 @@ const TIPS = `<details class="tips" open>
 // Said before the family types anything, at set-up as well as in Family settings.
 const NOT_KEPT = canStore ? '' : '<div class="notice" role="note"><strong>Changes won’t be kept.</strong> This browser isn’t letting Hazel save, so anything you set up here will be lost when Hazel is closed. Open Hazel in a normal (not private) browser window to keep changes.</div>';
 
-const CALM_NIGHT = 'You are safe at home. It is night time, and everything is fine. Take a slow breath. You can rest, or you can talk to someone.';
+const CALM_NIGHT = 'You are safe at home. It is night time. Take a slow breath. You can rest, or you can talk to someone.';
 const CALM_MESSAGE = "You are safe. Take your time. You don't have to do everything at once. You can call someone you know.";
 const SIZE_NEXT = { normal: 'Make the writing bigger', large: 'Make the writing bigger still', largest: 'Make the writing normal size again' }; // what the next tap does
 
@@ -962,8 +982,7 @@ const screens = {
   activity() {
     const a = findActivity(ui.id);
     if (!a) return screens.day();
-    const held = carried();
-    const mine = held?.a === a ? held : null; // last night's, still within its hour after midnight: it is due now
+    const mine = carriedAll().find(x => x.a === a) || null; // last night's, still within its hour after midnight: it is due now
     const today = occursOn(a) || !!mine;
     const done = !mine && today && isDone(a.id);
     const tablets = isTablets(a);
@@ -1001,7 +1020,7 @@ const screens = {
         <div class="activity-card">
           <div class="counter">${timeText(a.time)}</div>
           <h1 class="activity-title" tabindex="-1">${esc(a.title)}</h1>
-          ${a.note && !done && !early && !care ? `<p class="activity-note">${esc(a.note)}</p>` : ''}
+          ${a.note && !done && !early && !care && (today || !(isTablets(a) || a.must)) ? `<p class="activity-note">${esc(a.note)}</p>` : ''}
         </div>
         ${buttons}
         ${hasNumber(who) ? callLink(who, 'secondary call-now', `📞 ${callVerb(who)} ${esc(who.name)}`) : ''}
@@ -1110,7 +1129,7 @@ const screens = {
                 <span class="hint">Paste a copy made earlier with “Make a backup copy”. If the copy was made with this PIN, Hazel simply unlocks and nothing else changes. Otherwise the people, routine and details are replaced by the copy, and the ticks already recorded on this device are kept. Either way the PIN is cleared.</span>
                 <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
               ${ui.confirming === 'restore'
-                ? confirmBox('Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.', 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+                ? confirmBox(`${copyLine()}Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
                 : '<button class="secondary">Restore</button>'}
             </form>
             <div class="divider"></div>
@@ -1260,7 +1279,7 @@ const screens = {
           <button class="primary">Start using Hazel</button>
         </form>
         ${ui.confirming === 'skip'
-          ? confirmBox(`The emergency number on this device will be ${region().emergency} (${region().name}). Is that right?`, 'skip-confirm', null, 'Yes, that is right', 'No, let me change it')
+          ? confirmBox(`${ui.skipLoses ? 'Keep the example? The name, people and PIN typed above will not be used. ' : ''}The emergency number on this device will be ${region().emergency} (${region().name}). Is that right?`, 'skip-confirm', null, 'Yes, that is right', 'No, let me change it')
           : '<button class="skip" data-action="skip-setup">Keep the example and edit it myself</button>'}
         <div class="family">
           <h3>Already set up before?</h3>
@@ -1269,13 +1288,22 @@ const screens = {
               <span class="hint">If this device was replaced or cleared, paste the copy you kept and everything comes back.</span>
               <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
             ${ui.confirming === 'restore'
-              ? confirmBox('Replace the example with this copy?', 'restore-apply', null, 'Yes, restore it', 'No')
+              ? confirmBox(`${copyLine()}Replace the example with this copy?`, 'restore-apply', null, 'Yes, restore it', 'No')
               : '<button class="secondary">Restore</button>'}
           </form>
         </div>
       </section>`;
   },
 };
+
+// Says whose copy is about to be restored, and when it was made, so the wrong one is caught first.
+function copyLine() {
+  const c = ui.restore;
+  if (!c) return '';
+  const made = c.backedUp ? `, made ${fmt({ day: 'numeric', month: 'long', year: 'numeric' }, parseDay(c.backedUp))}` : '';
+  const here = data.setup && data.person && data.person !== c.person ? ` This device is set up for ${data.person}.` : '';
+  return `This copy is for ${c.person || 'someone whose name is not set'}${made}, with ${c.activities.length} ${c.activities.length === 1 ? 'thing' : 'things'} in the routine.${here} `;
+}
 
 // What is still missing before the family can rely on Hazel. Shown above the tabs until all done.
 function readyCard() {
@@ -1354,7 +1382,12 @@ const familyPanels = {
   },
 
   activities() {
-    const row = a => manageRow(a.photo ? photoThumb(a.photo) : esc(a.emoji), `${timeText(a.time)} · ${a.title}`, 'activity', a.id, esc(scheduleText(a)), a.title);
+    // The row says what the family needs to know and cannot see elsewhere: that it has not started
+    // yet, and that an important tablets item has no instruction written.
+    const detail = a => esc(scheduleText(a))
+      + (a.from > dayKey() && firstDay(a) ? ` · <strong>starts ${esc(startsText(firstDay(a)))}</strong>` : '')
+      + (a.must && isTablets(a) && !a.note ? ' · <strong>no instructions yet</strong>' : '');
+    const row = a => manageRow(a.photo ? photoThumb(a.photo) : esc(a.emoji), `${timeText(a.time)} · ${a.title}`, 'activity', a.id, detail(a), a.title);
     const regular = data.activities.filter(a => a.repeat !== 'once').sort(byTime);
     const dated = data.activities.filter(a => a.repeat === 'once').sort((a, b) => a.date.localeCompare(b.date) || byTime(a, b));
     return `
@@ -1407,6 +1440,7 @@ const familyPanels = {
     return `
       <div class="family">
         <h3 tabindex="-1">Settings</h3>
+        ${leftOut && (leftOut.seen = true) ? `<p class="notice" role="note"><strong>Not saved:</strong> the ${listText(leftOut.items)} chosen earlier. Hazel went back to the clock before Save was pressed, so ${leftOut.items.length > 1 ? 'they were' : 'it was'} left as before. The rest of this panel was kept.</p>` : ''}
         <form novalidate data-form="settings">
           <label class="field">What they like to be called<input name="person" value="${esc(data.person)}" maxlength="35" placeholder="e.g. Mum"></label>
           <label class="field">Country
@@ -1458,7 +1492,7 @@ const familyPanels = {
         <form novalidate data-form="restore">
           <label class="field">Restore from a copy<textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
           ${ui.confirming === 'restore'
-            ? confirmBox('Replace everything in Hazel on this device with this copy?', 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+            ? confirmBox(`${copyLine()}Replace everything in Hazel on this device with this copy?`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
             : '<button class="secondary">Restore</button>'}
         </form>
         <div class="divider"></div>
@@ -1626,7 +1660,7 @@ function whyNotTicked(a, day) {
   const later = dayRecord(parseDay(day)).planned.map(x => toMinutes(x.time)).filter(t => t > toMinutes(a.time))[0];
   const stretch = a.must ? MUST_WINDOW : Math.min(NOW_WINDOW, (later ?? Infinity) - toMinutes(a.time));
   const open = wasOpen(day, a.time, stretch);
-  return open === false ? 'Hazel was not open then' : open === null ? '' : 'no reminder was shown';
+  return open === false ? 'Hazel was not open then' : open === null ? 'no record of whether Hazel was open' : 'no reminder was shown';
 }
 
 function weekSummaryText() {
@@ -1715,9 +1749,73 @@ function render(...focus) {
   app.innerHTML = screens[screen]() + '<div class="foot">Hazel 🌿 A brighter day, one step at a time.</div>';
   lastLive = liveText();
   shownDay = dayKey();
+  restoreDraft();
   const target = ['[data-autofocus]', ...focus].filter(Boolean).map(sel => app.querySelector(sel)).find(Boolean);
   target?.focus({ preventScroll: true });
 }
+
+// --- Keeping what is typed ---------------------------------------------------
+
+const readFields = form => [...form.elements].filter(el => el.name && el.type !== 'file').map(el => [el.name, el.type, el.value, el.checked]);
+function writeFields(form, fields) {
+  for (const [name, type, value, checked] of fields) {
+    for (const el of form.elements) {
+      if (el.name !== name) continue;
+      if (type === 'checkbox' || type === 'radio') { if (el.value === value) el.checked = checked; }
+      else el.value = value;
+    }
+  }
+  syncForm(form);
+}
+// The parts of a form that show, hide or change their wording with a choice.
+function syncForm(form) {
+  const repeat = form.querySelector('input[name="repeat"]:checked')?.value;
+  if (repeat) {
+    form.querySelector('.when-weekly').hidden = repeat !== 'weekly';
+    form.querySelector('.when-once').hidden = !DATED_REPEATS.includes(repeat);
+    form.querySelector('.date-label').textContent = repeat === 'once' ? 'Date' : 'Starting on';
+  }
+  const other = form.querySelector('.when-other');
+  if (other && form.elements.region) other.hidden = form.elements.region.value !== 'other';
+  const method = form.querySelector('input[name="method"]:checked')?.value;
+  if (method) { // FaceTime also takes an email address
+    const phone = form.elements.phone;
+    const byPhone = method === 'phone';
+    phone.inputMode = byPhone ? 'tel' : 'email';
+    phone.placeholder = byPhone ? 'e.g. 0412 345 678' : 'e.g. 0412 345 678 or sarah@example.com';
+    form.querySelector('.phone-label').textContent = byPhone ? 'Phone number' : 'Phone number or email address';
+  }
+}
+// Redraws the screen without emptying its forms: for a question asked on a screen with a form on it.
+function renderKeeping(...focus) {
+  const kept = [...app.querySelectorAll('form')].map(f => [f.dataset.form, readFields(f)]);
+  render(...focus);
+  for (const [name, fields] of kept) {
+    const form = app.querySelector(`form[data-form="${name}"]`);
+    if (form) writeFields(form, fields);
+  }
+}
+// A half-filled form, or a panel that could not be saved as it stood, that was on screen when Hazel
+// went back to the clock by itself. It is put back the next time that form is opened.
+let draft = null;
+function keepDraft() {
+  const name = { activityForm: 'activity', contactForm: 'contact', setup: 'setup' }[ui.screen] || dirtyForm;
+  const form = app.querySelector(`form[data-form="${name}"]`);
+  if (form) draft = { screen: ui.screen, id: ui.id, tab: ui.tab, form: name, photo: ui.photo, fields: readFields(form) };
+}
+function restoreDraft() {
+  if (!draft || draft.screen !== ui.screen || draft.id !== ui.id || (ui.screen === 'family' && draft.tab !== ui.tab)) return;
+  const form = app.querySelector(`form[data-form="${draft.form}"]`);
+  if (!form) return; // behind the PIN for now
+  writeFields(form, draft.fields);
+  form.insertAdjacentHTML('beforebegin', '<p class="notice draft-note" role="note"><strong>Still here.</strong> What you typed earlier was kept when Hazel went back to the clock. It has not been saved yet.</p>');
+  dirty = true;
+  dirtyForm = draft.form;
+  draft = null;
+}
+// What an unattended save of Settings left as it was: { items: ['PIN', ...], seen }.
+let leftOut = null;
+const listText = items => (items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : items[0] || '');
 const FAMILY_HEADING = '.family h3[tabindex]';
 
 // Everything on Home and My Day that changes with the time of day.
@@ -1753,24 +1851,40 @@ function openSheet(kind, words, buttons, focusSelector = '.primary') {
   fitSheet();
 }
 
-// The words scroll inside the card when they do not fit, with a fade to show there is more. Only if
-// even the buttons do not fit does the whole card scroll, and then a drag that starts on a button
-// scrolls instead of pressing it (see SLIDE_BUTTONS).
-function fitSheet() {
+// The words scroll inside the card when they do not fit, with "More below" under them, and a drag
+// that starts on a button then scrolls the words instead of pressing it (see SLIDE_BUTTONS). Only if
+// even the buttons do not fit does the whole card scroll.
+function fitSheet(measure = true) {
   const card = promptEl.firstElementChild;
   const words = card?.querySelector('.prompt-body');
   if (!words) return;
   const buttons = card.querySelector('.prompt-actions');
-  card.classList.toggle('scrolls', card.scrollHeight > card.clientHeight + 1 || buttons.scrollHeight > buttons.clientHeight + 1);
-  const more = words.scrollHeight - words.scrollTop - words.clientHeight > 6;
+  if (measure) {
+    // When the words do not all fit, the picture makes way first. (Measured without the "More
+    // below" label, which would otherwise count as words.)
+    card.classList.remove('tight', 'more');
+    card.classList.toggle('tight', words.scrollHeight > words.clientHeight + 1);
+    card.classList.toggle('scrolls', card.scrollHeight > card.clientHeight + 1 || buttons.scrollHeight > buttons.clientHeight + 1);
+  }
+  // "More below" means words are hidden, not only the space under the last line.
+  const last = [...words.querySelectorAll('p, h2')].pop();
+  const hidden = last ? last.getBoundingClientRect().bottom - parseFloat(getComputedStyle(last).paddingBottom) - words.getBoundingClientRect().bottom : 0;
+  const more = hidden > 2;
   card.classList.toggle('more', more);
+  card.classList.toggle('scrolled', words.scrollTop > 0);
   if (more || words.scrollTop) words.tabIndex = 0; // reachable with the arrow keys
   else words.removeAttribute('tabindex');
 }
-promptEl.addEventListener('scroll', fitSheet, { capture: true, passive: true });
-window.addEventListener('resize', fitSheet);
+promptEl.addEventListener('scroll', () => fitSheet(false), { capture: true, passive: true });
+window.addEventListener('resize', () => fitSheet());
 // Help is on every card that comes up by itself or stays a while, so it is never more than two taps away.
 const SHEET_HELP = '<button class="help-btn sheet-help" data-action="sheet-help">🛟 I need help</button>';
+
+function homeToTop() {
+  window.scrollTo(0, 0);
+  const hero = app.querySelector('.hero');
+  if (hero) hero.scrollTop = 0;
+}
 
 function closeSheet() {
   if (!sheet) return;
@@ -1784,7 +1898,7 @@ function closeSheet() {
   hush();
   guard(1000); // what is under the finger changes as much as when a card appears
   // Back to the clock: the first screen is never left scrolled part of the way down.
-  if (ui.screen === 'home' && kind !== 'call') window.scrollTo(0, 0);
+  if (ui.screen === 'home' && kind !== 'call') homeToTop();
   if (back?.isConnected) back.focus({ preventScroll: true });
   else focusHeading();
 }
@@ -1889,19 +2003,19 @@ const reminderLate = a => minutesLate(a) + (reminder.day === dayKey() ? 0 : 1440
 
 // The words on the card. They follow the clock, and change once the reminder is being repeated:
 // Hazel only knows about the tap, so every repeat allows for "already taken".
-function reminderText(a, late, repeat) {
+function reminderText(a, late, repeat, day = dayKey()) {
   const care = needsCare(a, late);
   // On a repeat the question takes the place of the instruction, as it does in the voice.
   const ask = repeat && !care && isTablets(a);
   return `<p class="prompt-when">It's <span data-now>${clockText()}</span>. ${late >= 5 ? `From ${timeText(a.time)}:` : 'Time for:'}</p>
       <h2 id="sheet-title">${esc(a.title)}</h2>
-      ${care ? `<p class="prompt-note caution">${esc(lateAdvice(a))}</p>`
+      ${care ? `<p class="prompt-note caution">${esc(lateWords(a, day))}</p>`
         : ask ? `<p class="prompt-ask">Already taken them? Press “I've done this”. Not sure? Check your pill box. Don't take extra.</p>`
         : a.note ? `<p class="prompt-note">${esc(a.note)}</p>` : ''}`;
 }
-function reminderSpeech(a, late, repeat) {
+function reminderSpeech(a, late, repeat, day = dayKey()) {
   const now = `It is ${clockText()}.`;
-  if (needsCare(a, late)) return `${now} ${a.title}, from ${timeText(a.time)}, is not ticked off. ${sentence(lateAdvice(a))}`;
+  if (needsCare(a, late)) return `${now} ${a.title}, from ${timeText(a.time)}, is not ticked off. ${sentence(lateWords(a, day))}`;
   if (!repeat) return `${now} Time for: ${a.title}. ${a.note}`;
   return isTablets(a)
     ? `${now} Have you taken your ${a.title}? If you have, press: I've done this. If you are not sure, check your pill box. Don't take extra.`
@@ -1911,7 +2025,7 @@ function reminderSpeech(a, late, repeat) {
 // Chime, then say it. Important things are repeated: after 3 minutes, at 10, then every 10.
 function announce(a) {
   const repeat = reminder.repeat || reminder.announced > 0;
-  const words = reminderSpeech(a, reminderLate(a), repeat);
+  const words = reminderSpeech(a, reminderLate(a), repeat, reminder.day);
   chime(a.must);
   if (data.sound && armed) {
     setTimeout(() => {
@@ -1938,7 +2052,7 @@ function openReminder({ a, day, late }) {
   prompted[a.id] = day;
   delete snoozed[a.id];
   const who = findContact(a.contactId);
-  const html = reminderText(a, late, repeat);
+  const html = reminderText(a, late, repeat, day);
   openSheet('reminder', `
       <div class="prompt-pic" aria-hidden="true">${a.photo ? `<img src="${esc(a.photo)}" alt="">` : esc(a.emoji)}</div>
       <div class="prompt-text">${html}</div>`, `
@@ -1954,6 +2068,12 @@ function openReminder({ a, day, late }) {
   announce(a);
 }
 
+// A promise that falls due while something else has the screen (an important card, a call, Family
+// settings) waits for it: its quarter of an hour starts when the screen is free again.
+function holdPromises() {
+  for (const wait of Object.values(snoozed)) if (Date.now() >= wait.at) wait.at = Date.now();
+}
+
 function checkReminders() {
   // A warning about something later must not hold up the real thing.
   if (sheet?.kind === 'ahead') {
@@ -1961,7 +2081,7 @@ function checkReminders() {
     if (due) openReminder(due);
     return;
   }
-  if (sheet && sheet.kind !== 'reminder') return;
+  if (sheet && sheet.kind !== 'reminder') return holdPromises();
   if (reminder) {
     const a = findActivity(reminder.id);
     const sameDay = reminder.day === dayKey();
@@ -1973,6 +2093,7 @@ function checkReminders() {
     if (!a || !occursOn(a, parseDay(reminder.day)) || isDone(a.id, reminder.day) || late < 0 || expired) return closeSheet();
     // An important reminder, or a warning about an appointment, takes the place of an ordinary
     // reminder that is still waiting for an answer.
+    if (a.must) holdPromises();
     const urgent = a.must ? null : dueReminder(true);
     if (urgent) return openReminder(urgent);
     // So does a reminder that was promised ("Remind me in 10 minutes"). The card it replaces comes
@@ -1986,7 +2107,7 @@ function checkReminders() {
     if (warning) return openHeadsUp(warning);
     recordRaised(a, reminder.day);
     if (Date.now() >= reminder.nextAnnounce) announce(a);
-    const html = reminderText(a, late, reminder.repeat || reminder.announced > 1);
+    const html = reminderText(a, late, reminder.repeat || reminder.announced > 1, reminder.day);
     if (html !== reminder.html) {
       // When more than the time changes, the words may move the buttons: a tap already on its way is dropped.
       const still = t => t.replace(/<span data-now>[^<]*<\/span>/, '');
@@ -1998,7 +2119,7 @@ function checkReminders() {
     return;
   }
   // An example routine must never chime as if it were real.
-  if (!data.setup || QUIET_SCREENS.includes(ui.screen)) return;
+  if (!data.setup || QUIET_SCREENS.includes(ui.screen)) return holdPromises();
   const due = dueReminder();
   if (due) return openReminder(due);
   const ahead = dueHeadsUp();
@@ -2069,8 +2190,17 @@ async function copyText(text, okMessage) {
 // tomorrow, so it is not shown, or recorded, as missed at a time when it did not exist yet.
 const startDay = (time, repeat) => dayKey(repeat !== 'once' && time <= nowHHMM() ? daysAgo(-1) : new Date());
 
+// The first day, from tomorrow on, that something happens ('' if not in the next two months).
+function firstDay(a) {
+  for (let i = 1; i <= 62; i++) if (occursOn(a, daysAgo(-i))) return dayKey(daysAgo(-i));
+  return '';
+}
+const startsText = day => (day === dayKey(daysAgo(-1)) ? 'tomorrow' : 'on ' + whenText(day));
+
 // Hazel counts as set up from the first real change, and the family record starts that day.
 function markSetup() {
+  // Keeping the example: what has already passed today starts tomorrow, like anything else that is new.
+  if (!data.setup) for (const a of data.activities) if (!a.from) a.from = startDay(a.time, a.repeat);
   data.setup = true;
   data.since ||= dayKey();
 }
@@ -2140,14 +2270,15 @@ const actions = {
     ui.confirming = el.dataset.confirm;
     render();
     guard();
-    app.querySelector('.confirm')?.scrollIntoView({ block: 'nearest' }); // both answers on screen
+    app.querySelector('.confirm [data-action="cancel"]')?.closest('.confirm').scrollIntoView({ block: 'nearest' }); // both answers on screen
   },
   cancel() {
     if (!saveTyped()) return;
     const was = ui.confirming;
     ui.confirming = null;
     ui.restore = null;
-    render(`[data-confirm="${was}"]`, '[data-action="skip-setup"]');
+    // On the set-up screen the form (and a pasted copy) stays as it was typed.
+    (ui.screen === 'setup' ? renderKeeping : render)(`[data-confirm="${was}"]`, '[data-action="skip-setup"]');
   },
   finish(el, id) {
     const a = findActivity(id);
@@ -2155,8 +2286,7 @@ const actions = {
     const day = el?.dataset.day || dayKey();
     if (day !== dayKey()) {
       // Last night's important thing, still within its hour after midnight.
-      const held = carried();
-      if (!held || held.a !== a || held.day !== day) return render();
+      if (!carriedAll().some(x => x.a === a && x.day === day)) return render();
     } else if (!occursOn(a) || tooEarly(a)) {
       return render();
     }
@@ -2199,6 +2329,7 @@ const actions = {
   'prompt-snooze'(_, id) {
     snooze(id);
     closeSheet();
+    tickGuardUntil = performance.now() + 2500; // "did that work?": a second press must not tick what is underneath
     toast(`Okay. Hazel will remind you again in ${SNOOZE_MINUTES} minutes.`);
   },
   // Help is one tap away even while a reminder is waiting. The reminder comes back afterwards.
@@ -2208,7 +2339,9 @@ const actions = {
     go('help');
   },
   'sheet-close'() {
+    const kind = sheet?.kind;
     closeSheet();
+    if (kind === 'reminder' || kind === 'call') tickGuardUntil = performance.now() + 2500; // as above
   },
   'sheet-help'() {
     closeSheet();
@@ -2233,7 +2366,7 @@ const actions = {
   },
   'region-change'() {
     if (!saveTyped()) return;
-    Object.assign(ui, { tab: 'settings', confirming: null });
+    Object.assign(ui, { tab: 'settings', confirming: null, regionAsked: true }); // the next Save answers the question
     render();
     const pick = app.querySelector('select[name="region"]');
     pick?.scrollIntoView({ block: 'center' });
@@ -2261,7 +2394,7 @@ const actions = {
     if (!a) return;
     const today = occursOn(a);
     let words;
-    if (carried()?.a === a) {
+    if (carriedAll().some(x => x.a === a)) {
       words = `${timeText(a.time)}. ${a.note}`; // last night's, still within its hour: it is due now
     } else if (today && isDone(a.id)) {
       words = `${doneText(a.id)}.${isTablets(a) ? ' You ticked these off today. No need to take them again.' : ''}`;
@@ -2274,7 +2407,8 @@ const actions = {
       words = `${timeText(a.time)}. ${a.note}`;
     } else {
       const next = comingUp().find(x => x.a === a);
-      words = `${next ? `This is ${next.date === dayKey(daysAgo(-1)) ? 'tomorrow' : 'on ' + whenText(next.date)}, at ${timeText(a.time)}.` : 'This is not on today.'} ${a.note}`;
+      // The instruction for tablets, or anything important, is only read on its own day.
+      words = `${next ? `This is ${next.date === dayKey(daysAgo(-1)) ? 'tomorrow' : 'on ' + whenText(next.date)}, at ${timeText(a.time)}.` : 'This is not on today.'} ${isTablets(a) || a.must ? '' : a.note}`;
     }
     speak(`${a.title}. ${words}`, { el });
   },
@@ -2427,9 +2561,13 @@ const actions = {
     // so is the record of anything that is in the routine here but not in the copy.
     const copy = ui.restore;
     const fresh = ui.screen === 'setup'; // a new or cleared device
+    const calls = data.calls;
     Object.assign(data, ui.keepHistory ? {
       ...copy,
-      since: [data.since, copy.since].filter(Boolean).sort()[0] || dayKey(),
+      // Anything the copy brings that is not in the routine here starts afresh, so it is not blamed
+      // for days it was not there and is never listed twice beside its own removed entry.
+      activities: copy.activities.map(a => (data.activities.some(x => x.id === a.id) ? a : { ...a, from: startDay(a.time, a.repeat) })),
+      since: data.since || copy.since || dayKey(),
       retired: [...copy.retired, ...data.retired.filter(r => !copy.retired.some(c => c.id === r.id)),
         ...data.activities.filter(a => !copy.activities.some(c => c.id === a.id)).map(retire)],
       completed: { ...copy.completed, ...data.completed },
@@ -2437,8 +2575,9 @@ const actions = {
       seen: { ...copy.seen, ...data.seen },
       raised: { ...copy.raised, ...data.raised },
     } : copy);
-    // Whether calls work is a fact about the device, not the copy: a new device is asked to try one.
-    if (fresh) data.calls = '';
+    // Whether calls work is a fact about the device, not the copy: a new device is asked to try one,
+    // and a device that has already answered keeps its answer.
+    data.calls = fresh ? '' : calls;
     Object.assign(ui, { restore: null, keepHistory: false, confirming: null, unlocked: true, forgot: false });
     applySettings();
     try { navigator.storage?.persist?.(); } catch { /* optional */ }
@@ -2460,7 +2599,9 @@ const actions = {
     data.region = pick;
     data.emergency = pick === 'other' ? emergency : '';
     ui.confirming = 'skip';
-    render();
+    // Keeping the example means what was typed above is not used: the question says so.
+    ui.skipLoses = ['person', 'pin', 'cname0', 'cphone0', 'cname1', 'cphone1', 'cname2', 'cphone2'].some(n => f.elements[n].value.trim());
+    renderKeeping();
     guard();
     app.querySelector('.confirm')?.scrollIntoView({ block: 'nearest' });
   },
@@ -2544,6 +2685,11 @@ const forms = {
         delete prompted[existing.id];
         delete prompted['ahead' + existing.id];
         delete snoozed[existing.id];
+        // Something that has not really begun (added today or starting tomorrow, with nothing recorded
+        // for it today) begins according to its new time: later today means today after all.
+        const today = dayKey();
+        const untouched = ![data.completed, data.undone, data.raised].some(record => existing.id in (record[today] || {}));
+        if (existing.from >= today && untouched) existing.from = startDay(fields.time, repeat);
       }
       Object.assign(existing, fields);
     } else {
@@ -2551,8 +2697,10 @@ const forms = {
     }
     markSetup();
     ui.tab = 'activities';
-    const tomorrow = !existing && startDay(fields.time, repeat) !== dayKey();
-    saved(tomorrow ? `Saved. “${title}” starts tomorrow, because ${timeText(fields.time)} has already passed today.` : 'Saved.');
+    // Say so only when today would have been one of its days, and name the day it really first happens.
+    const made = existing || data.activities[data.activities.length - 1];
+    const first = made.from > dayKey() && occursOn({ ...made, from: '' }) ? firstDay(made) : '';
+    saved(first ? `Saved. “${title}” starts ${startsText(first)}, because ${timeText(fields.time)} has already passed today.` : 'Saved.');
     stepBack();
   },
   contact(f) {
@@ -2600,15 +2748,27 @@ const forms = {
     const pin = f.elements.pin.value.trim();
     const place = REGIONS[f.elements.region.value] ? f.elements.region.value : data.region;
     const emergency = f.elements.emergency.value.trim();
+    const calls = ['yes', 'no'].includes(f.elements.calls.value) ? f.elements.calls.value : '';
+    const differs = {
+      pin: pin !== data.pin,
+      country: place !== data.region || (place === 'other' && emergency !== (data.emergency || REGIONS.other.emergency)),
+      calls: calls !== data.calls,
+    };
     if (!unattended) {
       if (pin && !/^\d{4,8}$/.test(pin)) return showError(f, 'The PIN must be 4 to 8 digits, or left blank.', 'pin');
       if (place === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
+      // The one-off country question is answered by changing the country, or by saving after
+      // "No, change the country". Saving something else on this panel does not answer it.
+      if (differs.country || ui.regionAsked) data.regionOk = true;
       data.region = place;
       data.emergency = place === 'other' ? emergency : '';
-      data.regionOk = true;
-      data.calls = ['yes', 'no'].includes(f.elements.calls.value) ? f.elements.calls.value : '';
+      data.calls = calls;
       data.pin = pin;
       if (pin) ui.unlocked = true;
+      leftOut = null;
+    } else {
+      const left = [differs.pin && 'PIN', differs.country && 'country', differs.calls && 'answer about phone calls'].filter(Boolean);
+      leftOut = left.length ? { items: left, seen: false } : null;
     }
     data.person = f.elements.person.value.trim();
     data.tell = f.elements.tell.checked;
@@ -2620,6 +2780,7 @@ const forms = {
     applySettings();
     data.awake ? requestWakeLock() : releaseWakeLock();
     dirty = false;
+    if (unattended) return void save(); // nobody is there to read a message: the panel says later what was left out
     saved('Settings saved.');
     render('form[data-form="settings"] .primary');
   },
@@ -2645,8 +2806,9 @@ const forms = {
     ui.restore = normalize({ ...read.data, setup: true, ...(locked ? { pin: '' } : {}) }, true);
     ui.keepHistory = locked;
     ui.confirming = 'restore';
-    render();
+    renderKeeping(); // the pasted copy, and a half-filled set-up form above it, stay as they are
     guard();
+    app.querySelector('.confirm [data-action="cancel"]')?.closest('.confirm').scrollIntoView({ block: 'nearest' });
   },
   erase(f) {
     if (f.elements.word.value.trim().toUpperCase() !== 'ERASE') return showError(f, 'Type the word ERASE to confirm.', 'word');
@@ -2688,7 +2850,8 @@ const forms = {
     try { navigator.storage?.persist?.(); } catch { /* optional */ }
     ui.unlocked = true;
     ui.tab = 'contacts';
-    saved('Hazel is ready. Add photos, appointments and emergency details here whenever you like.');
+    const later = activities.filter(a => a.from > dayKey()).map(a => a.title);
+    saved(`Hazel is ready.${later.length ? ` ${listText(later)} ${later.length > 1 ? 'start' : 'starts'} tomorrow, because ${later.length > 1 ? 'their times have' : 'its time has'} passed today.` : ''} Add photos, appointments and emergency details here whenever you like.`);
     go('family', null, { replace: true });
   },
 };
@@ -2804,13 +2967,27 @@ let press = null;
 let slidAt = -1e9; // when a slid press was last counted
 document.addEventListener('pointerdown', e => {
   const el = e.pointerType === 'mouse' ? null : e.target.closest(SLIDE_BUTTONS);
-  press = el ? { el, x: e.clientX, y: e.clientY } : null;
+  // On a card whose words do not all fit, an up-and-down drag that starts on a button scrolls the
+  // words, and presses nothing: trying to read the rest of an instruction must never tick the tablets.
+  const words = el?.closest('.prompt-card.more, .prompt-card.scrolled')?.querySelector('.prompt-body') || null;
+  press = el ? { el, x: e.clientX, y: e.clientY, last: e.clientY, words, scrolling: false } : null;
+});
+document.addEventListener('pointermove', e => {
+  if (!press?.words) return;
+  const dy = e.clientY - press.y;
+  if (!press.scrolling && Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(e.clientX - press.x)) press.scrolling = true;
+  if (press.scrolling) press.words.scrollTop -= e.clientY - press.last;
+  press.last = e.clientY;
 });
 document.addEventListener('pointercancel', () => { press = null; });
 document.addEventListener('pointerup', e => {
   if (!press) return;
-  const { el, x, y } = press;
+  const { el, x, y, scrolling } = press;
   press = null;
+  if (scrolling) { // it was a scroll of the words, not a press: the browser's own click, if any, is dropped too
+    slidAt = performance.now();
+    return;
+  }
   const travel = Math.hypot(e.clientX - x, e.clientY - y);
   // A very small slide is an ordinary tap, which the browser sends itself. Where it also sends one
   // for a longer slide, that second click is dropped by the click handler.
@@ -2867,8 +3044,12 @@ app.addEventListener('input', e => {
 function markBackedUp() {
   data.backedUp = dayKey();
   save();
-  // The checklist and the "last copy made" line on the same screen say so straight away.
-  if (ui.screen === 'family' && ui.tab === 'settings' && !dirty && !app.querySelector('.copy-box:focus')) render('[data-action="backup"]');
+  // The checklist and the "last copy made" line on the same screen say so straight away, also when
+  // the copy was made by hand from the box (after the copy itself has happened).
+  const inBox = !!app.querySelector('.copy-box:focus');
+  setTimeout(() => {
+    if (ui.screen === 'family' && ui.tab === 'settings' && ui.backup && !dirty) render(inBox ? '.copy-box' : '[data-action="backup"]');
+  }, 0);
 }
 document.addEventListener('copy', e => {
   if (ui.backup && e.target?.closest?.('.copy-box')) markBackedUp();
@@ -2876,26 +3057,13 @@ document.addEventListener('copy', e => {
 
 app.addEventListener('change', async e => {
   const t = e.target;
-  if (t.name === 'repeat') {
-    const form = t.form;
-    form.querySelector('.when-weekly').hidden = t.value !== 'weekly';
-    form.querySelector('.when-once').hidden = !DATED_REPEATS.includes(t.value);
-    form.querySelector('.date-label').textContent = t.value === 'once' ? 'Date' : 'Starting on';
-  }
-  if (t.name === 'region') t.form.querySelector('.when-other').hidden = t.value !== 'other';
+  if (['repeat', 'region', 'method'].includes(t.name) && t.form) syncForm(t.form);
   if (t.name === 'size' && t.checked) { // show the new writing size straight away
     data.size = t.value;
     applySettings();
     save();
   }
   if (t.name === 'emoji' && t.value === '💊' && t.form?.elements.must) t.form.elements.must.checked = true;
-  if (t.name === 'method') { // FaceTime also takes an email address
-    const phone = t.form.elements.phone;
-    const byPhone = t.value === 'phone';
-    phone.inputMode = byPhone ? 'tel' : 'email';
-    phone.placeholder = byPhone ? 'e.g. 0412 345 678' : 'e.g. 0412 345 678 or sarah@example.com';
-    t.form.querySelector('.phone-label').textContent = byPhone ? 'Phone number' : 'Phone number or email address';
-  }
   if (t.matches('input[data-photo]') && t.files?.[0]) {
     try {
       ui.photo = await readPhoto(t.files[0]);
@@ -2933,11 +3101,18 @@ function tick() {
   const limit = ui.screen === 'setup' && !data.setup ? 0
     : RESTING_SCREENS.includes(ui.screen) ? 3 : QUIET_SCREENS.includes(ui.screen) ? (dirty ? 30 : 10) : 0;
   if (!sheet && limit && idle > limit * 60_000) {
-    saveTyped(true); // a half-finished family panel is kept, except the PIN, the country and the calls answer
+    // A half-finished family panel is saved, except the PIN, the country and the calls answer. A
+    // half-filled form, or a panel that cannot be saved as it stands, is kept as typed and is there
+    // again the next time that form is opened.
+    if (dirty && !(ui.screen === 'family' && saveTyped(true))) keepDraft();
     return go('home');
   }
-  // The first screen left scrolled part of the way down goes back to showing the clock.
-  if (ui.screen === 'home' && !sheet && window.scrollY > 0 && idle > 90_000) window.scrollTo(0, 0);
+  // The first screen left scrolled part of the way down goes back to showing the clock. What is
+  // under a finger has then moved, so a tap already on its way is dropped.
+  if (ui.screen === 'home' && !sheet && idle > 90_000 && (window.scrollY > 0 || app.querySelector('.hero')?.scrollTop)) {
+    homeToTop();
+    guard(1000);
+  }
   // Redraw whatever the person may have left showing, so it is never yesterday's answer.
   if (!LIVE_SCREENS.includes(ui.screen) || ui.confirming) return;
   if (liveText() === lastLive) return;

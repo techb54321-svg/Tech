@@ -19,17 +19,20 @@ No accounts, no server, no build step. Everything stays on the one device.
   it stays at the top of the first screen, asked about carefully, until it is
   ticked or the next important thing is due; after that it is only named beside
   the clock.
-- **Every button stays on the screen.** On a reminder the words scroll if they
-  must, but the buttons never leave the screen, at any writing size or on a
-  tablet lying on its side.
+- **Every button stays on the screen.** On a reminder the picture makes way and
+  then the words scroll if they must ("More below" says so), but the buttons
+  never leave the screen, at any writing size, on a tablet lying on its side or
+  on a phone lying on its side.
 - **Never tells anyone to take a late dose.** Hazel only knows about the tap, so
   once tablets are more than an hour late the instruction is replaced by the
   family's own advice from the pharmacist ("If it is before 12 noon, take them
   now…"), or by "Check your pill box. Don't take extra." That advice is for the
   same day only: the next morning Hazel says the tablets were not ticked and to
-  ask before taking them. A repeated reminder asks "Already taken them?"
-  instead of repeating the instruction, and a warning given beforehand never
-  includes it. The voice always says what the screen says.
+  ask before taking them, on the first screen and on any card that comes back
+  after midnight. A repeated reminder asks "Already taken them?" instead of
+  repeating the instruction. The instruction for tablets is never shown or read
+  before its time: not in a warning beforehand, and not on the day before for a
+  weekly tablet. The voice always says what the screen says.
 - **Answers "have I taken my tablets?"** beside the clock on the first screen:
   "✓ Morning tablets, done at 8:06 am", or "Morning tablets: not ticked". A tick
   made an hour or more late reads "ticked off at 2:45 pm", because that is when
@@ -50,13 +53,16 @@ No accounts, no server, no build step. Everything stays on the one device.
   are ignored, so a double tap can't tick something by accident. A press that
   slides still counts on every button the person uses, but trying to scroll
   never presses anything: an up-and-down drag scrolls, and only a sideways
-  slide counts where the page moves. Anything ticked or removed can be taken
-  back, and the reminder then comes round again.
+  slide counts where the page moves. On a card with more words than fit, a drag
+  that starts on a button scrolls the words. After a reminder is put off, a
+  second "did that work?" press does not tick what is underneath. Anything
+  ticked or removed can be taken back, and the reminder then comes round again.
 - **Always goes back to the clock.** Every screen returns by itself, and the
   first screen scrolls back to the top, so nothing left open can stop the
   reminders or hide the time.
 - **Reads itself aloud and makes the writing bigger** from two buttons in the
-  top corner of the first screen, beside Help.
+  top corner of the first screen, beside Help. They stay in one row at every
+  writing size, so the button stays under the finger.
 
 ## What it does for the family
 
@@ -67,7 +73,9 @@ or enter the PIN if one is set).
   a routine picked from common items. Until that is done, Family settings is the
   set-up form, so the country (and so the emergency number) is always confirmed.
   Something whose time has already passed today starts tomorrow, so it is never
-  shown or recorded as missed at a time when it did not exist.
+  shown or recorded as missed at a time when it did not exist. The Routine list
+  says which things have not started yet, and moving one to later today starts
+  it today after all.
 - **A real calendar**: every day, chosen days ("bin night"), every 2 weeks,
   every month, or one date (an appointment, with an optional warning beforehand
   and a call button on the reminder). "Coming up" and "Tomorrow" appear by
@@ -91,12 +99,15 @@ or enter the PIN if one is set).
   medicines, allergies, doctor.
 - **"Is Hazel ready?"** checklist, **Try a reminder now**, and a **backup copy**
   to restore after a new or cleared device. The copy has no spaces in it, so an
-  email program that wraps long lines cannot damage it. A forgotten PIN is
+  email program that wraps long lines cannot damage it. Before a copy replaces
+  anything, Hazel says whose it is and when it was made. A forgotten PIN is
   cleared with a backup copy without losing the ticks recorded since.
 - **Nothing typed is thrown away without a word.** A panel is saved before
   another button or the Back button leaves it, and a half-filled form asks
-  first. Left alone, Hazel keeps what was typed and goes back to the clock, but
-  never puts a new PIN or a different country in force without Save.
+  first. A question asked on the set-up screen leaves the form filled in. Left
+  alone, Hazel goes back to the clock: a panel is saved (but never a new PIN, a
+  different country or the calls answer, and the panel then says so), and a
+  half-filled form is kept as typed and is there again when it is next opened.
 
 ## What it cannot do
 

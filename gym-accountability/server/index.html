@@ -7,8 +7,7 @@
 <meta name="description" content="One-time setup for Ironclad alerts: your own free server that sends your referee real notifications." />
 <meta name="theme-color" content="#07080c" />
 <link rel="icon" href="../icon-192.png" type="image/png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="../fonts/fonts.css" rel="stylesheet" />
 <style>
   :root{color-scheme:dark;--bg:#07080c;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#f3f5fa;--muted:#8a93a6;--dim:#5c6578;--accent:#ffb020;--accent2:#ff5e1a;--ok:#3ddc97;--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--sans:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
   *{box-sizing:border-box}
@@ -109,7 +108,7 @@
       <li><b>No weekly verdict arrived</b>: check that the checklist on your server page shows the hourly check ran.</li>
       <li><b>An iPhone referee sees no Turn on alerts button</b>: they need iOS 16.4 or later, and must open Ironclad from the Home Screen, not Safari.</li>
     </ul>
-    <p class="small muted" style="margin-top:12px">Optional extra: to also send the weekly verdict as a text message, add Twilio settings to the Worker (<code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM</code>). Not needed for alerts.</p>
+
   </div>
 </main>
 <script>

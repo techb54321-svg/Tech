@@ -9,6 +9,7 @@ One free Cloudflare Worker that powers **Ironclad alerts**. The person-friendly 
 - Sends notifications with standard Web Push: RFC 8291 payload encryption and RFC 8292 VAPID. It uses no third-party push service. VAPID keys are generated on first use and stored in KV. Dead subscriptions (404 or 410) are pruned.
 - An hourly cron sends the weekly verdict at the configured hour on the first day of the new week. It sends even if the app went silent, and skips the push if the app already delivered that verdict.
 - Consent comes first: nothing is pushed until the referee has agreed.
+- Privacy: check-in photos expire after 14 days, phone numbers are never stored for Ironclad alerts, and referee actions (agree, subscribe, test) are rate-limited.
 
 ## Setup
 
@@ -20,7 +21,7 @@ One free Cloudflare Worker that powers **Ironclad alerts**. The person-friendly 
 Optional settings:
 
 - `APP_SECRET` replaces the generated secret.
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` also send the weekly verdict as a text message.
+- Twilio settings (`TWILIO_*`) only apply to the older text-message mode. With Ironclad alerts the server never receives phone numbers.
 - The `APP_URL` constant at the top of `worker.js` points to wherever the Ironclad app is hosted. It is used for icons and the pairing link.
 
 ## Endpoints
@@ -30,6 +31,7 @@ Optional settings:
 | `GET /` | none | Status page with the setup checklist and connection code |
 | `POST /event` | secret | Record an event and push it to the referee |
 | `POST /invite` | secret | Create the referee link |
+| `POST /rotate` | secret | Replace the referee link; the old link and all its alert registrations stop working |
 | `POST /state` | secret | Report agreement and alert-device count back to the app |
 | `POST /summary` | secret | Preview last week's verdict text |
 | `GET /r/<token>/` | token | Referee app, plus `manifest.webmanifest`, `sw.js`, `data` and `photo/<id>` |

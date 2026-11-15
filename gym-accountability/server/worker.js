@@ -23,6 +23,7 @@ const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', ...CORS } });
 const page = (s, status = 200) => new Response(s, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+const PHOTO_DAYS = 14; // check-in photos delete themselves after this
 const PUSH_EVENTS = new Set(['checkin', 'checkout', 'attempt', 'week', 'freeze', 'config', 'paid', 'deposit', 'status', 'tamper']);
 
 export default {
@@ -59,10 +60,11 @@ async function route(request, env) {
 
   const st = await getState(env);
   st.origin = url.origin;
+  const minimise = () => { if (body.via === 'ironclad' && st.cfg) { delete st.cfg.refereePhone; delete st.cfg.refereeEmail; } };
 
   if (url.pathname === '/event') {
     const photoId = body.photo ? await savePhoto(env, body.photo) : null;
-    recordEvent(st, body, photoId);
+    recordEvent(st, body, photoId); minimise();
     let delivered = 0, sent = null;
     const via = body.via || 'sms';
     if (body.event === 'referee' && body.data?.agreed && !st.agreedAt) {
@@ -84,9 +86,17 @@ async function route(request, env) {
   }
   if (url.pathname === '/invite') {
     if (body.state && typeof body.state === 'object') st.cfg = { ...(st.cfg || {}), ...body.state };
+    minimise();
     if (!st.inviteToken) st.inviteToken = randomToken();
     await putState(env, st);
     return json({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/`, agreedAt: st.agreedAt || null, subscribers: st.subs.length });
+  }
+  if (url.pathname === '/rotate') {
+    // A leaked link is a key to your photos and activity. Replace it: the old link and
+    // every device registered through it stop working at once.
+    st.inviteToken = randomToken(); st.subs = []; st.rl = {};
+    await putState(env, st);
+    return json({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/` });
   }
   if (url.pathname === '/state') {
     await putState(env, st);
@@ -139,15 +149,25 @@ async function savePhoto(env, dataUrl) {
   const bin = atob(mm[2]), bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   const id = randomToken(14);
-  await env.STATE.put('photo:' + id, bytes, { expirationTtl: 60 * 86400, metadata: { type: mm[1] } });
+  await env.STATE.put('photo:' + id, bytes, { expirationTtl: PHOTO_DAYS * 86400, metadata: { type: mm[1] } });
   return id;
 }
+
+/* ---------------- rate limits ---------------- */
+export function allow(st, key, max, windowMs) {
+  const now = Date.now(); st.rl ||= {};
+  const recent = (st.rl[key] || []).filter(t => now - t < windowMs);
+  if (recent.length >= max) { st.rl[key] = recent; return false; }
+  recent.push(now); st.rl[key] = recent; return true;
+}
+const slowDown = () => json({ error: 'Too many requests. Try again in a little while.' }, 429);
 
 /* ---------------- referee agreement ---------------- */
 async function agree(env, token, name) {
   const st = await getState(env);
   if (!token || !st.inviteToken || token !== st.inviteToken) return json({ error: 'This invitation link is not valid any more. Ask for a new one.' }, 400);
   if (!st.agreedAt) {
+    if (!allow(st, 'agree', 10, 3600e3)) return slowDown();
     st.agreedAt = Date.now(); st.agreedBy = String(name || st.cfg?.refereeName || '').slice(0, 60); st.agreedHow = 'tapped Agree on the referee page';
     if (hasTwilio(env) && st.cfg?.refereePhone && !st.subs.length) { try { await sendSMS(env, st.cfg.refereePhone, welcomeText(st.cfg)); } catch (e) { st.welcomeError = e.message; } }
     await putState(env, st);
@@ -362,6 +382,7 @@ async function refereeRoute(request, env, url, token, rest) {
     let body = {}; try { body = await request.json(); } catch {}
     if (rest === '/agree') return agree(env, token, body.name);
     if (rest === '/subscribe') {
+      if (!allow(st, 'subscribe', 6, 3600e3)) return slowDown();
       const s = body.subscription;
       if (!s || !/^https:\/\//.test(s.endpoint || '') || !s.keys?.p256dh || !s.keys?.auth) return json({ error: 'bad subscription' }, 400);
       st.subs = st.subs.filter(x => x.endpoint !== s.endpoint);
@@ -370,8 +391,9 @@ async function refereeRoute(request, env, url, token, rest) {
       await putState(env, st);
       return json({ ok: true, subscribers: st.subs.length });
     }
-    if (rest === '/unsubscribe') { st.subs = st.subs.filter(x => x.endpoint !== body.endpoint); await putState(env, st); return json({ ok: true }); }
+    if (rest === '/unsubscribe') { if (!allow(st, 'unsubscribe', 10, 3600e3)) return slowDown(); st.subs = st.subs.filter(x => x.endpoint !== body.endpoint); await putState(env, st); return json({ ok: true }); }
     if (rest === '/test') {
+      if (!allow(st, 'test', 3, 600e3)) { await putState(env, st); return slowDown(); }
       st.origin = url.origin;
       const n = await pushAll(env, st, testPayload(st), 'high', body.endpoint || null);
       await putState(env, st);
@@ -421,7 +443,7 @@ button{font:inherit;font-weight:700;cursor:pointer;border-radius:16px;padding:15
 .primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1d0e00;border:0;font-family:var(--display);font-size:18px;box-shadow:0 12px 30px -12px rgba(255,110,30,.8)}
 .row{display:flex;gap:8px}.row>*{flex:1}`;
 function shell(title, inner) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${escH(title)}</title><meta name="robots" content="noindex"><style>${BASE_CSS}</style></head><body><main><div class="brand"><i><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg></i><span>Iron<em>clad</em></span></div>${inner}</main></body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${escH(title)}</title><meta name="robots" content="noindex"><link href="${APP_URL}fonts/fonts.css" rel="stylesheet"><style>${BASE_CSS}</style></head><body><main><div class="brand"><i><svg viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg></i><span>Iron<em>clad</em></span></div>${inner}</main></body></html>`;
 }
 
 function refereePage(st, token, vapidKey) {
@@ -431,8 +453,7 @@ function refereePage(st, token, vapidKey) {
 <title>Ironclad · ${escH(data.name)}</title><meta name="robots" content="noindex"><meta name="theme-color" content="#07080c">
 <link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="${escH(icon)}apple-touch-icon.png"><link rel="icon" href="${escH(icon)}icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Ironclad">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="${escH(icon)}fonts/fonts.css" rel="stylesheet">
 <style>${BASE_CSS}
 .ring{position:relative;width:150px;height:150px;flex:none}.ring svg{width:100%;height:100%;transform:rotate(-90deg)}.ring circle{fill:none;stroke-width:13}.ring .t{stroke:rgba(255,255,255,.07)}.ring .f{stroke:url(#g);stroke-linecap:round;transition:stroke-dashoffset 1.2s var(--ease);filter:drop-shadow(0 0 10px rgba(61,220,151,.5))}
 .ring .n{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:48px;letter-spacing:-.04em;line-height:1}#rn{color:var(--text)}#rn span{font-size:22px;color:var(--dim)}.ring .n small{font-family:var(--sans);font-size:10px;letter-spacing:.16em;color:var(--muted);margin-top:6px;font-weight:700}
@@ -453,10 +474,10 @@ function refereePage(st, token, vapidKey) {
   <section id="invite" class="hide">
     <h1 id="inv-title"></h1>
     <p class="muted">Two minutes a week. Read this, then decide.</p>
-    <div class="card"><h2>What this is</h2><p><b class="nm"></b> made a deal: <span id="inv-short"></span>, or it costs them. Their app checks GPS on arrival and departure, insists on a minimum stay, and keeps a log nobody can edit. What it can't do is make a missed week actually hurt.</p><p style="border-left:3px solid var(--accent);padding:4px 12px;color:var(--muted)">That part is you.</p></div>
+    <div class="card"><h2>What this is</h2><p><b class="nm"></b> made a deal: <span id="inv-short"></span>, or it costs them. Their app checks GPS on arrival and departure, insists on a minimum stay, and keeps a log that shows any tampering. What it can't do is make a missed week actually hurt.</p><p style="border-left:3px solid var(--accent);padding:4px 12px;color:var(--muted)">That part is you.</p></div>
     <div class="card"><h2>The deal</h2><div id="deal"></div></div>
     <div class="card"><h2>Your job</h2><ul><li><b>Read the weekly verdict.</b> That's most of it.</li><li id="duty-money"></li><li><b>Treat silence as failure.</b> No verdict, or a note that the app reported nothing? Assume the week was missed and ask.</li></ul><p class="small muted">Not your job: nagging, tracking, policing. Illness or travel can be declared in advance as a freeze, and you'll be told. Excuses after the fact don't count. That's the rule they chose.</p></div>
-    <div class="card"><h2>What you'll see</h2><p class="small">A notification when <b class="nm"></b> checks in (with a photo, on Android), when a session counts or doesn't, and the weekly verdict. Never live location. You can turn alerts off any time.</p></div>
+    <div class="card"><h2>What you'll see</h2><p class="small">A notification when <b class="nm"></b> checks in (with a photo, on Android), when a session counts or doesn't, and the weekly verdict. Never their location, only how far from the gym they were. Photos delete themselves after ${PHOTO_DAYS} days. This link is private: don't forward it. You can turn alerts off any time.</p></div>
     <button id="agree" class="primary">I'm in. Hold them to it.</button>
     <p class="small muted" style="text-align:center">Not for you? Just tell <b class="nm"></b>. No hard feelings.</p>
   </section>
@@ -527,7 +548,7 @@ function renderHome(){
   m.push(['Passing streak', D.streak + ' week' + (D.streak===1?'':'s')]);
   $('money').innerHTML = m.map(([k,v]) => '<div class="kv"><span class="muted">'+esc(k)+'</span><b>'+esc(v)+'</b></div>').join('');
   $('feed').innerHTML = D.events.length ? D.events.map(e => { const bad = e.event==='attempt' || e.ok===false || /FAIL|lost|tamper/i.test(e.text); const good = e.event==='checkout' && e.ok!==false || /PASS/.test(e.text);
-    return '<div class="e"><span class="dot '+(bad?'bad':good?'ok':'')+'"></span><div style="flex:1;min-width:0"><div class="t">'+new Date(e.ts).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+'</div><div class="small">'+esc(e.text)+'</div></div>'+(e.photo?'<img src="'+esc(e.photo)+'" alt="Check-in photo" loading="lazy">':'')+'</div>'; }).join('') : '<p class="small muted">Nothing yet. The first check-in will show up here.</p>';
+    return '<div class="e"><span class="dot '+(bad?'bad':good?'ok':'')+'"></span><div style="flex:1;min-width:0"><div class="t">'+new Date(e.ts).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'})+'</div><div class="small">'+esc(e.text)+'</div></div>'+(e.photo?'<img src="'+esc(e.photo)+'" alt="Check-in photo" loading="lazy" onerror="this.remove()">':'')+'</div>'; }).join('') : '<p class="small muted">Nothing yet. The first check-in will show up here.</p>';
   $('updated').textContent = D.lastReport ? 'Last heard from ' + D.name + "'s app " + new Date(D.lastReport).toLocaleString(undefined,{weekday:'short',hour:'numeric',minute:'2-digit'}) : '';
 }
 async function getSub(){ if (!pushOK) return null; reg = reg || await navigator.serviceWorker.register('sw.js'); return reg.pushManager.getSubscription(); }

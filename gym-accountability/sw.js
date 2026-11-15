@@ -1,6 +1,6 @@
 // Offline cache so the app opens inside the gym even with no signal.
-const CACHE = 'ironclad-v2';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'ironclad-v3';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './privacy.html', './fonts/fonts.css', './fonts/bricolage-grotesque-latin.woff2', './fonts/inter-latin.woff2', './fonts/caveat-latin.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -16,14 +16,12 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Ironclad" />
 <meta property="og:title" content="Ironclad: make quitting expensive" />
-<meta property="og:description" content="Gym accountability with teeth. GPS-verified check-ins, a friend holding your deposit, and a log you can't fake." />
+<meta property="og:description" content="Gym accountability with teeth. GPS-verified check-ins, a friend holding your deposit, and a log that shows tampering." />
 <meta property="og:image" content="https://techb54321-svg.github.io/Tech/gym-accountability/og.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=Caveat:wght@600&display=swap" rel="stylesheet" />
+<link href="fonts/fonts.css" rel="stylesheet" />
 <style>
   :root{
     color-scheme: dark;
@@ -419,7 +417,7 @@
           <div class="promises">
             <div class="promise"><div class="badge"><svg class="ico"><use href="#i-pin"/></svg></div><div><b>GPS-verified, every time</b><span>Check-ins only count inside your gym.</span></div></div>
             <div class="promise"><div class="badge"><svg class="ico"><use href="#i-users"/></svg></div><div><b>A referee holds your deposit</b><span>Miss a week and it goes somewhere you'll hate.</span></div></div>
-            <div class="promise"><div class="badge"><svg class="ico"><use href="#i-shield"/></svg></div><div><b>A log you can't fake</b><span>Every entry is sealed. Tampering shows.</span></div></div>
+            <div class="promise"><div class="badge"><svg class="ico"><use href="#i-shield"/></svg></div><div><b>A log that shows tampering</b><span>Every entry is sealed to the one before it.</span></div></div>
           </div>
         </div>
       </div>
@@ -621,6 +619,13 @@
       <p class="small muted">You can change it. Every change is logged and lands in your referee's next report, so change it like someone's watching. Someone is.</p>
       <div id="cfg-view"></div>
       <button id="btn-edit" class="btn-block iconbtn" style="margin-top:12px;justify-content:center"><svg class="ico"><use href="#i-edit"/></svg>Edit contract (it's logged)</button>
+    </div>
+    <div class="card">
+      <h2>Your data</h2>
+      <div class="list">
+        <div class="li"><div class="badge"><svg class="ico"><use href="#i-shield"/></svg></div><div><b>Where your data goes</b><span class="muted">It lives on this phone. No account, no ads, no tracking. Your location is never sent anywhere.</span><a class="btn-block" href="privacy.html" style="display:block;text-align:center;text-decoration:none;margin-top:10px;padding:13px 16px;border-radius:16px;border:1px solid var(--line);background:var(--bg2);font-weight:600">Read exactly what's stored</a></div></div>
+        <div class="li" id="rotate-row"><div class="badge"><svg class="ico"><use href="#i-invite"/></svg></div><div><b>Replace the referee link</b><span class="muted">If the link got forwarded, replace it. The old one, and every phone that turned on alerts with it, stops working at once.</span><button id="btn-rotate" class="btn-block">Replace the link</button></div></div>
+      </div>
     </div>
     <div class="card">
       <h2>Danger zone</h2>
@@ -989,7 +994,7 @@ function renderHistory(){
       case 'notify': body = e.auto ? `📡 Referee auto-notified (${esc(e.event)}) via ${esc(e.channel)}` : `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
       case 'paid': body = `💵 Paid ${money(e.amount)}`; break;
       case 'deposit': body = `💰 Deposit of ${money(e.amount)} handed to ${esc(cfg.referee.name)}${e.note?` (${esc(e.note)})`:''}`; break;
-      case 'invite': body = `📨 Referee invitation sent`; break;
+      case 'invite': body = e.how==='link replaced' ? '🔁 Referee link replaced; the old one stopped working' : '📨 Referee invitation sent'; break;
       case 'referee': body = `🤝 Referee agreed (${esc(e.how)})`; break;
       case 'config': body = `✏️ Contract changed: ${esc(e.changes)}`; break;
       case 'import': body = `📥 Ledger imported (${e.count} entries)`; break;
@@ -1007,6 +1012,7 @@ function renderSettings(){
     ['Deposit', hasDeposit() ? `${money(deposited())} handed over, ${money(depositLeft())} left` : 'none'], ['Forfeits go to', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? 'Notifications on ✓' : 'Enable notifications';
+  $('rotate-row').style.display = cfg.channel.type==='ironclad' ? '' : 'none';
   if (isStandalone()) { $('install-hint').textContent = "Installed. You're running the app. Good."; $('btn-install').style.display = 'none'; }
 }
 
@@ -1145,7 +1151,11 @@ function roughPosition(){
 async function searchPlaces(q){
   const near = await roughPosition();
   const params = new URLSearchParams({ format:'jsonv2', limit:'6', addressdetails:'1', q });
-  if (near) { params.set('viewbox', `${near.lng-0.5},${near.lat+0.5},${near.lng+0.5},${near.lat-0.5}`); params.set('bounded','0'); }
+  if (near) {
+    // Only a rough area (about 10 km) is shared with OpenStreetMap to rank nearby gyms first.
+    const lat = Math.round(near.lat * 10) / 10, lng = Math.round(near.lng * 10) / 10;
+    params.set('viewbox', `${(lng-0.5).toFixed(1)},${(lat+0.5).toFixed(1)},${(lng+0.5).toFixed(1)},${(lat-0.5).toFixed(1)}`); params.set('bounded','0');
+  }
   const r = await fetch('https://nominatim.openstreetmap.org/search?' + params, { headers:{ 'Accept':'application/json' } });
   if (!r.ok) throw new Error('Search failed (' + r.status + '). Try again in a moment.');
   return (await r.json()).map(x => ({ lat:+x.lat, lng:+x.lon, name: x.name || x.display_name.split(',')[0], addr: x.display_name }));
@@ -1213,7 +1223,7 @@ function channelProblem(ch){
 }
 function snapshot(){
   const st = currentStatus();
-  return { name:cfg.name, refereeName:cfg.referee.name, refereePhone:normPhone(cfg.referee.phone), target:cfg.target, pledge:cfg.pledge, consequence:cfg.consequence, gym:cfg.gym.label, minMinutes:cfg.minMinutes,
+  return { name:cfg.name, refereeName:cfg.referee.name, ...(cfg.channel.type==='sms' ? { refereePhone:normPhone(cfg.referee.phone) } : {}), target:cfg.target, pledge:cfg.pledge, consequence:cfg.consequence, gym:cfg.gym.label, minMinutes:cfg.minMinutes,
     weekStart:cfg.weekStart, tz:Intl.DateTimeFormat().resolvedOptions().timeZone, sendHour: cfg.channel?.sendHour ?? 9, startWeek:startWeekKey(),
     week:st.wk, done:st.done, remaining:st.remaining, days:[...st.days], owed:owed(), streak:streak(), warmup:st.warmup, frozen:st.frozen,
     deposited:deposited(), depositLeft:depositLeft(), appUrl: new URL('./', location.href).href };
@@ -1274,6 +1284,22 @@ async function topUpDeposit(){
   toast(`Recorded. ${money(depositLeft())} on the line.`); renderToday();
 }
 $('setup').onsubmit = ev => { ev.preventDefault(); if (inEdit()) submitSetup(); else if (wizStep < WIZ.length-1) wizGo(1); };
+// Human-readable contract changes, with no coordinates or contact details in them.
+function describeChanges(a, b){
+  const out = [], m = v => money(v), days = d => (d||[]).map(x=>DN[x]).join(', ') || 'none';
+  const f = { name:['Name', v=>v], target:['Sessions a week', v=>v], weekStart:['Week starts', v=>DN[v]], planDays:['Planned days', days], remindTime:['Nag time', fmtRemind],
+    requirePhoto:['Check-in photo', v=>v?'on':'off'], pledge:['Price of a failed week', m], consequence:['Forfeits go to', v=>v||'—'], freezesPerQuarter:['Freezes a quarter', v=>v],
+    minMinutes:['Minimum stay', v=>v+' min'], radius:['Check-in radius', v=>v+' m'] };
+  for (const [k, [label, fmt]] of Object.entries(f)) if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) out.push(`${label}: ${fmt(a[k])} → ${fmt(b[k])}`);
+  if (a.gym && b.gym) {
+    if ((a.gym.label||'') !== (b.gym.label||'')) out.push(`Gym: ${a.gym.label||'unnamed'} → ${b.gym.label||'unnamed'}`);
+    if (a.gym.lat !== b.gym.lat || a.gym.lng !== b.gym.lng) out.push(`Gym location moved about ${Math.round(haversine(a.gym, b.gym))} m`);
+  }
+  if ((a.referee?.name||'') !== (b.referee?.name||'')) out.push(`Referee: ${a.referee?.name} → ${b.referee?.name}`);
+  else if (JSON.stringify(a.referee) !== JSON.stringify(b.referee)) out.push("Referee's contact details updated");
+  if (JSON.stringify(a.channel) !== JSON.stringify(b.channel)) out.push(`Referee updates: ${CH_NAMES[a.channel?.type]||a.channel?.type} → ${CH_NAMES[b.channel?.type]||b.channel?.type}`);
+  return out;
+}
 async function submitSetup(){
   const c = readSetupForm();
   if (!c.name) return toast('Your name first.');
@@ -1284,12 +1310,12 @@ async function submitSetup(){
   if (c.channel.type==='sms') c.referee.phone = normPhone(c.referee.phone);
   const chProb = channelProblem(c.channel); if (chProb) return toast(chProb, 5000);
   if (cfg) {
-    const changes = Object.keys(c).filter(k=>JSON.stringify(c[k])!==JSON.stringify(cfg[k])).map(k=>`${k}: ${JSON.stringify(cfg[k])} → ${JSON.stringify(c[k])}`).join('; ');
+    const list = describeChanges(cfg, c), changes = list.join('; ');
+    const chChanged = JSON.stringify(cfg.channel) !== JSON.stringify(c.channel);
     cfg = { ...cfg, ...c }; save(LS.cfg, cfg);
     if (changes) await append({ type:'config', changes });
-    const chChanged = changes.includes('channel:');
     if (chChanged && channelActive()) notifyReferee('signed', introText() + '\n(Channel connected or changed after signing.)');
-    const visible = changes.split('; ').filter(x=>!x.startsWith('channel:')).join('; ');
+    const visible = list.filter(x=>!x.startsWith('Referee updates')).join('; ');
     if (visible) notifyReferee('config', `✏️ ${cfg.name} changed the contract: ${visible}`);
     toast('Saved and logged. Your referee will see the change.');
   } else {
@@ -1589,6 +1615,16 @@ async function markRefereeAgreed(how, ts, fromServer=false){
   renderToday();
 }
 $('btn-invite').onclick = inviteReferee;
+$('btn-rotate').onclick = async () => {
+  if (cfg.channel.type !== 'ironclad') return;
+  if (!(await ask({ title:'Replace the referee link?', body:`The current link stops working straight away, along with every phone that turned on alerts through it. Then you send ${esc(cfg.referee.name)} the new one and they turn alerts on again.`, okLabel:'Replace it', danger:true }))) return;
+  try {
+    const r = await fetch(cfg.channel.url + '/rotate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret }) });
+    const j = await r.json().catch(()=>({})); if (!r.ok) throw new Error(j.error || ('server error ' + r.status));
+    await append({ type:'invite', how:'link replaced' }); refSubs = 0;
+    toast('Old link switched off. Now send the new one.', 4000); show('today'); inviteReferee();
+  } catch(e){ toast("Couldn't replace the link: " + e.message, 6000); }
+};
 $('btn-agreed').onclick = async () => {
   if (await ask({ title:'Referee said yes?', body:`Only confirm this if ${esc(cfg.referee.name)} actually agreed to the job: reading the weekly verdict, holding the money, forfeiting it when you fail, and treating silence as failure.`, okLabel:'Yes, they agreed' }))
     markRefereeAgreed(`confirmed by ${cfg.name}`);
@@ -1607,11 +1643,12 @@ async function checkRefereeAgreement(force=false){
 }
 
 /* ---------- sheets ---------- */
-function ask({ title, body, okLabel='OK', cancelLabel='Cancel', danger=false, input=null }){
+function ask({ title, body, okLabel='OK', cancelLabel='Cancel', danger=false, input=null, secondary=null }){
   return new Promise(res => {
-    openSheet(`<h3>${esc(title)}</h3>${body?`<p class="small muted">${body}</p>`:''}${input?`<input type="text" id="ask-input" placeholder="${esc(input.placeholder||'')}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-top:10px" />`:''}
-      <button class="btn-block ${danger?'btn-danger':'btn-primary'}" style="margin-top:14px" id="ask-ok">${esc(okLabel)}</button><button class="btn-block" style="margin-top:8px" id="sheet-close">${esc(cancelLabel)}</button>`);
+    openSheet(`<h3>${esc(title)}</h3>${body?`<p class="small muted">${body}</p>`:''}${input?`<input type="${input.type==='password'?'password':'text'}" id="ask-input" placeholder="${esc(input.placeholder||'')}" autocomplete="${input.type==='password'?'new-password':'off'}" autocorrect="off" autocapitalize="off" spellcheck="false" style="margin-top:10px" />`:''}
+      <button class="btn-block ${danger?'btn-danger':'btn-primary'}" style="margin-top:14px" id="ask-ok">${esc(okLabel)}</button>${secondary?`<button class="btn-block" style="margin-top:8px" id="ask-alt">${esc(secondary)}</button>`:''}<button class="btn-block" style="margin-top:8px" id="sheet-close">${esc(cancelLabel)}</button>`);
     const done = v => { closeSheet(); res(v); };
+    if (secondary) $('ask-alt').onclick = () => done({ alt: true });
     $('ask-ok').onclick = () => done(input ? $('ask-input').value : true);
     $('sheet-close').onclick = () => done(null);
     if (input) { const i=$('ask-input'); setTimeout(()=>i.focus(), 50); i.addEventListener('keydown', e => { if (e.key==='Enter') done(i.value); }); }
@@ -1661,12 +1698,49 @@ $('btn-ics').onclick = () => {
 function download(name, text, type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
 
 /* ---------- export / import / reset ---------- */
-$('btn-export').onclick = () => download(`ironclad-backup-${ymd(new Date())}.json`, JSON.stringify({ cfg, ledger, active, outbox, exported:Date.now() }, null, 1), 'application/json');
+/* Backups are encrypted with a passphrase: PBKDF2-SHA-256 (600k rounds) → AES-256-GCM. */
+const b64 = buf => { const b = new Uint8Array(buf); let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(s); };
+const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function backupKey(pass, salt, iter){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', hash:'SHA-256', salt, iterations: iter }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function encryptBackup(obj, pass){
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 600000;
+  const key = await backupKey(pass, salt, iter);
+  const data = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { ironclad:'backup', v:2, enc:{ alg:'AES-256-GCM', kdf:'PBKDF2-SHA-256', iter, salt:b64(salt), iv:b64(iv), data:b64(data) } };
+}
+async function decryptBackup(file, pass){
+  const e = file.enc, key = await backupKey(pass, unb64(e.salt), e.iter);
+  try { return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv: unb64(e.iv) }, key, unb64(e.data)))); }
+  catch { throw new Error("wrong passphrase, or the file is damaged"); }
+}
+$('btn-export').onclick = async () => {
+  const payload = { cfg, ledger, active, outbox, exported:Date.now() };
+  const pass = await ask({ title:'Protect your backup', body:"Pick a passphrase. The file is encrypted with it, so it's safe to keep in cloud storage or email to yourself. <b>Don't lose it</b>: there's no way to recover the backup without it.", okLabel:'Encrypt and save', secondary:'Save without a passphrase', input:{ type:'password', placeholder:'At least 8 characters' } });
+  if (pass === null) return;
+  const name = `ironclad-backup-${ymd(new Date())}.json`;
+  if (pass && pass.alt) {
+    if (!(await ask({ title:'Save it unprotected?', body:'Anyone who gets the file can read everything in it, including your photos and your alerts server key.', okLabel:'Save unprotected', danger:true }))) return;
+    return download(name, JSON.stringify(payload, null, 1), 'application/json');
+  }
+  if (String(pass).length < 8) return toast('Use at least 8 characters for the passphrase.', 4000);
+  const again = await ask({ title:'Type it once more', okLabel:'Encrypt and save', input:{ type:'password', placeholder:'Same passphrase' } });
+  if (again === null) return;
+  if (again !== pass) return toast("Those didn't match. Nothing saved.", 4000);
+  toast('Encrypting…'); download(name, JSON.stringify(await encryptBackup(payload, pass)), 'application/json'); toast('Encrypted backup saved.');
+};
 $('btn-import').onclick = () => $('import-file').click();
 $('import-file').onchange = async () => {
   const f = $('import-file').files[0]; if (!f) return;
   try {
-    const data = JSON.parse(await f.text());
+    let data = JSON.parse(await f.text());
+    if (data && data.enc) {
+      const pass = await ask({ title:'Unlock backup', body:'This backup is encrypted. Enter the passphrase you chose when you saved it.', okLabel:'Unlock', input:{ type:'password', placeholder:'Passphrase' } });
+      if (pass === null) return;
+      data = await decryptBackup(data, pass);
+    }
     if (!data.cfg || !Array.isArray(data.ledger)) throw new Error('not an Ironclad backup');
     const saved = ledger; ledger = data.ledger;
     const ok = await verifyLedger();
@@ -1676,6 +1750,7 @@ $('import-file').onchange = async () => {
     await append({ type:'import', count: ledger.length });
     setIntegrity(true); toast('Backup restored.'); render(); show('today');
   } catch(e){ toast('Import failed: '+e.message, 5000); }
+  finally { $('import-file').value = ''; }
 };
 const norm = t => String(t||'').toLowerCase().replace(/[^a-z ]/g,'').replace(/\s+/g,' ').trim();
 $('btn-reset').onclick = async () => {

@@ -39,3 +39,17 @@ For local testing: `python3 -m http.server` in this folder, then open `http://lo
 - A web app cannot wake your phone by itself. Notifications only fire while the app is open; the `.ics` calendar file is the reliable reminder path.
 - Nothing is charged automatically. The money stake works through the referee and the owed balance, not a payment processor.
 - Data lives in the browser's local storage on that one device. Export regularly.
+
+## Privacy and security
+
+The full plain-language explanation is `privacy.html`, linked from Settings and the landing page. In short:
+
+- **No account, no analytics.** Fonts and assets are self-hosted, and nothing loads from Google.
+- **Location never leaves the phone.** Only the distance from the gym pin is stored. Gym search shares only a rough area of about 10 km with OpenStreetMap.
+- **Phone numbers are never sent to a server** in Ironclad alerts mode.
+- **Contract-change notices carry no coordinates or contact details.**
+- **Check-in photos on the alerts server expire after 14 days.**
+- **The referee link can be replaced from Settings.** The old link and every device registered through it stop working immediately.
+- **Referee actions on the server are rate-limited.**
+- **Backups are encrypted with a passphrase:** PBKDF2-SHA-256, 600,000 rounds, then AES-256-GCM. An unprotected export needs an explicit second confirmation.
+- **The ledger is tamper-evident, not tamper-proof.** Neither is GPS on a modified phone. The privacy page says so plainly.

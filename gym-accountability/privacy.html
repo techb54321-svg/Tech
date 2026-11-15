@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Your data</title>
+<meta name="description" content="Exactly what Ironclad stores, where it goes, and who can see it. In plain language." />
+<meta name="theme-color" content="#07080c" />
+<link rel="icon" href="icon-192.png" type="image/png" />
+<link href="fonts/fonts.css" rel="stylesheet" />
+<style>
+  :root{color-scheme:dark;--bg:#07080c;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#f3f5fa;--muted:#8a93a6;--dim:#5c6578;--accent:#ffb020;--accent2:#ff5e1a;--ok:#3ddc97;--bad:#ff4d5e;--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--sans:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.6}
+  .bg{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
+  .bg i{position:absolute;width:110vmax;height:110vmax;left:-50vmax;top:-75vmax;border-radius:50%;background:radial-gradient(closest-side,rgba(61,220,151,.18),transparent 70%);filter:blur(50px)}
+  main{max-width:640px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 18px 60px}
+  a{color:var(--accent)}
+  .back{font-size:14px;font-weight:600;text-decoration:none}
+  h1{font-family:var(--display);font-size:clamp(40px,11vw,60px);line-height:.98;letter-spacing:-.045em;margin:18px 0 12px}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--ok),#22c3ee);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:18px;color:#c3c9d6;margin:0 0 6px}
+  h2{font-family:var(--display);font-size:24px;letter-spacing:-.015em;margin:34px 0 10px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid var(--line);border-radius:22px;padding:18px 18px 8px;margin:12px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .card h3{display:flex;align-items:center;gap:10px;font-size:17px;margin:0 0 6px}
+  .card h3 span{font-size:20px}
+  .card p{margin:0 0 10px;color:#c9cfdb;font-size:15.5px}
+  .where{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+  .where b{font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.04)}
+  .where b.phone{color:var(--ok);border-color:rgba(61,220,151,.4)}
+  .where b.server{color:#8bd3ff;border-color:rgba(90,169,255,.4)}
+  .where b.never{color:var(--muted)}
+  .promise{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 0}
+  .promise div{padding:12px 14px;border-radius:16px;background:rgba(61,220,151,.08);border:1px solid rgba(61,220,151,.25);font-size:14px;font-weight:600}
+  ul{padding-left:20px;margin:8px 0}li{margin:7px 0;color:#c9cfdb}
+  .note{font-size:13.5px;color:var(--muted)}
+  @media (max-width:420px){.promise{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><i></i></div>
+<main>
+  <a class="back" href="./">← Back to Ironclad</a>
+  <h1>Your data, <em>plainly.</em></h1>
+  <p class="lede">What Ironclad stores, where it lives, and who can see it. No legalese.</p>
+  <div class="promise">
+    <div>✓ No account, ever</div>
+    <div>✓ No ads, analytics or tracking</div>
+    <div>✓ Your location never leaves your phone</div>
+    <div>✓ You can delete everything</div>
+  </div>
+
+  <h2>Piece by piece</h2>
+
+  <div class="card"><h3><span>📍</span>Your location</h3>
+    <div class="where"><b class="phone">Read on your phone</b><b class="never">Never stored or sent</b></div>
+    <p>When you check in or out, your phone works out how far you are from your gym's pin. Only that distance is kept, for example "40 m from the pin". Your actual position is never saved and never leaves your phone.</p>
+  </div>
+
+  <div class="card"><h3><span>🏋️</span>Your gym's location</h3>
+    <div class="where"><b class="phone">On your phone</b></div>
+    <p>The pin you set for your gym stays on your phone. To show it on a map, the map tiles load from OpenStreetMap. When you search for a gym by name, the search words go to OpenStreetMap along with a rough area (about 10 km) so nearby gyms come first. Your referee never gets the coordinates; if you move the pin, they're only told it moved and by how much.</p>
+  </div>
+
+  <div class="card"><h3><span>📱</span>Phone numbers and email</h3>
+    <div class="where"><b class="phone">On your phone</b><b class="never">Never sent to a server</b></div>
+    <p>Ironclad never asks for <b>your</b> phone number. Your referee's phone or email stays on your phone and is only used to start a message to them when you send a report yourself.</p>
+  </div>
+
+  <div class="card"><h3><span>📸</span>Check-in photos</h3>
+    <div class="where"><b class="phone">On your phone</b><b class="server">Your server, 14 days</b></div>
+    <p>Photos are optional. They're kept on your phone. With Ironclad alerts on, a copy goes to your own alerts server so your referee can see it, and it <b>deletes itself after 14 days</b>.</p>
+  </div>
+
+  <div class="card"><h3><span>📊</span>Sessions, verdicts and money</h3>
+    <div class="where"><b class="phone">On your phone</b><b class="server">Your server, if alerts are on</b></div>
+    <p>Times you trained, which sessions counted, weekly results, the deposit and what you owe. Your referee sees these, because that's their job.</p>
+  </div>
+
+  <h2>Who can see what</h2>
+  <div class="card"><h3><span>🤝</span>Your referee</h3>
+    <p>Through their private link they see your name, gym name, schedule, the money, your activity and check-in photos. Never your location or contact details.</p>
+    <p>The link works like a key. If it gets forwarded, open <b>Settings → Your data → Replace the referee link</b>: the old link and every phone that turned on alerts through it stop working at once.</p>
+  </div>
+  <div class="card"><h3><span>🛰️</span>Your alerts server</h3>
+    <p>If you use Ironclad alerts, the server is yours: a free Cloudflare Worker in <b>your</b> account, not a company holding everyone's data. It keeps your first name, your referee's first name, gym name, schedule, the money, recent activity and photos (14 days). Cloudflare encrypts its storage. Only your app (with its secret key) and your referee (with their link) can reach it, and repeated requests are rate-limited.</p>
+  </div>
+  <div class="card"><h3><span>🔔</span>Notifications</h3>
+    <p>Alerts are encrypted end to end to your referee's phone. Apple and Google deliver them but can't read them.</p>
+  </div>
+  <div class="card"><h3><span>🌐</span>Everyone else</h3>
+    <p>The app, its fonts and its files come from the same web host (GitHub Pages). Like any website, the host sees your IP address when the app loads. Ironclad loads nothing from Google, Facebook or ad networks.</p>
+  </div>
+
+  <h2>Backups and deleting</h2>
+  <div class="card"><h3><span>🔐</span>Backups</h3>
+    <p>When you export a backup, Ironclad encrypts it with a passphrase you choose (AES-256). Without the passphrase the file is unreadable, so it's safe in cloud storage. Lose the passphrase and the backup is gone too.</p>
+  </div>
+  <div class="card"><h3><span>🗑️</span>Deleting everything</h3>
+    <ul>
+      <li><b>On your phone:</b> Settings → Danger zone → Wipe everything.</li>
+      <li><b>On your server:</b> delete the Worker and its storage in your Cloudflare account.</li>
+      <li><b>Your referee:</b> they can turn alerts off on their page; replacing the link cuts them off entirely.</li>
+    </ul>
+  </div>
+
+  <h2>Honest limits</h2>
+  <div class="card">
+    <ul>
+      <li><b>The log shows tampering; it isn't unbreakable.</b> Editing it outside the app is detected and your referee is told, but a determined, technical person could rebuild it.</li>
+      <li><b>GPS can be faked</b> on a phone that has been modified to do so. Ironclad trusts what your phone reports.</li>
+      <li><b>Your phone's own security matters.</b> Anyone who can unlock your phone can open the app. Use a passcode.</li>
+      <li><b>Ironclad currently shares its web address</b> with a few other projects by the same developer. Moving it to its own domain is planned.</li>
+    </ul>
+  </div>
+  <p class="note">Questions about your data? Ask the person who shared Ironclad with you.</p>
+</main>
+</body>
+</html>

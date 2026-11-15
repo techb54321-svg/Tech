@@ -115,6 +115,9 @@
   .map{width:100%;height:200px;border:0;border-radius:12px;margin-top:10px;display:none;background:var(--bg2)}
   .chbox{display:none;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-top:8px}.chbox.on{display:block}
   .chbox ol{padding-left:18px;margin:8px 0;font-size:13px;color:var(--muted);line-height:1.5}
+  .savebar{position:sticky;bottom:12px;z-index:4;display:flex;gap:10px;padding:12px 0 0;margin-top:14px;background:linear-gradient(to bottom,rgba(23,27,37,0),var(--card) 40%)}
+  body.has-nav .savebar{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .savebar button{flex:1}.savebar .btn-primary{flex:2}
   .or{text-align:center;color:var(--muted);font-size:12px;margin:10px 0 6px;letter-spacing:.08em;text-transform:uppercase}
   @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#0b0d12 } }
 </style>
@@ -129,8 +132,8 @@
   <!-- SETUP -->
   <section id="view-setup" class="view">
     <div class="card">
-      <h3>Set up your contract</h3>
-      <p class="muted">You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.</p>
+      <h3 id="setup-title">Set up your contract</h3>
+      <p class="muted" id="setup-intro">You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.</p>
     </div>
     <form id="setup" class="card" autocomplete="off">
       <h2>You</h2>
@@ -200,7 +203,10 @@
 
       <div class="hr"></div>
       <label class="check"><input type="checkbox" id="s-agree" required /> I understand there is no delete button for history, and that failed weeks are owed to my referee.</label>
-      <button type="submit" class="btn-primary btn-block big-btn" style="margin-top:12px">Sign the contract</button>
+      <div class="savebar">
+        <button type="button" id="s-cancel" style="display:none">Cancel</button>
+        <button type="submit" id="s-submit" class="btn-primary big-btn">Sign the contract</button>
+      </div>
     </form>
   </section>
 
@@ -477,6 +483,7 @@ function show(view){
   if (view==='settings') renderSettings();
 }
 function render(){
+  document.body.classList.toggle('has-nav', !!cfg);
   if (!cfg) { $('nav').style.display='none'; show('setup'); initSetupForm(); return; }
   $('nav').style.display='flex';
   renderToday();
@@ -598,6 +605,10 @@ function renderSettings(){
 /* ---------- setup form ---------- */
 function initSetupForm(prefill){
   const c = prefill || {};
+  $('setup-title').textContent = prefill ? 'Edit contract' : 'Set up your contract';
+  $('setup-intro').textContent = prefill ? 'Change what you need, then tap Save at the bottom of the screen. Every change is written to the ledger and reported to your referee.' : 'You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.';
+  $('s-submit').textContent = prefill ? 'Save changes' : 'Sign the contract';
+  $('s-cancel').style.display = prefill ? 'block' : 'none';
   $('s-days').innerHTML = [1,2,3,4,5,6,0].map(d=>`<label class="${(c.planDays||[1,3,5]).includes(d)?'on':''}"><input type="checkbox" value="${d}" ${(c.planDays||[1,3,5]).includes(d)?'checked':''}>${DN[d]}</label>`).join('');
   $('s-days').querySelectorAll('label').forEach(l=>l.onclick=()=>setTimeout(()=>l.classList.toggle('on', l.querySelector('input').checked),0));
   if (prefill) {
@@ -740,7 +751,7 @@ $('setup').onsubmit = async ev => {
     scheduleReminders();
     notifyReferee('signed', introText());
   }
-  render(); show('today');
+  render(); show('today'); window.scrollTo(0,0);
 };
 
 /* ---------- check-in / out ---------- */
@@ -1046,6 +1057,7 @@ $('btn-reset').onclick = async () => {
   toast('Wiped. Clean slate.');
 };
 $('btn-edit').onclick = () => { initSetupForm(cfg); show('setup'); window.scrollTo(0,0); };
+$('s-cancel').onclick = () => { show('settings'); toast('No changes saved.'); };
 
 /* ---------- nav & boot ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));

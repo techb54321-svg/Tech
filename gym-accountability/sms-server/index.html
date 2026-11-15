@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Weekly text setup</title>
+<meta name="description" content="One-time setup so the Ironclad gym app can text your referee a weekly result automatically." />
+<style>
+  :root{--bg:#0b0d12;--card:#171b25;--line:#262c3a;--text:#eef1f7;--muted:#8f98ab;--accent:#ffb020;--ok:#2ecc71}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  main{max-width:600px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:24px;margin:8px 0 4px}h2{font-size:14px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:28px 0 8px}
+  p{margin:8px 0}.muted{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0}
+  ol{padding-left:22px;margin:8px 0}li{margin:8px 0}
+  code,kbd{background:#0b0d12;border:1px solid var(--line);padding:2px 7px;border-radius:6px;font-size:13px;word-break:break-all}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:#12151d;color:var(--text);font-weight:700;width:100%}
+  .primary{background:linear-gradient(135deg,#ffb020,#ff7a00);color:#1a1200;border:0}
+  pre{background:#0b0d12;border:1px solid var(--line);border-radius:12px;padding:12px;max-height:220px;overflow:auto;font-size:11.5px;white-space:pre}
+  a{color:var(--accent)}
+  .sample{border-left:3px solid var(--ok);padding:8px 12px;background:#12151d;border-radius:0 10px 10px 0;font-size:14px}
+  .note{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <p class="muted"><a href="../">← Back to the app</a></p>
+  <h1>Weekly text message setup</h1>
+  <p class="muted">A one-time, roughly ten-minute setup. Afterwards your referee gets one text a week with your result, sent by a tiny free server of your own, whether or not you open the app. Your referee installs nothing.</p>
+
+  <div class="card">
+    <p><b>What your referee will receive</b></p>
+    <p class="sample">Ironclad weekly report: Alex made it to the gym 3/3 days in the week of Mon Nov 9–Sun Nov 15 (Mon, Wed, Fri). RESULT: PASS. Passing streak: 4 week(s).</p>
+    <p class="sample" style="border-color:#ff4d4f">Ironclad weekly report: Alex made it to the gym 1/3 days in the week of Mon Nov 9–Sun Nov 15 (Tue). RESULT: FAIL. Alex owes you $50. Agreed consequence: …</p>
+    <p class="note">If your phone never reports in a week, the text still goes out and says so, so silence cannot hide a missed week.</p>
+  </div>
+
+  <h2>Part 1 · Twilio (sends the texts)</h2>
+  <div class="card">
+    <ol>
+      <li>Go to <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener">twilio.com</a> and create a free trial account. Verify your own phone when asked.</li>
+      <li>On the Console home page, click <b>Get a trial phone number</b>. Copy that number (it starts with +). This is <code>TWILIO_FROM</code>.</li>
+      <li>Trial accounts can only text numbers you have verified. Open <b>Phone Numbers → Manage → Verified Caller IDs → Add</b>, enter your referee's number, and ask them to read you the code Twilio sends. Enter it. Done once.</li>
+      <li>Back on the Console home page, copy the <b>Account SID</b> and the <b>Auth Token</b> (tap Show).</li>
+    </ol>
+    <p class="note">The trial adds "Sent from your Twilio trial account" to each text. Upgrading removes it and costs about a dollar a month plus under a cent per text, but it is not required.</p>
+  </div>
+
+  <h2>Part 2 · Cloudflare (your free server)</h2>
+  <div class="card">
+    <ol>
+      <li>Go to <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com</a> and create a free account.</li>
+      <li>In the left menu open <b>Workers &amp; Pages → Create → Create Worker</b>. Name it <code>ironclad-sms</code> and tap <b>Deploy</b>.</li>
+      <li>Tap <b>Edit code</b>, select everything in the editor and delete it, then paste the code from the button below and tap <b>Deploy</b>.
+        <button id="copy" class="primary" style="margin-top:8px">Copy the server code</button>
+        <p id="copymsg" class="note"></p>
+        <details><summary class="note">Show the code</summary><pre id="code">loading…</pre></details>
+      </li>
+      <li>Create the storage: left menu <b>Storage &amp; Databases → KV → Create</b>, name it <code>ironclad</code>. Then go back to your worker: <b>Settings → Bindings → Add → KV namespace</b>. Variable name <code>STATE</code>, namespace <code>ironclad</code>. Save.</li>
+      <li>Still in <b>Settings → Variables and Secrets</b>, add these four, each with type <b>Secret</b>:
+        <ul>
+          <li><code>TWILIO_ACCOUNT_SID</code> — from Part 1</li>
+          <li><code>TWILIO_AUTH_TOKEN</code> — from Part 1</li>
+          <li><code>TWILIO_FROM</code> — your Twilio number, with the +</li>
+          <li><code>APP_SECRET</code> — invent a long password. You will paste the same one into the app.</li>
+        </ul>
+        <button id="gen" style="margin-top:8px">Generate a secret for me</button><p id="genmsg" class="note"></p>
+      </li>
+      <li><b>Settings → Triggers → Cron Triggers → Add</b>, and enter <code>0 * * * *</code>. This wakes the server once an hour; it sends the text only at the hour you choose in the app.</li>
+      <li>Copy your worker's address from the top of its page (it ends in <code>.workers.dev</code>) and open it in a browser. You should see a status page with every line green.</li>
+    </ol>
+  </div>
+
+  <h2>Part 3 · The app</h2>
+  <div class="card">
+    <ol>
+      <li>Open the app, <b>Settings → Edit contract</b>.</li>
+      <li>Make sure the referee's phone number includes the country code, for example <code>+1 555 000 0000</code>.</li>
+      <li>Under <b>How the referee hears from you</b> choose <b>Automatic → Weekly text message</b>, paste the server address and the secret, and pick the hour the weekly text should arrive.</li>
+      <li>Tap <b>Send a test message</b>. Your referee should get a text within seconds. Then <b>Save changes</b>.</li>
+    </ol>
+    <p class="note">The text goes out at the hour you pick on the first day of each new week, summarising the week that just closed, so the result is final when it is sent.</p>
+  </div>
+
+  <h2>If something does not work</h2>
+  <div class="card">
+    <ul>
+      <li><b>Status page shows a red line:</b> that setting is missing on the worker. Add it under Settings and tap Deploy if asked.</li>
+      <li><b>Test says "Unverified number":</b> finish step 3 of Part 1 for the referee's number, or upgrade the Twilio account.</li>
+      <li><b>Test says "wrong secret":</b> the APP_SECRET on the worker and in the app do not match exactly.</li>
+      <li><b>No weekly text arrived:</b> check the cron trigger exists, and open the status page; it shows when the last weekly text was sent.</li>
+    </ul>
+    <p class="note">Technical users can instead run <code>npx wrangler deploy</code> from the <code>sms-server</code> folder of the repository; see <code>wrangler.toml</code>.</p>
+  </div>
+</main>
+<script>
+  const code = document.getElementById('code');
+  let text = '';
+  fetch('worker.js').then(r => r.text()).then(t => { text = t; code.textContent = t; }).catch(() => { code.textContent = 'Could not load worker.js. Open it directly from the repository instead.'; });
+  document.getElementById('copy').onclick = async () => {
+    const m = document.getElementById('copymsg');
+    try { await navigator.clipboard.writeText(text); m.textContent = '✅ Copied. Now paste it into the Cloudflare editor.'; }
+    catch { m.textContent = 'Copy failed. Open "Show the code" below, select all and copy by hand.'; }
+  };
+  document.getElementById('gen').onclick = async () => {
+    const a = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = '';
+    const arr = new Uint32Array(28); crypto.getRandomValues(arr); for (const n of arr) s += a[n % a.length];
+    const m = document.getElementById('genmsg');
+    try { await navigator.clipboard.writeText(s); m.innerHTML = `✅ Copied to clipboard: <code>${s}</code>. Paste it as APP_SECRET on the worker and again in the app.`; }
+    catch { m.innerHTML = `Your secret: <code>${s}</code>. Use it as APP_SECRET on the worker and again in the app.`; }
+  };
+</script>
+</body>
+</html>

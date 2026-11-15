@@ -11,7 +11,7 @@ A single-file, installable web app that holds you to **3 gym sessions a week** (
 | **One session per day** | Two visits on one day count once. "3× a week" means three separate days. |
 | **Live slack meter** | On track / Tight / Critical / Week lost, computed from sessions remaining vs days remaining. |
 | **A referee and money on the line** | Every closed week produces a report for a real person. Failed weeks add to an "owed" balance that stays on screen until you mark it paid. |
-| **Automatic delivery to the referee** | Choose Manual (you tap send) or Automatic. In Automatic mode the app itself tells your referee about every check-in, check-out, refused attempt, weekly result, freeze, contract change, payment, "no slack left" escalation and any tampering, through a free ntfy.sh push topic the referee subscribes to. Messages queue offline and retry. The referee needs only the ntfy app, not this one. |
+| **Automatic delivery to the referee** | Choose Manual (you tap send) or Automatic. Automatic has two flavours. **Weekly text message**: a tiny free Cloudflare Worker of your own (see `sms-server/`) receives the app's events and texts the referee via Twilio once a week at an hour you choose, summarising the week that just closed, and it still sends when the phone went silent. **Push app**: instant notifications for every event through a free ntfy.sh topic the referee subscribes to. Messages queue offline and retry. The referee never needs this app. |
 | **Append-only, hash-chained ledger** | Every event is SHA-256 chained to the previous one. Edit or delete anything in storage and the header badge turns red permanently and the next referee report says so. Contract changes are logged too. |
 | **Freeze weeks** | Illness or travel can be declared in advance, with a quarterly cap, and the referee is told. You cannot freeze a week that is already lost. |
 | **Forgotten check-out** | Auto-closed as an unverified session; only one unverified session counts per week. |
@@ -32,8 +32,8 @@ For local testing: `python3 -m http.server` in this folder, then open `http://lo
 
 ## Limits worth knowing
 
-- Automatic messages are sent from your phone when the app runs, so a week's final result goes out the next time you open the app after the week ends. The referee's intro message tells them that silence by week's end means failure, which closes that gap.
-- The automatic channel is a secret topic name; anyone who knows it can read the messages. It is stored on your phone and included in backups, so treat backup files as private.
+- In Push mode, messages are sent from your phone when the app runs, so a week's final result goes out the next time you open the app after the week ends; the referee's intro message tells them that silence means failure. In Weekly text mode the server sends on schedule regardless, and says explicitly when the app reported nothing.
+- Channel secrets (the ntfy topic name, the text server's secret) are stored on your phone and included in backups, so treat backup files as private. Twilio credentials live only on your Cloudflare Worker, never in the app.
 - A web app cannot wake your phone by itself. Notifications only fire while the app is open; the `.ics` calendar file is the reliable reminder path.
 - Nothing is charged automatically. The money stake works through the referee and the owed balance, not a payment processor.
 - Data lives in the browser's local storage on that one device. Export regularly.

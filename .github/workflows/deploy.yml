@@ -3,9 +3,10 @@ name: Deploy web apps to GitHub Pages
 # Builds both browser apps and publishes them to GitHub Pages:
 #   https://<user>.github.io/Tech/             → Inside the Sip (WebXR)
 #   https://<user>.github.io/Tech/clip-forge/  → Clip Forge (3D video ad maker)
+#   https://<user>.github.io/Tech/gym-accountability/ → Ironclad (gym accountability, static)
 on:
   push:
-    branches: [claude/wizardly-noether-ji4obu, claude/video-clip-app-g3e6sg]
+    branches: [claude/wizardly-noether-ji4obu, claude/video-clip-app-g3e6sg, ccr-c7cbb14b-l69v7c]
   workflow_dispatch:
 
 permissions:
@@ -49,6 +50,8 @@ jobs:
           cp -r inside-the-sip/dist/. site/
           mkdir -p site/clip-forge
           cp -r clip-forge/dist/. site/clip-forge/
+          mkdir -p site/gym-accountability
+          cp -r gym-accountability/. site/gym-accountability/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

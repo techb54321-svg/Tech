@@ -181,36 +181,19 @@
       <input type="number" id="s-pledge" value="50" min="0" step="5" />
       <label>What happens when you fail a week</label>
       <textarea id="s-conseq" placeholder="e.g. I pay $50 to a cause I dislike within 24h, and my referee confirms it"></textarea>
-      <h2 style="margin-top:18px">Automatic delivery</h2>
-      <p class="small muted">If you have to tap "send" yourself, that is a loophole. Connect a channel and every check-in (with photo), check-out, weekly result, freeze and contract change reaches your referee on its own. They do not need this app, only the channel.</p>
-      <label>Channel</label>
-      <select id="s-ch">
-        <option value="none">None — I will send reports by hand</option>
-        <option value="telegram">Telegram bot (recommended)</option>
-        <option value="ntfy">ntfy.sh push topic (no accounts needed)</option>
-        <option value="discord">Discord webhook</option>
-        <option value="webhook">Custom webhook (Zapier / Make / IFTTT → SMS or email)</option>
-      </select>
-      <div id="ch-telegram" class="chbox">
-        <ol><li>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code>, follow the prompts and copy the token.</li><li>Send your referee the bot's link and ask them to press <b>Start</b> and send it any message. (A group with both of you works too: add the bot to it.)</li><li>Paste the token, then tap <b>Find referee's chat</b>.</li></ol>
-        <label>Bot token</label><input type="text" id="s-tg-token" placeholder="123456789:AAH…" autocapitalize="off" />
-        <button type="button" id="s-tg-detect" class="btn-block" style="margin-top:8px">Find referee's chat</button>
-        <div id="s-tg-chats" class="results"></div>
-        <label>Chat ID</label><input type="text" id="s-tg-chat" placeholder="filled in when you pick a chat" />
+      <h2 style="margin-top:18px">How the referee hears from you</h2>
+      <div class="days" id="s-mode">
+        <label class="on"><input type="radio" name="mode" value="manual" checked>Manual</label>
+        <label><input type="radio" name="mode" value="auto">Automatic</label>
       </div>
-      <div id="ch-ntfy" class="chbox">
-        <ol><li>Keep the secret topic below (or type your own; anyone who knows it can read it).</li><li>Your referee installs the free <b>ntfy</b> app (iOS / Android) and subscribes to that topic, or just opens <span id="s-ntfy-link">the topic page</span> in a browser.</li></ol>
-        <label>Topic</label><input type="text" id="s-ntfy" autocapitalize="off" />
+      <p class="small muted" id="s-mode-help">Manual: you tap "send" and the app composes the message. Automatic: the app messages your referee itself on every check-in, check-out and weekly result.</p>
+      <div id="ch-auto" class="chbox">
+        <p class="small" style="margin:10px 0 6px">Your referee needs one free app, <b>ntfy</b> (App Store / Play Store). Send them the setup and they are done in a minute.</p>
+        <button type="button" id="s-share-setup" class="btn-block">📤 Share setup with referee</button>
+        <button type="button" id="s-test" class="btn-block" style="margin-top:8px">Send a test message</button>
+        <div id="s-testmsg" class="loc"></div>
+        <input type="hidden" id="s-ntfy" />
       </div>
-      <div id="ch-discord" class="chbox">
-        <ol><li>In a Discord server you share with your referee: channel settings → Integrations → Webhooks → New Webhook → Copy URL.</li></ol>
-        <label>Webhook URL</label><input type="text" id="s-dc" placeholder="https://discord.com/api/webhooks/…" autocapitalize="off" />
-      </div>
-      <div id="ch-webhook" class="chbox">
-        <ol><li>Create a "catch webhook" in Zapier, Make or IFTTT and have it send an SMS or email to your referee.</li><li>Paste its URL. The app POSTs JSON with <code>text</code> and <code>event</code> fields.</li></ol>
-        <label>Webhook URL</label><input type="text" id="s-wh" placeholder="https://hooks.zapier.com/…" autocapitalize="off" />
-      </div>
-      <div id="s-testwrap" style="display:none"><button type="button" id="s-test" class="btn-block" style="margin-top:10px">Send a test message to the referee</button><div id="s-testmsg" class="loc"></div></div>
 
       <label>Freeze weeks allowed per quarter (illness / travel, declared in advance)</label>
       <input type="number" id="s-freeze" value="1" min="0" max="4" />
@@ -523,7 +506,7 @@ function renderToday(){
   if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}). Your referee has not been told yet. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
   if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 No slack left this week. Go today.']);
   if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} not delivered yet${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
-  if (!channelActive()) banners.push(['warn','📨 Reports are manual. Connect Telegram or ntfy in Settings → Edit contract so your referee hears from the app, not from you.']);
+  if (!channelActive()) banners.push(['warn','📨 Reports are manual. Switch to Automatic in Settings → Edit contract so your referee hears from the app, not from you.']);
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
@@ -536,7 +519,7 @@ function renderToday(){
   $('k-streak').textContent = `${streak()} week${streak()===1?'':'s'}`;
   $('k-freeze').textContent = freezesLeft();
   const kc = $('k-channel');
-  if (!channelActive()) { kc.textContent = 'none — manual reports'; kc.style.color='var(--warn)'; }
+  if (!channelActive()) { kc.textContent = 'manual'; kc.style.color='var(--warn)'; }
   else if (outbox.length) { kc.textContent = `${CH_NAMES[cfg.channel.type]} · ${outbox.length} queued`; kc.style.color='var(--warn)'; }
   else { kc.textContent = `${CH_NAMES[cfg.channel.type]} · live`; kc.style.color='var(--ok)'; }
 
@@ -606,7 +589,7 @@ function renderSettings(){
     ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
     ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
     ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
-    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Auto delivery', CH_NAMES[(c.channel||{}).type||'none']], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
+    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔 Notifications enabled' : '🔔 Enable notifications';
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
@@ -624,8 +607,10 @@ function initSetupForm(prefill){
     $('s-agree').checked = true;
     showMap(c.gym.lat, c.gym.lng);
     const ch = c.channel || { type:'none' };
-    $('s-ch').value = ch.type; $('s-tg-token').value = ch.token||''; $('s-tg-chat').value = ch.chatId||''; $('s-ntfy').value = ch.topic||''; $('s-dc').value = ch.type==='discord'?ch.url:''; $('s-wh').value = ch.type==='webhook'?ch.url:'';
-  } else showMap(NaN, NaN);
+    document.querySelector(`#s-mode input[value="${ch.type==='none'?'manual':'auto'}"]`).checked = true;
+    $('s-ntfy').value = ch.type==='ntfy' ? ch.topic : '';
+    keptChannel = (ch.type!=='none' && ch.type!=='ntfy') ? ch : null;
+  } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="manual"]').checked = true; $('s-ntfy').value=''; }
   updateChannelUI();
 }
 function setGymLocation(lat, lng, label, msg){
@@ -676,52 +661,39 @@ async function runSearch(){
 $('s-search-btn').onclick = runSearch;
 $('s-search').addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); runSearch(); } });
 function randomTopic(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let t='gym-'; for (let i=0;i<10;i++) t+=a[Math.floor(Math.random()*a.length)]; return t; }
+let keptChannel = null; // an advanced channel configured before the simple mode switch
+function modeAuto(){ return document.querySelector('#s-mode input:checked').value === 'auto'; }
 function updateChannelUI(){
-  const t = $('s-ch').value;
-  document.querySelectorAll('.chbox').forEach(b=>b.classList.toggle('on', b.id==='ch-'+t));
-  $('s-testwrap').style.display = t==='none' ? 'none' : 'block';
-  if (t==='ntfy' && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
-  $('s-ntfy-link').innerHTML = `<a href="https://ntfy.sh/${encodeURIComponent($('s-ntfy').value||'topic')}" target="_blank" rel="noopener" style="color:var(--accent)">ntfy.sh/${esc($('s-ntfy').value||'topic')}</a>`;
+  document.querySelectorAll('#s-mode label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked));
+  $('ch-auto').classList.toggle('on', modeAuto());
+  if (modeAuto() && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
 }
-$('s-ch').onchange = updateChannelUI;
-$('s-ntfy').addEventListener('input', updateChannelUI);
+document.querySelectorAll('#s-mode input').forEach(i => i.onchange = updateChannelUI);
 function readChannel(){
-  const type = $('s-ch').value;
-  if (type==='telegram') return { type, token:$('s-tg-token').value.trim(), chatId:$('s-tg-chat').value.trim() };
-  if (type==='ntfy') return { type, topic:$('s-ntfy').value.trim() };
-  if (type==='discord') return { type, url:$('s-dc').value.trim() };
-  if (type==='webhook') return { type, url:$('s-wh').value.trim() };
-  return { type:'none' };
+  if (!modeAuto()) return { type:'none' };
+  if (keptChannel) return keptChannel;
+  return { type:'ntfy', topic:$('s-ntfy').value.trim() };
 }
 function channelProblem(ch){
-  if (ch.type==='telegram' && (!/^\d+:[\w-]{20,}$/.test(ch.token) || !ch.chatId)) return 'Telegram needs a bot token and a chat ID (use "Find referee\'s chat").';
-  if (ch.type==='ntfy' && !/^[\w-]{6,64}$/.test(ch.topic)) return 'ntfy topic must be 6–64 letters, digits, - or _.';
-  if (ch.type==='discord' && !/^https:\/\/(discord(app)?\.com)\/api\/webhooks\//.test(ch.url)) return 'That is not a Discord webhook URL.';
-  if (ch.type==='webhook' && !/^https:\/\//.test(ch.url)) return 'Webhook URL must start with https://';
+  if (ch.type==='ntfy' && !/^[\w-]{6,64}$/.test(ch.topic)) return 'Something is off with the automatic channel. Switch to Manual and back to Automatic.';
   return '';
 }
-$('s-tg-detect').onclick = async () => {
-  const token = $('s-tg-token').value.trim(), out = $('s-tg-chats');
-  if (!token) return toast('Paste the bot token first.');
-  out.innerHTML = '<p class="small muted">Asking Telegram…</p>';
-  try {
-    const me = await (await fetch(`https://api.telegram.org/bot${token}/getMe`)).json();
-    if (!me.ok) throw new Error(me.description || 'bad token');
-    const u = await (await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`)).json();
-    if (!u.ok) throw new Error(u.description || 'could not read updates');
-    const chats = {};
-    for (const up of u.result) { const m = up.message || up.my_chat_member?.chat && { chat: up.my_chat_member.chat }; if (!m?.chat) continue; const c=m.chat; chats[c.id] = { id:c.id, name: c.title || [c.first_name,c.last_name].filter(Boolean).join(' ') || c.username || String(c.id), type:c.type }; }
-    const list = Object.values(chats);
-    if (!list.length) { out.innerHTML = `<p class="small muted">Bot <b>@${esc(me.result.username)}</b> is valid but nobody has messaged it yet. Ask your referee to open <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://t.me/${esc(me.result.username)}">t.me/${esc(me.result.username)}</a>, press Start, send "hi", then tap this again.</p>`; return; }
-    out.innerHTML = `<p class="small muted">Bot @${esc(me.result.username)}. Pick the referee:</p>` + list.map((c,i)=>`<button type="button" data-i="${i}"><b>${esc(c.name)}</b><span>${esc(c.type)} · ${c.id}</span></button>`).join('');
-    out.querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('s-tg-chat').value = list[+b.dataset.i].id; out.innerHTML = `<p class="small muted">Referee chat set to <b>${esc(list[+b.dataset.i].name)}</b>.</p>`; });
-  } catch(e){ out.innerHTML = `<p class="small muted">${esc(e.message)}</p>`; }
+function refereeSetupText(ch){
+  const name = $('s-name').value.trim();
+  const t = ch.topic;
+  return `Hi ${$('s-refname').value.trim()||'there'}, ${name ? name+' is' : 'I am'} using an app to stay accountable for the gym ${$('s-target').value||3}x a week, and you are the referee. To get the check-ins automatically:\n1. Install the free "ntfy" app (App Store or Play Store).\n2. Tap + and subscribe to this topic: ${t}\nOr just open https://ntfy.sh/${t} in a browser.\nIf you hear nothing by the end of a week, it means I failed. Ask me about it.`;
+}
+$('s-share-setup').onclick = async () => {
+  const ch = readChannel(); if (ch.type!=='ntfy') return toast('This referee is already connected another way.');
+  const text = refereeSetupText(ch);
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch { /* fall through to copy */ } }
+  try { await navigator.clipboard.writeText(text); toast('Setup message copied. Paste it to your referee.'); } catch { openSheet(`<h3>Send this to your referee</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px">${esc(text)}</pre><button class="btn-block" id="sheet-close">Done</button>`); }
 };
 $('s-test').onclick = async () => {
   const ch = readChannel(); const prob = channelProblem(ch); const msg = $('s-testmsg');
   if (prob) { msg.textContent = prob; return; }
   msg.textContent = 'Sending…';
-  try { await deliver({ event:'test', text:`Test from Ironclad: ${$('s-name').value.trim()||'your friend'}'s gym accountability app is connected to you. Real messages start once the contract is signed.` }, ch); msg.textContent = '✅ Delivered. Ask your referee to confirm they got it.'; }
+  try { await deliver({ event:'test', text:`Test from Ironclad: ${$('s-name').value.trim()||'your friend'}'s gym accountability app is connected to you. Real messages start once the contract is signed.` }, ch); msg.textContent = '✅ Sent. Ask your referee if it arrived.'; }
   catch(e){ msg.textContent = '❌ ' + e.message; }
 };
 $('s-locate').onclick = async () => {
@@ -746,7 +718,7 @@ $('setup').onsubmit = async ev => {
   ev.preventDefault();
   const c = readSetupForm();
   if (!isFinite(c.gym.lat)||!isFinite(c.gym.lng)||!c.gym.lat) return toast('Set the gym location first.');
-  if (!c.referee.phone && !c.referee.email && c.channel.type==='none') return toast('Your referee needs a phone, an email, or a connected channel.');
+  if (!c.referee.phone && !c.referee.email && c.channel.type==='none') return toast('Manual mode needs the referee\'s phone or email.');
   const chProb = channelProblem(c.channel); if (chProb) return toast(chProb, 5000);
   if (cfg) {
     const changes = Object.keys(c).filter(k=>JSON.stringify(c[k])!==JSON.stringify(cfg[k])).map(k=>`${k}: ${JSON.stringify(cfg[k])} → ${JSON.stringify(c[k])}`).join('; ');
@@ -910,7 +882,7 @@ async function markPaid(){
 }
 
 /* ---------- automatic delivery to the referee ---------- */
-const CH_NAMES = { none:'none (manual reports)', telegram:'Telegram', ntfy:'ntfy', discord:'Discord', webhook:'webhook' };
+const CH_NAMES = { none:'manual', telegram:'automatic', ntfy:'automatic', discord:'automatic', webhook:'automatic' };
 function dataUrlToBlob(d){ const [h,b]=d.split(','); const mime=h.match(/:(.*?);/)[1]; const bin=atob(b); const arr=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime}); }
 async function deliver(msg, ch){
   ch = ch || cfg.channel;

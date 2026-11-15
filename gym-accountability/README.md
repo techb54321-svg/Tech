@@ -11,6 +11,7 @@ A single-file, installable web app that holds you to **3 gym sessions a week** (
 | **One session per day** | Two visits on one day count once. "3× a week" means three separate days. |
 | **Live slack meter** | On track / Tight / Critical / Week lost, computed from sessions remaining vs days remaining. |
 | **A referee and money on the line** | Every closed week produces a report for a real person. Failed weeks add to an "owed" balance that stays on screen until you mark it paid. |
+| **Automatic delivery to the referee** | Connect Telegram (bot), ntfy.sh, Discord, or a custom webhook, and the app itself tells your referee about every check-in (with photo), check-out, refused attempt, weekly result, freeze, contract change, payment, "no slack left" escalation and any tampering. Messages queue offline and retry. The referee needs only the messaging app, not this one. |
 | **Append-only, hash-chained ledger** | Every event is SHA-256 chained to the previous one. Edit or delete anything in storage and the header badge turns red permanently and the next referee report says so. Contract changes are logged too. |
 | **Freeze weeks** | Illness or travel can be declared in advance, with a quarterly cap, and the referee is told. You cannot freeze a week that is already lost. |
 | **Forgotten check-out** | Auto-closed as an unverified session; only one unverified session counts per week. |
@@ -31,6 +32,8 @@ For local testing: `python3 -m http.server` in this folder, then open `http://lo
 
 ## Limits worth knowing
 
+- Automatic messages are sent from your phone when the app runs, so a week's final result goes out the next time you open the app after the week ends. The referee's intro message tells them that silence by week's end means failure, which closes that gap.
+- Channel secrets (the Telegram bot token, webhook URLs) are stored on your phone and included in backups. Treat backup files as private.
 - A web app cannot wake your phone by itself. Notifications only fire while the app is open; the `.ics` calendar file is the reliable reminder path.
 - Nothing is charged automatically. The money stake works through the referee and the owed balance, not a payment processor.
 - Data lives in the browser's local storage on that one device. Export regularly.

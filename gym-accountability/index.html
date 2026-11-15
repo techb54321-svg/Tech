@@ -113,6 +113,8 @@
   .results button{text-align:left;padding:10px 12px;font-weight:500;line-height:1.3}
   .results button b{display:block;font-size:14px}.results button span{font-size:12px;color:var(--muted)}
   .map{width:100%;height:200px;border:0;border-radius:12px;margin-top:10px;display:none;background:var(--bg2)}
+  .chbox{display:none;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:4px 12px 12px;margin-top:8px}.chbox.on{display:block}
+  .chbox ol{padding-left:18px;margin:8px 0;font-size:13px;color:var(--muted);line-height:1.5}
   .or{text-align:center;color:var(--muted);font-size:12px;margin:10px 0 6px;letter-spacing:.08em;text-transform:uppercase}
   @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#0b0d12 } }
 </style>
@@ -179,6 +181,37 @@
       <input type="number" id="s-pledge" value="50" min="0" step="5" />
       <label>What happens when you fail a week</label>
       <textarea id="s-conseq" placeholder="e.g. I pay $50 to a cause I dislike within 24h, and my referee confirms it"></textarea>
+      <h2 style="margin-top:18px">Automatic delivery</h2>
+      <p class="small muted">If you have to tap "send" yourself, that is a loophole. Connect a channel and every check-in (with photo), check-out, weekly result, freeze and contract change reaches your referee on its own. They do not need this app, only the channel.</p>
+      <label>Channel</label>
+      <select id="s-ch">
+        <option value="none">None — I will send reports by hand</option>
+        <option value="telegram">Telegram bot (recommended)</option>
+        <option value="ntfy">ntfy.sh push topic (no accounts needed)</option>
+        <option value="discord">Discord webhook</option>
+        <option value="webhook">Custom webhook (Zapier / Make / IFTTT → SMS or email)</option>
+      </select>
+      <div id="ch-telegram" class="chbox">
+        <ol><li>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code>, follow the prompts and copy the token.</li><li>Send your referee the bot's link and ask them to press <b>Start</b> and send it any message. (A group with both of you works too: add the bot to it.)</li><li>Paste the token, then tap <b>Find referee's chat</b>.</li></ol>
+        <label>Bot token</label><input type="text" id="s-tg-token" placeholder="123456789:AAH…" autocapitalize="off" />
+        <button type="button" id="s-tg-detect" class="btn-block" style="margin-top:8px">Find referee's chat</button>
+        <div id="s-tg-chats" class="results"></div>
+        <label>Chat ID</label><input type="text" id="s-tg-chat" placeholder="filled in when you pick a chat" />
+      </div>
+      <div id="ch-ntfy" class="chbox">
+        <ol><li>Keep the secret topic below (or type your own; anyone who knows it can read it).</li><li>Your referee installs the free <b>ntfy</b> app (iOS / Android) and subscribes to that topic, or just opens <span id="s-ntfy-link">the topic page</span> in a browser.</li></ol>
+        <label>Topic</label><input type="text" id="s-ntfy" autocapitalize="off" />
+      </div>
+      <div id="ch-discord" class="chbox">
+        <ol><li>In a Discord server you share with your referee: channel settings → Integrations → Webhooks → New Webhook → Copy URL.</li></ol>
+        <label>Webhook URL</label><input type="text" id="s-dc" placeholder="https://discord.com/api/webhooks/…" autocapitalize="off" />
+      </div>
+      <div id="ch-webhook" class="chbox">
+        <ol><li>Create a "catch webhook" in Zapier, Make or IFTTT and have it send an SMS or email to your referee.</li><li>Paste its URL. The app POSTs JSON with <code>text</code> and <code>event</code> fields.</li></ol>
+        <label>Webhook URL</label><input type="text" id="s-wh" placeholder="https://hooks.zapier.com/…" autocapitalize="off" />
+      </div>
+      <div id="s-testwrap" style="display:none"><button type="button" id="s-test" class="btn-block" style="margin-top:10px">Send a test message to the referee</button><div id="s-testmsg" class="loc"></div></div>
+
       <label>Freeze weeks allowed per quarter (illness / travel, declared in advance)</label>
       <input type="number" id="s-freeze" value="1" min="0" max="4" />
 
@@ -227,6 +260,7 @@
       <div class="kv"><span>Owed right now</span><b id="k-owed"></b></div>
       <div class="kv"><span>Passing-week streak</span><b id="k-streak"></b></div>
       <div class="kv"><span>Freezes left this quarter</span><b id="k-freeze"></b></div>
+      <div class="kv"><span>Referee channel</span><b id="k-channel"></b></div>
       <div class="row" style="margin-top:12px">
         <button id="btn-report">Send week report</button>
         <button id="btn-freeze">Declare a freeze</button>
@@ -300,7 +334,7 @@
 <script>
 (() => {
 'use strict';
-const LS = { cfg:'ironclad.cfg', ledger:'ironclad.ledger', active:'ironclad.active', notified:'ironclad.notified' };
+const LS = { cfg:'ironclad.cfg', ledger:'ironclad.ledger', active:'ironclad.active', notified:'ironclad.notified', outbox:'ironclad.outbox', escalated:'ironclad.escalated', tamperSent:'ironclad.tamperSent' };
 const DAY = 86400000;
 const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const $ = id => document.getElementById(id);
@@ -308,6 +342,8 @@ const $ = id => document.getElementById(id);
 let cfg = load(LS.cfg, null);
 let ledger = load(LS.ledger, []);
 let active = load(LS.active, null);
+let outbox = load(LS.outbox, []);
+let lastDeliveryError = '';
 let tampered = false;
 let geoRetry = null;
 
@@ -442,6 +478,7 @@ async function settleWeeks(){
       const done = (byWeek[wk]||new Set()).size;
       const result = freezeFor(wk) ? 'frozen' : (done >= cfg.target ? 'pass' : 'fail');
       await append({ type:'week', week:wk, done, target:cfg.target, result, owed: result==='fail' ? cfg.pledge : 0 });
+      notifyReferee('week', (result==='fail' ? '💸 ' : result==='pass' ? '🏆 ' : '🧊 ') + reportText(wk), { urgent: result==='fail', week: wk });
       changed = true;
     }
     w = addDays(w, 7);
@@ -485,15 +522,23 @@ function renderToday(){
   const unsent = weekEntries().filter(w=>!ledger.some(e=>e.type==='notify'&&e.week===w.week)).sort((a,b)=>a.week<b.week?1:-1)[0];
   if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}). Your referee has not been told yet. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
   if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 No slack left this week. Go today.']);
+  if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} not delivered yet${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
+  if (!channelActive()) banners.push(['warn','📨 Reports are manual. Connect Telegram or ntfy in Settings → Edit contract so your referee hears from the app, not from you.']);
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
+  const br = $('btn-retry'); if (br) br.onclick = ()=>{ lastDeliveryError=''; flushOutbox(); };
+  escalate(st);
 
   $('k-ref').textContent = cfg.referee.name;
   $('k-pledge').textContent = money(cfg.pledge);
   $('k-owed').textContent = money(o); $('k-owed').style.color = o>0?'var(--bad)':'var(--ok)';
   $('k-streak').textContent = `${streak()} week${streak()===1?'':'s'}`;
   $('k-freeze').textContent = freezesLeft();
+  const kc = $('k-channel');
+  if (!channelActive()) { kc.textContent = 'none — manual reports'; kc.style.color='var(--warn)'; }
+  else if (outbox.length) { kc.textContent = `${CH_NAMES[cfg.channel.type]} · ${outbox.length} queued`; kc.style.color='var(--warn)'; }
+  else { kc.textContent = `${CH_NAMES[cfg.channel.type]} · live`; kc.style.color='var(--ok)'; }
 
   $('idle').style.display = active ? 'none' : 'block';
   $('active').style.display = active ? 'block' : 'none';
@@ -546,7 +591,7 @@ function renderHistory(){
       case 'attempt': body = `🚫 Check-in refused: ${esc(e.reason)}`; break;
       case 'week': body = `${e.result==='pass'?'🏆':e.result==='fail'?'💸':'🧊'} Week of ${e.week} ${e.result.toUpperCase()} (${e.done}/${e.target})${e.owed?' · owes '+money(e.owed):''}`; break;
       case 'freeze': body = `🧊 Freeze declared for week of ${e.week}: ${esc(e.reason)}`; break;
-      case 'notify': body = `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
+      case 'notify': body = e.auto ? `📡 Referee auto-notified (${esc(e.event)}) via ${esc(e.channel)}` : `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
       case 'paid': body = `💵 Paid ${money(e.amount)}`; break;
       case 'config': body = `✏️ Contract changed: ${esc(e.changes)}`; break;
       case 'import': body = `📥 Ledger imported (${e.count} entries)`; break;
@@ -561,7 +606,7 @@ function renderSettings(){
     ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
     ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
     ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
-    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
+    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Auto delivery', CH_NAMES[(c.channel||{}).type||'none']], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔 Notifications enabled' : '🔔 Enable notifications';
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
@@ -578,7 +623,10 @@ function initSetupForm(prefill){
     $('s-refname').value=c.referee.name; $('s-refphone').value=c.referee.phone||''; $('s-refemail').value=c.referee.email||''; $('s-pledge').value=c.pledge; $('s-conseq').value=c.consequence||''; $('s-freeze').value=c.freezesPerQuarter;
     $('s-agree').checked = true;
     showMap(c.gym.lat, c.gym.lng);
+    const ch = c.channel || { type:'none' };
+    $('s-ch').value = ch.type; $('s-tg-token').value = ch.token||''; $('s-tg-chat').value = ch.chatId||''; $('s-ntfy').value = ch.topic||''; $('s-dc').value = ch.type==='discord'?ch.url:''; $('s-wh').value = ch.type==='webhook'?ch.url:'';
   } else showMap(NaN, NaN);
+  updateChannelUI();
 }
 function setGymLocation(lat, lng, label, msg){
   $('s-lat').value = (+lat).toFixed(6); $('s-lng').value = (+lng).toFixed(6);
@@ -627,6 +675,55 @@ async function runSearch(){
 }
 $('s-search-btn').onclick = runSearch;
 $('s-search').addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); runSearch(); } });
+function randomTopic(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let t='gym-'; for (let i=0;i<10;i++) t+=a[Math.floor(Math.random()*a.length)]; return t; }
+function updateChannelUI(){
+  const t = $('s-ch').value;
+  document.querySelectorAll('.chbox').forEach(b=>b.classList.toggle('on', b.id==='ch-'+t));
+  $('s-testwrap').style.display = t==='none' ? 'none' : 'block';
+  if (t==='ntfy' && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
+  $('s-ntfy-link').innerHTML = `<a href="https://ntfy.sh/${encodeURIComponent($('s-ntfy').value||'topic')}" target="_blank" rel="noopener" style="color:var(--accent)">ntfy.sh/${esc($('s-ntfy').value||'topic')}</a>`;
+}
+$('s-ch').onchange = updateChannelUI;
+$('s-ntfy').addEventListener('input', updateChannelUI);
+function readChannel(){
+  const type = $('s-ch').value;
+  if (type==='telegram') return { type, token:$('s-tg-token').value.trim(), chatId:$('s-tg-chat').value.trim() };
+  if (type==='ntfy') return { type, topic:$('s-ntfy').value.trim() };
+  if (type==='discord') return { type, url:$('s-dc').value.trim() };
+  if (type==='webhook') return { type, url:$('s-wh').value.trim() };
+  return { type:'none' };
+}
+function channelProblem(ch){
+  if (ch.type==='telegram' && (!/^\d+:[\w-]{20,}$/.test(ch.token) || !ch.chatId)) return 'Telegram needs a bot token and a chat ID (use "Find referee\'s chat").';
+  if (ch.type==='ntfy' && !/^[\w-]{6,64}$/.test(ch.topic)) return 'ntfy topic must be 6–64 letters, digits, - or _.';
+  if (ch.type==='discord' && !/^https:\/\/(discord(app)?\.com)\/api\/webhooks\//.test(ch.url)) return 'That is not a Discord webhook URL.';
+  if (ch.type==='webhook' && !/^https:\/\//.test(ch.url)) return 'Webhook URL must start with https://';
+  return '';
+}
+$('s-tg-detect').onclick = async () => {
+  const token = $('s-tg-token').value.trim(), out = $('s-tg-chats');
+  if (!token) return toast('Paste the bot token first.');
+  out.innerHTML = '<p class="small muted">Asking Telegram…</p>';
+  try {
+    const me = await (await fetch(`https://api.telegram.org/bot${token}/getMe`)).json();
+    if (!me.ok) throw new Error(me.description || 'bad token');
+    const u = await (await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=100`)).json();
+    if (!u.ok) throw new Error(u.description || 'could not read updates');
+    const chats = {};
+    for (const up of u.result) { const m = up.message || up.my_chat_member?.chat && { chat: up.my_chat_member.chat }; if (!m?.chat) continue; const c=m.chat; chats[c.id] = { id:c.id, name: c.title || [c.first_name,c.last_name].filter(Boolean).join(' ') || c.username || String(c.id), type:c.type }; }
+    const list = Object.values(chats);
+    if (!list.length) { out.innerHTML = `<p class="small muted">Bot <b>@${esc(me.result.username)}</b> is valid but nobody has messaged it yet. Ask your referee to open <a style="color:var(--accent)" target="_blank" rel="noopener" href="https://t.me/${esc(me.result.username)}">t.me/${esc(me.result.username)}</a>, press Start, send "hi", then tap this again.</p>`; return; }
+    out.innerHTML = `<p class="small muted">Bot @${esc(me.result.username)}. Pick the referee:</p>` + list.map((c,i)=>`<button type="button" data-i="${i}"><b>${esc(c.name)}</b><span>${esc(c.type)} · ${c.id}</span></button>`).join('');
+    out.querySelectorAll('button').forEach(b=>b.onclick=()=>{ $('s-tg-chat').value = list[+b.dataset.i].id; out.innerHTML = `<p class="small muted">Referee chat set to <b>${esc(list[+b.dataset.i].name)}</b>.</p>`; });
+  } catch(e){ out.innerHTML = `<p class="small muted">${esc(e.message)}</p>`; }
+};
+$('s-test').onclick = async () => {
+  const ch = readChannel(); const prob = channelProblem(ch); const msg = $('s-testmsg');
+  if (prob) { msg.textContent = prob; return; }
+  msg.textContent = 'Sending…';
+  try { await deliver({ event:'test', text:`Test from Ironclad: ${$('s-name').value.trim()||'your friend'}'s gym accountability app is connected to you. Real messages start once the contract is signed.` }, ch); msg.textContent = '✅ Delivered. Ask your referee to confirm they got it.'; }
+  catch(e){ msg.textContent = '❌ ' + e.message; }
+};
 $('s-locate').onclick = async () => {
   $('s-locmsg').textContent = 'Getting a precise fix…';
   try { const p = await getPosition(); setGymLocation(p.lat, p.lng, '', `Got it (±${Math.round(p.acc)} m). Make sure you are actually standing in the gym.`); }
@@ -642,17 +739,23 @@ function readSetupForm(){
     requirePhoto: $('s-photo').checked,
     referee: { name:$('s-refname').value.trim(), phone:$('s-refphone').value.trim(), email:$('s-refemail').value.trim() },
     pledge: Math.max(0, +$('s-pledge').value||0), consequence: $('s-conseq').value.trim(), freezesPerQuarter: Math.max(0, +$('s-freeze').value||0),
+    channel: readChannel(),
   };
 }
 $('setup').onsubmit = async ev => {
   ev.preventDefault();
   const c = readSetupForm();
   if (!isFinite(c.gym.lat)||!isFinite(c.gym.lng)||!c.gym.lat) return toast('Set the gym location first.');
-  if (!c.referee.phone && !c.referee.email) return toast('Your referee needs a phone or email.');
+  if (!c.referee.phone && !c.referee.email && c.channel.type==='none') return toast('Your referee needs a phone, an email, or a connected channel.');
+  const chProb = channelProblem(c.channel); if (chProb) return toast(chProb, 5000);
   if (cfg) {
     const changes = Object.keys(c).filter(k=>JSON.stringify(c[k])!==JSON.stringify(cfg[k])).map(k=>`${k}: ${JSON.stringify(cfg[k])} → ${JSON.stringify(c[k])}`).join('; ');
     cfg = { ...cfg, ...c }; save(LS.cfg, cfg);
     if (changes) await append({ type:'config', changes });
+    const chChanged = changes.includes('channel:');
+    if (chChanged && channelActive()) notifyReferee('signed', introText() + '\n(Channel connected or changed after signing.)');
+    const visible = changes.split('; ').filter(x=>!x.startsWith('channel:')).join('; ');
+    if (visible) notifyReferee('config', `✏️ ${cfg.name} changed the contract: ${visible}`);
     toast('Contract updated and logged.');
   } else {
     cfg = { ...c, createdAt: Date.now() };
@@ -663,6 +766,7 @@ $('setup').onsubmit = async ev => {
     await append({ type:'setup', name:c.name, target:c.target, pledge:c.pledge, referee:c.referee.name, gym:c.gym });
     toast(cfg.startWeek===weekKey(new Date()) ? 'Contract signed. No way back now.' : `Contract signed. Warm-up until ${fmtDate(parseYmd(cfg.startWeek))}, then it counts.`, 6000);
     scheduleReminders();
+    notifyReferee('signed', introText());
   }
   render(); show('today');
 };
@@ -690,6 +794,7 @@ $('checkin').onclick = async () => {
     const pos = await getPosition(); const g = atGym(pos);
     if (!g.ok) {
       await append({ type:'attempt', reason:`${g.dist} m from gym (±${g.acc} m), allowed ${cfg.radius} m` });
+      notifyReferee('attempt', `🚫 ${cfg.name} tried to check in ${g.dist} m away from ${cfg.gym.label||'the gym'} (${fmtTime(Date.now())}). Refused.`);
       msg.textContent = `Not at the gym: ${g.dist} m away (GPS ±${g.acc} m). Walk in and try again.`;
       toast('Check-in refused. You have to actually be there.'); renderHistory(); return;
     }
@@ -697,6 +802,7 @@ $('checkin').onclick = async () => {
     if (cfg.requirePhoto) { msg.textContent='Take a photo of where you are…'; photo = await capturePhoto(); if (!photo) { msg.textContent='A check-in photo is required by your contract.'; return; } }
     active = { start:Date.now(), dist:g.dist, acc:g.acc, photo };
     save(LS.active, active); msg.textContent='';
+    { const st = currentStatus(); notifyReferee('checkin', `🏋️ ${cfg.name} checked in at ${cfg.gym.label||'the gym'}, ${fmtDate(new Date())} ${fmtTime(Date.now())} (GPS ${g.dist} m from centre). Going for session ${Math.min(st.done+1,cfg.target)} of ${cfg.target} this week.`, { photo }); }
     toast(`Checked in. Stay at least ${cfg.minMinutes} minutes, then check out here.`);
     renderToday();
   } catch(e){ msg.textContent = e.message; }
@@ -727,6 +833,10 @@ async function closeSession({ minutes, verified, endDist, reason, auto=false }){
   if (active.photo) e.photo = active.photo;
   await append(e);
   active=null; save(LS.active, null);
+  { const st = currentStatus();
+    notifyReferee('checkout', valid
+      ? `✅ ${cfg.name} checked out after ${minutes} min${verified?' (GPS verified at the gym)':' (checkout NOT GPS-verified)'}. ${st.remaining ? `${st.done}/${cfg.target} this week, ${st.remaining} to go.` : `Week complete: ${st.done}/${cfg.target}. 💪`}`
+      : `❌ ${cfg.name}'s session did NOT count: ${reason}. Still ${st.done}/${cfg.target} this week.`, { urgent: !valid }); }
   toast(valid ? (verified ? `✅ Counted: ${minutes} min at the gym.` : `✅ Counted (unverified): ${minutes} min. Next one must be verified.`) : `❌ Not counted: ${reason}.`, 5000);
   if (valid && 'Notification' in window && Notification.permission==='granted') { const st=currentStatus(); new Notification('Ironclad', { body: st.remaining ? `${st.remaining} more to go this week.` : 'Week complete. 💪' }); }
   renderToday();
@@ -788,13 +898,96 @@ $('btn-freeze').onclick = () => {
   $('fz-ok').onclick = async () => {
     const wk=$('fz-week').value, reason=$('fz-reason').value.trim(); if (!reason) return toast('Give a reason.');
     if (wk===st.wk && st.level==='bad' && st.remaining>st.daysLeft) return toast('Too late: this week is already lost. Freezes must come before that.');
-    await append({ type:'freeze', week:wk, reason }); closeSheet(); renderToday(); sendReport(wk);
+    await append({ type:'freeze', week:wk, reason }); closeSheet(); renderToday();
+    if (channelActive()) { notifyReferee('freeze', `🧊 ${cfg.name} declared a freeze for the week of ${fmtDate(parseYmd(wk))}. Reason: ${reason}. Freezes left this quarter: ${freezesLeft()}.`, { week: wk }); toast('Referee notified.'); } else sendReport(wk);
   };
 };
 async function markPaid(){
   const o = owed();
   if (!confirm(`Confirm you have actually paid ${money(o)} as promised?`)) return;
   await append({ type:'paid', amount:o }); renderToday(); toast('Recorded. Honour intact.');
+  notifyReferee('paid', `💵 ${cfg.name} marked ${money(o)} as paid to you. Please confirm you actually received it.`);
+}
+
+/* ---------- automatic delivery to the referee ---------- */
+const CH_NAMES = { none:'none (manual reports)', telegram:'Telegram', ntfy:'ntfy', discord:'Discord', webhook:'webhook' };
+function dataUrlToBlob(d){ const [h,b]=d.split(','); const mime=h.match(/:(.*?);/)[1]; const bin=atob(b); const arr=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime}); }
+async function deliver(msg, ch){
+  ch = ch || cfg.channel;
+  if (!ch || ch.type==='none') return false;
+  if (ch.type==='telegram') {
+    const base = `https://api.telegram.org/bot${ch.token}`;
+    let r;
+    if (msg.photo) { const fd=new FormData(); fd.append('chat_id', ch.chatId); fd.append('caption', msg.text.slice(0,1000)); fd.append('photo', dataUrlToBlob(msg.photo), 'checkin.jpg'); r = await fetch(base+'/sendPhoto', { method:'POST', body:fd }); }
+    else r = await fetch(base+'/sendMessage', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ chat_id:ch.chatId, text:msg.text, disable_web_page_preview:true }) });
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok || j.ok===false) throw new Error('Telegram: ' + (j.description || r.status));
+    return true;
+  }
+  if (ch.type==='ntfy') {
+    const r = await fetch(`https://ntfy.sh/${encodeURIComponent(ch.topic)}`, { method:'POST', body: msg.text, headers:{ 'Title':'Ironclad gym', 'Priority': msg.urgent?'high':'default', 'Tags': msg.urgent?'rotating_light':'muscle' } });
+    if (!r.ok) throw new Error('ntfy: HTTP ' + r.status);
+    return true;
+  }
+  if (ch.type==='discord') {
+    const fd = new FormData(); fd.append('payload_json', JSON.stringify({ content: msg.text.slice(0,1900), username:'Ironclad' }));
+    if (msg.photo) fd.append('files[0]', dataUrlToBlob(msg.photo), 'checkin.jpg');
+    const r = await fetch(ch.url, { method:'POST', body:fd });
+    if (!r.ok) throw new Error('Discord: HTTP ' + r.status);
+    return true;
+  }
+  if (ch.type==='webhook') {
+    const body = JSON.stringify({ app:'ironclad', event: msg.event, text: msg.text, name: cfg?.name, ts: new Date(msg.ts||Date.now()).toISOString() });
+    try { const r = await fetch(ch.url, { method:'POST', headers:{'Content-Type':'application/json'}, body }); if (!r.ok) throw new Error('Webhook: HTTP ' + r.status); }
+    catch(e){ if (!(e instanceof TypeError)) throw e; await fetch(ch.url, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain'}, body }); }
+    return true;
+  }
+  throw new Error('Unknown channel');
+}
+function channelActive(){ return !!(cfg && cfg.channel && cfg.channel.type && cfg.channel.type!=='none'); }
+function notifyReferee(event, text, opts={}){
+  if (!channelActive()) return;
+  outbox.push({ id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), ts: Date.now(), event, text, photo: opts.photo||null, urgent: !!opts.urgent, week: opts.week || weekKey(new Date()) });
+  save(LS.outbox, outbox);
+  flushOutbox();
+}
+let flushing = false;
+async function flushOutbox(){
+  if (flushing || !channelActive() || !outbox.length) return;
+  flushing = true;
+  try {
+    while (outbox.length) {
+      const m = outbox[0];
+      try { await deliver(m); }
+      catch(e){ lastDeliveryError = e.message; break; }
+      outbox.shift(); save(LS.outbox, outbox); lastDeliveryError = '';
+      await append({ type:'notify', week:m.week, channel: cfg.channel.type, auto:true, event:m.event });
+    }
+  } finally { flushing = false; if (cfg) renderToday(); }
+}
+window.addEventListener('online', flushOutbox);
+function introText(){
+  const c = cfg;
+  return [`Hi ${c.referee.name}, this is ${c.name}'s gym accountability app (Ironclad).`,
+    `${c.name} has committed to ${c.target} gym sessions a week at ${c.gym.label||'the gym'}, each verified by GPS at check-in and check-out with a minimum stay of ${c.minMinutes} minutes. Weeks run ${DN[c.weekStart]} to ${DN[(c.weekStart+6)%7]}.`,
+    `You will get a message for every check-in (with photo), every check-out, and a result when each week closes. Freezes and any change to the rules are reported too.`,
+    `If a week fails, ${c.name} owes you ${money(c.pledge)}.${c.consequence ? ' Agreed consequence: ' + c.consequence : ''}`,
+    `The important part: if you hear nothing by the end of a week, assume it failed and ask.`].join('\n');
+}
+async function sendTamperAlert(){
+  if (!tampered || !channelActive() || load(LS.tamperSent, false)) return;
+  save(LS.tamperSent, true);
+  notifyReferee('tamper', `⚠️ ${cfg.name}'s Ironclad ledger has been edited outside the app. The record on this phone can no longer be trusted. Ask ${cfg.name} what happened.`, { urgent:true });
+}
+function escalate(st){
+  if (!channelActive() || st.warmup || st.frozen || st.remaining===0) return;
+  if (st.level!=='bad') return;
+  const esc_ = load(LS.escalated, {});
+  if (esc_[st.wk] === st.title) return;
+  esc_[st.wk] = st.title; save(LS.escalated, esc_);
+  notifyReferee('status', st.title==='Week lost'
+    ? `🚨 ${cfg.name} can no longer hit ${cfg.target} sessions this week (${st.done}/${cfg.target} with ${st.daysLeft} day${st.daysLeft===1?'':'s'} left). ${money(cfg.pledge)} will be owed when the week closes.`
+    : `🔥 ${cfg.name} has zero slack left: ${st.remaining} session${st.remaining===1?'':'s'} needed in ${st.daysLeft} day${st.daysLeft===1?'':'s'}.`, { urgent:true });
 }
 
 /* ---------- sheets ---------- */
@@ -820,7 +1013,7 @@ function minuteCheck(){
     notified[today]=1; save(LS.notified, notified);
   }
 }
-setInterval(minuteCheck, 60000);
+setInterval(() => { minuteCheck(); if (cfg) { escalate(currentStatus()); flushOutbox(); } }, 60000);
 
 /* ---------- ICS ---------- */
 $('btn-ics').onclick = () => {
@@ -842,7 +1035,7 @@ $('btn-ics').onclick = () => {
 function download(name, text, type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
 
 /* ---------- export / import / reset ---------- */
-$('btn-export').onclick = () => download(`ironclad-backup-${ymd(new Date())}.json`, JSON.stringify({ cfg, ledger, active, exported:Date.now() }, null, 1), 'application/json');
+$('btn-export').onclick = () => download(`ironclad-backup-${ymd(new Date())}.json`, JSON.stringify({ cfg, ledger, active, outbox, exported:Date.now() }, null, 1), 'application/json');
 $('btn-import').onclick = () => $('import-file').click();
 $('import-file').onchange = async () => {
   const f = $('import-file').files[0]; if (!f) return;
@@ -870,7 +1063,7 @@ $('btn-edit').onclick = () => { initSetupForm(cfg); show('setup'); window.scroll
 
 /* ---------- nav & boot ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); if (await settleWeeks()) {} renderToday(); } });
+document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); await settleWeeks(); renderToday(); flushOutbox(); } });
 
 (async function boot(){
   setIntegrity(await verifyLedger());
@@ -878,6 +1071,7 @@ document.addEventListener('visibilitychange', async () => { if (!document.hidden
     await recoverActive();
     await settleWeeks();
     render(); show('today'); minuteCheck();
+    sendTamperAlert(); flushOutbox();
   } else render();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

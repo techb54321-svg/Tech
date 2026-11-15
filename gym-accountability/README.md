@@ -23,6 +23,8 @@ A single-file, installable web app that holds you to **3 gym sessions a week** (
 Geolocation, camera capture and installation all require HTTPS (or `localhost`), so host the folder on any static host. GitHub Pages works:
 `https://<user>.github.io/Tech/gym-accountability/`
 
+During setup, search for your gym by name or address (OpenStreetMap search), paste a Google Maps link, or use your current location while standing inside it; the pin shows on a small map so you can confirm it.
+
 Then on your phone open the URL and choose **Add to Home Screen**. The service worker caches the app so it opens inside the gym without signal.
 
 For local testing: `python3 -m http.server` in this folder, then open `http://localhost:8000`.

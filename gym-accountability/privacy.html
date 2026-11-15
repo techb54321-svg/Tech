@@ -68,12 +68,12 @@
   </div>
 
   <div class="card"><h3><span>📸</span>Check-in photos</h3>
-    <div class="where"><b class="phone">On your phone</b><b class="server">Your server, 14 days</b></div>
-    <p>Photos are optional. They're kept on your phone. With Ironclad alerts on, a copy goes to your own alerts server so your referee can see it, and it <b>deletes itself after 14 days</b>.</p>
+    <div class="where"><b class="phone">On your phone</b><b class="server">Alerts server, 14 days</b></div>
+    <p>Photos are optional. They're kept on your phone. With Ironclad alerts on, a copy goes to the alerts server so your referee can see it, and it <b>deletes itself after 14 days</b>.</p>
   </div>
 
   <div class="card"><h3><span>📊</span>Sessions, verdicts and money</h3>
-    <div class="where"><b class="phone">On your phone</b><b class="server">Your server, if alerts are on</b></div>
+    <div class="where"><b class="phone">On your phone</b><b class="server">Alerts server, if alerts are on</b></div>
     <p>Times you trained, which sessions counted, weekly results, the deposit and what you owe. Your referee sees these, because that's their job.</p>
   </div>
 
@@ -82,8 +82,9 @@
     <p>Through their private link they see your name, gym name, schedule, the money, your activity and check-in photos. Never your location or contact details.</p>
     <p>The link works like a key. If it gets forwarded, open <b>Settings → Your data → Replace the referee link</b>: the old link and every phone that turned on alerts through it stop working at once.</p>
   </div>
-  <div class="card"><h3><span>🛰️</span>Your alerts server</h3>
-    <p>If you use Ironclad alerts, the server is yours: a free Cloudflare Worker in <b>your</b> account, not a company holding everyone's data. It keeps your first name, your referee's first name, gym name, schedule, the money, recent activity and photos (14 days). Cloudflare encrypts its storage. Only your app (with its secret key) and your referee (with their link) can reach it, and repeated requests are rate-limited.</p>
+  <div class="card"><h3><span>🛰️</span>The alerts server</h3>
+    <p>Ironclad alerts run on one small server operated by the person who shared Ironclad with you, on Cloudflare. When you turn alerts on, your app gets its own private space there, locked with a secret key only your phone holds. It keeps your first name, your referee's first name, gym name, schedule, the money, recent activity and photos (14 days). Never your location or anyone's phone number or email.</p>
+    <p>Cloudflare encrypts the storage. Other users can't see your space, and neither can their referees. The person running the server could technically look inside it, the way any app's operator can, so only use alerts if you're comfortable with that. Manual mode sends nothing anywhere.</p>
   </div>
   <div class="card"><h3><span>🔔</span>Notifications</h3>
     <p>Alerts are encrypted end to end to your referee's phone. Apple and Google deliver them but can't read them.</p>
@@ -99,7 +100,7 @@
   <div class="card"><h3><span>🗑️</span>Deleting everything</h3>
     <ul>
       <li><b>On your phone:</b> Settings → Danger zone → Wipe everything.</li>
-      <li><b>On your server:</b> delete the Worker and its storage in your Cloudflare account.</li>
+      <li><b>On the alerts server:</b> wiping the app deletes your space there too, along with your referee's link. Photos already stored expire within 14 days and can't be opened once the link is gone.</li>
       <li><b>Your referee:</b> they can turn alerts off on their page; replacing the link cuts them off entirely.</li>
     </ul>
   </div>

@@ -1,38 +1,36 @@
-# Ironclad server
+# Ironclad alerts server
 
-One free Cloudflare Worker that powers **Ironclad alerts**. The person-friendly setup guide is `index.html`, published next to the app at `gym-accountability/server/`.
+One free Cloudflare Worker that powers **Ironclad alerts** for every user of the app. The developer sets it up once, following the guide in `index.html`. After that, nobody else touches Cloudflare: each app install registers itself and gets its own private space.
 
 ## What it does
 
-- Receives events from the Ironclad app at `POST /event`. These are check-ins with an optional photo, check-outs, verdicts, freezes, contract changes and money updates. It stores recent state in KV.
-- Hosts the referee's own installable app at `/r/<invite-token>/`. The app serves a per-referee manifest and service worker. The referee taps "I'm in", turns on alerts and sees a live view of the week.
-- Sends notifications with standard Web Push: RFC 8291 payload encryption and RFC 8292 VAPID. It uses no third-party push service. VAPID keys are generated on first use and stored in KV. Dead subscriptions (404 or 410) are pruned.
-- An hourly cron sends the weekly verdict at the configured hour on the first day of the new week. It sends even if the app went silent, and skips the push if the app already delivered that verdict.
-- Consent comes first: nothing is pushed until the referee has agreed.
-- Privacy: check-in photos expire after 14 days, phone numbers are never stored for Ironclad alerts, and referee actions (agree, subscribe, test) are rate-limited.
+- **Accounts.** `POST /register` gives each app install an account id and a secret. Secrets are stored only as SHA-256 hashes. Sign-ups are capped at 5 per hour per network and 200 per day. Networks are recorded only as hashes.
+- **Isolation.** Each account lives under its own KV key (`acct:<id>`). Referee links map to accounts through `ref:<token>`, and photos live under `photo:<account>:<id>` with a 14-day expiry.
+- **Referee pages.** Each referee gets an installable page at `/r/<token>/`, with its own manifest and service worker, alerts, a test button and a live view of the week.
+- **Notifications.** Standard Web Push: RFC 8291 encryption and RFC 8292 VAPID. One VAPID key pair is generated on first use. Dead subscriptions are pruned.
+- **Weekly verdicts.** An hourly cron sends verdicts for every account that is due. Each account's schedule is kept as KV metadata, so the cron only reads accounts that are due.
+- **Privacy.** Nothing is pushed until the referee agrees. Phone numbers and emails are never stored. The referee's actions are rate-limited. `POST /delete` erases an account, which the app calls when it is wiped. Only the app's own origin may call the API from a browser.
 
 ## Setup
 
 1. Paste `worker.js` into a new Worker. The repository also has a `wrangler.toml` for `npx wrangler deploy`.
 2. Bind a KV namespace as `STATE`.
 3. Add the cron trigger `0 * * * *`.
-4. Open the Worker's address and copy the connection code (`<worker-origin>#<secret>`) into the app. The code is hidden once the app uses it. To reset it, delete the `secret` and `claimed` keys in KV.
+4. Put the Worker's address in the app as `ALERTS_SERVER_URL` near the top of the script in `index.html`.
 
-Optional settings:
-
-- `APP_SECRET` replaces the generated secret.
-- Twilio settings (`TWILIO_*`) only apply to the older text-message mode. With Ironclad alerts the server never receives phone numbers.
-- The `APP_URL` constant at the top of `worker.js` points to wherever the Ironclad app is hosted. It is used for icons and the pairing link.
+`APP_URL` at the top of `worker.js` must point to wherever the app is hosted. It is used for icons, fonts and the CORS allow-list.
 
 ## Endpoints
 
 | Route | Auth | Purpose |
 | --- | --- | --- |
-| `GET /` | none | Status page with the setup checklist and connection code |
-| `POST /event` | secret | Record an event and push it to the referee |
-| `POST /invite` | secret | Create the referee link |
-| `POST /rotate` | secret | Replace the referee link; the old link and all its alert registrations stop working |
-| `POST /state` | secret | Report agreement and alert-device count back to the app |
-| `POST /summary` | secret | Preview last week's verdict text |
+| `GET /` | none | Status page with the setup checklist and the server address |
+| `GET /health` | none | Liveness check used by the app |
+| `POST /register` | none (rate-limited) | Create an account and return its id and secret |
+| `POST /event` | account + secret | Record an event and push it to the referee |
+| `POST /invite` | account + secret | Create the referee link |
+| `POST /rotate` | account + secret | Replace the referee link; the old link and all its alert registrations stop working |
+| `POST /state` | account + secret | Report agreement and alert-device count back to the app |
+| `POST /summary` | account + secret | Preview last week's verdict text |
 | `GET /r/<token>/` | token | Referee app, plus `manifest.webmanifest`, `sw.js`, `data` and `photo/<id>` |
 | `POST /r/<token>/agree`, `/subscribe`, `/unsubscribe`, `/test` | token | Referee actions |

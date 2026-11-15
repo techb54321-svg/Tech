@@ -1,136 +1,151 @@
-// Ironclad server — one free Cloudflare Worker.
+// Ironclad alerts server — one free Cloudflare Worker for everyone.
 //
-// What it does
-//  • Receives events from your Ironclad app (check-ins, check-outs, verdicts…).
-//  • Hosts your referee's own Ironclad app at /r/<invite-token>/, which they add
-//    to their home screen to get real notifications and a live view of your week.
-//  • Sends those notifications with standard Web Push (no third-party service).
-//  • Once an hour (cron), sends the weekly verdict on schedule, even if your
-//    phone never opened the app that week.
+// The developer sets this up once. Every Ironclad user's app then registers
+// automatically and gets its own private, separate space here; nobody else
+// has to touch Cloudflare.
 //
-// Setup (see the guide in this folder): paste this file into a Worker, bind a
-// KV namespace as STATE, add the cron trigger "0 * * * *", open the Worker's
-// address once and copy the connection code into the app. Keys are generated
-// automatically on first use and stored in KV.
+//  • POST /register gives each app install an account id and secret key.
+//  • Each account's data lives under its own key; secrets are stored hashed.
+//  • Hosts each referee's installable page at /r/<invite-token>/.
+//  • Sends notifications with standard Web Push (encrypted to the device).
+//  • An hourly cron sends every account's weekly verdict on schedule.
 //
-// Optional: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM also send the
-// weekly verdict as a text message. APP_SECRET overrides the generated key.
+// Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
+// cron trigger "0 * * * *". Keys are generated automatically on first use.
 
 const APP_URL = 'https://techb54321-svg.github.io/Tech/gym-accountability/'; // where the Ironclad app lives
+const APP_ORIGIN = new URL(APP_URL).origin;
 const DAY = 86400000;
 const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
-const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', ...CORS } });
-const page = (s, status = 200) => new Response(s, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 const PHOTO_DAYS = 14; // check-in photos delete themselves after this
+const REG_PER_IP_HOUR = 5, REG_PER_DAY = 200; // sign-up limits, so nobody can flood the server
 const PUSH_EVENTS = new Set(['checkin', 'checkout', 'attempt', 'week', 'freeze', 'config', 'paid', 'deposit', 'status', 'tamper']);
+const page = (s, status = 200) => new Response(s, { status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+// Same-origin JSON (referee pages). Cross-origin app calls go through cors().
+const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', ...extra } });
+function corsFor(request) {
+  const o = request.headers.get('Origin');
+  if (o && (o === APP_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o))) return { 'Access-Control-Allow-Origin': o, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+  return {};
+}
 
 export default {
   async fetch(request, env) {
     try { return await route(request, env); }
-    catch (e) { return json({ error: e.message || String(e) }, 500); }
+    catch (e) { return json({ error: e.message || String(e) }, 500, corsFor(request)); }
   },
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      if (env.STATE) await env.STATE.put('lastCron', String(Date.now()));
-      await runWeekly(env, new Date(event.scheduledTime || Date.now()));
+      if (!env.STATE) return;
+      await env.STATE.put('lastCron', String(Date.now()));
+      await runAll(env, new Date(event.scheduledTime || Date.now()));
     })());
   },
 };
 
 async function route(request, env) {
-  const url = new URL(request.url);
-  if (request.method === 'OPTIONS') return new Response(null, { headers: CORS });
+  const url = new URL(request.url), cors = corsFor(request);
+  const J = (o, s = 200) => json(o, s, cors);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
   const m = url.pathname.match(/^\/r\/([a-z0-9]{10,40})(\/.*)?$/);
   if (m) return refereeRoute(request, env, url, m[1], m[2] || '');
   if (request.method === 'GET' && url.pathname === '/') return statusPage(env, url);
-  if (request.method !== 'POST') return json({ error: 'not found' }, 404);
-  if (!env.STATE) return json({ error: 'The server has no storage yet. Add a KV binding called STATE (see the guide).' }, 500);
-
+  if (request.method === 'GET' && url.pathname === '/health') return J({ ok: !!env.STATE });
+  if (request.method !== 'POST') return J({ error: 'not found' }, 404);
+  if (!env.STATE) return J({ error: 'The alerts server has no storage yet.' }, 500);
   let body;
-  try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+  try { body = await request.json(); } catch { return J({ error: 'bad json' }, 400); }
 
-  if (url.pathname === '/agree') return agree(env, body.token, body.name); // legacy referee page
+  if (url.pathname === '/register') return register(env, request, J);
 
-  const secret = await getSecret(env);
-  if (!secret) return json({ error: 'Open the server page once to create your connection code.' }, 500);
-  if (body.secret !== secret) return json({ error: 'That connection code is wrong. Copy it again from your server page.' }, 401);
-  await markClaimed(env);
-
-  const st = await getState(env);
+  const st = await authed(env, body);
+  if (!st) return J({ error: 'This app is not recognised by the alerts server. Turn Ironclad alerts off and on again in Settings.' }, 401);
   st.origin = url.origin;
-  const minimise = () => { if (body.via === 'ironclad' && st.cfg) { delete st.cfg.refereePhone; delete st.cfg.refereeEmail; } };
+  if (st.cfg) { delete st.cfg.refereePhone; delete st.cfg.refereeEmail; }
 
   if (url.pathname === '/event') {
-    const photoId = body.photo ? await savePhoto(env, body.photo) : null;
-    recordEvent(st, body, photoId); minimise();
-    let delivered = 0, sent = null;
-    const via = body.via || 'sms';
-    if (body.event === 'referee' && body.data?.agreed && !st.agreedAt) {
-      st.agreedAt = Number(body.ts) || Date.now(); st.agreedBy = st.cfg?.refereeName || ''; st.agreedHow = String(body.data.how || 'confirmed by the user').slice(0, 80);
-      if (via !== 'ironclad' && hasTwilio(env)) { try { sent = await sendSMS(env, st.cfg?.refereePhone, welcomeText(st.cfg)); } catch (e) { st.welcomeError = e.message; } }
+    const photoId = body.photo ? await savePhoto(env, st.id, body.photo) : null;
+    recordEvent(st, body, photoId);
+    if (st.cfg) { delete st.cfg.refereePhone; delete st.cfg.refereeEmail; }
+    let delivered = 0;
+    if (body.event === 'referee' && body.data?.agreed && !st.agreedAt) { st.agreedAt = Number(body.ts) || Date.now(); st.agreedBy = st.cfg?.refereeName || ''; st.agreedHow = String(body.data.how || 'confirmed by the user').slice(0, 80); }
+    if (body.event === 'test') delivered = await pushAll(env, st, testPayload(st));
+    else if (st.agreedAt && PUSH_EVENTS.has(body.event)) {
+      delivered = await pushAll(env, st, eventPayload(st, body, photoId), body.urgent ? 'high' : 'normal');
+      if (body.event === 'week' && body.data?.week) (st.pushedWeeks ||= {})[body.data.week] = true;
     }
-    if (via === 'ironclad') {
-      if (body.event === 'test') delivered = await pushAll(env, st, testPayload(st));
-      else if (st.agreedAt && PUSH_EVENTS.has(body.event)) {
-        delivered = await pushAll(env, st, eventPayload(st, body, photoId), body.urgent ? 'high' : 'normal');
-        if (body.event === 'week' && body.data?.week) (st.pushedWeeks ||= {})[body.data.week] = true;
-      }
-    } else {
-      if (body.event === 'test') sent = await sendSMS(env, st.cfg?.refereePhone, testText(st.cfg));
-      if (body.event === 'tamper' && st.agreedAt && hasTwilio(env)) sent = await sendSMS(env, st.cfg.refereePhone, `Ironclad alert: ${st.cfg.name}'s gym log has been edited outside the app. Treat the record as untrustworthy and ask ${st.cfg.name} about it.`);
-    }
-    await putState(env, st);
-    return json({ ok: true, delivered, subscribers: st.subs.length, sent, agreedAt: st.agreedAt || null });
+    await saveAcct(env, st);
+    return J({ ok: true, delivered, subscribers: st.subs.length, agreedAt: st.agreedAt || null });
   }
   if (url.pathname === '/invite') {
-    if (body.state && typeof body.state === 'object') st.cfg = { ...(st.cfg || {}), ...body.state };
-    minimise();
-    if (!st.inviteToken) st.inviteToken = randomToken();
-    await putState(env, st);
-    return json({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/`, agreedAt: st.agreedAt || null, subscribers: st.subs.length });
+    if (body.state && typeof body.state === 'object') { st.cfg = { ...(st.cfg || {}), ...body.state }; delete st.cfg.refereePhone; delete st.cfg.refereeEmail; }
+    if (!st.inviteToken) { st.inviteToken = randomToken(); await env.STATE.put('ref:' + st.inviteToken, st.id); }
+    await saveAcct(env, st);
+    return J({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/`, agreedAt: st.agreedAt || null, subscribers: st.subs.length });
   }
   if (url.pathname === '/rotate') {
     // A leaked link is a key to your photos and activity. Replace it: the old link and
     // every device registered through it stop working at once.
+    if (st.inviteToken) await env.STATE.delete('ref:' + st.inviteToken);
     st.inviteToken = randomToken(); st.subs = []; st.rl = {};
-    await putState(env, st);
-    return json({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/` });
+    await env.STATE.put('ref:' + st.inviteToken, st.id);
+    await saveAcct(env, st);
+    return J({ ok: true, token: st.inviteToken, link: `${url.origin}/r/${st.inviteToken}/` });
   }
   if (url.pathname === '/state') {
-    await putState(env, st);
-    return json({ ok: true, agreedAt: st.agreedAt || null, agreedBy: st.agreedBy || null, agreedHow: st.agreedHow || null, subscribers: st.subs.length, lastSentWeek: st.lastSentWeek || null, lastReport: st.lastReport || null });
+    return J({ ok: true, agreedAt: st.agreedAt || null, agreedBy: st.agreedBy || null, agreedHow: st.agreedHow || null, subscribers: st.subs.length, lastSentWeek: st.lastSentWeek || null, lastReport: st.lastReport || null });
+  }
+  if (url.pathname === '/delete') {
+    // Everything for this account goes. Photos expire on their own within 14 days and
+    // are unreachable immediately, because the referee link is deleted too.
+    if (st.inviteToken) await env.STATE.delete('ref:' + st.inviteToken);
+    await env.STATE.delete('acct:' + st.id);
+    return J({ ok: true, deleted: true });
   }
   if (url.pathname === '/summary') {
-    if (!st.cfg) return json({ error: 'no data from the app yet' }, 400);
+    if (!st.cfg) return J({ error: 'no data from the app yet' }, 400);
     const now = new Date(), wk = prevWeek(weekKeyOf(localParts(now, st.cfg.tz), st.cfg.weekStart ?? 1));
-    return json({ ok: true, week: wk, text: summaryText(st, wk, now) });
+    return J({ ok: true, week: wk, text: summaryText(st, wk, now) });
   }
-  return json({ error: 'not found' }, 404);
+  return J({ error: 'not found' }, 404);
 }
 
-/* ---------------- secret (connection code) ---------------- */
-async function getSecret(env) { return env.APP_SECRET || await env.STATE.get('secret'); }
-async function ensureSecret(env) {
-  let s = await getSecret(env);
-  if (!s) { s = randomToken(32); await env.STATE.put('secret', s); }
-  return s;
+/* ---------------- accounts ---------------- */
+async function sha256hex(s) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function sameText(a, b) { if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
+function blankAccount(id) { return { id, cfg: null, sessions: [], weeks: {}, freezes: {}, events: [], sent: [], subs: [] }; }
+export async function loadAcct(env, id) {
+  if (!/^[a-z0-9]{10,40}$/.test(String(id || ''))) return null;
+  const raw = await env.STATE.get('acct:' + id);
+  if (!raw) return null;
+  return { ...blankAccount(id), ...JSON.parse(raw), id };
 }
-async function markClaimed(env) { if (!env.APP_SECRET && !(await env.STATE.get('claimed'))) await env.STATE.put('claimed', String(Date.now())); }
-
-/* ---------------- state ---------------- */
-async function getState(env) {
-  const raw = await env.STATE.get('state');
-  const st = raw ? JSON.parse(raw) : {};
-  st.cfg = st.cfg || null; st.sessions = st.sessions || []; st.weeks = st.weeks || {}; st.freezes = st.freezes || {};
-  st.events = st.events || []; st.sent = st.sent || []; st.subs = st.subs || [];
-  return st;
-}
-async function putState(env, st) {
+export async function saveAcct(env, st) {
   st.sessions = st.sessions.slice(-400); st.events = st.events.slice(-200); st.sent = st.sent.slice(-60); st.subs = st.subs.slice(-10);
-  await env.STATE.put('state', JSON.stringify(st));
+  // Small schedule summary kept beside the record so the hourly check can skip accounts without reading them.
+  const metadata = { tz: st.cfg?.tz || 'UTC', ws: Number.isInteger(st.cfg?.weekStart) ? st.cfg.weekStart : 1, h: Number.isInteger(st.cfg?.sendHour) ? st.cfg.sendHour : 9, ag: st.agreedAt ? 1 : 0, last: st.lastSentWeek || '' };
+  await env.STATE.put('acct:' + st.id, JSON.stringify(st), { metadata });
 }
+async function authed(env, body) {
+  const st = await loadAcct(env, body.account);
+  if (!st || !st.secretHash || !body.secret) return null;
+  return sameText(await sha256hex(String(body.secret)), st.secretHash) ? st : null;
+}
+async function register(env, request, J) {
+  const ipHash = (await sha256hex('ip:' + (request.headers.get('CF-Connecting-IP') || 'unknown'))).slice(0, 24);
+  const hour = Math.floor(Date.now() / 3600e3), day = new Date().toISOString().slice(0, 10);
+  const ipKey = `rl:reg:${ipHash}:${hour}`, dayKey = `rl:regday:${day}`;
+  const nIp = +(await env.STATE.get(ipKey) || 0), nDay = +(await env.STATE.get(dayKey) || 0);
+  if (nIp >= REG_PER_IP_HOUR) return J({ error: 'Too many sign-ups from here. Try again in an hour.' }, 429);
+  if (nDay >= REG_PER_DAY) return J({ error: 'The alerts server is full for today. Try again tomorrow, or use Manual for now.' }, 429);
+  await env.STATE.put(ipKey, String(nIp + 1), { expirationTtl: 7200 });
+  await env.STATE.put(dayKey, String(nDay + 1), { expirationTtl: 172800 });
+  const id = randomToken(16), secret = randomToken(32);
+  await saveAcct(env, { ...blankAccount(id), secretHash: await sha256hex(secret), created: Date.now() });
+  return J({ ok: true, account: id, secret });
+}
+
 function recordEvent(st, body, photoId) {
   const ts = Number(body.ts) || Date.now();
   if (body.state && typeof body.state === 'object') st.cfg = { ...(st.cfg || {}), ...body.state };
@@ -143,14 +158,66 @@ function recordEvent(st, body, photoId) {
 }
 const cleanText = t => String(t || '').replace(/^\p{Extended_Pictographic}️?\s*/u, '');
 
-async function savePhoto(env, dataUrl) {
+async function savePhoto(env, acct, dataUrl) {
   const mm = String(dataUrl).match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
   if (!mm || mm[2].length > 400000) return null;
   const bin = atob(mm[2]), bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   const id = randomToken(14);
-  await env.STATE.put('photo:' + id, bytes, { expirationTtl: PHOTO_DAYS * 86400, metadata: { type: mm[1] } });
+  await env.STATE.put(`photo:${acct}:${id}`, bytes, { expirationTtl: PHOTO_DAYS * 86400, metadata: { type: mm[1] } });
   return id;
+}
+
+/* ---------------- referee agreement ---------------- */
+async function agree(env, st, name) {
+  if (!st.agreedAt) {
+    if (!allow(st, 'agree', 10, 3600e3)) return slowDown();
+    st.agreedAt = Date.now(); st.agreedBy = String(name || st.cfg?.refereeName || '').slice(0, 60); st.agreedHow = 'tapped Agree on the referee page';
+    await saveAcct(env, st);
+  }
+  return json({ ok: true, agreedAt: st.agreedAt, name: st.cfg?.name || '' });
+}
+
+/* ---------------- weekly verdicts for every account ---------------- */
+export async function runAll(env, now) {
+  let cursor, sent = 0;
+  do {
+    const r = await env.STATE.list({ prefix: 'acct:', cursor });
+    for (const k of r.keys) {
+      const md = k.metadata || {};
+      if (!md.ag) continue;
+      const loc = localParts(now, md.tz);
+      if (loc.weekday !== md.ws || loc.hour !== md.h) continue;
+      if (md.last === prevWeek(weekKeyOf(loc, md.ws))) continue;
+      if ((await runWeekly(env, now, false, k.name.slice(5))) === 'sent') sent++;
+    }
+    cursor = r.list_complete ? null : r.cursor;
+  } while (cursor);
+  return sent;
+}
+export async function runWeekly(env, now, force = false, id) {
+  const st = await loadAcct(env, id);
+  if (!st) return 'no such account';
+  if (!st.cfg) return 'no data from the app yet';
+  if (!st.agreedAt) return 'referee has not agreed yet';
+  const weekStart = Number.isInteger(st.cfg.weekStart) ? st.cfg.weekStart : 1;
+  const sendHour = Number.isInteger(st.cfg.sendHour) ? st.cfg.sendHour : 9;
+  const loc = localParts(now, st.cfg.tz);
+  if (!force && (loc.weekday !== weekStart || loc.hour !== sendHour)) return 'not time';
+  const target = prevWeek(weekKeyOf(loc, weekStart));
+  if (!force && st.lastSentWeek === target) return 'already sent';
+  st.lastSentWeek = target;
+  if (st.cfg.startWeek && target < st.cfg.startWeek) { await saveAcct(env, st); return 'warm-up week, nothing to report'; }
+  const text = summaryText(st, target, now);
+  let delivered = 0;
+  if (!st.pushedWeeks?.[target]) {
+    const verdict = (text.match(/VERDICT: (\w+)/) || [])[1] || (/FROZEN/.test(text) ? 'FROZEN' : 'VERDICT');
+    delivered = await pushAll(env, st, { ...basePayload(st), title: `${st.cfg.name || 'Your friend'}'s week: ${verdict}`, body: text.replace(/^Ironclad weekly: /, ''), tag: 'week:' + target }, verdict === 'FAIL' ? 'high' : 'normal');
+    (st.pushedWeeks ||= {})[target] = true;
+  }
+  st.sent.push({ week: target, ts: now.getTime(), delivered });
+  await saveAcct(env, st);
+  return 'sent';
 }
 
 /* ---------------- rate limits ---------------- */
@@ -161,19 +228,6 @@ export function allow(st, key, max, windowMs) {
   recent.push(now); st.rl[key] = recent; return true;
 }
 const slowDown = () => json({ error: 'Too many requests. Try again in a little while.' }, 429);
-
-/* ---------------- referee agreement ---------------- */
-async function agree(env, token, name) {
-  const st = await getState(env);
-  if (!token || !st.inviteToken || token !== st.inviteToken) return json({ error: 'This invitation link is not valid any more. Ask for a new one.' }, 400);
-  if (!st.agreedAt) {
-    if (!allow(st, 'agree', 10, 3600e3)) return slowDown();
-    st.agreedAt = Date.now(); st.agreedBy = String(name || st.cfg?.refereeName || '').slice(0, 60); st.agreedHow = 'tapped Agree on the referee page';
-    if (hasTwilio(env) && st.cfg?.refereePhone && !st.subs.length) { try { await sendSMS(env, st.cfg.refereePhone, welcomeText(st.cfg)); } catch (e) { st.welcomeError = e.message; } }
-    await putState(env, st);
-  }
-  return json({ ok: true, agreedAt: st.agreedAt, name: st.cfg?.name || '' });
-}
 
 /* ---------------- notifications ---------------- */
 function appUrl(st) { return st.cfg?.appUrl || APP_URL; }
@@ -255,33 +309,6 @@ export async function sendPush(env, st, sub, payload, urgency = 'normal') {
   return fetch(sub.endpoint, { method: 'POST', body, headers: { TTL: '86400', Urgency: urgency, 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', Authorization: `vapid t=${jwt}, k=${v.publicKey}` } });
 }
 
-/* ---------------- weekly verdict ---------------- */
-export async function runWeekly(env, now, force = false) {
-  if (!env.STATE) return 'no storage';
-  const st = await getState(env);
-  if (!st.cfg) return 'no data from the app yet';
-  if (!st.agreedAt) return 'referee has not agreed yet';
-  const weekStart = Number.isInteger(st.cfg.weekStart) ? st.cfg.weekStart : 1;
-  const sendHour = Number.isInteger(st.cfg.sendHour) ? st.cfg.sendHour : 9;
-  const loc = localParts(now, st.cfg.tz);
-  if (!force && (loc.weekday !== weekStart || loc.hour !== sendHour)) return 'not time';
-  const target = prevWeek(weekKeyOf(loc, weekStart));
-  if (!force && st.lastSentWeek === target) return 'already sent';
-  st.lastSentWeek = target;
-  if (st.cfg.startWeek && target < st.cfg.startWeek) { await putState(env, st); return 'warm-up week, nothing to report'; }
-  const text = summaryText(st, target, now);
-  let delivered = 0;
-  if (!st.pushedWeeks?.[target]) {
-    const verdict = (text.match(/VERDICT: (\w+)/) || [])[1] || (/FROZEN/.test(text) ? 'FROZEN' : 'VERDICT');
-    delivered = await pushAll(env, st, { ...basePayload(st), title: `${st.cfg.name || 'Your friend'}'s week: ${verdict}`, body: text.replace(/^Ironclad weekly: /, ''), tag: 'week:' + target }, verdict === 'FAIL' ? 'high' : 'normal');
-    (st.pushedWeeks ||= {})[target] = true;
-  }
-  if (hasTwilio(env) && st.cfg.refereePhone) { try { await sendSMS(env, st.cfg.refereePhone, text); } catch (e) { st.smsError = e.message; } }
-  st.sent.push({ week: target, ts: now.getTime(), delivered });
-  await putState(env, st);
-  return 'sent';
-}
-
 export function summaryText(st, wk, now) {
   const c = st.cfg, name = c.name || 'Your friend', target = c.target || 3;
   const range = `${fmtDay(wk)}–${fmtDay(addDays(wk, 6))}`;
@@ -317,26 +344,7 @@ export function summaryText(st, wk, now) {
   if (stale) s += ` Last report from the app: ${st.lastReport ? fmtDay(new Date(st.lastReport).toISOString().slice(0, 10)) : 'never'}. Treat silence as failure.`;
   return s;
 }
-function welcomeText(c) {
-  const dep = (Number(c?.deposited) || 0) > 0;
-  return `You're in as ${c?.name}'s gym referee. One text every ${DN[c?.weekStart ?? 1]} around ${hour12(c?.sendHour ?? 9)} with the week's verdict. ${dep ? `You hold a $${c.depositLeft} deposit; a failed week forfeits $${c.pledge} of it${c.consequence ? ` to ${c.consequence}` : ''}.` : `A failed week means ${c?.name} owes you $${c?.pledge}. Collect it.`} If a text says the app reported nothing, treat it as a fail. Reply STOP to end the texts.`;
-}
-function testText(c) { return `Test from Ironclad: ${c?.name}'s gym app can now text you. Weekly verdicts will land every ${DN[c?.weekStart ?? 1]} around ${hour12(c?.sendHour ?? 9)}.`; }
 export function randomToken(n = 20) { const a = 'abcdefghijkmnopqrstuvwxyz23456789'; const arr = new Uint32Array(n); crypto.getRandomValues(arr); return [...arr].map(x => a[x % a.length]).join(''); }
-
-/* ---------------- optional Twilio ---------------- */
-const hasTwilio = env => !!(env.TWILIO_ACCOUNT_SID && env.TWILIO_AUTH_TOKEN && env.TWILIO_FROM);
-async function sendSMS(env, to, body) {
-  if (!hasTwilio(env)) throw new Error('Text messages are not set up on this server');
-  if (!to) throw new Error('The referee has no phone number in the app');
-  const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
-    method: 'POST', headers: { Authorization: 'Basic ' + btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ To: to, From: env.TWILIO_FROM, Body: body }),
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Twilio: ${j.message || r.status}`);
-  return j.sid || true;
-}
 
 /* ---------------- dates ---------------- */
 export function localParts(date, tz) {
@@ -357,12 +365,13 @@ const escH = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<':
 /* ---------------- referee app (served from this Worker) ---------------- */
 async function refereeRoute(request, env, url, token, rest) {
   if (!env.STATE) return page(shell('Not ready', '<p>This Ironclad server is not set up yet.</p>'), 500);
-  const st = await getState(env);
-  if (!st.inviteToken || token !== st.inviteToken) return page(shell('Link expired', '<h1>This link has expired.</h1><p class="muted">Ask your friend to send you a fresh invitation from their Ironclad app.</p>'), 404);
+  const id = await env.STATE.get('ref:' + token);
+  const st = id ? await loadAcct(env, id) : null;
+  if (!st || st.inviteToken !== token) return page(shell('Link expired', '<h1>This link has expired.</h1><p class="muted">Ask your friend to send you a fresh invitation from their Ironclad app.</p>'), 404);
   const base = `/r/${token}/`;
   if (rest === '') return Response.redirect(url.origin + base, 302);
   if (request.method === 'GET') {
-    if (rest === '/') return page(refereePage(st, token, (await getVapid(env)).publicKey));
+    if (rest === '/') { st.origin = url.origin; return page(refereePage(st, token, (await getVapid(env)).publicKey)); }
     if (rest === '/manifest.webmanifest') return new Response(JSON.stringify({
       name: `Ironclad · ${st.cfg?.name || 'Referee'}`, short_name: 'Ironclad', start_url: base, scope: base, display: 'standalone',
       background_color: '#07080c', theme_color: '#07080c',
@@ -372,7 +381,7 @@ async function refereeRoute(request, env, url, token, rest) {
     if (rest === '/data') return json(refereeData(st, token, url.origin));
     const pm = rest.match(/^\/photo\/([a-z0-9]{8,32})$/);
     if (pm) {
-      const { value, metadata } = await env.STATE.getWithMetadata('photo:' + pm[1], { type: 'arrayBuffer' });
+      const { value, metadata } = await env.STATE.getWithMetadata(`photo:${st.id}:${pm[1]}`, { type: 'arrayBuffer' });
       if (!value) return new Response('gone', { status: 404 });
       return new Response(value, { headers: { 'Content-Type': metadata?.type || 'image/jpeg', 'Cache-Control': 'private, max-age=86400' } });
     }
@@ -380,23 +389,23 @@ async function refereeRoute(request, env, url, token, rest) {
   }
   if (request.method === 'POST') {
     let body = {}; try { body = await request.json(); } catch {}
-    if (rest === '/agree') return agree(env, token, body.name);
+    if (rest === '/agree') return agree(env, st, body.name);
     if (rest === '/subscribe') {
       if (!allow(st, 'subscribe', 6, 3600e3)) return slowDown();
       const s = body.subscription;
       if (!s || !/^https:\/\//.test(s.endpoint || '') || !s.keys?.p256dh || !s.keys?.auth) return json({ error: 'bad subscription' }, 400);
       st.subs = st.subs.filter(x => x.endpoint !== s.endpoint);
-      st.subs.push({ endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, added: Date.now(), ua: String(request.headers.get('user-agent') || '').slice(0, 120) });
+      st.subs.push({ endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth }, added: Date.now() });
       st.origin = url.origin;
-      await putState(env, st);
+      await saveAcct(env, st);
       return json({ ok: true, subscribers: st.subs.length });
     }
-    if (rest === '/unsubscribe') { if (!allow(st, 'unsubscribe', 10, 3600e3)) return slowDown(); st.subs = st.subs.filter(x => x.endpoint !== body.endpoint); await putState(env, st); return json({ ok: true }); }
+    if (rest === '/unsubscribe') { if (!allow(st, 'unsubscribe', 10, 3600e3)) return slowDown(); st.subs = st.subs.filter(x => x.endpoint !== body.endpoint); await saveAcct(env, st); return json({ ok: true }); }
     if (rest === '/test') {
-      if (!allow(st, 'test', 3, 600e3)) { await putState(env, st); return slowDown(); }
+      if (!allow(st, 'test', 3, 600e3)) { await saveAcct(env, st); return slowDown(); }
       st.origin = url.origin;
       const n = await pushAll(env, st, testPayload(st), 'high', body.endpoint || null);
-      await putState(env, st);
+      await saveAcct(env, st);
       return json({ ok: true, delivered: n });
     }
   }
@@ -595,32 +604,23 @@ render();
 </script></body></html>`;
 }
 
-/* ---------------- status page (your setup checklist) ---------------- */
+/* ---------------- status page (the developer's setup checklist) ---------------- */
 async function statusPage(env, url) {
-  if (!env.STATE) return page(shell('Ironclad server', `<h1>Almost there.</h1><div class="card"><p><b>Add storage:</b> in this Worker's <b>Settings → Bindings</b>, add a <b>KV namespace</b> with the variable name <code>STATE</code>, then reload this page.</p></div>`));
-  const secret = await ensureSecret(env);
-  const claimed = env.APP_SECRET ? true : !!(await env.STATE.get('claimed'));
-  const st = await getState(env), lastCron = +(await env.STATE.get('lastCron') || 0);
-  const code = `${url.origin}#${secret}`;
-  const appLink = `${(st.cfg?.appUrl || APP_URL)}#connect=${encodeURIComponent(code)}`;
-  const tick = (ok, label, note = '') => `<div class="kv"><span>${ok ? '✅' : '⏳'} ${label}</span><b class="muted small" style="font-weight:500">${note}</b></div>`;
+  if (!env.STATE) return page(shell('Ironclad alerts server', `<h1>Almost there.</h1><div class="card"><p><b>Add storage:</b> in this Worker's <b>Settings → Bindings</b>, add a <b>KV namespace</b> with the variable name <code>STATE</code>, then reload this page.</p></div>`));
+  await getVapid(env);
+  const lastCron = +(await env.STATE.get('lastCron') || 0);
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
-  const connect = claimed ? `<div class="card"><h2>Connection</h2><p style="margin:0">Your app is connected. The connection code is hidden now so nobody else can use it.</p><p class="small muted">Lost it? In this Worker's KV namespace, delete the keys <code>secret</code> and <code>claimed</code>, reload this page, and connect again.</p></div>`
-    : `<div class="card" style="border-color:rgba(255,176,32,.35)"><h2>Your connection code</h2><p style="margin-top:0">Copy this into Ironclad: <b>Settings → Edit contract → Ironclad alerts</b>. It's shown until your app uses it, then hidden.</p>
-       <p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:13px;background:rgba(0,0,0,.35);padding:12px;border-radius:12px;border:1px solid var(--line)" id="code">${escH(code)}</p>
-       <div class="row"><button class="primary" id="copy">Copy code</button><button onclick="location.href='${escH(appLink)}'">Open Ironclad</button></div></div>
-       <script>document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('code').textContent);document.getElementById('copy').textContent='Copied ✓'}catch(e){document.getElementById('copy').textContent='Select and copy it'}}</script>`;
-  const body = `<h1>Your Ironclad <em>server.</em></h1><p class="muted">Keep this tab handy during setup. Everything below should end up ticked.</p>
-    ${connect}
+  const tick = (ok, label, note = '') => `<div class="kv"><span>${ok ? '✅' : '⏳'} ${label}</span><b class="muted small" style="font-weight:500">${note}</b></div>`;
+  const body = `<h1>Ironclad alerts <em>server.</em></h1><p class="muted">This server sends Ironclad alerts for everyone who uses the app. Nobody else needs to set anything up.</p>
     <div class="card"><h2>Checklist</h2>
       ${tick(true, 'Storage connected')}
+      ${tick(true, 'Notification keys ready')}
       ${tick(!!lastCron, 'Hourly check (cron)', lastCron ? `ran ${ago(lastCron)}` : 'add trigger <code>0 * * * *</code>')}
-      ${tick(claimed, 'App connected', st.lastReport ? `last heard ${ago(st.lastReport)}` : 'paste the code')}
-      ${tick(!!st.inviteToken, 'Referee invited', st.inviteToken ? '' : 'from the app')}
-      ${tick(!!st.agreedAt, 'Referee agreed', st.agreedAt ? new Date(st.agreedAt).toLocaleDateString('en-US') : '')}
-      ${tick(st.subs.length > 0, 'Referee alerts on', st.subs.length ? `${st.subs.length} device${st.subs.length === 1 ? '' : 's'}` : '')}
-      ${hasTwilio(env) ? tick(true, 'Text messages (Twilio)', 'optional extra') : ''}
     </div>
-    ${st.sent.length ? `<p class="small muted">Last weekly verdict: week of ${escH(st.sent[st.sent.length - 1].week)}, sent ${ago(st.sent[st.sent.length - 1].ts)}.</p>` : ''}`;
-  return page(shell('Ironclad server', body));
+    <div class="card" style="border-color:rgba(255,176,32,.35)"><h2>The address the app needs</h2>
+      <p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:14px;background:rgba(0,0,0,.35);padding:12px;border-radius:12px;border:1px solid var(--line)" id="addr">${escH(url.origin)}</p>
+      <button class="primary" id="copy">Copy the address</button>
+      <p class="small muted">It contains nothing secret. Each app gets its own private key when it signs up.</p></div>
+    <script>document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('addr').textContent);document.getElementById('copy').textContent='Copied ✓'}catch(e){document.getElementById('copy').textContent='Select and copy it'}}</script>`;
+  return page(shell('Ironclad alerts server', body));
 }

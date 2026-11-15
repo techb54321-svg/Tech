@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Alerts setup</title>
-<meta name="description" content="One-time setup for Ironclad alerts: your own free server that sends your referee real notifications." />
+<meta name="description" content="One-time setup of the Ironclad alerts server, for the person running Ironclad." />
+<meta name="robots" content="noindex" />
 <meta name="theme-color" content="#07080c" />
 <link rel="icon" href="../icon-192.png" type="image/png" />
 <link href="../fonts/fonts.css" rel="stylesheet" />
@@ -40,14 +41,14 @@
 <body>
 <main>
   <a class="back" href="../">← Back to Ironclad</a>
-  <h1>Set up <em>Ironclad alerts.</em></h1>
-  <p class="lede">About ten minutes, once. You'll get your own free server, so your referee gets real notifications from Ironclad, with no other apps to install.</p>
+  <h1>Switch on <em>Ironclad alerts.</em></h1>
+  <p class="lede">For the person running Ironclad only. About ten minutes, once. After this, alerts work for everyone who uses the app, and nobody else ever sees this page.</p>
   <div class="gets">
-    <div><span>🏋️</span>Every check-in, with your photo (on Android)</div>
-    <div><span>⚖️</span>The weekly verdict, sent on schedule even if you go quiet</div>
-    <div><span>📊</span>A live view of your week your referee can open any time</div>
+    <div><span>🏋️</span>Every user's referee gets their check-ins, with photos on Android</div>
+    <div><span>⚖️</span>Weekly verdicts go out on schedule, even if someone goes quiet</div>
+    <div><span>🔒</span>Each user gets their own private space, locked with their own key</div>
   </div>
-  <p class="small muted" style="margin-top:14px">Easiest on a computer, but a phone works. Keep this page open in one tab and Cloudflare in another.</p>
+  <p class="small muted" style="margin-top:14px">Easiest on a computer, but a phone works. Keep this page open in one tab and Cloudflare in another. The free plan comfortably handles a few dozen active users.</p>
 
   <div class="card step"><div class="num">1</div><div>
     <h2>Make a free Cloudflare account</h2>
@@ -83,28 +84,18 @@
   </div></div>
 
   <div class="card step"><div class="num">5</div><div>
-    <h2>Copy your connection code</h2>
-    <p>Open your Worker's address. It's shown at the top of the Worker's page and ends in <code>.workers.dev</code>. Your server page appears with a <b>connection code</b> and a checklist.</p>
-    <p>Tap <b>Copy code</b>. On the phone you use Ironclad on, you can tap <b>Open Ironclad</b> instead, and it fills itself in.</p>
-    <p class="tip">The code is shown only until your app uses it, then hidden, so nobody else can connect.</p>
-  </div></div>
-
-  <div class="card step"><div class="num">6</div><div>
-    <h2>Connect the app and invite your referee</h2>
-    <ol>
-      <li>In Ironclad, open <b>Settings → Edit contract</b>. At sign-up, it's step 4.</li>
-      <li>Choose <b>Ironclad alerts</b>, paste the code, and tap <b>Check the connection</b>. Then save.</li>
-      <li>On <b>Today</b>, tap <b>Invite referee</b> and send them the link.</li>
-    </ol>
-    <p>Your referee opens it, taps <b>I'm in</b>, and then <b>Turn on alerts</b>. On iPhone they first add Ironclad to their Home Screen; the page walks them through it. Their page has a <b>Send me a test</b> button, so they know it works.</p>
+    <h2>Copy the server's address</h2>
+    <p>Open your Worker's address. It's shown at the top of the Worker's page and ends in <code>.workers.dev</code>. Your server page appears with a checklist; everything should be ticked.</p>
+    <p>Tap <b>Copy the address</b>. That's the only thing the app needs. It's built into the app once, and from then on Ironclad alerts switch on for everyone.</p>
+    <p class="tip">The address isn't secret. Every app gets its own private key automatically when someone turns alerts on.</p>
   </div></div>
 
   <div class="card">
     <h2 style="font-family:var(--display);font-size:21px;margin:0 0 8px">If something's off</h2>
     <ul style="padding-left:20px;margin:0">
       <li><b>The server page says "Almost there"</b>: the storage binding is missing or not named <code>STATE</code> (step 3).</li>
-      <li><b>The app says the code is wrong</b>: copy it again from the server page. If it's hidden, see the note on that page to reset it.</li>
-      <li><b>Your Today screen says "alerts off"</b>: your referee agreed but hasn't tapped Turn on alerts. Resend the link.</li>
+      <li><b>A user's Today screen says "alerts off"</b>: their referee agreed but hasn't tapped Turn on alerts. They should resend the link.</li>
+      <li><b>Lots of people sign up at once</b>: sign-ups are capped at 200 a day and 5 an hour from one network, to protect the free plan.</li>
       <li><b>No weekly verdict arrived</b>: check that the checklist on your server page shows the hourly check ran.</li>
       <li><b>An iPhone referee sees no Turn on alerts button</b>: they need iOS 16.4 or later, and must open Ironclad from the Home Screen, not Safari.</li>
     </ul>

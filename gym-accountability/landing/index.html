@@ -64,18 +64,6 @@
   .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   .feat .ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,176,32,.2),rgba(255,94,26,.08));margin-bottom:14px}
   .feat .ic svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .tester{border-color:rgba(255,176,32,.3);background:linear-gradient(160deg,rgba(255,176,32,.1),rgba(255,94,26,.02) 60%)}
-  .tester h2{font-size:clamp(30px,4.5vw,44px)}
-  .todo{list-style:none;padding:0;margin:18px 0 0;display:flex;flex-direction:column;gap:10px}
-  .todo label{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:18px;background:rgba(0,0,0,.25);border:1px solid var(--line);cursor:pointer;transition:border-color .2s,opacity .2s}
-  .todo input{appearance:none;-webkit-appearance:none;flex:none;width:24px;height:24px;margin:1px 0 0;border-radius:8px;border:2px solid var(--line2);display:grid;place-items:center;transition:all .2s}
-  .todo input:checked{background:var(--ok);border-color:var(--ok)}
-  .todo input:checked::after{content:"✓";color:#04140d;font-weight:900;font-size:15px}
-  .todo label:has(input:checked){opacity:.55}
-  .todo b{display:block;font-size:16px}
-  .todo span{color:var(--muted);font-size:14.5px}
-  .progress{height:6px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:18px}
-  .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--ok),#22c3ee);transition:width .5s var(--ease)}
   .final{text-align:center;padding:70px 0 40px}
   .final h2{font-size:clamp(40px,7vw,72px)}
   footer{color:var(--dim);font-size:13.5px;text-align:center;padding:30px 0 calc(40px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
@@ -108,7 +96,7 @@
       <p class="lede">Three sessions a week. A friend holding your money. An app that won't take your word for it.</p>
       <div class="ctas">
         <a class="btn primary" href="/Tech/gym-accountability/">Open Ironclad</a>
-        <a class="btn ghost" href="#testing">I'm a tester</a>
+        <a class="btn ghost" href="#how">How it works</a>
       </div>
       <p class="hint" id="hint"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg><span id="hint-text">Free. No account. Works best on your phone, added to your home screen.</span></p>
     </div>
@@ -143,24 +131,6 @@
     </div>
   </section>
 
-  <section id="testing">
-    <div class="card tester reveal">
-      <p class="eyebrow">For testers</p>
-      <h2>Thanks for testing. Here's what to try.</h2>
-      <p class="sub" style="margin:0">Tick things off as you go. This list remembers where you got to on this phone.</p>
-      <ul class="todo" id="todo">
-        <li><label><input type="checkbox"><div><b>Open Ironclad and add it to your home screen</b><span>It offers to install itself. On iPhone, use Safari: Share, then Add to Home Screen.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Sign the deal</b><span>Testing from home? Tap "I'm standing in it right now" to pin your home as the gym, and set the minimum stay to 1 minute under "Fine-tune". Pick Manual for referee updates.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Hold to check in</b><span>Then try it somewhere else. Away from the pin, it should refuse you.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Check out too early, then properly</b><span>Only the one past the minimum should count, with a celebration.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Poke around History and Settings</b><span>Try declaring a freeze, topping up the deposit, and editing the contract.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Optional: invite a real referee</b><span>Needs Ironclad alerts set up. The guide is in the app under Settings, then Edit contract.</span></div></label></li>
-        <li><label><input type="checkbox"><div><b>Wipe it when you're done</b><span>Settings, then Danger zone. Or keep going for real.</span></div></label></li>
-      </ul>
-      <div class="progress"><i id="bar"></i></div>
-      <p style="margin:18px 0 0;color:#c3c9d6">Found something odd, confusing or broken? Take a screenshot and send it to whoever shared this link with you. Small things count.</p>
-    </div>
-  </section>
 
   <section class="final">
     <h2 class="reveal">Your next workout<br>just got <em style="font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent">expensive.</em></h2>
@@ -178,14 +148,6 @@
     else if (ios) t.textContent = 'On iPhone: open Ironclad, then Share → Add to Home Screen. It walks you through it.';
     else if (android) t.textContent = 'On Android: open Ironclad and tap Install when it asks.';
     else t.textContent = "Best on your phone. Send yourself this link, or scan it from your computer's share menu.";
-  })();
-  // Tester checklist that remembers progress
-  (function(){
-    const boxes = [...document.querySelectorAll('#todo input')], bar = document.getElementById('bar');
-    let saved = []; try { saved = JSON.parse(localStorage.getItem('ironclad.tester') || '[]'); } catch {}
-    const sync = () => { const done = boxes.map(b => b.checked); bar.style.width = (done.filter(Boolean).length / boxes.length * 100) + '%'; try { localStorage.setItem('ironclad.tester', JSON.stringify(done)); } catch {} };
-    boxes.forEach((b, i) => { b.checked = !!saved[i]; b.addEventListener('change', sync); });
-    sync();
   })();
   // Gentle reveal on scroll
   (function(){

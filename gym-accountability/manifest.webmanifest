@@ -1,0 +1,14 @@
+{
+  "name": "Ironclad Gym Accountability",
+  "short_name": "Ironclad",
+  "description": "Fail-safe gym accountability: location-verified check-ins, a tamper-evident log, weekly stakes and a referee.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

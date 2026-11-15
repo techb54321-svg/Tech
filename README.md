@@ -117,3 +117,10 @@ automated narrated journey to each cell type.
 
 Everything is procedurally generated geometry (no external 3D model files), so the
 single HTML file is completely self-contained apart from the Three.js library.
+
+
+---
+
+## Also in this repo
+
+- [`gym-accountability/`](gym-accountability/) — Ironclad, a fail-safe gym accountability app (location-verified check-ins, tamper-evident ledger, weekly stakes and a referee).

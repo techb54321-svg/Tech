@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ironclad</title>
+<meta name="description" content="Fail-safe gym accountability: location-verified check-ins, a tamper-evident log, weekly stakes and a referee." />
+<meta name="theme-color" content="#0b0d12" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Ironclad" />
+<style>
+  :root{
+    --bg:#0b0d12; --bg2:#12151d; --card:#171b25; --line:#262c3a; --text:#eef1f7; --muted:#8f98ab;
+    --accent:#ffb020; --accent2:#ff7a00; --ok:#2ecc71; --warn:#f5a524; --bad:#ff4d4f; --info:#4ea1ff;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+  header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg),rgba(11,13,18,.92));backdrop-filter:blur(10px);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:18px;letter-spacing:.08em;text-transform:uppercase;font-weight:800}
+  header h1 span{color:var(--accent)}
+  .pill{font-size:11px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+  .pill.bad .dot{background:var(--bad)}
+  main{max-width:560px;margin:0 auto;padding:16px}
+  .view{display:none}.view.active{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+  .card h2{margin:0 0 10px;font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .card h3{margin:0 0 6px;font-size:17px}
+  p{line-height:1.45;margin:6px 0}
+  .muted{color:var(--muted)} .small{font-size:12.5px}
+  button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 16px;background:var(--bg2);color:var(--text);border:1px solid var(--line);font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a1200;border:0;font-weight:800}
+  .btn-danger{background:rgba(255,77,79,.12);border-color:rgba(255,77,79,.4);color:#ff8a8c}
+  .btn-ok{background:rgba(46,204,113,.12);border-color:rgba(46,204,113,.4);color:#7fe3a7}
+  .btn-block{display:block;width:100%}
+  .big-btn{font-size:20px;padding:22px 16px;border-radius:18px;letter-spacing:.04em;text-transform:uppercase}
+  .row{display:flex;gap:10px;flex-wrap:wrap}.row>*{flex:1}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 5px;font-weight:600}
+  input[type=text],input[type=number],input[type=tel],input[type=email],input[type=time],input[type=date],select,textarea{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg2);color:var(--text)}
+  textarea{min-height:70px;resize:vertical}
+  .check{display:flex;align-items:center;gap:10px;padding:10px 0;font-size:15px;color:var(--text);font-weight:500}
+  .check input{width:20px;height:20px;accent-color:var(--accent)}
+  .days{display:flex;gap:6px}
+  .days label{flex:1;margin:0;text-align:center;border:1px solid var(--line);border-radius:10px;padding:10px 0;background:var(--bg2);color:var(--muted);font-weight:700;cursor:pointer}
+  .days input{display:none}
+  .days label.on{background:rgba(255,176,32,.15);border-color:var(--accent);color:var(--accent)}
+  /* status */
+  .status{display:flex;gap:16px;align-items:center}
+  .ring{width:124px;height:124px;flex:none;position:relative}
+  .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:30px;line-height:1}
+  .ring .num small{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.08em;margin-top:4px}
+  .state{font-size:22px;font-weight:800;margin:0 0 4px}
+  .state.ok{color:var(--ok)}.state.warn{color:var(--warn)}.state.bad{color:var(--bad)}.state.info{color:var(--info)}
+  .banner{border-radius:12px;padding:12px 14px;margin-bottom:14px;font-weight:600;border:1px solid}
+  .banner.bad{background:rgba(255,77,79,.12);border-color:rgba(255,77,79,.45);color:#ffb3b4}
+  .banner.warn{background:rgba(245,165,36,.12);border-color:rgba(245,165,36,.45);color:#ffd48a}
+  .banner.ok{background:rgba(46,204,113,.12);border-color:rgba(46,204,113,.4);color:#9ff0bf}
+  .banner.info{background:rgba(78,161,255,.12);border-color:rgba(78,161,255,.4);color:#b6d6ff}
+  .weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
+  .wd{text-align:center;border-radius:10px;padding:8px 0 6px;background:var(--bg2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .wd b{display:block;font-size:15px;color:var(--text);margin-top:3px}
+  .wd.done{background:rgba(46,204,113,.15);border-color:var(--ok)}.wd.done b{color:var(--ok)}
+  .wd.today{outline:2px solid var(--accent);outline-offset:-2px}
+  .wd.plan{border-style:dashed;border-color:var(--accent)}
+  .wd.past{opacity:.5}
+  .timer{font-variant-numeric:tabular-nums;font-size:48px;font-weight:800;text-align:center;letter-spacing:.02em;margin:6px 0}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .kv:last-child{border-bottom:0}
+  .kv b{text-align:right}
+  /* history */
+  .heat{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .heat div{aspect-ratio:1;border-radius:5px;background:var(--bg2);border:1px solid var(--line)}
+  .heat .y{background:var(--ok);border-color:var(--ok)} .heat .u{background:rgba(46,204,113,.45);border-color:rgba(46,204,113,.6)} .heat .n{background:rgba(255,77,79,.35);border-color:rgba(255,77,79,.5)} .heat .f{background:var(--bg)}
+  .weeks{display:flex;flex-direction:column;gap:8px}
+  .wk{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--line);font-size:14px}
+  .wk .tag{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.06em;padding:4px 8px;border-radius:999px}
+  .tag.pass{background:rgba(46,204,113,.15);color:var(--ok)}.tag.fail{background:rgba(255,77,79,.15);color:var(--bad)}.tag.frozen{background:rgba(78,161,255,.15);color:var(--info)}.tag.open{background:rgba(245,165,36,.15);color:var(--warn)}
+  .log{font-size:13px}
+  .log .e{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .log .e:last-child{border-bottom:0}
+  .log .t{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;min-width:92px}
+  .log img{width:44px;height:44px;object-fit:cover;border-radius:8px;margin-left:auto}
+  .stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .stat div{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center}
+  .stat b{display:block;font-size:24px;font-weight:800}
+  .stat span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  /* nav */
+  nav{position:fixed;bottom:0;left:0;right:0;background:rgba(18,21,29,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:5}
+  nav button{flex:1;background:none;border:0;color:var(--muted);font-size:11.5px;font-weight:700;letter-spacing:.04em;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:3px}
+  nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  nav button.active{color:var(--accent)}
+  .toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#222838;color:var(--text);padding:12px 16px;border-radius:12px;border:1px solid var(--line);font-size:14px;max-width:90vw;z-index:20;box-shadow:0 10px 40px rgba(0,0,0,.5);opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:flex-end;justify-content:center;z-index:30;padding:12px}
+  .modal.show{display:flex}
+  .modal .sheet{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:18px;width:100%;max-width:520px;max-height:85vh;overflow:auto}
+  code{background:var(--bg2);padding:2px 6px;border-radius:6px;font-size:12.5px}
+  .hr{height:1px;background:var(--line);margin:14px 0}
+  .step{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
+  .step .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#1a1200;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .photo-preview{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:10px;display:none}
+  .loc{font-size:13px;color:var(--muted);margin-top:8px;min-height:18px}
+  @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --bg:#0b0d12 } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Iron<span>clad</span></h1>
+  <div id="integrity" class="pill"><span class="dot"></span>Ledger verified</div>
+</header>
+
+<main>
+  <!-- SETUP -->
+  <section id="view-setup" class="view">
+    <div class="card">
+      <h3>Set up your contract</h3>
+      <p class="muted">You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.</p>
+    </div>
+    <form id="setup" class="card" autocomplete="off">
+      <h2>You</h2>
+      <label>Your name</label>
+      <input type="text" id="s-name" required placeholder="So the referee messages read right" />
+
+      <h2 style="margin-top:18px">The gym</h2>
+      <p class="small muted">Check-ins and check-outs only count when your phone is physically inside this circle. Stand inside the gym and tap the button.</p>
+      <button type="button" id="s-locate" class="btn-block">📍 Use my current location</button>
+      <div id="s-locmsg" class="loc"></div>
+      <div class="row">
+        <div><label>Latitude</label><input type="number" step="any" id="s-lat" required /></div>
+        <div><label>Longitude</label><input type="number" step="any" id="s-lng" required /></div>
+      </div>
+      <label>Gym name</label>
+      <input type="text" id="s-gym" placeholder="e.g. 24 Hour Fitness, Main St" />
+      <div class="row">
+        <div><label>Allowed radius (m)</label><input type="number" id="s-radius" value="150" min="50" max="1000" /></div>
+        <div><label>Minimum stay (min)</label><input type="number" id="s-min" value="30" min="1" max="240" /></div>
+      </div>
+
+      <h2 style="margin-top:18px">The rule</h2>
+      <div class="row">
+        <div><label>Sessions per week</label><input type="number" id="s-target" value="3" min="1" max="7" /></div>
+        <div><label>Week starts on</label>
+          <select id="s-weekstart"><option value="1">Monday</option><option value="0">Sunday</option><option value="6">Saturday</option></select></div>
+      </div>
+      <label>Planned gym days (for reminders)</label>
+      <div class="days" id="s-days"></div>
+      <label>Reminder time on gym days</label>
+      <input type="time" id="s-remind" value="17:00" />
+      <label class="check"><input type="checkbox" id="s-photo" checked /> Require a photo at check-in (proof for the referee)</label>
+
+      <h2 style="margin-top:18px">The stakes</h2>
+      <p class="small muted">A referee is a real person who will receive your weekly result. Pick someone whose opinion you do not want to lose.</p>
+      <label>Referee's name</label>
+      <input type="text" id="s-refname" required />
+      <div class="row">
+        <div><label>Referee's phone</label><input type="tel" id="s-refphone" placeholder="+1 555 000 0000" /></div>
+        <div><label>Referee's email</label><input type="email" id="s-refemail" /></div>
+      </div>
+      <label>Money on the line per failed week</label>
+      <input type="number" id="s-pledge" value="50" min="0" step="5" />
+      <label>What happens when you fail a week</label>
+      <textarea id="s-conseq" placeholder="e.g. I pay $50 to a cause I dislike within 24h, and my referee confirms it"></textarea>
+      <label>Freeze weeks allowed per quarter (illness / travel, declared in advance)</label>
+      <input type="number" id="s-freeze" value="1" min="0" max="4" />
+
+      <div class="hr"></div>
+      <label class="check"><input type="checkbox" id="s-agree" required /> I understand there is no delete button for history, and that failed weeks are owed to my referee.</label>
+      <button type="submit" class="btn-primary btn-block big-btn" style="margin-top:12px">Sign the contract</button>
+    </form>
+  </section>
+
+  <!-- TODAY -->
+  <section id="view-today" class="view">
+    <div id="banners"></div>
+    <div class="card">
+      <div class="status">
+        <div class="ring">
+          <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" stroke="var(--line)" stroke-width="12" fill="none"/><circle id="ring-fg" cx="60" cy="60" r="52" stroke="var(--ok)" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg>
+          <div class="num"><span id="ring-num">0/3</span><small>THIS WEEK</small></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <p id="state" class="state ok">On track</p>
+          <p id="state-msg" class="small muted"></p>
+        </div>
+      </div>
+      <div class="weekdays" id="weekdays"></div>
+    </div>
+
+    <div class="card" id="session-card">
+      <div id="idle">
+        <button id="checkin" class="btn-primary btn-block big-btn">Check in at the gym</button>
+        <div id="checkin-msg" class="loc"></div>
+      </div>
+      <div id="active" style="display:none">
+        <h2>Session in progress</h2>
+        <div class="timer" id="timer">00:00</div>
+        <p class="small muted" style="text-align:center" id="active-msg"></p>
+        <img id="active-photo" class="photo-preview" alt="Check-in photo" />
+        <button id="checkout" class="btn-block big-btn" style="margin-top:12px">Check out</button>
+        <div id="checkout-msg" class="loc"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Stakes</h2>
+      <div class="kv"><span>Referee</span><b id="k-ref"></b></div>
+      <div class="kv"><span>Per failed week</span><b id="k-pledge"></b></div>
+      <div class="kv"><span>Owed right now</span><b id="k-owed"></b></div>
+      <div class="kv"><span>Passing-week streak</span><b id="k-streak"></b></div>
+      <div class="kv"><span>Freezes left this quarter</span><b id="k-freeze"></b></div>
+      <div class="row" style="margin-top:12px">
+        <button id="btn-report">Send week report</button>
+        <button id="btn-freeze">Declare a freeze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTORY -->
+  <section id="view-history" class="view">
+    <div class="card">
+      <h2>Totals</h2>
+      <div class="stat">
+        <div><b id="t-sessions">0</b><span>sessions</span></div>
+        <div><b id="t-weeks">0</b><span>weeks passed</span></div>
+        <div><b id="t-rate">0%</b><span>pass rate</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Last 12 weeks</h2>
+      <div class="heat" id="heat"></div>
+      <p class="small muted" style="margin-top:8px">Green = verified session · pale green = unverified · red = planned day missed</p>
+    </div>
+    <div class="card">
+      <h2>Weeks</h2>
+      <div class="weeks" id="weeks"></div>
+    </div>
+    <div class="card">
+      <h2>Ledger (append-only)</h2>
+      <p class="small muted">Every event is chained to the one before it with a SHA-256 hash. Edit or delete anything and the badge at the top turns red for good.</p>
+      <div class="log" id="log"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" class="view">
+    <div class="card">
+      <h2>Fail-safes</h2>
+      <div class="step"><div class="n">1</div><div><b>Install this app.</b> <span class="muted small" id="install-hint">Open your browser menu and choose "Add to Home Screen" so it lives next to your other apps.</span></div></div>
+      <div class="step"><div class="n">2</div><div><b>Put reminders in your calendar.</b> <span class="muted small">A web app cannot wake your phone by itself, so your calendar does. The file below adds recurring alerts on your gym days plus a deadline check on the last day of each week.</span>
+        <button id="btn-ics" class="btn-block" style="margin-top:8px">📅 Download calendar reminders (.ics)</button></div></div>
+      <div class="step"><div class="n">3</div><div><b>Allow notifications</b> <span class="muted small">for nudges while the app is open.</span>
+        <button id="btn-notify" class="btn-block" style="margin-top:8px">🔔 Enable notifications</button></div></div>
+      <div class="step"><div class="n">4</div><div><b>Back up the ledger</b> <span class="muted small">so a lost phone is not a lost record. Export after each week and keep the file somewhere safe.</span>
+        <div class="row" style="margin-top:8px"><button id="btn-export">⬇ Export</button><button id="btn-import">⬆ Import</button></div>
+        <input type="file" id="import-file" accept="application/json" style="display:none" /></div></div>
+    </div>
+    <div class="card">
+      <h2>Contract</h2>
+      <p class="small muted">Changes are allowed, but every change is written to the ledger and included in the next referee report.</p>
+      <div id="cfg-view"></div>
+      <button id="btn-edit" class="btn-block" style="margin-top:10px">Edit contract (logged)</button>
+    </div>
+    <div class="card">
+      <h2>Danger zone</h2>
+      <p class="small muted">Wiping everything is the only way to remove history. You must type the phrase exactly, and you will have to re-sign the contract.</p>
+      <button id="btn-reset" class="btn-danger btn-block">Wipe everything</button>
+    </div>
+  </section>
+</main>
+
+<nav id="nav" style="display:none">
+  <button data-view="today" class="active"><svg viewBox="0 0 24 24"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Today</button>
+  <button data-view="history"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M7 14l4-4 4 3 5-6"/></svg>History</button>
+  <button data-view="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>Settings</button>
+</nav>
+
+<div id="toast" class="toast"></div>
+<div id="modal" class="modal"><div class="sheet" id="sheet"></div></div>
+<input type="file" id="photo-input" accept="image/*" capture="environment" style="display:none" />
+
+<script>
+(() => {
+'use strict';
+const LS = { cfg:'ironclad.cfg', ledger:'ironclad.ledger', active:'ironclad.active', notified:'ironclad.notified' };
+const DAY = 86400000;
+const DN = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const $ = id => document.getElementById(id);
+
+let cfg = load(LS.cfg, null);
+let ledger = load(LS.ledger, []);
+let active = load(LS.active, null);
+let tampered = false;
+let geoRetry = null;
+
+function load(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } }
+function save(k, v){ try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch(e){ toast('Storage failed: ' + e.message); } }
+function toast(msg, ms=3200){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), ms); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function ymd(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function parseYmd(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fmtDate(d){ return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); }
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
+function money(n){ return (n||0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- hash-chained ledger ---------- */
+async function sha256(str){
+  if (crypto.subtle) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+  let h=0; for (const c of str) h=(h*31+c.charCodeAt(0))|0; return 'weak-'+(h>>>0).toString(16);
+}
+function canon(e){ const {hash, ...rest} = e; return JSON.stringify(rest, Object.keys(rest).sort()); }
+async function append(entry){
+  const prev = ledger.length ? ledger[ledger.length-1].hash : 'genesis';
+  const e = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), ts: Date.now(), ...entry, prev };
+  e.hash = await sha256(prev + canon(e));
+  ledger.push(e); save(LS.ledger, ledger);
+  return e;
+}
+async function verifyLedger(){
+  let prev='genesis';
+  for (const e of ledger){
+    if (e.prev !== prev || e.hash !== await sha256(prev + canon(e))) return false;
+    prev = e.hash;
+  }
+  return true;
+}
+function setIntegrity(ok){
+  tampered = !ok;
+  const el = $('integrity');
+  el.className = 'pill' + (ok ? '' : ' bad');
+  el.innerHTML = `<span class="dot"></span>${ok ? 'Ledger verified' : 'LEDGER TAMPERED'}`;
+}
+
+/* ---------- geo ---------- */
+function haversine(a, b){
+  const R=6371000, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function getPosition(){
+  return new Promise((res, rej) => {
+    if (!navigator.geolocation) return rej(new Error('This device has no location service.'));
+    navigator.geolocation.getCurrentPosition(
+      p => res({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
+      e => rej(new Error(e.code===1 ? 'Location permission denied. Allow location for this site.' : e.code===2 ? 'Location unavailable. Step away from thick walls or wait a moment.' : 'Location timed out. Try again.')),
+      { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+  });
+}
+function atGym(pos){
+  const dist = haversine(pos, cfg.gym);
+  const effective = Math.max(0, dist - Math.min(pos.acc||0, 75));
+  return { dist: Math.round(dist), acc: Math.round(pos.acc||0), ok: effective <= cfg.radius };
+}
+
+/* ---------- week math ---------- */
+function startOfWeek(d){ const x=new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - ((x.getDay()-cfg.weekStart+7)%7)); return x; }
+function weekKey(d){ return ymd(startOfWeek(d)); }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+function sessions(){ return ledger.filter(e=>e.type==='session'); }
+function validDaysByWeek(){
+  const m = {};
+  for (const s of sessions()) if (s.valid) {
+    const wk = weekKey(new Date(s.start));
+    (m[wk] = m[wk] || new Set()).add(ymd(new Date(s.start)));
+  }
+  return m;
+}
+function freezeFor(wk){ return ledger.find(e=>e.type==='freeze' && e.week===wk); }
+function weekEntries(){ return ledger.filter(e=>e.type==='week'); }
+function startWeekKey(){ return cfg.startWeek || weekKey(new Date(cfg.createdAt)); }
+function quarterKey(d){ return `${d.getFullYear()}-Q${Math.floor(d.getMonth()/3)+1}`; }
+function freezesLeft(){
+  const q = quarterKey(new Date());
+  const used = ledger.filter(e=>e.type==='freeze' && quarterKey(parseYmd(e.week))===q).length;
+  return Math.max(0, cfg.freezesPerQuarter - used);
+}
+function owed(){
+  const o = weekEntries().filter(w=>w.result==='fail').reduce((a,w)=>a+(w.owed||0),0);
+  const p = ledger.filter(e=>e.type==='paid').reduce((a,e)=>a+(e.amount||0),0);
+  return Math.max(0, o-p);
+}
+function streak(){
+  const ws = weekEntries().sort((a,b)=>a.week<b.week?1:-1);
+  let n=0; for (const w of ws){ if (w.result==='pass') n++; else if (w.result==='fail') break; }
+  return n;
+}
+function currentStatus(){
+  const now = new Date(), ws = startOfWeek(now), wk = ymd(ws);
+  const days = validDaysByWeek()[wk] || new Set();
+  const done = days.size, remaining = Math.max(0, cfg.target-done);
+  const today = ymd(now);
+  const todayUsable = !days.has(today);
+  const dayIdx = Math.round((new Date(today) - new Date(ymd(ws)))/DAY);
+  const daysLeft = (6 - dayIdx) + (todayUsable ? 1 : 0);
+  const frozen = !!freezeFor(wk);
+  const warmup = wk < startWeekKey();
+  let level, title, msg;
+  if (warmup) { level='info'; title='Warm-up week'; msg=`Your contract starts ${fmtDate(parseYmd(startWeekKey()))}. Sessions this week are logged and count toward your totals, but the week cannot be failed.`; }
+  else if (frozen) { level='info'; title='Week frozen'; msg='You declared this week a freeze. It will not count for or against you.'; }
+  else if (remaining===0) { level='ok'; title='Week complete'; msg=`${done} verified sessions. Anything extra is a bonus.`; }
+  else if (remaining > daysLeft) { level='bad'; title='Week lost'; msg=`${remaining} sessions needed, only ${daysLeft} day${daysLeft===1?'':'s'} left. ${money(cfg.pledge)} is owed to ${cfg.referee.name} when the week closes.`; }
+  else if (remaining === daysLeft) { level='bad'; title='Critical'; msg=`Zero slack. Every remaining day this week is a gym day or you fail.`; }
+  else if (remaining === daysLeft-1) { level='warn'; title='Tight'; msg=`${remaining} to go with one spare day. Do not spend it.`; }
+  else { level='ok'; title='On track'; msg=`${remaining} to go, ${daysLeft} days to do it.`; }
+  return { wk, ws, days, done, remaining, daysLeft, level, title, msg, frozen, warmup };
+}
+
+/* ---------- settle past weeks ---------- */
+async function settleWeeks(){
+  if (!cfg) return;
+  const byWeek = validDaysByWeek();
+  const settled = new Set(weekEntries().map(w=>w.week));
+  let w = parseYmd(startWeekKey());
+  const thisWeek = startOfWeek(new Date());
+  let changed = false;
+  while (w < thisWeek) {
+    const wk = ymd(w);
+    if (!settled.has(wk)) {
+      const done = (byWeek[wk]||new Set()).size;
+      const result = freezeFor(wk) ? 'frozen' : (done >= cfg.target ? 'pass' : 'fail');
+      await append({ type:'week', week:wk, done, target:cfg.target, result, owed: result==='fail' ? cfg.pledge : 0 });
+      changed = true;
+    }
+    w = addDays(w, 7);
+  }
+  return changed;
+}
+
+/* ---------- rendering ---------- */
+function show(view){
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+view));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  if (view==='history') renderHistory();
+  if (view==='settings') renderSettings();
+}
+function render(){
+  if (!cfg) { $('nav').style.display='none'; show('setup'); initSetupForm(); return; }
+  $('nav').style.display='flex';
+  renderToday();
+}
+function renderToday(){
+  const st = currentStatus();
+  $('ring-num').textContent = `${Math.min(st.done,cfg.target)}/${cfg.target}`;
+  const frac = Math.min(1, st.done/cfg.target);
+  const fg = $('ring-fg');
+  fg.style.strokeDashoffset = 326.7*(1-frac);
+  fg.style.stroke = `var(--${st.level==='info'?'info':st.level})`;
+  $('state').className = 'state '+st.level; $('state').textContent = st.title;
+  $('state-msg').textContent = st.msg;
+
+  const todayStr = ymd(new Date());
+  $('weekdays').innerHTML = [...Array(7)].map((_,i)=>{
+    const d = addDays(st.ws,i), k=ymd(d);
+    const cls = ['wd', st.days.has(k)?'done':'', k===todayStr?'today':'', cfg.planDays.includes(d.getDay())?'plan':'', k<todayStr&&!st.days.has(k)?'past':''].join(' ');
+    return `<div class="${cls}">${DN[d.getDay()]}<b>${st.days.has(k)?'✓':d.getDate()}</b></div>`;
+  }).join('');
+
+  const banners = [];
+  if (tampered) banners.push(['bad','⚠️ The ledger has been edited outside the app. This record is no longer trustworthy. Tell your referee.']);
+  const o = owed();
+  if (o>0) banners.push(['bad',`💸 You owe ${money(o)} from failed weeks. <button class="btn-danger" style="padding:6px 10px;margin-left:6px" id="btn-paid">Mark paid</button>`]);
+  const unsent = weekEntries().filter(w=>!ledger.some(e=>e.type==='notify'&&e.week===w.week)).sort((a,b)=>a.week<b.week?1:-1)[0];
+  if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}). Your referee has not been told yet. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
+  if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 No slack left this week. Go today.']);
+  $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
+  const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
+  const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
+
+  $('k-ref').textContent = cfg.referee.name;
+  $('k-pledge').textContent = money(cfg.pledge);
+  $('k-owed').textContent = money(o); $('k-owed').style.color = o>0?'var(--bad)':'var(--ok)';
+  $('k-streak').textContent = `${streak()} week${streak()===1?'':'s'}`;
+  $('k-freeze').textContent = freezesLeft();
+
+  $('idle').style.display = active ? 'none' : 'block';
+  $('active').style.display = active ? 'block' : 'none';
+  if (active) {
+    $('active-msg').textContent = `Checked in ${fmtTime(active.start)} · ${active.dist} m from gym centre · minimum stay ${cfg.minMinutes} min`;
+    const img = $('active-photo'); if (active.photo) { img.src = active.photo; img.style.display='block'; } else img.style.display='none';
+    tick();
+  }
+}
+function tick(){
+  if (!active) return;
+  const s = Math.floor((Date.now()-active.start)/1000);
+  const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
+  $('timer').textContent = (h?pad(h)+':':'')+pad(m)+':'+pad(sec);
+  const ok = s >= cfg.minMinutes*60;
+  $('checkout').textContent = ok ? 'Check out — session counts' : `Check out (counts in ${Math.ceil((cfg.minMinutes*60-s)/60)} min)`;
+  $('checkout').className = 'btn-block big-btn' + (ok ? ' btn-ok' : '');
+}
+setInterval(()=>{ if (active && cfg) tick(); }, 1000);
+
+function renderHistory(){
+  const ss = sessions().filter(s=>s.valid), ws = weekEntries();
+  const passed = ws.filter(w=>w.result==='pass').length, judged = ws.filter(w=>w.result!=='frozen').length;
+  $('t-sessions').textContent = ss.length;
+  $('t-weeks').textContent = passed;
+  $('t-rate').textContent = judged ? Math.round(passed/judged*100)+'%' : '—';
+
+  const byDay = {};
+  for (const s of sessions()) { const k=ymd(new Date(s.start)); if (s.valid) byDay[k] = (s.verified||byDay[k]==='y') ? 'y' : 'u'; }
+  const start = addDays(startOfWeek(new Date()), -77), today = ymd(new Date());
+  $('heat').innerHTML = [...Array(84)].map((_,i)=>{
+    const d = addDays(start,i), k=ymd(d);
+    let c = byDay[k] || '';
+    if (!c && k<today && cfg.planDays.includes(d.getDay()) && k>=startWeekKey()) c='n';
+    if (k>today) c='f';
+    return `<div class="${c}" title="${k}"></div>`;
+  }).join('');
+
+  const st = currentStatus();
+  const rows = [`<div class="wk"><span>${fmtDate(st.ws)} → ${fmtDate(addDays(st.ws,6))}</span><span class="muted">${st.done}/${cfg.target}</span><span class="tag open">${st.warmup?'WARM-UP':st.frozen?'FROZEN':'IN PROGRESS'}</span></div>`]
+    .concat(ws.slice().sort((a,b)=>a.week<b.week?1:-1).map(w=>`<div class="wk"><span>${fmtDate(parseYmd(w.week))} → ${fmtDate(addDays(parseYmd(w.week),6))}</span><span class="muted">${w.done}/${w.target}</span><span class="tag ${w.result}">${w.result.toUpperCase()}${w.owed?' · '+money(w.owed):''}</span></div>`));
+  $('weeks').innerHTML = rows.join('');
+
+  $('log').innerHTML = ledger.slice().reverse().map(e=>{
+    const t = `<span class="t">${new Date(e.ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})} ${fmtTime(e.ts)}</span>`;
+    let body='';
+    switch(e.type){
+      case 'setup': body='📝 Contract signed'; break;
+      case 'session': body = e.valid ? `✅ Session ${e.minutes} min${e.verified?'':' · ⚠️ unverified checkout'}` : `❌ Session rejected: ${esc(e.reason)}`; break;
+      case 'attempt': body = `🚫 Check-in refused: ${esc(e.reason)}`; break;
+      case 'week': body = `${e.result==='pass'?'🏆':e.result==='fail'?'💸':'🧊'} Week of ${e.week} ${e.result.toUpperCase()} (${e.done}/${e.target})${e.owed?' · owes '+money(e.owed):''}`; break;
+      case 'freeze': body = `🧊 Freeze declared for week of ${e.week}: ${esc(e.reason)}`; break;
+      case 'notify': body = `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
+      case 'paid': body = `💵 Paid ${money(e.amount)}`; break;
+      case 'config': body = `✏️ Contract changed: ${esc(e.changes)}`; break;
+      case 'import': body = `📥 Ledger imported (${e.count} entries)`; break;
+      default: body = esc(e.type);
+    }
+    return `<div class="e">${t}<span>${body}</span>${e.photo?`<img src="${e.photo}" alt="">`:''}</div>`;
+  }).join('') || '<p class="muted">Nothing yet.</p>';
+}
+function renderSettings(){
+  const c = cfg;
+  $('cfg-view').innerHTML = [
+    ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
+    ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
+    ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
+    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
+  ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
+  $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔 Notifications enabled' : '🔔 Enable notifications';
+  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
+}
+
+/* ---------- setup form ---------- */
+function initSetupForm(prefill){
+  const c = prefill || {};
+  $('s-days').innerHTML = [1,2,3,4,5,6,0].map(d=>`<label class="${(c.planDays||[1,3,5]).includes(d)?'on':''}"><input type="checkbox" value="${d}" ${(c.planDays||[1,3,5]).includes(d)?'checked':''}>${DN[d]}</label>`).join('');
+  $('s-days').querySelectorAll('label').forEach(l=>l.onclick=()=>setTimeout(()=>l.classList.toggle('on', l.querySelector('input').checked),0));
+  if (prefill) {
+    $('s-name').value=c.name; $('s-lat').value=c.gym.lat; $('s-lng').value=c.gym.lng; $('s-gym').value=c.gym.label||''; $('s-radius').value=c.radius; $('s-min').value=c.minMinutes;
+    $('s-target').value=c.target; $('s-weekstart').value=c.weekStart; $('s-remind').value=c.remindTime; $('s-photo').checked=c.requirePhoto;
+    $('s-refname').value=c.referee.name; $('s-refphone').value=c.referee.phone||''; $('s-refemail').value=c.referee.email||''; $('s-pledge').value=c.pledge; $('s-conseq').value=c.consequence||''; $('s-freeze').value=c.freezesPerQuarter;
+    $('s-agree').checked = true;
+  }
+}
+$('s-locate').onclick = async () => {
+  $('s-locmsg').textContent = 'Getting a precise fix…';
+  try { const p = await getPosition(); $('s-lat').value=p.lat.toFixed(6); $('s-lng').value=p.lng.toFixed(6); $('s-locmsg').textContent=`Got it (±${Math.round(p.acc)} m). Make sure you are actually standing in the gym.`; }
+  catch(e){ $('s-locmsg').textContent = e.message; }
+};
+function readSetupForm(){
+  const planDays = [...$('s-days').querySelectorAll('input:checked')].map(i=>+i.value);
+  return {
+    name: $('s-name').value.trim(),
+    gym: { lat:+$('s-lat').value, lng:+$('s-lng').value, label:$('s-gym').value.trim() },
+    radius: Math.max(50, +$('s-radius').value||150), minMinutes: Math.max(1, +$('s-min').value||30),
+    target: Math.min(7, Math.max(1, +$('s-target').value||3)), weekStart: +$('s-weekstart').value, planDays, remindTime: $('s-remind').value||'17:00',
+    requirePhoto: $('s-photo').checked,
+    referee: { name:$('s-refname').value.trim(), phone:$('s-refphone').value.trim(), email:$('s-refemail').value.trim() },
+    pledge: Math.max(0, +$('s-pledge').value||0), consequence: $('s-conseq').value.trim(), freezesPerQuarter: Math.max(0, +$('s-freeze').value||0),
+  };
+}
+$('setup').onsubmit = async ev => {
+  ev.preventDefault();
+  const c = readSetupForm();
+  if (!isFinite(c.gym.lat)||!isFinite(c.gym.lng)||!c.gym.lat) return toast('Set the gym location first.');
+  if (!c.referee.phone && !c.referee.email) return toast('Your referee needs a phone or email.');
+  if (cfg) {
+    const changes = Object.keys(c).filter(k=>JSON.stringify(c[k])!==JSON.stringify(cfg[k])).map(k=>`${k}: ${JSON.stringify(cfg[k])} → ${JSON.stringify(c[k])}`).join('; ');
+    cfg = { ...cfg, ...c }; save(LS.cfg, cfg);
+    if (changes) await append({ type:'config', changes });
+    toast('Contract updated and logged.');
+  } else {
+    cfg = { ...c, createdAt: Date.now() };
+    const dayIdx = Math.round((new Date(ymd(new Date())) - startOfWeek(new Date()))/DAY);
+    const usable = 7 - dayIdx;
+    cfg.startWeek = usable >= c.target + 1 ? weekKey(new Date()) : ymd(addDays(startOfWeek(new Date()),7));
+    save(LS.cfg, cfg);
+    await append({ type:'setup', name:c.name, target:c.target, pledge:c.pledge, referee:c.referee.name, gym:c.gym });
+    toast(cfg.startWeek===weekKey(new Date()) ? 'Contract signed. No way back now.' : `Contract signed. Warm-up until ${fmtDate(parseYmd(cfg.startWeek))}, then it counts.`, 6000);
+    scheduleReminders();
+  }
+  render(); show('today');
+};
+
+/* ---------- check-in / out ---------- */
+async function capturePhoto(){
+  return new Promise(res => {
+    const inp = $('photo-input'); inp.value='';
+    let settled=false;
+    const finish = v => { if (!settled){ settled=true; res(v); } };
+    inp.onchange = () => {
+      const f = inp.files[0]; if (!f) return finish(null);
+      const img = new Image(); const url = URL.createObjectURL(f);
+      img.onload = () => { const w=480, h=Math.round(img.height*w/img.width); const cv=document.createElement('canvas'); cv.width=w; cv.height=h; cv.getContext('2d').drawImage(img,0,0,w,h); URL.revokeObjectURL(url); finish(cv.toDataURL('image/jpeg',0.6)); };
+      img.onerror = () => finish(null); img.src = url;
+    };
+    window.addEventListener('focus', () => setTimeout(()=>{ if (!inp.files.length) finish(null); }, 1500), { once:true });
+    inp.click();
+  });
+}
+$('checkin').onclick = async () => {
+  const btn=$('checkin'), msg=$('checkin-msg');
+  btn.disabled=true; msg.textContent='Verifying you are at the gym…';
+  try {
+    const pos = await getPosition(); const g = atGym(pos);
+    if (!g.ok) {
+      await append({ type:'attempt', reason:`${g.dist} m from gym (±${g.acc} m), allowed ${cfg.radius} m` });
+      msg.textContent = `Not at the gym: ${g.dist} m away (GPS ±${g.acc} m). Walk in and try again.`;
+      toast('Check-in refused. You have to actually be there.'); renderHistory(); return;
+    }
+    let photo = null;
+    if (cfg.requirePhoto) { msg.textContent='Take a photo of where you are…'; photo = await capturePhoto(); if (!photo) { msg.textContent='A check-in photo is required by your contract.'; return; } }
+    active = { start:Date.now(), dist:g.dist, acc:g.acc, photo };
+    save(LS.active, active); msg.textContent='';
+    toast(`Checked in. Stay at least ${cfg.minMinutes} minutes, then check out here.`);
+    renderToday();
+  } catch(e){ msg.textContent = e.message; }
+  finally { btn.disabled=false; }
+};
+$('checkout').onclick = async () => {
+  const btn=$('checkout'), msg=$('checkout-msg');
+  const minutes = Math.floor((Date.now()-active.start)/60000);
+  if (minutes < cfg.minMinutes && !confirm(`Only ${minutes} minutes. Checking out now will NOT count toward this week. Check out anyway?`)) return;
+  btn.disabled=true; msg.textContent='Verifying you are still at the gym…';
+  let verified=false, endDist=null, reason='';
+  try { const pos = await getPosition(); const g = atGym(pos); endDist=g.dist; if (g.ok) verified=true; else reason=`checked out ${g.dist} m away from gym`; }
+  catch(e){ reason = 'GPS failed at checkout'; }
+  await closeSession({ minutes, verified, endDist, reason });
+  btn.disabled=false; msg.textContent='';
+};
+async function closeSession({ minutes, verified, endDist, reason, auto=false }){
+  const wk = weekKey(new Date(active.start));
+  const unverifiedUsed = sessions().some(s=>s.valid && !s.verified && weekKey(new Date(s.start))===wk);
+  let valid = minutes >= cfg.minMinutes;
+  if (!valid) reason = `only ${minutes} min, minimum is ${cfg.minMinutes}`;
+  else if (!verified) {
+    if (reason.includes('away from gym')) valid=false;
+    else if (unverifiedUsed) { valid=false; reason='second unverified checkout this week — only one allowed'; }
+    else reason = reason || 'unverified checkout';
+  }
+  const e = { type:'session', start:active.start, end:Date.now(), minutes, startDist:active.dist, endDist, valid, verified: valid && verified, reason: valid && verified ? '' : reason, auto };
+  if (active.photo) e.photo = active.photo;
+  await append(e);
+  active=null; save(LS.active, null);
+  toast(valid ? (verified ? `✅ Counted: ${minutes} min at the gym.` : `✅ Counted (unverified): ${minutes} min. Next one must be verified.`) : `❌ Not counted: ${reason}.`, 5000);
+  if (valid && 'Notification' in window && Notification.permission==='granted') { const st=currentStatus(); new Notification('Ironclad', { body: st.remaining ? `${st.remaining} more to go this week.` : 'Week complete. 💪' }); }
+  renderToday();
+}
+async function recoverActive(){
+  if (!active || !cfg) return;
+  const hours = (Date.now()-active.start)/3600000;
+  if (hours >= 6) {
+    const minutes = Math.min(Math.floor(hours*60), 120);
+    toast('You forgot to check out. Session closed as unverified.', 6000);
+    await closeSession({ minutes, verified:false, endDist:null, reason:'forgot to check out (auto-closed)', auto:true });
+  }
+}
+
+/* ---------- referee, freeze, payments ---------- */
+function reportText(wk){
+  const w = weekEntries().find(x=>x.week===wk);
+  const st = currentStatus();
+  const isCurrent = wk===st.wk;
+  const done = isCurrent ? st.done : w.done, result = isCurrent ? (st.warmup?'WARM-UP':st.frozen?'FROZEN':'IN PROGRESS') : w.result.toUpperCase();
+  const lines = [`Ironclad gym report for ${cfg.name}`, `Week of ${fmtDate(parseYmd(wk))}: ${result} — ${done}/${cfg.target} verified sessions.`];
+  const ss = sessions().filter(s=>s.valid && weekKey(new Date(s.start))===wk);
+  for (const s of ss) lines.push(`• ${fmtDate(new Date(s.start))} ${fmtTime(s.start)}, ${s.minutes} min${s.verified?'':' (unverified)'}`);
+  if (!isCurrent && w.result==='fail') lines.push(`Owed to you: ${money(w.owed)}.${cfg.consequence?' Consequence: '+cfg.consequence:''}`);
+  const o = owed(); if (o) lines.push(`Total outstanding: ${money(o)}.`);
+  lines.push(`Passing streak: ${streak()} weeks.`);
+  const changes = ledger.filter(e=>e.type==='config' && weekKey(new Date(e.ts))===wk);
+  if (changes.length) lines.push(`Contract changes this week: ${changes.map(c=>c.changes).join(' | ')}`);
+  if (tampered) lines.push('WARNING: the ledger on this phone has been tampered with.');
+  return lines.join('\n');
+}
+async function sendReport(wk){
+  const text = reportText(wk);
+  const r = cfg.referee;
+  const opts = [];
+  if (r.phone) opts.push(['💬 Text message', 'sms', `sms:${r.phone.replace(/[^+\d]/g,'')}?&body=${encodeURIComponent(text)}`]);
+  if (r.email) opts.push(['✉️ Email', 'email', `mailto:${r.email}?subject=${encodeURIComponent('Gym week report: '+wk)}&body=${encodeURIComponent(text)}`]);
+  if (navigator.share) opts.push(['📤 Share…', 'share', null]);
+  opts.push(['📋 Copy text', 'copy', null]);
+  openSheet(`<h3>Report to ${esc(r.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px">${esc(text)}</pre>` +
+    opts.map(([l,,])=>`<button class="btn-block" style="margin-top:8px" data-ch="${l}">${l}</button>`).join('') + `<button class="btn-block" style="margin-top:8px" id="sheet-close">Cancel</button>`);
+  $('sheet').querySelectorAll('[data-ch]').forEach((b,i)=>b.onclick = async () => {
+    const [,ch,href] = opts[i];
+    if (ch==='share') { try { await navigator.share({ title:'Gym week report', text }); } catch { return; } }
+    else if (ch==='copy') { await navigator.clipboard?.writeText(text); toast('Copied.'); }
+    else location.href = href;
+    await append({ type:'notify', week:wk, channel:ch });
+    closeSheet(); renderToday();
+  });
+}
+$('btn-report').onclick = () => sendReport(currentStatus().wk);
+$('btn-freeze').onclick = () => {
+  const left = freezesLeft(); const st = currentStatus(); const next = ymd(addDays(st.ws,7));
+  if (!left) return toast('No freezes left this quarter. The week counts.');
+  openSheet(`<h3>Declare a freeze</h3><p class="small muted">Freezes are for illness or travel, declared before the week is lost. You have ${left} left this quarter. Your referee gets told.</p>
+    <label>Which week</label><select id="fz-week">${st.frozen?'':`<option value="${st.wk}">This week (${fmtDate(st.ws)})</option>`}<option value="${next}">Next week (${fmtDate(addDays(st.ws,7))})</option></select>
+    <label>Reason</label><input type="text" id="fz-reason" placeholder="Be honest; this goes to your referee" />
+    <button class="btn-primary btn-block" style="margin-top:14px" id="fz-ok">Freeze it</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Cancel</button>`);
+  $('fz-ok').onclick = async () => {
+    const wk=$('fz-week').value, reason=$('fz-reason').value.trim(); if (!reason) return toast('Give a reason.');
+    if (wk===st.wk && st.level==='bad' && st.remaining>st.daysLeft) return toast('Too late: this week is already lost. Freezes must come before that.');
+    await append({ type:'freeze', week:wk, reason }); closeSheet(); renderToday(); sendReport(wk);
+  };
+};
+async function markPaid(){
+  const o = owed();
+  if (!confirm(`Confirm you have actually paid ${money(o)} as promised?`)) return;
+  await append({ type:'paid', amount:o }); renderToday(); toast('Recorded. Honour intact.');
+}
+
+/* ---------- sheets ---------- */
+function openSheet(html){ $('sheet').innerHTML = html; $('modal').classList.add('show'); const c=$('sheet-close'); if (c) c.onclick=closeSheet; }
+function closeSheet(){ $('modal').classList.remove('show'); }
+$('modal').onclick = e => { if (e.target===$('modal')) closeSheet(); };
+
+/* ---------- reminders & notifications ---------- */
+$('btn-notify').onclick = async () => {
+  if (!('Notification' in window)) return toast('This browser does not support notifications.');
+  const p = await Notification.requestPermission(); renderSettings();
+  if (p==='granted') new Notification('Ironclad', { body:'Nudges are on while the app is open. Install the calendar file for everything else.' });
+};
+function scheduleReminders(){ /* in-app nudges only; see .ics for real fail-safe */ }
+function minuteCheck(){
+  if (!cfg || !('Notification' in window) || Notification.permission!=='granted') return;
+  const now = new Date(), today = ymd(now), notified = load(LS.notified, {});
+  const st = currentStatus();
+  const [hh,mm] = cfg.remindTime.split(':').map(Number);
+  const due = now.getHours()*60+now.getMinutes() >= hh*60+mm;
+  if (due && !active && !st.days.has(today) && st.remaining>0 && !st.frozen && !st.warmup && notified[today]!==1 && (cfg.planDays.includes(now.getDay()) || st.level==='bad')) {
+    new Notification('Ironclad', { body: st.level==='bad' ? `No slack left. ${st.remaining} to go — today has to be a gym day.` : `Gym day. ${st.remaining} to go this week.` });
+    notified[today]=1; save(LS.notified, notified);
+  }
+}
+setInterval(minuteCheck, 60000);
+
+/* ---------- ICS ---------- */
+$('btn-ics').onclick = () => {
+  const ICS = ['SU','MO','TU','WE','TH','FR','SA'];
+  const [hh,mm] = cfg.remindTime.split(':').map(Number);
+  const dt = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const first = new Date(); first.setHours(hh,mm,0,0);
+  const lastDay = (cfg.weekStart+6)%7; const dl = new Date(); dl.setHours(19,0,0,0); dl.setDate(dl.getDate()+((lastDay-dl.getDay()+7)%7));
+  const ev = (uid, start, summary, desc, byday, alarms) => [
+    'BEGIN:VEVENT',`UID:${uid}@ironclad`,`DTSTAMP:${dt(new Date())}Z`,`DTSTART:${dt(start)}`,`DURATION:PT1H`,`RRULE:FREQ=WEEKLY;BYDAY=${byday}`,`SUMMARY:${summary}`,`DESCRIPTION:${desc}`,
+    ...alarms.flatMap(a=>['BEGIN:VALARM','ACTION:DISPLAY',`TRIGGER:${a}`,`DESCRIPTION:${summary}`,'END:VALARM']),'END:VEVENT'].join('\r\n');
+  const body = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Ironclad//EN','CALSCALE:GREGORIAN',
+    ev('gym', first, `🏋️ GYM — ${cfg.target}x this week, no excuses`, `Open Ironclad and check in at ${cfg.gym.label||'the gym'}. ${money(cfg.pledge)} to ${cfg.referee.name} if you fail the week.`, cfg.planDays.map(d=>ICS[d]).join(',')||'MO,WE,FR', ['-PT2H','PT0M']),
+    ev('deadline', dl, '⏰ Gym week closes tonight — check Ironclad', `If you are short, you still have tonight. Otherwise ${money(cfg.pledge)} is owed to ${cfg.referee.name}.`, ICS[lastDay], ['PT0M']),
+    'END:VCALENDAR'].join('\r\n');
+  download('ironclad-gym-reminders.ics', body, 'text/calendar');
+  toast('Calendar file ready. Open it and add to your calendar.');
+};
+function download(name, text, type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type})); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000); }
+
+/* ---------- export / import / reset ---------- */
+$('btn-export').onclick = () => download(`ironclad-backup-${ymd(new Date())}.json`, JSON.stringify({ cfg, ledger, active, exported:Date.now() }, null, 1), 'application/json');
+$('btn-import').onclick = () => $('import-file').click();
+$('import-file').onchange = async () => {
+  const f = $('import-file').files[0]; if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data.cfg || !Array.isArray(data.ledger)) throw new Error('not an Ironclad backup');
+    const saved = ledger; ledger = data.ledger;
+    const ok = await verifyLedger();
+    if (!ok) { ledger = saved; throw new Error('that backup fails hash verification'); }
+    if (ledger.length < saved.length && !confirm(`This backup has ${ledger.length} entries; you currently have ${saved.length}. Replace anyway?`)) { ledger = saved; return; }
+    cfg = data.cfg; active = data.active||null; save(LS.cfg,cfg); save(LS.ledger,ledger); save(LS.active,active);
+    await append({ type:'import', count: ledger.length });
+    setIntegrity(true); toast('Backup restored.'); render(); show('today');
+  } catch(e){ toast('Import failed: '+e.message, 5000); }
+};
+$('btn-reset').onclick = () => {
+  const phrase = 'I am quitting on myself';
+  const typed = prompt(`Type exactly: ${phrase}`);
+  if (typed !== phrase) return toast('Not wiped.');
+  if (!confirm('Last chance. Export first? Cancel to go back.')) return;
+  Object.values(LS).forEach(k=>localStorage.removeItem(k));
+  cfg=null; ledger=[]; active=null; setIntegrity(true); render();
+};
+$('btn-edit').onclick = () => { initSetupForm(cfg); show('setup'); window.scrollTo(0,0); };
+
+/* ---------- nav & boot ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
+document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); if (await settleWeeks()) {} renderToday(); } });
+
+(async function boot(){
+  setIntegrity(await verifyLedger());
+  if (cfg) {
+    await recoverActive();
+    await settleWeeks();
+    render(); show('today'); minuteCheck();
+  } else render();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+})();
+</script>
+</body>
+</html>

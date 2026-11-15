@@ -160,26 +160,41 @@ export function summaryText(st, wk, now) {
   else if (st.freezes[wk] !== undefined) { done = days.length; result = 'frozen'; }
   else { done = days.length; result = done >= target ? 'pass' : 'fail'; }
   const pledge = Number(c.pledge) || 0;
+  const hasDeposit = (Number(c.deposited) || 0) > 0;
+  const leftBefore = Number(c.depositLeft) || 0;
   const owedBefore = Number(c.owed) || 0;
-  const owedTotal = w ? owedBefore : owedBefore + (result === 'fail' ? pledge : 0);
+  // If the app has not yet recorded this week's result, apply the forfeit ourselves.
+  const left = w ? leftBefore : (result === 'fail' ? Math.max(0, leftBefore - pledge) : leftBefore);
+  const short = w ? owedBefore : owedBefore + (result === 'fail' ? Math.max(0, pledge - leftBefore) : 0);
   const stale = !st.lastReport || (now.getTime() - st.lastReport) > 8 * DAY;
   const noData = !w && sess.length === 0;
 
-  let s = `Ironclad weekly report: ${name} made it to the gym ${done}/${target} days in the week of ${range}${days.length ? ` (${dayNames})` : ''}. `;
-  if (result === 'pass') s += `RESULT: PASS. Passing streak: ${(Number(c.streak) || 0) + (w ? 0 : 1)} week(s).${owedTotal > 0 ? ` Still outstanding from earlier: $${owedTotal}.` : ''}`;
-  else if (result === 'frozen') s += `This week was FROZEN in advance (${st.freezes[wk] || 'illness/travel'}) and does not count.`;
-  else s += `RESULT: FAIL. ${name} owes you $${pledge}${owedTotal > pledge ? ` (total outstanding $${owedTotal})` : ''}.${c.consequence ? ` Agreed consequence: ${c.consequence}` : ''}`;
-  if (noData) s += ` No sessions were reported by the app at all this week.`;
-  if (stale) s += ` The app last reported on ${st.lastReport ? fmtDay(new Date(st.lastReport).toISOString().slice(0, 10)) : 'never'}; treat silence as failure.`;
+  let s = `Ironclad weekly: ${name} went to the gym ${done}/${target} days${days.length ? ` (${dayNames})` : ''} in the week of ${range}. `;
+  if (result === 'pass') {
+    s += `VERDICT: PASS. Streak: ${(Number(c.streak) || 0) + (w ? 0 : 1)} week(s).`;
+    if (short > 0) s += ` Still outstanding from earlier: $${short}; collect it.`;
+    else if (hasDeposit) s += ` Deposit intact: $${left}.`;
+  } else if (result === 'frozen') {
+    s += `FROZEN in advance (${st.freezes[wk] || 'illness/travel'}). Doesn't count either way.`;
+  } else {
+    s += `VERDICT: FAIL.`;
+    if (hasDeposit) s += ` $${pledge} is forfeited from the deposit${c.consequence ? `: send it to ${c.consequence} and keep the receipt` : ''}.`;
+    else s += ` ${name} owes you $${pledge}${c.consequence ? `, to be sent to ${c.consequence}` : ''}. Collect it.`;
+    if (short > 0) s += ` ${name} also owes you $${short} on top; collect that too.`;
+    if (hasDeposit) s += ` Deposit left: $${left}.`;
+  }
+  if (noData) s += ` The app reported no sessions at all this week.`;
+  if (stale) s += ` Last report from the app: ${st.lastReport ? fmtDay(new Date(st.lastReport).toISOString().slice(0, 10)) : 'never'}. Treat silence as failure.`;
   return s;
 }
 
 function welcomeText(c) {
-  return `Thanks for agreeing to be ${c.name}'s gym referee. You will get one text every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)} with the week's result. A failed week means ${c.name} owes you $${c.pledge}; please actually collect it. If a text says no data was reported, treat that as a fail. Reply STOP at any time to end the texts.`;
+  const dep = (Number(c.deposited) || 0) > 0;
+  return `You're in as ${c.name}'s gym referee. One text every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)} with the week's verdict. ${dep ? `You hold a $${c.depositLeft} deposit; a failed week forfeits $${c.pledge} of it${c.consequence ? ` to ${c.consequence}` : ''}.` : `A failed week means ${c.name} owes you $${c.pledge}. Collect it.`} If a text says the app reported nothing, treat it as a fail. Reply STOP to end the texts.`;
 }
 function randomToken() { const a = 'abcdefghijkmnopqrstuvwxyz23456789'; const arr = new Uint32Array(20); crypto.getRandomValues(arr); return [...arr].map(n => a[n % a.length]).join(''); }
 function testText(c) {
-  return `Test from Ironclad: ${c.name}'s gym accountability app can now text you. Weekly results arrive every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)}.`;
+  return `Test from Ironclad: ${c.name}'s gym app can now text you. Weekly verdicts will land every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)}.`;
 }
 
 /* ---------------- Twilio ---------------- */

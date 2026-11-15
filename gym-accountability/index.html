@@ -132,21 +132,21 @@
   <!-- SETUP -->
   <section id="view-setup" class="view">
     <div class="card">
-      <h3 id="setup-title">Set up your contract</h3>
-      <p class="muted" id="setup-intro">You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.</p>
+      <h3 id="setup-title">Let's make quitting expensive.</h3>
+      <p class="muted" id="setup-intro">You're about to sign a deal with yourself that this app will actually enforce. Everything you type here goes into a log you can't edit. Choose carefully, then stop negotiating.</p>
     </div>
     <form id="setup" class="card" autocomplete="off">
       <h2>You</h2>
       <label>Your name</label>
-      <input type="text" id="s-name" required placeholder="So the referee messages read right" />
+      <input type="text" id="s-name" required placeholder="What your referee calls you" />
 
       <h2 style="margin-top:18px">The gym</h2>
-      <p class="small muted">Check-ins and check-outs only count when your phone is physically inside this circle. Search for the gym, pick it from the results, and check the pin on the map.</p>
+      <p class="small muted">Check-ins only count inside this circle. Search for your gym, pick it, and make sure the pin lands on the right building. The app doesn't take your word for it. That's the point.</p>
       <label>Find your gym</label>
       <div class="search"><input type="text" id="s-search" placeholder="Name and city, address, or a Google Maps link" enterkeyhint="search" /><button type="button" id="s-search-btn">Search</button></div>
       <div id="s-results" class="results"></div>
       <div class="or">or</div>
-      <button type="button" id="s-locate" class="btn-block">📍 Use my current location (stand inside the gym)</button>
+      <button type="button" id="s-locate" class="btn-block">📍 I'm standing in it right now</button>
       <div id="s-locmsg" class="loc"></div>
       <iframe id="s-map" class="map" title="Gym location preview" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
       <div class="row">
@@ -154,7 +154,7 @@
         <div><label>Longitude</label><input type="number" step="any" id="s-lng" required /></div>
       </div>
       <label>Gym name</label>
-      <input type="text" id="s-gym" placeholder="e.g. 24 Hour Fitness, Main St" />
+      <input type="text" id="s-gym" placeholder="e.g. Iron Temple, Main St" />
       <div class="row">
         <div><label>Allowed radius (m)</label><input type="number" id="s-radius" value="150" min="50" max="1000" /></div>
         <div><label>Minimum stay (min)</label><input type="number" id="s-min" value="30" min="1" max="240" /></div>
@@ -166,44 +166,47 @@
         <div><label>Week starts on</label>
           <select id="s-weekstart"><option value="1">Monday</option><option value="0">Sunday</option><option value="6">Saturday</option></select></div>
       </div>
-      <label>Planned gym days (for reminders)</label>
+      <label>Planned gym days (so we know when to nag)</label>
       <div class="days" id="s-days"></div>
-      <label>Reminder time on gym days</label>
+      <label>Nag time on gym days</label>
       <input type="time" id="s-remind" value="17:00" />
-      <label class="check"><input type="checkbox" id="s-photo" checked /> Require a photo at check-in (proof for the referee)</label>
+      <label class="check"><input type="checkbox" id="s-photo" checked /> Photo at every check-in (proof your referee can see)</label>
 
       <h2 style="margin-top:18px">The stakes</h2>
-      <p class="small muted">A referee is a real person who will receive your weekly result. Pick someone whose opinion you do not want to lose. After you sign, you will send them an invitation that explains the role, and they have to agree before they count.</p>
+      <p class="small muted">Your referee is a real person who gets your weekly verdict. Pick someone whose opinion you'd hate to lose, not your most forgiving friend. After you sign, you'll send them an invitation that explains the job, and they have to say yes before any of this counts.</p>
       <label>Referee's name</label>
       <input type="text" id="s-refname" required />
       <div class="row">
         <div><label>Referee's phone</label><input type="tel" id="s-refphone" placeholder="+1 555 000 0000" /></div>
         <div><label>Referee's email</label><input type="email" id="s-refemail" /></div>
       </div>
-      <label>Money on the line per failed week</label>
+      <label>Price of a failed week</label>
       <input type="number" id="s-pledge" value="50" min="0" step="5" />
-      <label>What happens when you fail a week</label>
-      <textarea id="s-conseq" placeholder="e.g. I pay $50 to a cause I dislike within 24h, and my referee confirms it"></textarea>
+      <label>Deposit you hand <span id="s-dep-ref">your referee</span> up front</label>
+      <input type="number" id="s-deposit" value="200" min="0" step="10" />
+      <p class="small muted" style="margin-top:4px">Failed weeks come out of this, so nobody has to chase you. What's left comes back to you. Four weeks of cover is a good start.</p>
+      <label>Where forfeits go (pick something that stings)</label>
+      <textarea id="s-conseq" placeholder="e.g. a political party I can't stand. My referee sends it and I get the receipt."></textarea>
       <h2 style="margin-top:18px">How the referee hears from you</h2>
       <div class="days" id="s-mode">
         <label class="on"><input type="radio" name="mode" value="manual" checked>Manual</label>
         <label><input type="radio" name="mode" value="auto">Automatic</label>
       </div>
-      <p class="small muted" id="s-mode-help">Manual: you tap "send" and the app composes the message. Automatic: the app messages your referee itself on every check-in, check-out and weekly result.</p>
+      <p class="small muted" id="s-mode-help">Manual: you tap send, which means you can also not tap send. Automatic: the app tells your referee itself. You can guess which one works.</p>
       <div id="ch-auto" class="chbox">
         <div class="days" id="s-auto-kind" style="margin-top:10px">
           <label class="on"><input type="radio" name="autokind" value="sms" checked>Weekly text message</label>
           <label><input type="radio" name="autokind" value="ntfy">Push app</label>
         </div>
         <div id="auto-sms">
-          <p class="small" style="margin:10px 0 6px">One text to your referee every <b id="s-sms-dayname">Monday</b> with last week's result, sent by your own free server even if you never open the app. Needs a one-time setup: <a href="sms-server/" target="_blank" rel="noopener" style="color:var(--accent)">open the setup guide</a>.</p>
+          <p class="small" style="margin:10px 0 6px">One text to your referee every <b id="s-sms-dayname">Monday</b> with last week's verdict, sent by a tiny free server of your own, even if you never open the app. Ten-minute setup, once: <a href="sms-server/" target="_blank" rel="noopener" style="color:var(--accent)">open the guide</a>.</p>
           <label>Server address</label><input type="url" id="s-sms-url" placeholder="https://ironclad-sms.yourname.workers.dev" autocapitalize="off" />
           <label>Secret (APP_SECRET from the setup)</label><input type="text" id="s-sms-secret" autocapitalize="off" autocomplete="off" />
           <label>Send the weekly text at</label>
           <select id="s-sms-hour"></select>
         </div>
         <div id="auto-ntfy">
-          <p class="small" style="margin:10px 0 6px">Instant notifications for every check-in. Your referee needs one free app, <b>ntfy</b>. Send them the setup and they are done in a minute.</p>
+          <p class="small" style="margin:10px 0 6px">Every check-in, live, with the photo. Your referee installs one free app, <b>ntfy</b>. Send them the setup and they're done in a minute.</p>
           <button type="button" id="s-share-setup" class="btn-block">📤 Share setup with referee</button>
           <input type="hidden" id="s-ntfy" />
         </div>
@@ -211,14 +214,14 @@
         <div id="s-testmsg" class="loc"></div>
       </div>
 
-      <label>Freeze weeks allowed per quarter (illness / travel, declared in advance)</label>
+      <label>Freeze weeks per quarter (illness, travel; declared before, never after)</label>
       <input type="number" id="s-freeze" value="1" min="0" max="4" />
 
       <div class="hr"></div>
-      <label class="check"><input type="checkbox" id="s-agree" required /> I understand there is no delete button for history, and that failed weeks are owed to my referee.</label>
+      <label class="check"><input type="checkbox" id="s-agree" required /> I get it: no delete button, no quiet edits, and a failed week costs real money.</label>
       <div class="savebar">
         <button type="button" id="s-cancel" style="display:none">Cancel</button>
-        <button type="submit" id="s-submit" class="btn-primary big-btn">Sign the contract</button>
+        <button type="submit" id="s-submit" class="btn-primary big-btn">Sign it. No take-backs.</button>
       </div>
     </form>
   </section>
@@ -242,11 +245,11 @@
 
     <div class="card" id="session-card">
       <div id="idle">
-        <button id="checkin" class="btn-primary btn-block big-btn">Check in at the gym</button>
+        <button id="checkin" class="btn-primary btn-block big-btn">I'm at the gym. Check me in.</button>
         <div id="checkin-msg" class="loc"></div>
       </div>
       <div id="active" style="display:none">
-        <h2>Session in progress</h2>
+        <h2>Session running</h2>
         <div class="timer" id="timer">00:00</div>
         <p class="small muted" style="text-align:center" id="active-msg"></p>
         <img id="active-photo" class="photo-preview" alt="Check-in photo" />
@@ -256,11 +259,12 @@
     </div>
 
     <div class="card">
-      <h2>Stakes</h2>
+      <h2>Skin in the game</h2>
       <div class="kv"><span>Referee</span><b id="k-ref"></b></div>
-      <div class="kv"><span>Per failed week</span><b id="k-pledge"></b></div>
-      <div class="kv"><span>Owed right now</span><b id="k-owed"></b></div>
-      <div class="kv"><span>Passing-week streak</span><b id="k-streak"></b></div>
+      <div class="kv"><span>Price of a failed week</span><b id="k-pledge"></b></div>
+      <div class="kv"><span id="k-deposit-label">Deposit held</span><b id="k-deposit"></b></div>
+      <div class="kv"><span>Owed beyond the deposit</span><b id="k-owed"></b></div>
+      <div class="kv"><span>Passing streak</span><b id="k-streak"></b></div>
       <div class="kv"><span>Freezes left this quarter</span><b id="k-freeze"></b></div>
       <div class="kv"><span>Referee channel</span><b id="k-channel"></b></div>
       <div class="kv"><span>Referee agreed</span><b id="k-agreed"></b></div>
@@ -269,9 +273,10 @@
         <button id="btn-agreed">Referee said yes</button>
       </div>
       <div class="row" style="margin-top:10px">
-        <button id="btn-report">Send week report</button>
+        <button id="btn-topup">Top up deposit</button>
         <button id="btn-freeze">Declare a freeze</button>
       </div>
+      <button id="btn-report" class="btn-block" style="margin-top:10px">Send week report</button>
     </div>
   </section>
 
@@ -296,7 +301,7 @@
     </div>
     <div class="card">
       <h2>Ledger (append-only)</h2>
-      <p class="small muted">Every event is chained to the one before it with a SHA-256 hash. Edit or delete anything and the badge at the top turns red for good.</p>
+      <p class="small muted">Every line is chained to the one before it with a SHA-256 hash. Fiddle with any of it and the badge up top turns red forever. Honestly, it's easier to just go to the gym.</p>
       <div class="log" id="log"></div>
     </div>
   </section>
@@ -304,25 +309,25 @@
   <!-- SETTINGS -->
   <section id="view-settings" class="view">
     <div class="card">
-      <h2>Fail-safes</h2>
-      <div class="step"><div class="n">1</div><div><b>Install this app.</b> <span class="muted small" id="install-hint">Open your browser menu and choose "Add to Home Screen" so it lives next to your other apps.</span></div></div>
-      <div class="step"><div class="n">2</div><div><b>Put reminders in your calendar.</b> <span class="muted small">A web app cannot wake your phone by itself, so your calendar does. The file below adds recurring alerts on your gym days plus a deadline check on the last day of each week.</span>
-        <button id="btn-ics" class="btn-block" style="margin-top:8px">📅 Download calendar reminders (.ics)</button></div></div>
-      <div class="step"><div class="n">3</div><div><b>Allow notifications</b> <span class="muted small">for nudges while the app is open.</span>
+      <h2>Belt and braces</h2>
+      <div class="step"><div class="n">1</div><div><b>Install this app.</b> <span class="muted small" id="install-hint">Browser menu → Add to Home Screen. Out of sight is out of mind, and out of mind is out of the gym.</span></div></div>
+      <div class="step"><div class="n">2</div><div><b>Reminders in your calendar.</b> <span class="muted small">Web apps can't wake your phone. Your calendar can. This file adds alerts on your gym days and a "week closes tonight" alarm.</span>
+        <button id="btn-ics" class="btn-block" style="margin-top:8px">📅 Add reminders to my calendar</button></div></div>
+      <div class="step"><div class="n">3</div><div><b>Allow nudges</b> <span class="muted small">while the app is open. Cheap insurance.</span>
         <button id="btn-notify" class="btn-block" style="margin-top:8px">🔔 Enable notifications</button></div></div>
-      <div class="step"><div class="n">4</div><div><b>Back up the ledger</b> <span class="muted small">so a lost phone is not a lost record. Export after each week and keep the file somewhere safe.</span>
+      <div class="step"><div class="n">4</div><div><b>Back up the ledger.</b> <span class="muted small">A lost phone shouldn't mean a lost record. Export after each week and park the file somewhere safe.</span>
         <div class="row" style="margin-top:8px"><button id="btn-export">⬇ Export</button><button id="btn-import">⬆ Import</button></div>
         <input type="file" id="import-file" accept="application/json" style="display:none" /></div></div>
     </div>
     <div class="card">
-      <h2>Contract</h2>
-      <p class="small muted">Changes are allowed, but every change is written to the ledger and included in the next referee report.</p>
+      <h2>The contract</h2>
+      <p class="small muted">You can change it. Every change is logged and lands in your referee's next report, so change it like someone's watching. Someone is.</p>
       <div id="cfg-view"></div>
-      <button id="btn-edit" class="btn-block" style="margin-top:10px">Edit contract (logged)</button>
+      <button id="btn-edit" class="btn-block" style="margin-top:10px">Edit contract (it's logged)</button>
     </div>
     <div class="card">
       <h2>Danger zone</h2>
-      <p class="small muted">Wiping everything is the only way to remove history. You must type the phrase exactly, and you will have to re-sign the contract.</p>
+      <p class="small muted">The only way to erase history. You'll type a phrase you won't enjoy typing, and then you start from zero.</p>
       <button id="btn-reset" class="btn-danger btn-block">Wipe everything</button>
     </div>
   </section>
@@ -393,7 +398,7 @@ function setIntegrity(ok){
   tampered = !ok;
   const el = $('integrity');
   el.className = 'pill' + (ok ? '' : ' bad');
-  el.innerHTML = `<span class="dot"></span>${ok ? 'Ledger verified' : 'LEDGER TAMPERED'}`;
+  el.innerHTML = `<span class="dot"></span>${ok ? 'Ledger clean' : 'LEDGER TAMPERED'}`;
 }
 
 /* ---------- geo ---------- */
@@ -408,7 +413,7 @@ function getPosition(){
     if (!navigator.geolocation) return rej(new Error('This device has no location service.'));
     navigator.geolocation.getCurrentPosition(
       p => res({ lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy }),
-      e => rej(new Error(e.code===1 ? 'Location permission denied. Allow location for this site.' : e.code===2 ? 'Location unavailable. Step away from thick walls or wait a moment.' : 'Location timed out. Try again.')),
+      e => rej(new Error(e.code===1 ? "Location is off for this site. Turn it on; the app can't take your word for it." : e.code===2 ? "Can't get a GPS fix. Step away from thick walls, or give it a moment." : 'Location timed out. Try again.')),
       { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
   });
 }
@@ -440,11 +445,13 @@ function freezesLeft(){
   const used = ledger.filter(e=>e.type==='freeze' && quarterKey(parseYmd(e.week))===q).length;
   return Math.max(0, cfg.freezesPerQuarter - used);
 }
-function owed(){
-  const o = weekEntries().filter(w=>w.result==='fail').reduce((a,w)=>a+(w.owed||0),0);
-  const p = ledger.filter(e=>e.type==='paid').reduce((a,e)=>a+(e.amount||0),0);
-  return Math.max(0, o-p);
-}
+function liabilities(){ return weekEntries().filter(w=>w.result==='fail').reduce((a,w)=>a+(w.owed||0),0); }
+function paidTotal(){ return ledger.filter(e=>e.type==='paid').reduce((a,e)=>a+(e.amount||0),0); }
+function deposited(){ return ledger.filter(e=>e.type==='deposit').reduce((a,e)=>a+(e.amount||0),0); }
+function hasDeposit(){ return deposited() > 0; }
+function balance(){ return deposited() + paidTotal() - liabilities(); }
+function depositLeft(){ return Math.max(0, balance()); }
+function owed(){ return Math.max(0, -balance()); }
 function streak(){
   const ws = weekEntries().sort((a,b)=>a.week<b.week?1:-1);
   let n=0; for (const w of ws){ if (w.result==='pass') n++; else if (w.result==='fail') break; }
@@ -461,13 +468,13 @@ function currentStatus(){
   const frozen = !!freezeFor(wk);
   const warmup = wk < startWeekKey();
   let level, title, msg;
-  if (warmup) { level='info'; title='Warm-up week'; msg=`Your contract starts ${fmtDate(parseYmd(startWeekKey()))}. Sessions this week are logged and count toward your totals, but the week cannot be failed.`; }
-  else if (frozen) { level='info'; title='Week frozen'; msg='You declared this week a freeze. It will not count for or against you.'; }
-  else if (remaining===0) { level='ok'; title='Week complete'; msg=`${done} verified sessions. Anything extra is a bonus.`; }
-  else if (remaining > daysLeft) { level='bad'; title='Week lost'; msg=`${remaining} sessions needed, only ${daysLeft} day${daysLeft===1?'':'s'} left. ${money(cfg.pledge)} is owed to ${cfg.referee.name} when the week closes.`; }
-  else if (remaining === daysLeft) { level='bad'; title='Critical'; msg=`Zero slack. Every remaining day this week is a gym day or you fail.`; }
-  else if (remaining === daysLeft-1) { level='warn'; title='Tight'; msg=`${remaining} to go with one spare day. Do not spend it.`; }
-  else { level='ok'; title='On track'; msg=`${remaining} to go, ${daysLeft} days to do it.`; }
+  if (warmup) { level='info'; title='Warm-up week'; msg=`Your clock starts ${fmtDate(parseYmd(startWeekKey()))}. Sessions this week still count, but you can't fail it. Use it to get the check-in habit down.`; }
+  else if (frozen) { level='info'; title='Frozen'; msg='You called this week a freeze. It counts for nothing, for or against you.'; }
+  else if (remaining===0) { level='ok'; title='Week done.'; msg=`${done} in the bag. Anything else this week is showing off. We approve.`; }
+  else if (remaining > daysLeft) { level='bad'; title='Week lost'; msg=`${remaining} needed, ${daysLeft} day${daysLeft===1?'':'s'} left. The maths doesn't work. ${money(cfg.pledge)} ${hasDeposit() ? 'comes off your deposit' : 'goes to ' + cfg.referee.name} when the week closes. Go anyway; it still counts toward your totals.`; }
+  else if (remaining === daysLeft) { level='bad'; title='No slack left'; msg=`Every day from here is a gym day, or you pay. No planning, just going.`; }
+  else if (remaining === daysLeft-1) { level='warn'; title='Getting tight'; msg=`${remaining} to go with one spare day. Don't spend it.`; }
+  else { level='ok'; title='On track'; msg=`${remaining} to go, ${daysLeft} days to do it. Plenty of time, which is exactly how people lose weeks.`; }
   return { wk, ws, days, done, remaining, daysLeft, level, title, msg, frozen, warmup };
 }
 
@@ -525,26 +532,31 @@ function renderToday(){
   }).join('');
 
   const banners = [];
-  if (tampered) banners.push(['bad','⚠️ The ledger has been edited outside the app. This record is no longer trustworthy. Tell your referee.']);
-  const o = owed();
-  if (o>0) banners.push(['bad',`💸 You owe ${money(o)} from failed weeks. <button class="btn-danger" style="padding:6px 10px;margin-left:6px" id="btn-paid">Mark paid</button>`]);
+  if (tampered) banners.push(['bad',"⚠️ Someone edited the ledger outside the app. This record can't be trusted any more. Your referee has been told, or will be."]);
+  const o = owed(), dl = depositLeft();
+  if (o>0) banners.push(['bad',`💸 You owe ${esc(cfg.referee.name)} ${money(o)}${hasDeposit() ? ' beyond your deposit' : ''}. Pay it, then tell us. <button class="btn-danger" style="padding:6px 10px;margin-left:6px" id="btn-paid">I've paid</button>`]);
+  else if (hasDeposit() && dl < cfg.pledge && cfg.pledge>0) banners.push(['warn',`💰 Deposit is down to ${money(dl)}. Top up before the next week closes, or you're back to IOUs. <button style="padding:6px 10px;margin-left:6px" id="btn-topup2">Top up</button>`]);
   const unsent = weekEntries().filter(w=>!ledger.some(e=>e.type==='notify'&&e.week===w.week)).sort((a,b)=>a.week<b.week?1:-1)[0];
-  if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}). Your referee has not been told yet. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
-  if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 No slack left this week. Go today.']);
-  if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} not delivered yet${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
-  if (!ag && !tampered) banners.push(['warn',`🤝 ${esc(cfg.referee.name)} has not agreed to be your referee yet. ${cfg.channel.type==='sms' ? 'No weekly texts go out until they do.' : 'The stakes are only real once they say yes.'} <button style="padding:6px 10px;margin-left:6px" id="btn-invite2">Invite</button>`]);
-  if (!channelActive()) banners.push(['warn','📨 Reports are manual. Switch to Automatic in Settings → Edit contract so your referee hears from the app, not from you.']);
+  if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}) and ${esc(cfg.referee.name)} doesn't know yet. That's not how this works. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
+  if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 Zero slack. Today is a gym day whether you planned it or not.']);
+  if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} stuck in the outbox${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
+  if (!ag && !tampered) banners.push(['warn',`🤝 ${esc(cfg.referee.name)} hasn't said yes yet. Until they do, this is a diary, not a contract.${cfg.channel.type==='sms' ? ' No weekly texts go out before that.' : ''} <button style="padding:6px 10px;margin-left:6px" id="btn-invite2">Invite</button>`]);
+  if (!channelActive()) banners.push(['warn','📨 Reports are manual, which means you can skip them. Settings → Edit contract → Automatic fixes that.']);
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
   const br = $('btn-retry'); if (br) br.onclick = ()=>{ lastDeliveryError=''; flushOutbox(); };
   const bi = $('btn-invite2'); if (bi) bi.onclick = inviteReferee;
+  const bt = $('btn-topup2'); if (bt) bt.onclick = topUpDeposit;
   checkRefereeAgreement();
   escalate(st);
 
   $('k-ref').textContent = cfg.referee.name;
   $('k-pledge').textContent = money(cfg.pledge);
   $('k-owed').textContent = money(o); $('k-owed').style.color = o>0?'var(--bad)':'var(--ok)';
+  $('k-deposit-label').textContent = `Deposit with ${cfg.referee.name}`;
+  $('k-deposit').textContent = hasDeposit() ? `${money(dl)}${cfg.pledge ? ` · ${Math.floor(dl/cfg.pledge)} wk cover` : ''}` : 'none';
+  $('k-deposit').style.color = !hasDeposit() ? 'var(--muted)' : dl < cfg.pledge ? 'var(--warn)' : 'var(--ok)';
   $('k-streak').textContent = `${streak()} week${streak()===1?'':'s'}`;
   $('k-freeze').textContent = freezesLeft();
   $('k-agreed').textContent = ag ? `✓ ${new Date(ag.agreedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})}` : 'not yet';
@@ -552,14 +564,14 @@ function renderToday(){
   $('btn-agreed').style.display = ag ? 'none' : '';
   $('btn-invite').textContent = ag ? 'Resend referee info' : 'Invite referee';
   const kc = $('k-channel');
-  if (!channelActive()) { kc.textContent = 'manual'; kc.style.color='var(--warn)'; }
+  if (!channelActive()) { kc.textContent = 'manual (weak)'; kc.style.color='var(--warn)'; }
   else if (outbox.length) { kc.textContent = `${CH_NAMES[cfg.channel.type]} · ${outbox.length} queued`; kc.style.color='var(--warn)'; }
   else { kc.textContent = `${CH_NAMES[cfg.channel.type]} · live`; kc.style.color='var(--ok)'; }
 
   $('idle').style.display = active ? 'none' : 'block';
   $('active').style.display = active ? 'block' : 'none';
   if (active) {
-    $('active-msg').textContent = `Checked in ${fmtTime(active.start)} · ${active.dist} m from gym centre · minimum stay ${cfg.minMinutes} min`;
+    $('active-msg').textContent = `In since ${fmtTime(active.start)} · ${active.dist} m from the pin · ${cfg.minMinutes} min minimum. Phone down.`;
     const img = $('active-photo'); if (active.photo) { img.src = active.photo; img.style.display='block'; } else img.style.display='none';
     tick();
   }
@@ -570,7 +582,7 @@ function tick(){
   const h = Math.floor(s/3600), m = Math.floor(s%3600/60), sec = s%60;
   $('timer').textContent = (h?pad(h)+':':'')+pad(m)+':'+pad(sec);
   const ok = s >= cfg.minMinutes*60;
-  $('checkout').textContent = ok ? 'Check out — session counts' : `Check out (counts in ${Math.ceil((cfg.minMinutes*60-s)/60)} min)`;
+  $('checkout').textContent = ok ? 'Check out. This one counts.' : `Check out (counts in ${Math.ceil((cfg.minMinutes*60-s)/60)} min)`;
   $('checkout').className = 'btn-block big-btn' + (ok ? ' btn-ok' : '');
 }
 setInterval(()=>{ if (active && cfg) tick(); }, 1000);
@@ -609,6 +621,7 @@ function renderHistory(){
       case 'freeze': body = `🧊 Freeze declared for week of ${e.week}: ${esc(e.reason)}`; break;
       case 'notify': body = e.auto ? `📡 Referee auto-notified (${esc(e.event)}) via ${esc(e.channel)}` : `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
       case 'paid': body = `💵 Paid ${money(e.amount)}`; break;
+      case 'deposit': body = `💰 Deposit of ${money(e.amount)} handed to ${esc(cfg.referee.name)}${e.note?` (${esc(e.note)})`:''}`; break;
       case 'invite': body = `📨 Referee invitation sent`; break;
       case 'referee': body = `🤝 Referee agreed (${esc(e.how)})`; break;
       case 'config': body = `✏️ Contract changed: ${esc(e.changes)}`; break;
@@ -616,7 +629,7 @@ function renderHistory(){
       default: body = esc(e.type);
     }
     return `<div class="e">${t}<span>${body}</span>${e.photo?`<img src="${e.photo}" alt="">`:''}</div>`;
-  }).join('') || '<p class="muted">Nothing yet.</p>';
+  }).join('') || '<p class="muted">Nothing yet. The gym is waiting.</p>';
 }
 function renderSettings(){
   const c = cfg;
@@ -624,7 +637,7 @@ function renderSettings(){
     ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
     ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
     ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
-    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
+    ['Deposit', hasDeposit() ? `${money(deposited())} handed over, ${money(depositLeft())} left` : 'none'], ['Forfeits go to', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔 Notifications enabled' : '🔔 Enable notifications';
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
@@ -633,16 +646,17 @@ function renderSettings(){
 /* ---------- setup form ---------- */
 function initSetupForm(prefill){
   const c = prefill || {};
-  $('setup-title').textContent = prefill ? 'Edit contract' : 'Set up your contract';
-  $('setup-intro').textContent = prefill ? 'Change what you need, then tap Save at the bottom of the screen. Every change is written to the ledger and reported to your referee.' : 'You are about to make a commitment that this app will hold you to. Everything you enter here gets written to a tamper-evident log, and changing it later is recorded too.';
-  $('s-submit').textContent = prefill ? 'Save changes' : 'Sign the contract';
+  $('setup-title').textContent = prefill ? 'Edit the contract' : "Let's make quitting expensive.";
+  $('setup-intro').textContent = prefill ? "Change what you need, then tap Save at the bottom. Every change is logged and goes in your referee's next report." : "You're about to sign a deal with yourself that this app will actually enforce. Everything you type here goes into a log you can't edit. Choose carefully, then stop negotiating.";
+  $('s-submit').textContent = prefill ? 'Save changes' : 'Sign it. No take-backs.';
+  [$('s-dep-ref').closest('label'), $('s-deposit'), $('s-deposit').nextElementSibling].forEach(el => { if (el) el.style.display = prefill ? 'none' : ''; });
   $('s-cancel').style.display = prefill ? 'block' : 'none';
   $('s-days').innerHTML = [1,2,3,4,5,6,0].map(d=>`<label class="${(c.planDays||[1,3,5]).includes(d)?'on':''}"><input type="checkbox" value="${d}" ${(c.planDays||[1,3,5]).includes(d)?'checked':''}>${DN[d]}</label>`).join('');
   $('s-days').querySelectorAll('label').forEach(l=>l.onclick=()=>setTimeout(()=>l.classList.toggle('on', l.querySelector('input').checked),0));
   if (prefill) {
     $('s-name').value=c.name; $('s-lat').value=c.gym.lat; $('s-lng').value=c.gym.lng; $('s-gym').value=c.gym.label||''; $('s-radius').value=c.radius; $('s-min').value=c.minMinutes;
     $('s-target').value=c.target; $('s-weekstart').value=c.weekStart; $('s-remind').value=c.remindTime; $('s-photo').checked=c.requirePhoto;
-    $('s-refname').value=c.referee.name; $('s-refphone').value=c.referee.phone||''; $('s-refemail').value=c.referee.email||''; $('s-pledge').value=c.pledge; $('s-conseq').value=c.consequence||''; $('s-freeze').value=c.freezesPerQuarter;
+    $('s-refname').value=c.referee.name; $('s-refphone').value=c.referee.phone||''; $('s-refemail').value=c.referee.email||''; $('s-pledge').value=c.pledge; $('s-deposit').value=0; $('s-conseq').value=c.consequence||''; $('s-freeze').value=c.freezesPerQuarter;
     $('s-agree').checked = true;
     showMap(c.gym.lat, c.gym.lng);
     const ch = c.channel || { type:'none' };
@@ -719,6 +733,8 @@ function updateChannelUI(){
 }
 document.querySelectorAll('#s-mode input, #s-auto-kind input').forEach(i => i.onchange = updateChannelUI);
 $('s-weekstart').addEventListener('change', updateChannelUI);
+$('s-refname').addEventListener('input', () => { $('s-dep-ref').textContent = $('s-refname').value.trim() || 'your referee'; });
+$('s-pledge').addEventListener('change', () => { if (!cfg) $('s-deposit').value = Math.max(0, +$('s-pledge').value||0) * 4; });
 function normPhone(p){ const d = String(p||'').replace(/[^\d+]/g,''); return d.startsWith('+') ? '+' + d.slice(1).replace(/\+/g,'') : d; }
 function readChannel(){
   if (!modeAuto()) return { type:'none' };
@@ -740,12 +756,13 @@ function snapshot(){
   const st = currentStatus();
   return { name:cfg.name, refereeName:cfg.referee.name, refereePhone:normPhone(cfg.referee.phone), target:cfg.target, pledge:cfg.pledge, consequence:cfg.consequence, gym:cfg.gym.label, minMinutes:cfg.minMinutes,
     weekStart:cfg.weekStart, tz:Intl.DateTimeFormat().resolvedOptions().timeZone, sendHour: cfg.channel?.sendHour ?? 9, startWeek:startWeekKey(),
-    week:st.wk, done:st.done, remaining:st.remaining, days:[...st.days], owed:owed(), streak:streak(), warmup:st.warmup, frozen:st.frozen };
+    week:st.wk, done:st.done, remaining:st.remaining, days:[...st.days], owed:owed(), streak:streak(), warmup:st.warmup, frozen:st.frozen,
+    deposited:deposited(), depositLeft:depositLeft() };
 }
 function refereeSetupText(ch){
   const name = $('s-name').value.trim();
   const t = ch.topic;
-  return `Hi ${$('s-refname').value.trim()||'there'}, ${name ? name+' is' : 'I am'} using an app to stay accountable for the gym ${$('s-target').value||3}x a week, and you are the referee. To get the check-ins automatically:\n1. Install the free "ntfy" app (App Store or Play Store).\n2. Tap + and subscribe to this topic: ${t}\nOr just open https://ntfy.sh/${t} in a browser.\nIf you hear nothing by the end of a week, it means I failed. Ask me about it.`;
+  return `Hi ${$('s-refname').value.trim()||'there'}, ${name ? name+' is' : 'I am'} using an app to stay accountable for the gym ${$('s-target').value||3}x a week, and you are the referee. To get the check-ins automatically:\n1. Install the free "ntfy" app (App Store or Play Store).\n2. Tap + and subscribe to this topic: ${t}\nOr just open https://ntfy.sh/${t} in a browser.\nIf you hear nothing by the end of a week, I failed. Ask me about it.`;
 }
 $('s-share-setup').onclick = async () => {
   const ch = readChannel(); if (ch.type!=='ntfy') return toast('This referee is already connected another way.');
@@ -783,11 +800,22 @@ function readSetupForm(){
     channel: readChannel(),
   };
 }
+function readInitialDeposit(){ return Math.max(0, +$('s-deposit').value||0); }
+async function topUpDeposit(){
+  const suggested = Math.max(cfg.pledge*4, cfg.pledge);
+  const v = await ask({ title:'Top up the deposit', body:`How much are you handing ${esc(cfg.referee.name)} right now? Only record money that has actually changed hands. They'll be asked to confirm.`, okLabel:'Record it', input:{ placeholder: String(suggested) } });
+  if (v===null) return;
+  const amount = Math.round(+String(v).replace(/[^\d.]/g,''));
+  if (!amount || amount<=0) return toast('Enter a real amount.');
+  await append({ type:'deposit', amount, note:'top-up' });
+  notifyReferee('deposit', `💰 ${cfg.name} says they just handed you ${money(amount)} as deposit. Deposit now held: ${money(depositLeft())}. Confirm you actually got it.`, { data:{ amount } });
+  toast(`Recorded. ${money(depositLeft())} on the line.`); renderToday();
+}
 $('setup').onsubmit = async ev => {
   ev.preventDefault();
   const c = readSetupForm();
-  if (!isFinite(c.gym.lat)||!isFinite(c.gym.lng)||!c.gym.lat) return toast('Set the gym location first.');
-  if (!c.referee.phone && !c.referee.email && c.channel.type==='none') return toast('Manual mode needs the referee\'s phone or email.');
+  if (!isFinite(c.gym.lat)||!isFinite(c.gym.lng)||!c.gym.lat) return toast('Pin the gym first.');
+  if (!c.referee.phone && !c.referee.email && c.channel.type==='none') return toast("Manual mode needs your referee's phone or email.");
   if (c.channel.type==='sms') c.referee.phone = normPhone(c.referee.phone);
   const chProb = channelProblem(c.channel); if (chProb) return toast(chProb, 5000);
   if (cfg) {
@@ -798,7 +826,7 @@ $('setup').onsubmit = async ev => {
     if (chChanged && channelActive()) notifyReferee('signed', introText() + '\n(Channel connected or changed after signing.)');
     const visible = changes.split('; ').filter(x=>!x.startsWith('channel:')).join('; ');
     if (visible) notifyReferee('config', `✏️ ${cfg.name} changed the contract: ${visible}`);
-    toast('Contract updated and logged.');
+    toast('Saved and logged. Your referee will see the change.');
   } else {
     cfg = { ...c, createdAt: Date.now() };
     const dayIdx = Math.round((new Date(ymd(new Date())) - startOfWeek(new Date()))/DAY);
@@ -806,10 +834,11 @@ $('setup').onsubmit = async ev => {
     cfg.startWeek = usable >= c.target + 1 ? weekKey(new Date()) : ymd(addDays(startOfWeek(new Date()),7));
     save(LS.cfg, cfg);
     await append({ type:'setup', name:c.name, target:c.target, pledge:c.pledge, referee:c.referee.name, gym:c.gym });
-    toast(cfg.startWeek===weekKey(new Date()) ? 'Contract signed. No way back now.' : `Contract signed. Warm-up until ${fmtDate(parseYmd(cfg.startWeek))}, then it counts.`, 6000);
+    const dep = readInitialDeposit(); if (dep>0) await append({ type:'deposit', amount:dep, note:'initial' });
+    toast(cfg.startWeek===weekKey(new Date()) ? 'Signed. No take-backs.' : `Signed. Warm-up until ${fmtDate(parseYmd(cfg.startWeek))}, then it counts.`, 6000);
     scheduleReminders();
     notifyReferee('signed', introText());
-    setTimeout(() => openSheet(`<h3>Now invite ${esc(cfg.referee.name)}</h3><p class="small muted">Your referee gets a page that explains the role and the stakes, and taps Agree. Until they do, the contract has no teeth.</p><button class="btn-primary btn-block" style="margin-top:14px" id="inv-now">Send the invitation</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Later</button>`), 400);
+    setTimeout(() => openSheet(`<h3>Now rope in ${esc(cfg.referee.name)}</h3><p class="small muted">They get a page that explains the job and the money${readInitialDeposit()>0 ? `, including the ${money(readInitialDeposit())} you're handing them` : ''}, and tap Agree. Until then this is a diary, not a contract.</p><button class="btn-primary btn-block" style="margin-top:14px" id="inv-now">Send the invitation</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Later</button>`), 400);
     setTimeout(() => { const b = $('inv-now'); if (b) b.onclick = () => { closeSheet(); inviteReferee(); }; }, 450);
   }
   render(); show('today'); window.scrollTo(0,0);
@@ -833,21 +862,21 @@ async function capturePhoto(){
 }
 $('checkin').onclick = async () => {
   const btn=$('checkin'), msg=$('checkin-msg');
-  btn.disabled=true; msg.textContent='Verifying you are at the gym…';
+  btn.disabled=true; msg.textContent="Checking you're actually there…";
   try {
     const pos = await getPosition(); const g = atGym(pos);
     if (!g.ok) {
       await append({ type:'attempt', reason:`${g.dist} m from gym (±${g.acc} m), allowed ${cfg.radius} m` });
-      notifyReferee('attempt', `🚫 ${cfg.name} tried to check in ${g.dist} m away from ${cfg.gym.label||'the gym'} (${fmtTime(Date.now())}). Refused.`);
-      msg.textContent = `Not at the gym: ${g.dist} m away (GPS ±${g.acc} m). Walk in and try again.`;
-      toast('Check-in refused. You have to actually be there.'); renderHistory(); return;
+      notifyReferee('attempt', `🚫 ${cfg.name} tried to check in from ${g.dist} m away from ${cfg.gym.label||'the gym'} at ${fmtTime(Date.now())}. Refused.`);
+      msg.textContent = `Nice try. You're ${g.dist} m from the gym (GPS ±${g.acc} m). Walk in and tap again.`;
+      toast('Refused. You have to actually be there.'); renderHistory(); return;
     }
     let photo = null;
-    if (cfg.requirePhoto) { msg.textContent='Take a photo of where you are…'; photo = await capturePhoto(); if (!photo) { msg.textContent='A check-in photo is required by your contract.'; return; } }
+    if (cfg.requirePhoto) { msg.textContent='Photo time. Show us the gym.'; photo = await capturePhoto(); if (!photo) { msg.textContent='No photo, no check-in. That was the deal.'; return; } }
     active = { start:Date.now(), dist:g.dist, acc:g.acc, photo };
     save(LS.active, active); msg.textContent='';
-    { const st = currentStatus(); notifyReferee('checkin', `🏋️ ${cfg.name} checked in at ${cfg.gym.label||'the gym'}, ${fmtDate(new Date())} ${fmtTime(Date.now())} (GPS ${g.dist} m from centre). Going for session ${Math.min(st.done+1,cfg.target)} of ${cfg.target} this week.`, { photo }); }
-    toast(`Checked in. Stay at least ${cfg.minMinutes} minutes, then check out here.`);
+    { const st = currentStatus(); notifyReferee('checkin', `🏋️ ${cfg.name} just checked in at ${cfg.gym.label||'the gym'} (${fmtDate(new Date())} ${fmtTime(Date.now())}, GPS ${g.dist} m from the pin). Session ${Math.min(st.done+1,cfg.target)} of ${cfg.target} this week.`, { photo }); }
+    toast(`Checked in. ${cfg.minMinutes} minutes minimum, then check out here. Now go lift something.`, 4500);
     renderToday();
   } catch(e){ msg.textContent = e.message; }
   finally { btn.disabled=false; }
@@ -855,8 +884,8 @@ $('checkin').onclick = async () => {
 $('checkout').onclick = async () => {
   const btn=$('checkout'), msg=$('checkout-msg');
   const minutes = Math.floor((Date.now()-active.start)/60000);
-  if (minutes < cfg.minMinutes && !(await ask({ title:`Only ${minutes} minutes`, body:`Checking out now will <b>not</b> count toward this week. Stay to ${cfg.minMinutes} minutes or check out anyway?`, okLabel:'Check out anyway (no credit)', danger:true, cancelLabel:'Keep training' }))) return;
-  btn.disabled=true; msg.textContent='Verifying you are still at the gym…';
+  if (minutes < cfg.minMinutes && !(await ask({ title:`${minutes} minutes?`, body:`That's a warm-up, not a session. Check out now and it <b>won't count</b>. ${cfg.minMinutes} is the number.`, okLabel:'Check out anyway (no credit)', danger:true, cancelLabel:"Fine, I'll stay" }))) return;
+  btn.disabled=true; msg.textContent="Checking you're still there…";
   let verified=false, endDist=null, reason='';
   try { const pos = await getPosition(); const g = atGym(pos); endDist=g.dist; if (g.ok) verified=true; else reason=`checked out ${g.dist} m away from gym`; }
   catch(e){ reason = 'GPS failed at checkout'; }
@@ -879,10 +908,10 @@ async function closeSession({ minutes, verified, endDist, reason, auto=false }){
   active=null; save(LS.active, null);
   { const st = currentStatus();
     notifyReferee('checkout', valid
-      ? `✅ ${cfg.name} checked out after ${minutes} min${verified?' (GPS verified at the gym)':' (checkout NOT GPS-verified)'}. ${st.remaining ? `${st.done}/${cfg.target} this week, ${st.remaining} to go.` : `Week complete: ${st.done}/${cfg.target}. 💪`}`
-      : `❌ ${cfg.name}'s session did NOT count: ${reason}. Still ${st.done}/${cfg.target} this week.`, { urgent: !valid, data:{ valid, verified: e.verified, minutes, day: ymd(new Date(e.start)), week: wk } }); }
-  toast(valid ? (verified ? `✅ Counted: ${minutes} min at the gym.` : `✅ Counted (unverified): ${minutes} min. Next one must be verified.`) : `❌ Not counted: ${reason}.`, 5000);
-  if (valid && 'Notification' in window && Notification.permission==='granted') { const st=currentStatus(); new Notification('Ironclad', { body: st.remaining ? `${st.remaining} more to go this week.` : 'Week complete. 💪' }); }
+      ? `✅ ${cfg.name} checked out after ${minutes} min${verified?', GPS-verified at the gym':', checkout NOT GPS-verified'}. ${st.remaining ? `${st.done}/${cfg.target} this week, ${st.remaining} to go.` : `Week done: ${st.done}/${cfg.target}. 💪`}`
+      : `❌ ${cfg.name}'s session didn't count: ${reason}. Still ${st.done}/${cfg.target} this week.`, { urgent: !valid, data:{ valid, verified: e.verified, minutes, day: ymd(new Date(e.start)), week: wk } }); }
+  toast(valid ? (verified ? `Counted. ${minutes} minutes. That's one.` : `Counted, unverified. ${minutes} minutes. The next one has to be clean.`) : `Didn't count: ${reason}.`, 5000);
+  if (valid && 'Notification' in window && Notification.permission==='granted') { const st=currentStatus(); new Notification('Ironclad', { body: st.remaining ? `${st.remaining} to go this week.` : 'Week done. Flex.' }); }
   renderToday();
 }
 async function recoverActive(){
@@ -890,7 +919,7 @@ async function recoverActive(){
   const hours = (Date.now()-active.start)/3600000;
   if (hours >= 6) {
     const minutes = Math.min(Math.floor(hours*60), 120);
-    toast('You forgot to check out. Session closed as unverified.', 6000);
+    toast('You forgot to check out. Closed it for you and marked it unverified. Only one of those counts per week.', 6000);
     await closeSession({ minutes, verified:false, endDist:null, reason:'forgot to check out (auto-closed)', auto:true });
   }
 }
@@ -904,8 +933,9 @@ function reportText(wk){
   const lines = [`Ironclad gym report for ${cfg.name}`, `Week of ${fmtDate(parseYmd(wk))}: ${result} — ${done}/${cfg.target} verified sessions.`];
   const ss = sessions().filter(s=>s.valid && weekKey(new Date(s.start))===wk);
   for (const s of ss) lines.push(`• ${fmtDate(new Date(s.start))} ${fmtTime(s.start)}, ${s.minutes} min${s.verified?'':' (unverified)'}`);
-  if (!isCurrent && w.result==='fail') lines.push(`Owed to you: ${money(w.owed)}.${cfg.consequence?' Consequence: '+cfg.consequence:''}`);
-  const o = owed(); if (o) lines.push(`Total outstanding: ${money(o)}.`);
+  if (!isCurrent && w.result==='fail') lines.push(`Forfeit: ${money(w.owed)}${hasDeposit() ? ' from the deposit' : ''}.${cfg.consequence?' Send it to: '+cfg.consequence+'. Keep the receipt.':''}`);
+  if (hasDeposit()) lines.push(`Deposit you hold: ${money(depositLeft())}.`);
+  const o = owed(); if (o) lines.push(`Owed to you beyond that: ${money(o)}. Collect it.`);
   lines.push(`Passing streak: ${streak()} weeks.`);
   const ag = refereeAgreement(); lines.push(ag ? `Referee agreed on ${fmtDate(new Date(ag.agreedAt))}.` : 'Referee has not formally agreed yet.');
   const changes = ledger.filter(e=>e.type==='config' && weekKey(new Date(e.ts))===wk);
@@ -921,7 +951,7 @@ async function sendReport(wk){
   if (r.email) opts.push(['✉️ Email', 'email', `mailto:${r.email}?subject=${encodeURIComponent('Gym week report: '+wk)}&body=${encodeURIComponent(text)}`]);
   if (navigator.share) opts.push(['📤 Share…', 'share', null]);
   opts.push(['📋 Copy text', 'copy', null]);
-  openSheet(`<h3>Report to ${esc(r.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px">${esc(text)}</pre>` +
+  openSheet(`<h3>Report for ${esc(r.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px">${esc(text)}</pre>` +
     opts.map(([l,,])=>`<button class="btn-block" style="margin-top:8px" data-ch="${l}">${l}</button>`).join('') + `<button class="btn-block" style="margin-top:8px" id="sheet-close">Cancel</button>`);
   $('sheet').querySelectorAll('[data-ch]').forEach((b,i)=>b.onclick = async () => {
     const [,ch,href] = opts[i];
@@ -933,25 +963,26 @@ async function sendReport(wk){
   });
 }
 $('btn-report').onclick = () => sendReport(currentStatus().wk);
+$('btn-topup').onclick = topUpDeposit;
 $('btn-freeze').onclick = () => {
   const left = freezesLeft(); const st = currentStatus(); const next = ymd(addDays(st.ws,7));
-  if (!left) return toast('No freezes left this quarter. The week counts.');
-  openSheet(`<h3>Declare a freeze</h3><p class="small muted">Freezes are for illness or travel, declared before the week is lost. You have ${left} left this quarter. Your referee gets told.</p>
+  if (!left) return toast('No freezes left this quarter. This week counts, same as any other.');
+  openSheet(`<h3>Declare a freeze</h3><p class="small muted">Freezes are for being ill or away, declared before the week is lost, never after. ${left} left this quarter. Your referee hears about it.</p>
     <label>Which week</label><select id="fz-week">${st.frozen?'':`<option value="${st.wk}">This week (${fmtDate(st.ws)})</option>`}<option value="${next}">Next week (${fmtDate(addDays(st.ws,7))})</option></select>
-    <label>Reason</label><input type="text" id="fz-reason" placeholder="Be honest; this goes to your referee" />
+    <label>Reason</label><input type="text" id="fz-reason" placeholder="Be honest. Your referee reads this." />
     <button class="btn-primary btn-block" style="margin-top:14px" id="fz-ok">Freeze it</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Cancel</button>`);
   $('fz-ok').onclick = async () => {
-    const wk=$('fz-week').value, reason=$('fz-reason').value.trim(); if (!reason) return toast('Give a reason.');
-    if (wk===st.wk && st.level==='bad' && st.remaining>st.daysLeft) return toast('Too late: this week is already lost. Freezes must come before that.');
+    const wk=$('fz-week').value, reason=$('fz-reason').value.trim(); if (!reason) return toast('Reason first.');
+    if (wk===st.wk && st.level==='bad' && st.remaining>st.daysLeft) return toast("Too late. This week's already lost; freezes come before that, not after.", 5000);
     await append({ type:'freeze', week:wk, reason }); closeSheet(); renderToday();
     if (channelActive()) { notifyReferee('freeze', `🧊 ${cfg.name} declared a freeze for the week of ${fmtDate(parseYmd(wk))}. Reason: ${reason}. Freezes left this quarter: ${freezesLeft()}.`, { week: wk, data:{ week:wk, reason } }); toast('Referee notified.'); } else sendReport(wk);
   };
 };
 async function markPaid(){
   const o = owed();
-  if (!(await ask({ title:'Mark as paid', body:`Confirm you have actually paid ${money(o)} to ${esc(cfg.referee.name)} as promised. They get a message asking them to confirm.`, okLabel:'Yes, I paid' }))) return;
-  await append({ type:'paid', amount:o }); renderToday(); toast('Recorded. Honour intact.');
-  notifyReferee('paid', `💵 ${cfg.name} marked ${money(o)} as paid to you. Please confirm you actually received it.`);
+  if (!(await ask({ title:'Paid up?', body:`Only confirm if ${money(o)} has actually left your account and gone where it's supposed to. ${esc(cfg.referee.name)} gets asked to confirm.`, okLabel:"Yes, it's paid" }))) return;
+  await append({ type:'paid', amount:o }); renderToday(); toast('Recorded. Debt cleared, dignity intact.');
+  notifyReferee('paid', `💵 ${cfg.name} says ${money(o)} has been paid. Confirm it actually arrived.`);
 }
 
 /* ---------- automatic delivery to the referee ---------- */
@@ -1027,7 +1058,7 @@ function introText(){
   return [`Hi ${c.referee.name}, this is ${c.name}'s gym accountability app (Ironclad).`,
     `${c.name} has committed to ${c.target} gym sessions a week at ${c.gym.label||'the gym'}, each verified by GPS at check-in and check-out with a minimum stay of ${c.minMinutes} minutes. Weeks run ${DN[c.weekStart]} to ${DN[(c.weekStart+6)%7]}.`,
     `You will get a message for every check-in (with photo), every check-out, and a result when each week closes. Freezes and any change to the rules are reported too.`,
-    `If a week fails, ${c.name} owes you ${money(c.pledge)}.${c.consequence ? ' Agreed consequence: ' + c.consequence : ''}`,
+    hasDeposit() ? `${c.name} hands you a deposit of ${money(deposited())}. If a week fails, ${money(c.pledge)} of it is forfeited${c.consequence ? ': send it to ' + c.consequence + ' and keep the receipt' : ''}. Whatever is left goes back to ${c.name}.` : `If a week fails, ${c.name} owes you ${money(c.pledge)}${c.consequence ? ', to be sent to ' + c.consequence : ''}. Collect it.`,
     `The important part: if you hear nothing by the end of a week, assume it failed and ask.`].join('\n');
 }
 async function sendTamperAlert(){
@@ -1050,7 +1081,7 @@ function escalate(st){
 function refereeAgreement(){ return ledger.find(e => e.type==='referee' && e.agreed); }
 function refereePageUrl(token){
   const base = new URL('referee/', location.href).href;
-  const p = new URLSearchParams({ n:cfg.name, r:cfg.referee.name, t:cfg.target, p:cfg.pledge, c:cfg.consequence||'', d:cfg.weekStart, g:cfg.gym.label||'', m: cfg.channel.type==='sms' ? 'sms' : channelActive() ? 'push' : 'manual' });
+  const p = new URLSearchParams({ n:cfg.name, r:cfg.referee.name, t:cfg.target, p:cfg.pledge, c:cfg.consequence||'', d:cfg.weekStart, g:cfg.gym.label||'', dep: depositLeft(), m: cfg.channel.type==='sms' ? 'sms' : channelActive() ? 'push' : 'manual' });
   if (cfg.channel.type==='sms') { p.set('h', cfg.channel.sendHour ?? 9); p.set('s', cfg.channel.url); if (token) p.set('k', token); }
   return base + '?' + p.toString();
 }
@@ -1063,7 +1094,7 @@ async function inviteReferee(){
     } catch(e){ toast('Could not reach the text-message server: ' + e.message, 6000); return; }
   }
   const link = refereePageUrl(token);
-  const text = `${cfg.referee.name}, will you be my gym referee? It takes about two minutes a week. Please read this and tap Agree:\n${link}`;
+  const text = `${cfg.referee.name}, will you be my gym referee? Two minutes a week, and you get to hold my money. Read this and tap Agree:\n${link}`;
   let how = 'share';
   if (navigator.share) { try { await navigator.share({ text }); } catch { return; } }
   else { how = 'copy'; try { await navigator.clipboard.writeText(text); toast('Invitation copied. Paste it to your referee.'); } catch { openSheet(`<h3>Send this to ${esc(cfg.referee.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px;word-break:break-all">${esc(text)}</pre><button class="btn-block" id="sheet-close">Done</button>`); } }
@@ -1078,7 +1109,7 @@ async function markRefereeAgreed(how, ts, fromServer=false){
 }
 $('btn-invite').onclick = inviteReferee;
 $('btn-agreed').onclick = async () => {
-  if (await ask({ title:'Referee said yes?', body:`Only confirm this if ${esc(cfg.referee.name)} has actually agreed to the role: reading the weekly result, collecting the stake when you fail, and treating silence as failure.`, okLabel:'Yes, they agreed' }))
+  if (await ask({ title:'Referee said yes?', body:`Only confirm this if ${esc(cfg.referee.name)} actually agreed to the job: reading the weekly verdict, holding the money, forfeiting it when you fail, and treating silence as failure.`, okLabel:'Yes, they agreed' }))
     markRefereeAgreed(`confirmed by ${cfg.name}`);
 };
 let agreementCheckAt = 0;
@@ -1088,7 +1119,7 @@ async function checkRefereeAgreement(force=false){
   try {
     const r = await fetch(cfg.channel.url + '/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret }) });
     const j = await r.json();
-    if (j.agreedAt) { await markRefereeAgreed(j.agreedHow || 'tapped Agree on the referee page', j.agreedAt, true); toast(`${cfg.referee.name} agreed to be your referee. 🤝`, 5000); }
+    if (j.agreedAt) { await markRefereeAgreed(j.agreedHow || 'tapped Agree on the referee page', j.agreedAt, true); toast(`${cfg.referee.name} is in. No hiding now. 🤝`, 5000); }
   } catch {}
 }
 
@@ -1166,17 +1197,17 @@ $('import-file').onchange = async () => {
 const norm = t => String(t||'').toLowerCase().replace(/[^a-z ]/g,'').replace(/\s+/g,' ').trim();
 $('btn-reset').onclick = async () => {
   const phrase = 'I am quitting on myself';
-  const typed = await ask({ title:'Wipe everything', body:`This deletes the contract, every session and the whole ledger on this phone. Type the phrase to continue:<br><b>${phrase}</b>`, okLabel:'Wipe it', danger:true, input:{ placeholder: phrase } });
+  const typed = await ask({ title:'Wipe everything', body:`This deletes the contract, every session and the whole ledger on this phone. If you're sure, type the phrase:<br><b>${phrase}</b>`, okLabel:'Wipe it', danger:true, input:{ placeholder: phrase } });
   if (typed===null) return;
   if (norm(typed) !== norm(phrase)) return toast(`That didn't match. You typed: "${typed}"`, 5000);
-  const sure = await ask({ title:'Last chance', body:'Export a backup first if you want to keep the record. Wiping cannot be undone.', okLabel:'Yes, wipe everything', danger:true, cancelLabel:'Go back' });
+  const sure = await ask({ title:'Last chance', body:"Export a backup first if you want to keep the record. There's no undo.", okLabel:'Yes, wipe everything', danger:true, cancelLabel:'Go back' });
   if (!sure) return;
   Object.values(LS).forEach(k=>localStorage.removeItem(k));
   cfg=null; ledger=[]; active=null; outbox=[]; setIntegrity(true); render(); window.scrollTo(0,0);
-  toast('Wiped. Clean slate.');
+  toast("Wiped. Clean slate. Don't make a habit of it.");
 };
 $('btn-edit').onclick = () => { initSetupForm(cfg); show('setup'); window.scrollTo(0,0); };
-$('s-cancel').onclick = () => { show('settings'); toast('No changes saved.'); };
+$('s-cancel').onclick = () => { show('settings'); toast('Nothing changed.'); };
 
 /* ---------- nav & boot ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));

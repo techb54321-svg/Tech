@@ -8,7 +8,8 @@
 <meta name="theme-color" content="#07080c" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Ironclad" />
@@ -470,18 +471,20 @@
         </div>
         <label>How they hear from you</label>
         <div class="days" id="s-mode">
-          <label class="on"><input type="radio" name="mode" value="auto" checked>Push app</label>
+          <label class="on"><input type="radio" name="mode" value="auto" checked>Ironclad alerts</label>
           <label><input type="radio" name="mode" value="manual">Manual</label>
         </div>
         <p class="small muted" id="s-mode-help" style="margin-top:10px"></p>
         <div id="ch-auto" class="chbox">
           <p class="small" id="auto-kept" style="display:none;margin:10px 0 6px"></p>
-          <div id="auto-ntfy">
-            <p class="small" style="margin:10px 0 10px">Nothing to set up on your side. The invitation you send after signing walks your referee through installing ntfy.</p>
-            <button type="button" id="s-share-setup" class="btn-block iconbtn"><svg class="ico"><use href="#i-send"/></svg>Share setup with referee now</button>
-            <input type="hidden" id="s-ntfy" />
+          <div id="auto-ironclad">
+            <p class="small" style="margin:10px 0 4px">Alerts come from your own free server. Set it up once, about ten minutes, then paste its connection code here. <a href="server/" target="_blank" rel="noopener">Open the setup guide →</a></p>
+            <label for="s-conn">Connection code</label>
+            <input type="text" id="s-conn" placeholder="https://ironclad.yourname.workers.dev#…" autocapitalize="off" autocomplete="off" spellcheck="false" />
+            <p class="small muted" id="s-conn-msg" style="margin-top:8px">No server yet? Pick Manual for now and switch any time from Settings.</p>
           </div>
-          <button type="button" id="s-test" class="btn-block iconbtn" style="margin-top:8px"><svg class="ico"><use href="#i-bell"/></svg>Send a test message</button>
+          <div id="auto-ntfy" style="display:none"><button type="button" id="s-share-setup">Share setup</button><input type="hidden" id="s-ntfy" /></div>
+          <button type="button" id="s-test" class="btn-block iconbtn" style="margin-top:8px"><svg class="ico"><use href="#i-bell"/></svg>Check the connection</button>
           <div id="s-testmsg" class="loc"></div>
         </div>
         <label for="s-freeze">Freeze weeks per quarter</label>
@@ -869,13 +872,15 @@ function renderToday(){
   if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 Zero slack. Today is a gym day whether you planned it or not.']);
   if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} stuck in the outbox${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
   if (!ag && !tampered) banners.push(['warn',`🤝 ${esc(cfg.referee.name)} hasn't said yes yet. Until they do, this is a diary, not a contract.${cfg.channel.type==='sms' ? ' No weekly texts go out before that.' : ''} <button style="padding:6px 10px;margin-left:6px" id="btn-invite2">Invite</button>`]);
-  if (!channelActive()) banners.push(['warn','📨 Reports are manual, which means you can skip them. Settings → Edit contract → Push app fixes that.']);
+  if (ag && cfg.channel.type==='ironclad' && refSubs===0 && !tampered) banners.push(['warn',`🔕 ${esc(cfg.referee.name)} agreed but hasn't turned on alerts yet, so they won't see anything. Resend the link. <button style="padding:6px 10px;margin-left:6px" id="btn-invite3">Resend</button>`]);
+  if (!channelActive()) banners.push(['warn','📨 Reports are manual, which means you can skip them. Settings → Edit contract → Ironclad alerts fixes that.']);
   const BI = { bad:'i-alert', warn:'i-info', ok:'i-check', info:'i-info' };
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}"><svg class="ico"><use href="#${BI[l]}"/></svg><div>${h.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u,'')}</div></div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
   const br = $('btn-retry'); if (br) br.onclick = ()=>{ lastDeliveryError=''; flushOutbox(); };
   const bi = $('btn-invite2'); if (bi) bi.onclick = inviteReferee;
+  const bi3 = $('btn-invite3'); if (bi3) bi3.onclick = inviteReferee;
   const bt = $('btn-topup2'); if (bt) bt.onclick = topUpDeposit;
   checkRefereeAgreement();
   escalate(st);
@@ -892,7 +897,7 @@ function renderToday(){
     m.classList.toggle('low', on<=1); m.style.display = hasDeposit() ? '' : 'none'; }
   $('k-streak').textContent = `${streak()} wk${streak()===1?'':'s'}`;
   $('k-freeze').textContent = freezesLeft();
-  $('k-agreed').textContent = ag ? '✓ agreed' : 'not yet';
+  $('k-agreed').textContent = !ag ? 'not yet' : cfg.channel.type==='ironclad' && refSubs!==null ? (refSubs ? '✓ alerts on' : 'alerts off') : '✓ agreed';
   $('k-agreed').style.color = ag ? 'var(--ok)' : 'var(--warn)';
   $('btn-agreed').style.display = ag ? 'none' : '';
   $('btn-invite').querySelector('.lbl').textContent = ag ? 'Resend referee info' : 'Invite referee';
@@ -1011,8 +1016,9 @@ function initSetupForm(prefill){
     const ch = c.channel || { type:'none' };
     document.querySelector(`#s-mode input[value="${ch.type==='none'?'manual':'auto'}"]`).checked = true;
     $('s-ntfy').value = ch.type==='ntfy' ? ch.topic : '';
-    keptChannel = (ch.type!=='none' && ch.type!=='ntfy') ? ch : null;
-  } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="auto"]').checked = true; $('s-ntfy').value=''; }
+    $('s-conn').value = ch.type==='ironclad' ? `${ch.url}#${ch.secret}` : '';
+    keptChannel = (ch.type!=='none' && ch.type!=='ironclad') ? ch : null;
+  } else { showMap(NaN, NaN); keptChannel = null; document.querySelector('#s-mode input[value="auto"]').checked = true; $('s-ntfy').value=''; $('s-conn').value = pendingConn || ''; }
   updateChannelUI(); syncChips();
   wizStep = 0; showWizStep();
 }
@@ -1060,7 +1066,7 @@ function buildContract(){
   const days = c.planDays.length ? c.planDays.slice().sort((a,b)=>((a-c.weekStart+7)%7)-((b-c.weekStart+7)%7)).map(d=>DN[d]).join(', ') : 'any days';
   $('contract').innerHTML = `<p class="eyebrow">The deal</p>
     <p class="vow">I, <mark>${esc(c.name||'—')}</mark>, will train at <mark>${esc(c.gym.label||'my gym')}</mark> <mark>${c.target}×</mark> a week, on separate days, for at least ${c.minMinutes} minutes. If I miss a week, <mark>${money(c.pledge)}</mark>${dep>0 ? ` of the ${money(dep)} I hand ${esc(c.referee.name)}` : ''} goes to ${esc(c.consequence || c.referee.name)}.</p>
-    <div class="terms"><div>Referee<b>${esc(c.referee.name)}</b></div><div>Updates<b>${c.channel.type==='none' ? 'Manual' : 'Push app'}</b></div><div>Plan<b>${days}</b></div><div>Freezes<b>${c.freezesPerQuarter} a quarter</b></div></div>
+    <div class="terms"><div>Referee<b>${esc(c.referee.name)}</b></div><div>Updates<b>${c.channel.type==='none' ? 'Manual' : c.channel.type==='ironclad' ? 'Ironclad alerts' : 'Push app'}</b></div><div>Plan<b>${days}</b></div><div>Freezes<b>${c.freezesPerQuarter} a quarter</b></div></div>
     <div class="sig" id="sig"><div class="line"><span>${esc(c.name)}</span></div><span>${new Date().toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})}</span></div>`;
 }
 // steppers and quick-pick chips
@@ -1148,13 +1154,21 @@ function updateChannelUI(){
   const auto = modeAuto();
   $('ch-auto').classList.toggle('on', auto);
   $('s-mode-help').textContent = auto
-    ? 'Your referee sees every check-in the moment it happens, photo included, plus the weekly verdict. They install one free app. You do nothing.'
-    : "You send each report yourself. Which means you can also not send it. Pick this only if your referee won't install anything.";
+    ? 'Your referee gets real notifications from Ironclad: every check-in with your photo, and the weekly verdict on schedule, even if you go quiet. They add Ironclad to their home screen. No other apps.'
+    : "You send each report yourself. Which means you can also not send it. Fine for now; switch to Ironclad alerts once your server is ready.";
   $('auto-kept').style.display = keptChannel ? 'block' : 'none';
-  $('auto-ntfy').style.display = keptChannel ? 'none' : 'block';
-  if (keptChannel) $('auto-kept').textContent = keptChannel.type==='sms' ? 'Connected to your weekly text-message server. Nothing to change here.' : 'Connected through your custom channel. Nothing to change here.';
-  if (auto && !keptChannel && !$('s-ntfy').value) $('s-ntfy').value = randomTopic();
+  if (keptChannel) $('auto-kept').textContent = keptChannel.type==='ntfy' ? 'Currently using the ntfy app (older setup). Paste a connection code below to switch to Ironclad alerts.' : keptChannel.type==='sms' ? 'Currently using your text-message server. Paste a connection code below to switch.' : 'Currently using a custom channel. Paste a connection code below to switch.';
+  const raw = $('s-conn').value.trim(), pc = parseConn(raw);
+  $('s-conn-msg').textContent = pc ? `✓ Server found: ${new URL(pc.url).host}` : raw ? "That doesn't look like a connection code. Copy it again from your server page." : keptChannel ? '' : 'No server yet? Pick Manual for now and switch any time from Settings.';
+  $('s-conn-msg').style.color = pc ? 'var(--ok)' : raw ? 'var(--bad)' : '';
 }
+function parseConn(t){
+  t = String(t||'').trim();
+  try { if (/#connect=/.test(t)) t = decodeURIComponent(t.split('#connect=')[1]); } catch {}
+  const m = t.match(/^(https:\/\/[^\s#\/]+|http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?)\/?#([a-z0-9]{16,64})$/i);
+  return m ? { url: m[1], secret: m[2] } : null;
+}
+$('s-conn').addEventListener('input', updateChannelUI);
 document.querySelectorAll('#s-mode input').forEach(i => i.onchange = updateChannelUI);
 $('s-weekstart').addEventListener('change', updateChannelUI);
 $('s-refname').addEventListener('input', () => { $('s-dep-ref').textContent = $('s-refname').value.trim() || 'your referee'; });
@@ -1162,10 +1176,13 @@ $('s-pledge').addEventListener('change', () => { if (!cfg) $('s-deposit').value 
 function normPhone(p){ const d = String(p||'').replace(/[^\d+]/g,''); return d.startsWith('+') ? '+' + d.slice(1).replace(/\+/g,'') : d; }
 function readChannel(){
   if (!modeAuto()) return { type:'none' };
+  const pc = parseConn($('s-conn').value);
+  if (pc) return { type:'ironclad', url: pc.url, secret: pc.secret };
   if (keptChannel) return keptChannel;
-  return { type:'ntfy', topic:$('s-ntfy').value.trim() };
+  return { type:'ironclad', url:'', secret:'', bad: !!$('s-conn').value.trim() };
 }
 function channelProblem(ch){
+  if (ch.type==='ironclad' && !ch.url) return ch.bad ? "That doesn't look like a connection code. Copy it again from your server page." : 'Paste your connection code, or pick Manual for now.';
   if (ch.type==='ntfy' && !/^[\w-]{6,64}$/.test(ch.topic)) return 'Something is off with the automatic channel. Switch to Manual and back to Automatic.';
   if (ch.type==='sms') {
     if (!/^https:\/\/[^\s/]+/.test(ch.url)) return 'Paste the server address from the setup guide (it starts with https:// and ends in .workers.dev).';
@@ -1180,7 +1197,7 @@ function snapshot(){
   return { name:cfg.name, refereeName:cfg.referee.name, refereePhone:normPhone(cfg.referee.phone), target:cfg.target, pledge:cfg.pledge, consequence:cfg.consequence, gym:cfg.gym.label, minMinutes:cfg.minMinutes,
     weekStart:cfg.weekStart, tz:Intl.DateTimeFormat().resolvedOptions().timeZone, sendHour: cfg.channel?.sendHour ?? 9, startWeek:startWeekKey(),
     week:st.wk, done:st.done, remaining:st.remaining, days:[...st.days], owed:owed(), streak:streak(), warmup:st.warmup, frozen:st.frozen,
-    deposited:deposited(), depositLeft:depositLeft() };
+    deposited:deposited(), depositLeft:depositLeft(), appUrl: new URL('./', location.href).href };
 }
 function refereeSetupText(ch){
   const name = $('s-name').value.trim();
@@ -1199,9 +1216,11 @@ $('s-test').onclick = async () => {
   msg.textContent = 'Sending…';
   try {
     const draft = readSetupForm();
-    const state = { name:draft.name||'Your friend', refereeName:draft.referee.name, refereePhone:normPhone(draft.referee.phone), target:draft.target, pledge:draft.pledge, consequence:draft.consequence, weekStart:draft.weekStart, tz:Intl.DateTimeFormat().resolvedOptions().timeZone, sendHour:ch.sendHour??9 };
-    await deliver({ event:'test', text:`Test from Ironclad: ${state.name}'s gym accountability app is connected to you. Real messages start once the contract is signed.`, state }, ch);
-    msg.textContent = ch.type==='sms' ? '✅ Sent. Your referee should get a text within seconds.' : '✅ Sent. Ask your referee if it arrived.';
+    const state = { name:draft.name||'Your friend', refereeName:draft.referee.name, refereePhone:normPhone(draft.referee.phone), target:draft.target, pledge:draft.pledge, consequence:draft.consequence, weekStart:draft.weekStart, tz:Intl.DateTimeFormat().resolvedOptions().timeZone, sendHour:ch.sendHour??9, appUrl: new URL('./', location.href).href };
+    const res = await deliver({ event:'test', text:`Test from Ironclad: ${state.name}'s gym accountability app is connected to you. Real messages start once the contract is signed.`, state }, ch);
+    msg.textContent = ch.type==='ironclad'
+      ? (res && res.delivered ? `✅ Connected, and a test alert went to ${res.delivered} device${res.delivered===1?'':'s'}.` : "✅ Your server is connected. Nobody gets alerts yet: after signing, invite your referee and they turn alerts on from their page.")
+      : ch.type==='sms' ? '✅ Sent. Your referee should get a text within seconds.' : '✅ Sent. Ask your referee if it arrived.';
   }
   catch(e){ msg.textContent = '❌ ' + e.message; }
 };
@@ -1416,7 +1435,7 @@ async function markPaid(){
 }
 
 /* ---------- automatic delivery to the referee ---------- */
-const CH_NAMES = { none:'manual', sms:'weekly text', telegram:'automatic', ntfy:'push app', discord:'automatic', webhook:'automatic' };
+const CH_NAMES = { none:'manual', ironclad:'Ironclad alerts', sms:'weekly text', telegram:'automatic', ntfy:'ntfy app', discord:'automatic', webhook:'automatic' };
 function dataUrlToBlob(d){ const [h,b]=d.split(','); const mime=h.match(/:(.*?);/)[1]; const bin=atob(b); const arr=new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime}); }
 async function deliver(msg, ch){
   ch = ch || cfg.channel;
@@ -1442,6 +1461,15 @@ async function deliver(msg, ch){
     if (!r.ok) throw new Error('Discord: HTTP ' + r.status);
     return true;
   }
+  if (ch.type==='ironclad') {
+    const body = JSON.stringify({ secret: ch.secret, via:'ironclad', event: msg.event, text: msg.text, ts: msg.ts||Date.now(), week: msg.week, data: msg.data||null, state: msg.state||null, photo: msg.photo||null, urgent: !!msg.urgent });
+    let r;
+    try { r = await fetch(ch.url + '/event', { method:'POST', headers:{'Content-Type':'application/json'}, body }); }
+    catch(e){ throw new Error("Couldn't reach your Ironclad server. Check your connection."); }
+    const j = await r.json().catch(()=>({}));
+    if (!r.ok) throw new Error(j.error || ('Server error ' + r.status));
+    return j;
+  }
   if (ch.type==='sms') {
     const body = JSON.stringify({ secret: ch.secret, event: msg.event, text: msg.text, ts: msg.ts||Date.now(), week: msg.week, data: msg.data||null, state: msg.state||null });
     let r;
@@ -1463,7 +1491,8 @@ function channelActive(){ return !!(cfg && cfg.channel && cfg.channel.type && cf
 function notifyReferee(event, text, opts={}){
   if (!channelActive()) return;
   const item = { id: Date.now().toString(36)+Math.random().toString(36).slice(2,6), ts: Date.now(), event, text, urgent: !!opts.urgent, week: opts.week || weekKey(new Date()), data: opts.data||null };
-  if (cfg.channel.type==='sms') item.state = snapshot(); else item.photo = opts.photo||null;
+  if (cfg.channel.type==='sms' || cfg.channel.type==='ironclad') item.state = snapshot();
+  if (cfg.channel.type!=='sms') item.photo = opts.photo||null;
   outbox.push(item);
   save(LS.outbox, outbox);
   flushOutbox();
@@ -1518,14 +1547,16 @@ function refereePageUrl(token){
 }
 async function inviteReferee(){
   let token = null;
-  if (cfg.channel.type==='sms') {
+  if (cfg.channel.type==='sms' || cfg.channel.type==='ironclad') {
     try {
       const r = await fetch(cfg.channel.url + '/invite', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret, state: snapshot() }) });
       const j = await r.json().catch(()=>({})); if (!r.ok) throw new Error(j.error || ('server error ' + r.status)); token = j.token;
-    } catch(e){ toast('Could not reach the text-message server: ' + e.message, 6000); return; }
+    } catch(e){ toast("Couldn't reach your Ironclad server: " + e.message, 6000); return; }
   }
-  const link = refereePageUrl(token);
-  const text = `${cfg.referee.name}, will you be my gym referee? Two minutes a week, and you get to hold my money. Read this and tap Agree:\n${link}`;
+  const link = cfg.channel.type==='ironclad' ? `${cfg.channel.url}/r/${token}/` : refereePageUrl(token);
+  const text = cfg.channel.type==='ironclad'
+    ? `${cfg.referee.name}, will you be my gym referee? Two minutes a week, and you get to hold my money. Open this, tap "I'm in", then turn on alerts:\n${link}`
+    : `${cfg.referee.name}, will you be my gym referee? Two minutes a week, and you get to hold my money. Read this and tap Agree:\n${link}`;
   let how = 'share';
   if (navigator.share) { try { await navigator.share({ text }); } catch { return; } }
   else { how = 'copy'; try { await navigator.clipboard.writeText(text); toast('Invitation copied. Paste it to your referee.'); } catch { openSheet(`<h3>Send this to ${esc(cfg.referee.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px;word-break:break-all">${esc(text)}</pre><button class="btn-block" id="sheet-close">Done</button>`); } }
@@ -1535,7 +1566,7 @@ async function inviteReferee(){
 async function markRefereeAgreed(how, ts, fromServer=false){
   if (refereeAgreement()) return;
   await append({ type:'referee', agreed:true, how, agreedAt: ts || Date.now() });
-  if (cfg.channel.type==='sms' && !fromServer) notifyReferee('referee', `${cfg.referee.name} agreed to be the referee (${how}).`, { data:{ agreed:true, how } });
+  if ((cfg.channel.type==='sms' || cfg.channel.type==='ironclad') && !fromServer) notifyReferee('referee', `${cfg.referee.name} agreed to be the referee (${how}).`, { data:{ agreed:true, how } });
   renderToday();
 }
 $('btn-invite').onclick = inviteReferee;
@@ -1543,13 +1574,15 @@ $('btn-agreed').onclick = async () => {
   if (await ask({ title:'Referee said yes?', body:`Only confirm this if ${esc(cfg.referee.name)} actually agreed to the job: reading the weekly verdict, holding the money, forfeiting it when you fail, and treating silence as failure.`, okLabel:'Yes, they agreed' }))
     markRefereeAgreed(`confirmed by ${cfg.name}`);
 };
-let agreementCheckAt = 0;
+let agreementCheckAt = 0, refSubs = null;
 async function checkRefereeAgreement(force=false){
-  if (!cfg || cfg.channel.type!=='sms' || refereeAgreement() || (!force && Date.now()-agreementCheckAt < 30000)) return;
+  const t = cfg && cfg.channel.type;
+  if (!cfg || !['sms','ironclad'].includes(t) || (refereeAgreement() && t!=='ironclad') || (!force && Date.now()-agreementCheckAt < 30000)) return;
   agreementCheckAt = Date.now();
   try {
     const r = await fetch(cfg.channel.url + '/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret }) });
     const j = await r.json();
+    if (typeof j.subscribers === 'number' && j.subscribers !== refSubs) { refSubs = j.subscribers; if (!j.agreedAt || refereeAgreement()) renderToday(); }
     if (j.agreedAt) { await markRefereeAgreed(j.agreedHow || 'tapped Agree on the referee page', j.agreedAt, true); toast(`${cfg.referee.name} is in. No hiding now. 🤝`, 5000); }
   } catch {}
 }
@@ -1644,6 +1677,29 @@ $('s-cancel').onclick = () => { show('settings'); toast('Nothing changed.'); };
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
 document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); await settleWeeks(); renderToday(); flushOutbox(); checkRefereeAgreement(true); } });
 
+let pendingConn = null;
+function readConnectHash(){
+  const m = location.hash.match(/connect=([^&]+)/); if (!m) return false;
+  let code = ''; try { code = decodeURIComponent(m[1]); } catch {}
+  history.replaceState(null, '', location.pathname + location.search);
+  if (parseConn(code)) { pendingConn = code; return true; }
+  return false;
+}
+readConnectHash();
+addEventListener('hashchange', () => { if (readConnectHash()) { if (cfg) offerConnection(); else { $('s-conn').value = pendingConn; updateChannelUI(); toast('Connection code added. It is waiting for you in step 4.', 5000); } } });
+async function offerConnection(){
+  if (!pendingConn) return;
+  const pc = parseConn(pendingConn);
+  if (!cfg) { toast('Connection code added. It is waiting for you in step 4.', 5000); return; }
+  if (cfg.channel.type==='ironclad' && cfg.channel.url===pc.url && cfg.channel.secret===pc.secret) { pendingConn = null; return toast('Already connected to this server.'); }
+  const yes = await ask({ title:'Connect Ironclad alerts?', body:`Your referee will get notifications from <b>${esc(new URL(pc.url).host)}</b>. The change is logged and reported.`, okLabel:'Connect' });
+  pendingConn = null; if (!yes) return;
+  const before = CH_NAMES[cfg.channel.type] || cfg.channel.type;
+  cfg.channel = { type:'ironclad', url: pc.url, secret: pc.secret }; save(LS.cfg, cfg);
+  await append({ type:'config', changes:`channel: ${before} → Ironclad alerts` });
+  notifyReferee('signed', introText());
+  toast('Connected. Now invite your referee so they can turn alerts on.', 5000); renderToday(); checkRefereeAgreement(true);
+}
 (async function boot(){
   setIntegrity(await verifyLedger());
   if (cfg) {
@@ -1652,6 +1708,7 @@ document.addEventListener('visibilitychange', async () => { if (!document.hidden
     render(); show('today'); minuteCheck();
     sendTamperAlert(); flushOutbox(); checkRefereeAgreement(true);
   } else render();
+  offerConnection();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 })();

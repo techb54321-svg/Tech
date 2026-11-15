@@ -1,4 +1,4 @@
-name = "ironclad-sms"
+name = "ironclad"
 main = "worker.js"
 compatibility_date = "2025-01-01"
 
@@ -10,5 +10,3 @@ crons = ["0 * * * *"]
 [[kv_namespaces]]
 binding = "STATE"
 id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
-
-# Secrets are set with: npx wrangler secret put APP_SECRET   (and the three TWILIO_* ones)

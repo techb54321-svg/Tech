@@ -173,7 +173,7 @@
       <label class="check"><input type="checkbox" id="s-photo" checked /> Require a photo at check-in (proof for the referee)</label>
 
       <h2 style="margin-top:18px">The stakes</h2>
-      <p class="small muted">A referee is a real person who will receive your weekly result. Pick someone whose opinion you do not want to lose.</p>
+      <p class="small muted">A referee is a real person who will receive your weekly result. Pick someone whose opinion you do not want to lose. After you sign, you will send them an invitation that explains the role, and they have to agree before they count.</p>
       <label>Referee's name</label>
       <input type="text" id="s-refname" required />
       <div class="row">
@@ -263,7 +263,12 @@
       <div class="kv"><span>Passing-week streak</span><b id="k-streak"></b></div>
       <div class="kv"><span>Freezes left this quarter</span><b id="k-freeze"></b></div>
       <div class="kv"><span>Referee channel</span><b id="k-channel"></b></div>
+      <div class="kv"><span>Referee agreed</span><b id="k-agreed"></b></div>
       <div class="row" style="margin-top:12px">
+        <button id="btn-invite">Invite referee</button>
+        <button id="btn-agreed">Referee said yes</button>
+      </div>
+      <div class="row" style="margin-top:10px">
         <button id="btn-report">Send week report</button>
         <button id="btn-freeze">Declare a freeze</button>
       </div>
@@ -503,6 +508,7 @@ function render(){
 }
 function renderToday(){
   const st = currentStatus();
+  const ag = refereeAgreement();
   $('ring-num').textContent = `${Math.min(st.done,cfg.target)}/${cfg.target}`;
   const frac = Math.min(1, st.done/cfg.target);
   const fg = $('ring-fg');
@@ -526,11 +532,14 @@ function renderToday(){
   if (unsent) banners.push(['warn',`📨 Last week closed as <b>${unsent.result.toUpperCase()}</b> (${unsent.done}/${unsent.target}). Your referee has not been told yet. <button style="padding:6px 10px;margin-left:6px" id="btn-send-last">Send now</button>`]);
   if (!tampered && st.level==='bad' && !st.frozen && st.remaining>0 && st.remaining<=st.daysLeft) banners.push(['bad','🔥 No slack left this week. Go today.']);
   if (channelActive() && outbox.length) banners.push(['warn',`📡 ${outbox.length} message${outbox.length===1?'':'s'} to ${esc(cfg.referee.name)} not delivered yet${lastDeliveryError?` (${esc(lastDeliveryError)})`:''}. <button style="padding:6px 10px;margin-left:6px" id="btn-retry">Retry</button>`]);
+  if (!ag && !tampered) banners.push(['warn',`🤝 ${esc(cfg.referee.name)} has not agreed to be your referee yet. ${cfg.channel.type==='sms' ? 'No weekly texts go out until they do.' : 'The stakes are only real once they say yes.'} <button style="padding:6px 10px;margin-left:6px" id="btn-invite2">Invite</button>`]);
   if (!channelActive()) banners.push(['warn','📨 Reports are manual. Switch to Automatic in Settings → Edit contract so your referee hears from the app, not from you.']);
   $('banners').innerHTML = banners.map(([l,h])=>`<div class="banner ${l}">${h}</div>`).join('');
   const bp = $('btn-paid'); if (bp) bp.onclick = markPaid;
   const bs = $('btn-send-last'); if (bs) bs.onclick = ()=>sendReport(unsent.week);
   const br = $('btn-retry'); if (br) br.onclick = ()=>{ lastDeliveryError=''; flushOutbox(); };
+  const bi = $('btn-invite2'); if (bi) bi.onclick = inviteReferee;
+  checkRefereeAgreement();
   escalate(st);
 
   $('k-ref').textContent = cfg.referee.name;
@@ -538,6 +547,10 @@ function renderToday(){
   $('k-owed').textContent = money(o); $('k-owed').style.color = o>0?'var(--bad)':'var(--ok)';
   $('k-streak').textContent = `${streak()} week${streak()===1?'':'s'}`;
   $('k-freeze').textContent = freezesLeft();
+  $('k-agreed').textContent = ag ? `✓ ${new Date(ag.agreedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'})}` : 'not yet';
+  $('k-agreed').style.color = ag ? 'var(--ok)' : 'var(--warn)';
+  $('btn-agreed').style.display = ag ? 'none' : '';
+  $('btn-invite').textContent = ag ? 'Resend referee info' : 'Invite referee';
   const kc = $('k-channel');
   if (!channelActive()) { kc.textContent = 'manual'; kc.style.color='var(--warn)'; }
   else if (outbox.length) { kc.textContent = `${CH_NAMES[cfg.channel.type]} · ${outbox.length} queued`; kc.style.color='var(--warn)'; }
@@ -596,6 +609,8 @@ function renderHistory(){
       case 'freeze': body = `🧊 Freeze declared for week of ${e.week}: ${esc(e.reason)}`; break;
       case 'notify': body = e.auto ? `📡 Referee auto-notified (${esc(e.event)}) via ${esc(e.channel)}` : `📨 Referee sent report for week of ${e.week} via ${e.channel}`; break;
       case 'paid': body = `💵 Paid ${money(e.amount)}`; break;
+      case 'invite': body = `📨 Referee invitation sent`; break;
+      case 'referee': body = `🤝 Referee agreed (${esc(e.how)})`; break;
       case 'config': body = `✏️ Contract changed: ${esc(e.changes)}`; break;
       case 'import': body = `📥 Ledger imported (${e.count} entries)`; break;
       default: body = esc(e.type);
@@ -609,7 +624,7 @@ function renderSettings(){
     ['Name', c.name], ['Gym', `${c.gym.label||''} (${c.gym.lat.toFixed(5)}, ${c.gym.lng.toFixed(5)})`], ['Radius', c.radius+' m'], ['Minimum stay', c.minMinutes+' min'],
     ['Target', `${c.target}× per week, weeks start ${DN[c.weekStart]}`], ['Planned days', c.planDays.map(d=>DN[d]).join(', ')||'none'], ['Reminder', c.remindTime],
     ['Photo required', c.requirePhoto?'yes':'no'], ['Referee', `${c.referee.name} ${c.referee.phone||''} ${c.referee.email||''}`], ['Pledge', money(c.pledge)+' per failed week'],
-    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
+    ['Consequence', c.consequence||'—'], ['Freezes', c.freezesPerQuarter+' per quarter'], ['Referee updates', CH_NAMES[(c.channel||{}).type||'none']], ['Referee agreed', refereeAgreement() ? new Date(refereeAgreement().agreedAt).toLocaleDateString() : 'not yet'], ['Signed', new Date(c.createdAt).toLocaleString()], ['Counting from', fmtDate(parseYmd(startWeekKey()))]
   ].map(([k,v])=>`<div class="kv"><span class="muted">${k}</span><b>${esc(v)}</b></div>`).join('');
   $('btn-notify').textContent = ('Notification' in window && Notification.permission==='granted') ? '🔔 Notifications enabled' : '🔔 Enable notifications';
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) $('install-hint').textContent = 'Installed. Good.';
@@ -794,6 +809,8 @@ $('setup').onsubmit = async ev => {
     toast(cfg.startWeek===weekKey(new Date()) ? 'Contract signed. No way back now.' : `Contract signed. Warm-up until ${fmtDate(parseYmd(cfg.startWeek))}, then it counts.`, 6000);
     scheduleReminders();
     notifyReferee('signed', introText());
+    setTimeout(() => openSheet(`<h3>Now invite ${esc(cfg.referee.name)}</h3><p class="small muted">Your referee gets a page that explains the role and the stakes, and taps Agree. Until they do, the contract has no teeth.</p><button class="btn-primary btn-block" style="margin-top:14px" id="inv-now">Send the invitation</button><button class="btn-block" style="margin-top:8px" id="sheet-close">Later</button>`), 400);
+    setTimeout(() => { const b = $('inv-now'); if (b) b.onclick = () => { closeSheet(); inviteReferee(); }; }, 450);
   }
   render(); show('today'); window.scrollTo(0,0);
 };
@@ -890,6 +907,7 @@ function reportText(wk){
   if (!isCurrent && w.result==='fail') lines.push(`Owed to you: ${money(w.owed)}.${cfg.consequence?' Consequence: '+cfg.consequence:''}`);
   const o = owed(); if (o) lines.push(`Total outstanding: ${money(o)}.`);
   lines.push(`Passing streak: ${streak()} weeks.`);
+  const ag = refereeAgreement(); lines.push(ag ? `Referee agreed on ${fmtDate(new Date(ag.agreedAt))}.` : 'Referee has not formally agreed yet.');
   const changes = ledger.filter(e=>e.type==='config' && weekKey(new Date(e.ts))===wk);
   if (changes.length) lines.push(`Contract changes this week: ${changes.map(c=>c.changes).join(' | ')}`);
   if (tampered) lines.push('WARNING: the ledger on this phone has been tampered with.');
@@ -1028,6 +1046,52 @@ function escalate(st){
     : `🔥 ${cfg.name} has zero slack left: ${st.remaining} session${st.remaining===1?'':'s'} needed in ${st.daysLeft} day${st.daysLeft===1?'':'s'}.`, { urgent:true });
 }
 
+/* ---------- referee invitation & agreement ---------- */
+function refereeAgreement(){ return ledger.find(e => e.type==='referee' && e.agreed); }
+function refereePageUrl(token){
+  const base = new URL('referee/', location.href).href;
+  const p = new URLSearchParams({ n:cfg.name, r:cfg.referee.name, t:cfg.target, p:cfg.pledge, c:cfg.consequence||'', d:cfg.weekStart, g:cfg.gym.label||'', m: cfg.channel.type==='sms' ? 'sms' : channelActive() ? 'push' : 'manual' });
+  if (cfg.channel.type==='sms') { p.set('h', cfg.channel.sendHour ?? 9); p.set('s', cfg.channel.url); if (token) p.set('k', token); }
+  return base + '?' + p.toString();
+}
+async function inviteReferee(){
+  let token = null;
+  if (cfg.channel.type==='sms') {
+    try {
+      const r = await fetch(cfg.channel.url + '/invite', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret, state: snapshot() }) });
+      const j = await r.json().catch(()=>({})); if (!r.ok) throw new Error(j.error || ('server error ' + r.status)); token = j.token;
+    } catch(e){ toast('Could not reach the text-message server: ' + e.message, 6000); return; }
+  }
+  const link = refereePageUrl(token);
+  const text = `${cfg.referee.name}, will you be my gym referee? It takes about two minutes a week. Please read this and tap Agree:\n${link}`;
+  let how = 'share';
+  if (navigator.share) { try { await navigator.share({ text }); } catch { return; } }
+  else { how = 'copy'; try { await navigator.clipboard.writeText(text); toast('Invitation copied. Paste it to your referee.'); } catch { openSheet(`<h3>Send this to ${esc(cfg.referee.name)}</h3><pre style="white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg2);padding:12px;border-radius:10px;word-break:break-all">${esc(text)}</pre><button class="btn-block" id="sheet-close">Done</button>`); } }
+  await append({ type:'invite', how });
+  renderToday();
+}
+async function markRefereeAgreed(how, ts, fromServer=false){
+  if (refereeAgreement()) return;
+  await append({ type:'referee', agreed:true, how, agreedAt: ts || Date.now() });
+  if (cfg.channel.type==='sms' && !fromServer) notifyReferee('referee', `${cfg.referee.name} agreed to be the referee (${how}).`, { data:{ agreed:true, how } });
+  renderToday();
+}
+$('btn-invite').onclick = inviteReferee;
+$('btn-agreed').onclick = async () => {
+  if (await ask({ title:'Referee said yes?', body:`Only confirm this if ${esc(cfg.referee.name)} has actually agreed to the role: reading the weekly result, collecting the stake when you fail, and treating silence as failure.`, okLabel:'Yes, they agreed' }))
+    markRefereeAgreed(`confirmed by ${cfg.name}`);
+};
+let agreementCheckAt = 0;
+async function checkRefereeAgreement(force=false){
+  if (!cfg || cfg.channel.type!=='sms' || refereeAgreement() || (!force && Date.now()-agreementCheckAt < 30000)) return;
+  agreementCheckAt = Date.now();
+  try {
+    const r = await fetch(cfg.channel.url + '/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ secret: cfg.channel.secret }) });
+    const j = await r.json();
+    if (j.agreedAt) { await markRefereeAgreed(j.agreedHow || 'tapped Agree on the referee page', j.agreedAt, true); toast(`${cfg.referee.name} agreed to be your referee. 🤝`, 5000); }
+  } catch {}
+}
+
 /* ---------- sheets ---------- */
 function ask({ title, body, okLabel='OK', cancelLabel='Cancel', danger=false, input=null }){
   return new Promise(res => {
@@ -1116,7 +1180,7 @@ $('s-cancel').onclick = () => { show('settings'); toast('No changes saved.'); };
 
 /* ---------- nav & boot ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.view));
-document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); await settleWeeks(); renderToday(); flushOutbox(); } });
+document.addEventListener('visibilitychange', async () => { if (!document.hidden && cfg) { await recoverActive(); await settleWeeks(); renderToday(); flushOutbox(); checkRefereeAgreement(true); } });
 
 (async function boot(){
   setIntegrity(await verifyLedger());
@@ -1124,7 +1188,7 @@ document.addEventListener('visibilitychange', async () => { if (!document.hidden
     await recoverActive();
     await settleWeeks();
     render(); show('today'); minuteCheck();
-    sendTamperAlert(); flushOutbox();
+    sendTamperAlert(); flushOutbox(); checkRefereeAgreement(true);
   } else render();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Referee invitation</title>
+<meta name="description" content="Someone is asking you to be the referee for their gym commitment. Here is what that means and how to agree." />
+<meta name="robots" content="noindex" />
+<style>
+  :root{--bg:#0b0d12;--card:#171b25;--line:#262c3a;--text:#eef1f7;--muted:#8f98ab;--accent:#ffb020;--ok:#2ecc71;--bad:#ff4d4f}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+  main{max-width:560px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:24px;line-height:1.25;margin:4px 0 8px}
+  h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+  p{margin:8px 0}.muted{color:var(--muted)}.small{font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px}.kv:last-child{border-bottom:0}.kv b{text-align:right;max-width:60%}
+  ul{padding-left:20px;margin:6px 0}li{margin:7px 0}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);border-radius:14px;padding:16px;background:#12151d;color:var(--text);font-weight:800;width:100%;font-size:17px}
+  .primary{background:linear-gradient(135deg,#ffb020,#ff7a00);color:#1a1200;border:0}
+  button:disabled{opacity:.5}
+  .done{border-left:3px solid var(--ok);background:#12151d;padding:12px 14px;border-radius:0 12px 12px 0}
+  .err{color:#ff8a8c;font-size:14px}
+  .brand{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}.brand span{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">Iron<span>clad</span> · referee invitation</div>
+  <h1 id="title">Someone is asking you to be their gym referee.</h1>
+  <p class="muted" id="lede">It takes about two minutes a week. Read this, then decide.</p>
+
+  <div class="card">
+    <h2>What this is</h2>
+    <p><span id="n1">They have</span> made a commitment contract to go to the gym regularly. An app on their phone verifies each session with GPS at check-in and check-out, keeps a tamper-evident log, and reports the result every week. The app can count sessions, but it cannot make a missed week cost anything. That is what a referee is for: you are the person they answer to.</p>
+  </div>
+
+  <div class="card">
+    <h2>The deal</h2>
+    <div class="kv"><span>Goal</span><b id="goal"></b></div>
+    <div class="kv"><span>Stake</span><b id="stake"></b></div>
+    <div class="kv" id="conseq-row"><span>Consequence</span><b id="conseq"></b></div>
+    <div class="kv"><span>Week runs</span><b id="week"></b></div>
+    <div class="kv"><span>You will hear</span><b id="hear"></b></div>
+  </div>
+
+  <div class="card">
+    <h2>Your job</h2>
+    <ul>
+      <li><b>Read the weekly result.</b> That is most of it.</li>
+      <li><b>If it says FAIL, collect the stake.</b> Do not let it slide and do not accept excuses that were not declared in advance. The whole thing only works if a missed week actually costs something.</li>
+      <li><b>Treat silence as failure.</b> If a week goes by with no result, or a message says no sessions were reported, assume the week was missed and ask.</li>
+    </ul>
+    <p class="small muted">You do not have to nag, track anything, or check in on them. Illness or travel can be declared in advance as a "freeze" week, and you will be told when that happens.</p>
+  </div>
+
+  <div class="card">
+    <h2>What you receive, and privacy</h2>
+    <p class="small" id="privacy"></p>
+  </div>
+
+  <div class="card" id="agree-card">
+    <button id="agree" class="primary">I agree to be the referee</button>
+    <p class="err" id="err"></p>
+    <p class="small muted" style="margin-top:10px">Not for you? Just tell <span id="n2">them</span>. No hard feelings, and they can ask someone else.</p>
+  </div>
+  <div class="card done" id="done" style="display:none"></div>
+</main>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const g = k => q.get(k) || '';
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const DN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const name = g('n') || 'Your friend', ref = g('r'), target = +g('t') || 3, pledge = +g('p') || 0, conseq = g('c'), d = +g('d') || 1, mode = g('m') || 'manual', gym = g('g'), hour = g('h') === '' ? 9 : +g('h'), server = g('s'), token = g('k');
+  const money = n => n.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
+  const hour12 = h => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
+  const $ = id => document.getElementById(id);
+  document.title = `${name} wants you as referee`;
+  $('title').textContent = `${ref ? ref + ', ' : ''}${name} is asking you to be their gym referee.`;
+  $("n1").textContent = name + " has"; $("n2").textContent = name;
+  $('goal').textContent = `${target} gym sessions a week, on separate days${gym ? `, at ${gym}` : ''}, GPS-verified`;
+  $('stake').textContent = pledge ? `${money(pledge)} per failed week, owed to you` : 'no money, just your opinion of them';
+  if (conseq) $('conseq').textContent = conseq; else $('conseq-row').style.display = 'none';
+  $('week').textContent = `${DN[d]} to ${DN[(d + 6) % 7]}`;
+  $('hear').textContent = mode === 'sms' ? `one text message every ${DN[d]} around ${hour12(hour)} with the week's result` : mode === 'push' ? 'instant notifications for every check-in and the weekly result, through the free ntfy app' : `a weekly report ${name} sends you`;
+  $('privacy').innerHTML = mode === 'push'
+    ? `Each check-in notification includes the time, how far from the gym the phone was, and the check-in photo. You never see live location. Everything else stays on ${esc(name)}'s phone.`
+    : mode === 'sms'
+    ? `You receive the number of sessions, which days, pass or fail, and anything owed. No location data or photos. Texts come from a number ${esc(name)} set up for this; reply STOP at any time to end them.`
+    : `You receive the number of sessions, which days, pass or fail, and anything owed. No location data. Everything else stays on ${esc(name)}'s phone.`;
+
+  $('agree').onclick = async () => {
+    const btn = $('agree'); btn.disabled = true; $('err').textContent = '';
+    if (mode === 'sms' && server && token) {
+      try {
+        const r = await fetch(server.replace(/\/+$/, '') + '/agree', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ token, name: ref }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(j.error || 'Server error ' + r.status);
+        $('agree-card').style.display = 'none';
+        $('done').style.display = 'block';
+        $('done').innerHTML = `<b>You're in. Thank you.</b><p class="small">${esc(name)}'s app has been told. You should get a welcome text shortly, and the first result arrives on ${DN[d]}. If a FAIL ever comes through, remember: collect.</p>`;
+      } catch (e) { $('err').textContent = e.message + (/not valid/.test(e.message) ? '' : ` Tell ${name} you agree, so they can confirm it in the app.`); btn.disabled = false; }
+      return;
+    }
+    $('agree-card').style.display = 'none';
+    $('done').style.display = 'block';
+    $('done').innerHTML = `<b>Thank you.</b><p class="small">Now tell ${esc(name)} directly, for example reply "I agree" to their message, so they can confirm it in the app.${mode === 'push' ? ' They will also send you a short setup for the ntfy notifications.' : ''}</p>`;
+  };
+})();
+</script>
+</body>
+</html>

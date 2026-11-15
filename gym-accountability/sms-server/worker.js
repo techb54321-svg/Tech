@@ -12,6 +12,10 @@
 //   TWILIO_AUTH_TOKEN   from the Twilio console
 //   TWILIO_FROM         your Twilio number, e.g. +15551234567
 // Cron trigger: 0 * * * *  (hourly; the worker decides when to send)
+//
+// Consent: the referee must agree before any weekly text is sent. The app
+// creates an invitation token (POST /invite); the referee page redeems it
+// (POST /agree) which records the agreement and sends a welcome text.
 
 const DAY = 86400000;
 const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -32,6 +36,18 @@ export default {
 
     let body;
     try { body = await request.json(); } catch { return json({ error: 'bad json' }, 400); }
+    if (url.pathname === '/agree') {
+      // Public: redeemed by the referee page with the invitation token.
+      if (!env.STATE) return json({ error: 'KV binding STATE is missing' }, 500);
+      const st = await getState(env);
+      if (!body.token || !st.inviteToken || body.token !== st.inviteToken) return json({ error: 'This invitation link is not valid any more. Ask for a new one.' }, 400);
+      if (!st.agreedAt) {
+        st.agreedAt = Date.now(); st.agreedBy = String(body.name || st.cfg?.refereeName || '').slice(0, 60); st.agreedHow = 'tapped Agree on the referee page';
+        try { await sendSMS(env, st.cfg?.refereePhone, welcomeText(st.cfg)); } catch (e) { st.welcomeError = e.message; }
+        await putState(env, st);
+      }
+      return json({ ok: true, agreedAt: st.agreedAt, name: st.cfg?.name || '' });
+    }
     if (!env.APP_SECRET) return json({ error: 'APP_SECRET is not set on the server' }, 500);
     if (body.secret !== env.APP_SECRET) return json({ error: 'wrong secret' }, 401);
     if (!env.STATE) return json({ error: 'KV binding STATE is missing' }, 500);
@@ -42,10 +58,21 @@ export default {
         recordEvent(st, body);
         let sent = null;
         if (body.event === 'test') sent = await sendSMS(env, st.cfg.refereePhone, testText(st.cfg));
-        if (body.event === 'signed') sent = await sendSMS(env, st.cfg.refereePhone, introText(st.cfg));
-        if (body.event === 'tamper') sent = await sendSMS(env, st.cfg.refereePhone, `Ironclad alert: ${st.cfg.name}'s gym log on their phone has been edited outside the app. Treat the record as untrustworthy and ask ${st.cfg.name} about it.`);
+        if (body.event === 'referee' && body.data?.agreed && !st.agreedAt) { st.agreedAt = Number(body.ts) || Date.now(); st.agreedBy = st.cfg.refereeName; st.agreedHow = String(body.data.how || 'confirmed by the user').slice(0, 80); try { sent = await sendSMS(env, st.cfg.refereePhone, welcomeText(st.cfg)); } catch (e) { st.welcomeError = e.message; } }
+        if (body.event === 'tamper' && st.agreedAt) sent = await sendSMS(env, st.cfg.refereePhone, `Ironclad alert: ${st.cfg.name}'s gym log on their phone has been edited outside the app. Treat the record as untrustworthy and ask ${st.cfg.name} about it.`);
         await putState(env, st);
-        return json({ ok: true, sent });
+        return json({ ok: true, sent, agreedAt: st.agreedAt || null });
+      }
+      if (url.pathname === '/invite') {
+        const st = await getState(env);
+        if (body.state && typeof body.state === 'object') st.cfg = { ...(st.cfg || {}), ...body.state };
+        if (!st.inviteToken) st.inviteToken = randomToken();
+        await putState(env, st);
+        return json({ ok: true, token: st.inviteToken, agreedAt: st.agreedAt || null });
+      }
+      if (url.pathname === '/state') {
+        const st = await getState(env);
+        return json({ ok: true, agreedAt: st.agreedAt || null, agreedBy: st.agreedBy || null, agreedHow: st.agreedHow || null, lastSentWeek: st.lastSentWeek || null, lastReport: st.lastReport || null, welcomeError: st.welcomeError || null });
       }
       if (url.pathname === '/summary') {
         // Preview (or force-send with {"send":true}) the summary for the last closed week.
@@ -103,6 +130,7 @@ function recordEvent(st, body) {
 export async function runWeekly(env, now, force = false) {
   const st = await getState(env);
   if (!st.cfg) return 'no data from the app yet';
+  if (!st.agreedAt) return 'referee has not agreed yet';
   const loc = localParts(now, st.cfg.tz);
   const weekStart = Number.isInteger(st.cfg.weekStart) ? st.cfg.weekStart : 1;
   const sendHour = Number.isInteger(st.cfg.sendHour) ? st.cfg.sendHour : 9;
@@ -146,9 +174,10 @@ export function summaryText(st, wk, now) {
   return s;
 }
 
-function introText(c) {
-  return `Hi ${c.refereeName || 'there'}, this is ${c.name}'s gym accountability app (Ironclad). ${c.name} committed to ${c.target} GPS-verified gym sessions a week. You will get one text every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)} with the result. A failed week means ${c.name} owes you $${c.pledge}. If a text ever says no data was reported, treat that as a fail.`;
+function welcomeText(c) {
+  return `Thanks for agreeing to be ${c.name}'s gym referee. You will get one text every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)} with the week's result. A failed week means ${c.name} owes you $${c.pledge}; please actually collect it. If a text says no data was reported, treat that as a fail. Reply STOP at any time to end the texts.`;
 }
+function randomToken() { const a = 'abcdefghijkmnopqrstuvwxyz23456789'; const arr = new Uint32Array(20); crypto.getRandomValues(arr); return [...arr].map(n => a[n % a.length]).join(''); }
 function testText(c) {
   return `Test from Ironclad: ${c.name}'s gym accountability app can now text you. Weekly results arrive every ${DN[c.weekStart ?? 1]} around ${hour12(c.sendHour ?? 9)}.`;
 }
@@ -199,6 +228,7 @@ async function statusPage(env, url) {
     try {
       const st = await getState(env);
       extra += `<li>${st.cfg ? '✅' : '⏳'} ${st.cfg ? `Connected to the app (last report ${new Date(st.lastReport).toLocaleString('en-US', { timeZone: st.cfg.tz || 'UTC' })} ${st.cfg.tz || 'UTC'})` : 'Waiting for the first message from the app (use "Send a test message" in the app)'}</li>`;
+      if (st.cfg) extra += `<li>${st.agreedAt ? '✅' : '⏳'} Referee ${st.agreedAt ? `agreed on ${new Date(st.agreedAt).toLocaleDateString('en-US', { timeZone: st.cfg.tz || 'UTC' })} (${st.agreedHow || ''})` : 'has not agreed yet: send the invitation from the app. No weekly texts go out until they do.'}</li>`;
       if (st.cfg) extra += `<li>📅 Weekly text: every ${DN[st.cfg.weekStart ?? 1]} at ${hour12(st.cfg.sendHour ?? 9)} (${st.cfg.tz || 'UTC'}), to ${st.cfg.refereePhone ? st.cfg.refereePhone.replace(/\d(?=\d{4})/g, '•') : 'no number yet'}</li>`;
       if (st.sent.length) extra += `<li>📨 Last weekly text: week of ${st.sent[st.sent.length - 1].week}, sent ${new Date(st.sent[st.sent.length - 1].ts).toLocaleString('en-US', { timeZone: st.cfg?.tz || 'UTC' })}</li>`;
     } catch (e) { extra += `<li>❌ KV read failed: ${e.message}</li>`; }

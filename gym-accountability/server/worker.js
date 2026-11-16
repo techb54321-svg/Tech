@@ -13,7 +13,7 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
-const VERSION = '2026-11-16d'; // shown on the status page so you can tell which code is running
+const VERSION = '2026-11-16e'; // shown on the status page so you can tell which code is running
 const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
 const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
@@ -514,7 +514,7 @@ function refereePage(st, token, vapidKey) {
     <div class="card"><h2>What this is</h2><p><b class="nm"></b> made a deal: <span id="inv-short"></span>, or it costs them. Their app checks GPS on arrival and departure, insists on a minimum stay, and keeps a log that shows any tampering. What it can't do is make a missed week actually hurt.</p><p style="border-left:3px solid var(--accent);padding:4px 12px;color:var(--muted)">That part is you.</p></div>
     <div class="card"><h2>The deal</h2><div id="deal"></div></div>
     <div class="card"><h2>Your job</h2><ul><li><b>Read the weekly verdict.</b> That's most of it.</li><li id="duty-money"></li><li><b>Treat silence as failure.</b> No verdict, or a note that the app reported nothing? Assume the week was missed and ask.</li></ul><p class="small muted">Not your job: nagging, tracking, policing. Illness or travel can be declared in advance as a freeze, and you'll be told. Excuses after the fact don't count. That's the rule they chose.</p></div>
-    <div class="card"><h2>What you'll see</h2><p class="small">A notification when <b class="nm"></b> checks in (with a photo, on Android), when a session counts or doesn't, and the weekly verdict. Never their location, only how far from the gym they were. Photos delete themselves after ${PHOTO_DAYS} days. This link is private: don't forward it. You can turn alerts off any time.</p></div>
+    <div class="card"><h2>What you'll see</h2><p class="small">A notification when <b class="nm"></b> checks in (with a photo, on Android), when a session counts or doesn't, and the weekly verdict. Never their location, only how far from the gym they were. Photos delete themselves after ${PHOTO_DAYS} days. This link is private: don't forward it. You can turn alerts off any time. <a href="${APP_URL}privacy.html" style="color:var(--accent)">Full privacy details</a></p></div>
     <button id="agree" class="primary">I'm in. Hold them to it.</button>
     <p class="small muted" style="text-align:center">Not for you? Just tell <b class="nm"></b>. No hard feelings.</p>
   </section>

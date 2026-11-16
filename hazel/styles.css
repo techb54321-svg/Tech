@@ -91,6 +91,9 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .hero.night .taken.ok { color: #bfe8c9; }
 .hero.night .taken.warn { color: #ffd98a; }
 .rest { font-size: 1.3rem; font-weight: 650; line-height: 1.35; margin: 10px auto 0; max-width: 17em; }
+/* Words that do not fit beside the clock (see fitHero): the bedtime message goes first, then the greeting. */
+.hero.shed-rest .rest { display: none; }
+.hero.shed-greeting .greeting { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .landscape { position: absolute; bottom: 0; left: 0; width: 100%; height: 78px; }
 .sun {
   position: absolute; width: 34px; height: 34px; background: #fffce7; border-radius: 50%;
@@ -194,7 +197,8 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   :root[data-size='largest'] .hero.compact .taken { font-size: 1.05rem; } /* one line each, so the green button stays on the first screen */
 }
 @media (max-width: 699px) {
-  :root[data-size='largest'] .hero.compact .sound-hint { font-size: max(1rem, 20px); padding: 4px 12px; }
+  :root:not([data-size='normal']) .hero.compact .sound-hint { font-size: max(1rem, 20px); padding: 4px 12px; } /* one line */
+  :root[data-size='largest'] .hero.compact .taken.same { display: none; } /* the card just below names it */
 }
 .hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; } /* a held finger that drifts must not turn into a scroll */
 
@@ -483,7 +487,7 @@ fieldset.field legend { padding: 0; }
 .prompt-card .say-card { text-align: left; margin: 0 0 12px; font-size: 1.25rem; }
 .big-number { font-size: 2.4rem; font-weight: 850; line-height: 1.15; margin: 4px 0 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
 .big-number.address { font-size: 1.5rem; }
-.ring-note .short { display: none; }
+.ring-note .short, .ring-side { display: none; }
 /* A phone on its side is very short: no picture, a smaller heading, and the buttons two abreast under
    the green one. (After the rules above, so that the smaller heading wins.) */
 @media (max-height: 480px) {
@@ -502,15 +506,22 @@ fieldset.field legend { padding: 0; }
   .prompt-card.sheet-done .prompt-actions:not(:has(.tell)) .sheet-help { grid-column: 1 / -1; }
   /* Calling: one or two buttons, so the number to dial and "Tell them" get the room. */
   .prompt-card.sheet-call .prompt-actions { flex: 0 0 30%; grid-template-columns: 1fr; }
-  /* The short way of saying what to do if it is not ringing. At the largest writing it gives way, so
-     the name and address are whole: the heading already says "Call 000". */
+  /* The short way of saying what to do if it is not ringing. At the largest writing it moves beside
+     OK, where there is room, so the name and address stay whole. */
   .prompt-card.sheet-call .ring-note { font-size: 1.1rem; margin: 0 0 6px; }
   .prompt-card.sheet-call .ring-note .long { display: none; }
   .prompt-card.sheet-call .ring-note .short { display: inline; }
   :root[data-size='largest'] .prompt-card.sheet-call .ring-note { display: none; }
-  /* A device that cannot ring: the heading says "Dial 000"; the note says only where to dial it. */
+  :root[data-size='largest'] .prompt-card.sheet-call .ring-side { display: block; font-size: 1.1rem; font-weight: 700; line-height: 1.3; min-height: 0; padding: 4px 0; }
+  /* A device that cannot ring: the heading says "Dial 000"; the note says only where to dial it, and
+     at the largest writing "Tell them" makes way for the address. */
   .prompt-card.sheet-call .dial-note { font-size: 1.1rem; margin: 0 0 6px; }
   .prompt-card.sheet-call .dial-note .long { display: none; }
+  :root[data-size='largest'] .prompt-card.sheet-call:has(.dial-note) .say-card strong { display: none; }
+}
+/* The smallest phones on their side: the words of "Well done" give up some room, so all its buttons fit. */
+@media (max-height: 340px) {
+  .prompt-card.sheet-done .prompt-body { min-height: 3.5rem; }
 }
 
 .toast {
@@ -556,20 +567,23 @@ fieldset.field legend { padding: 0; }
   .app[data-screen='home'] { overflow: clip; }
   /* The clock stays put and whole on its half while the buttons scroll beside it. The words are
      centred in the space under the Help row and never run up into it, however big the writing. */
-  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); }
-  .app[data-screen='home'] .hero.compact { padding-bottom: 14px; }
+  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 14px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); }
   .app[data-screen='home'] .landscape { overflow: hidden; } /* the hills hang below the panel: clipped, so the panel has nothing to scroll */
-  /* When the words are more than the half can hold, only they scroll: Help stays in its corner and
-     the hills stay at the bottom. At night with lines to read, the words may run down over the dark
-     hills, drawn over them, with the pale moon out of their way. */
+  /* The words are centred in the space between the Help row and the hills. When there are more than
+     that holds (last night's lines, bigger writing), they first take the hills' room, drawn over
+     them, and only then scroll: Help stays in its corner and nothing is cut off at the bottom. At
+     night the pale moon makes way for them. */
+  .app[data-screen='home'] .hero:not(.compact)::after { content: ''; flex: 0 100000 116px; min-height: 0; }
+  .app[data-screen='home'] .hero:not(.compact):has(.sound-hint) { padding-bottom: 66px; }
+  .app[data-screen='home'] .hero:not(.compact):has(.sound-hint)::after { flex-basis: 64px; }
   .app[data-screen='home'] .hero-main { margin: auto 0; min-height: 0; overflow-y: auto; position: relative; z-index: 1; }
-  .app[data-screen='home'] .hero .sound-hint { z-index: 2; }
-  .app[data-screen='home'] .hero.night:has(.taken):not(:has(.sound-hint)) { padding-bottom: 14px; }
+  .app[data-screen='home'] .hero .sound-hint { z-index: 2; font-size: min(1.25rem, 2.6vw, 3.4vh); } /* one line */
   .app[data-screen='home'] .hero.night:has(.taken) .sun { display: none; }
-  .app[data-screen='home'] .clock { font-size: min(4.6rem, 9.6vw); }
-  .app[data-screen='home'] .greeting { font-size: min(1.5rem, 3.3vw); }
-  .app[data-screen='home'] .daypart { font-size: min(1.6rem, 3.5vw); }
-  .app[data-screen='home'] :is(.date, .taken, .rest) { font-size: min(1.25rem, 2.8vw); }
+  /* Sizes follow the half's height as well as its width, so a wide, short tablet is no more crowded than a 4:3 one. */
+  .app[data-screen='home'] .clock { font-size: min(4.6rem, 9.6vw, 12.8vh); }
+  .app[data-screen='home'] .greeting { font-size: min(1.5rem, 3.3vw, 4.4vh); }
+  .app[data-screen='home'] .daypart { font-size: min(1.6rem, 3.5vw, 4.67vh); }
+  .app[data-screen='home'] :is(.date, .taken, .rest) { font-size: min(1.25rem, 2.8vw, 3.74vh); }
   .app[data-screen='home'] .hero-top :is(.tool, .help-btn) { font-size: min(1.25rem, 2.7vw); }
   .app[data-screen='home'] .home-content { align-self: center; padding-top: 22px; }
   .app[data-screen='home'] .foot { grid-column: 1 / -1; }

@@ -37,8 +37,10 @@ No accounts, no server, no build step. Everything stays on the one device.
   "✓ Morning tablets, done at 8:06 am", or "Morning tablets: not ticked". A tick
   made an hour or more late reads "ticked off at 2:45 pm", because that is when
   the button was pressed, not when the tablets were taken. After midnight it
-  says whether last night's were ticked. Tablets can't be ticked hours early,
-  and a tick just after midnight is recorded for the night it belongs to.
+  says whether last night's were ticked. Several not ticked are named together
+  in one line, so none is ever left off, and the words never run off the bottom
+  of a tablet lying on its side. Tablets can't be ticked hours early, and a
+  tick just after midnight is recorded for the night it belongs to.
 - **Calls people by tapping their face.** The whole card is the button, with a
   real photo. The number then stays on screen in large print in case the device
   can't start the call. On a device that can't ring at all (a tablet with no
@@ -101,14 +103,20 @@ or enter the PIN if one is set).
   to restore after a new or cleared device. The copy has no spaces in it, so an
   email program that wraps long lines cannot damage it. Before a copy replaces
   anything, Hazel says whose it is, when it was made, and what it replaces
-  (the people, routine, details and settings; the PIN just used stays). On a
-  device already in use, the ticks recorded on it are kept, even when the copy
-  was made on another device: the same thing at the same time is matched up,
-  so a dose ticked that morning is never asked for again, and the family record
-  keeps both devices' days without blaming either for the other's routine. If a
-  tick cannot be carried over (the copy has that thing at another time), the
-  question says so before anything is replaced. A forgotten PIN is cleared with
-  a backup copy the same way.
+  (the people, routine, details and settings, and the note on the first
+  screen; the PIN just used and the country stay). On a device already in use,
+  the ticks recorded on it are kept, and so are the ones in the copy, even when
+  it was made on another device: the same thing at the same time is matched up,
+  so a dose ticked that morning on either device is never asked for again. The
+  family record keeps both devices' days without blaming either for the
+  other's routine, and leaves out the days the copy knows nothing about (after
+  it was made). If a tick cannot be carried over, the question says so before
+  anything is replaced, and says what will be asked for instead. Restoring the
+  same copy twice changes nothing more, and if the time moves on while the
+  question is open, it is asked again. Someone else's copy restored by mistake
+  brings none of their record, and restoring her own copy straight after puts
+  everything back. To give a device to someone else, erase it first. A
+  forgotten PIN is cleared with a backup copy the same way.
 - **Nothing typed is thrown away without a word.** A panel is saved before
   another button or the Back button leaves it, and a half-filled form asks
   first. A question asked on the set-up screen leaves the form filled in, and
@@ -161,5 +169,7 @@ The country is chosen at set-up. It is guessed from the device's time zone when
 that is clear, and otherwise the family must choose it; it is never assumed.
 Australia 000, New Zealand 111, United Kingdom 999, Ireland 112, United States
 and Canada 911. For any other country the family types the local number (112 is
-offered as a start). Help lines shown alongside are listed in `REGIONS` at the
+offered as a start). Restoring a backup copy never changes the country of a
+device in use; on a new device, a copy from another country is asked about
+first, and until then the number for where the device seems to be is used. Help lines shown alongside are listed in `REGIONS` at the
 top of `app.js`; check them for your area before relying on them.

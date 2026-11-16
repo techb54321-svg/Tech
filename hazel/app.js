@@ -487,14 +487,19 @@ function attention() {
 // today's ticked ones with their times, and any that are past their time and not ticked.
 function tabletLines() {
   const night = lastNight();
-  // Two or more of last night's not ticked: one line for the tablets past their hour, with the advice
-  // said once, and one for those still inside it, whose cards come back anyway.
-  const missed = night.filter(x => x.at === undefined && isTablets(x.a) && !x.due);
-  const dueNow = night.filter(x => x.at === undefined && x.due);
+  // Two or more of last night's not ticked are said in one line for each kind: the tablets past their
+  // hour, with the advice said once; the other things past their hour; and those still inside it,
+  // whose cards come back anyway. So every one of them is named, however many there are.
+  const open = night.filter(x => x.at === undefined);
+  const missed = open.filter(x => isTablets(x.a) && !x.due);
+  const others = open.filter(x => !isTablets(x.a) && !x.due);
+  const dueNow = open.filter(x => x.due);
   const lines = [];
   for (const x of night) {
     if (missed.length > 1 && missed.includes(x)) {
       if (x === missed[0]) lines.push({ cls: 'warn', advice: true, text: `Last night: ${listText(missed.map(m => m.a.title))} not ticked. Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` });
+    } else if (others.length > 1 && others.includes(x)) {
+      if (x === others[0]) lines.push({ cls: 'warn', text: `Last night: ${listText(others.map(m => m.a.title))} not ticked.` });
     } else if (dueNow.length > 1 && dueNow.includes(x)) {
       if (x === dueNow[0]) lines.push({ cls: 'warn', due: true, text: `Last night: ${listText(dueNow.map(m => m.a.title))} not ticked.` });
     } else lines.push({ cls: x.at === undefined ? 'warn' : 'ok', advice: missed.includes(x), due: dueNow.includes(x), text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) });
@@ -503,15 +508,22 @@ function tabletLines() {
   const must = todays().filter(x => x.must);
   // Two of today's with the same name are told apart by their times.
   const name = a => (must.some(x => x !== a && sameName(x.title, a.title)) ? `${a.title} (${timeText(a.time)})` : a.title);
-  for (const a of must) {
-    if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${name(a)}, ${doneText(a.id).toLowerCase()}` });
-    // Past its hour, or due and not the one in the card below: either way it is named here.
-    // On a small phone with bigger writing, the line for the one in the card can make way for the card's buttons.
-    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: a === top ? 'warn same' : 'warn', text: `${name(a)}: not ticked` });
+  // Due or past their hour and not the one in the card below: named here, in one line if there are two or more.
+  const late = must.filter(a => !isDone(a.id) && a !== top && minutesLate(a) >= 0);
+  // Ticked today, then taken out of today's routine (removed, or moved to other days by the family):
+  // the tick still answers "have I done it?" until the end of the day.
+  const gone = data.retired.filter((r, i, all) => r.must && r.removed === dayKey() && isDone(r.id) && !must.some(a => a.id === r.id)
+    && all.findIndex(x => x.id === r.id && x.removed === r.removed) === i);
+  for (const a of [...must, ...gone].sort(byTime)) {
+    if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${name(a)}, ${tickWords(a, doneAt(a.id)).replace(/^done$/, 'done today')}` });
+    // The one in the card below is named here too once past its hour. On a small phone with bigger
+    // writing, that line can make way for the card's buttons.
+    else if (a === top && minutesLate(a) >= NOW_WINDOW) lines.push({ cls: 'warn same', text: `${name(a)}: not ticked` });
+    else if (late.includes(a) && (late.length < 2 || a === late[0])) lines.push({ cls: 'warn', text: `${listText(late.length < 2 ? [name(a)] : late.map(name))}: not ticked` });
   }
-  // Room for three. What is not ticked is never the line that is dropped. Among those, the advice to
-  // ask before taking last night's tablets always stays, and last night's still inside their hour
-  // (their cards come back) make way first, then the oldest.
+  // Room for three. What is not ticked is never the line that is dropped: joined as above there are
+  // never more than three such lines. (Were there more, the advice to ask before taking last night's
+  // tablets would stay, and last night's still inside their hour would make way first.)
   const warnAll = lines.filter(l => l.cls.startsWith('warn'));
   const keep = [...warnAll.filter(l => l.advice), ...warnAll.filter(l => !l.advice && !l.due).reverse(), ...warnAll.filter(l => l.due && !l.advice).reverse()].slice(0, 3);
   const warn = warnAll.filter(l => keep.includes(l));
@@ -641,7 +653,7 @@ function arm() {
   // The strip goes, and what was below it moves up: a second tap must not land on that.
   setTimeout(() => {
     const hint = app.querySelector('.sound-hint');
-    if (hint) { hint.remove(); guard(); }
+    if (hint) { hint.remove(); fitHero(); guard(); }
   }, 0);
 }
 
@@ -793,7 +805,7 @@ function readPhoto(file) {
 
 // confirming: the item awaiting an on-screen "are you sure?" ('activity:12', 'contact:3', 'reset', 'restore')
 // photo: a photo chosen in an edit form but not saved yet (undefined = unchanged, '' = removed)
-const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, keepHistory: false, summary: '', forgot: false, leave: null, regionAsked: false, skipLoses: false };
+const ui = { screen: 'home', id: null, tab: 'progress', unlocked: false, confirming: null, photo: undefined, backup: '', restore: null, restoreAsked: '', keepHistory: false, summary: '', forgot: false, leave: null, regionAsked: false, skipLoses: false };
 
 const FORM_SCREENS = ['activityForm', 'contactForm', 'setup'];
 
@@ -1153,7 +1165,7 @@ const screens = {
                 <span class="hint">Paste a copy made earlier with “Make a backup copy”. If the copy was made with this PIN, Hazel simply unlocks and nothing else changes. Otherwise the people, routine, details and settings are replaced by the copy, and the ticks already recorded on this device are kept. Either way the PIN is cleared.</span>
                 <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
               ${ui.confirming === 'restore'
-                ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+                ? confirmBox(ui.restoreAsked = restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
                 : '<button class="secondary">Restore</button>'}
             </form>
             <div class="divider"></div>
@@ -1314,7 +1326,7 @@ const screens = {
               <span class="hint">If this device was replaced or cleared, paste the copy you kept and everything comes back.</span>
               <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
             ${ui.confirming === 'restore'
-              ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, restore it', 'No')
+              ? confirmBox(ui.restoreAsked = restoreQuestion(), 'restore-apply', null, 'Yes, restore it', 'No')
               : '<button class="secondary">Restore</button>'}
           </form>
         </div>
@@ -1323,23 +1335,44 @@ const screens = {
 };
 
 // What restoring the pasted copy will make of this device. Worked out for the question and again
-// when it is done, so the question always says what will really happen.
+// when it is done; if the time has moved on and the question would now say something else, it is
+// shown again instead, so what is done is always what the question said.
 function restorePlan() {
   const copy = ui.restore;
   if (!copy) return null;
+  const today = dayKey();
+  // Where the copy's own record ends: the day it was made, up to the last time Hazel was showing then.
+  // What happened after that is not known, so those days are never reported as missed.
+  const copyLast = [copy.backedUp, ...Object.keys(copy.seen), ...Object.keys(copy.completed), ...Object.keys(copy.undone)].filter(Boolean).sort().pop() || '';
+  const copyLastAt = copy.seen[copyLast]?.at(-1)?.[1] || '';
   // A new or cleared device, or one only showing the example: the copy is taken as it is. Whether
   // calls work is a fact about the device, so a new one is asked to try one.
-  if (!data.setup) return { result: { ...copy, calls: ui.screen === 'setup' ? '' : data.calls }, fresh: true, again: [] };
+  if (!data.setup) {
+    const result = { ...copy, calls: ui.screen === 'setup' ? '' : data.calls };
+    // A copy made two or more days ago: its things count again from today, and the days in between,
+    // which nothing is known about, are left out of the record.
+    if (copyLast && copyLast < dayKey(daysAgo(1))) {
+      const until = r => (r.removed > copyLast ? { ...r, removed: copyLast, removedAt: copyLastAt } : r);
+      result.retired = [...copy.retired.map(until),
+        ...copy.activities.filter(c => !c.from || c.from <= copyLast).map(c => ({ ...retire(c), removed: copyLast, removedAt: copyLastAt }))];
+      result.activities = copy.activities.map(c => ({ ...c, from: [c.from, today].sort().pop() }));
+    }
+    // The emergency number depends on where the device is: a copy from another country is asked about.
+    const guess = guessRegion();
+    const moved = !!guess && guess !== copy.region;
+    if (moved) Object.assign(result, { region: guess, emergency: '', regionOk: false });
+    return { result, fresh: true, moved, again: [], lost: [], coming: [] };
+  }
   // The PIN just used to get in stays (after a forgotten PIN the copy's PIN has already been cleared).
   const pin = !ui.keepHistory && data.pin ? data.pin : copy.pin;
   // Someone else's copy (another name, and no full name in common): nothing ticked here is carried over
-  // to their things by name. (A new name alone may only be what she now likes to be called.)
+  // to their things by name, and nothing of their record comes onto this device's. (A new name alone
+  // may only be what she now likes to be called.)
   const named = (x, y) => !!x && !!y && sameName(x, y);
   const other = !!data.person && !!copy.person && !named(data.person, copy.person) && !named(data.about.fullName, copy.about.fullName);
 
   // On a device already in use, what happened on it (ticks, when Hazel was showing, reminders) is
   // kept, so a dose ticked this morning is never asked for again.
-  const today = dayKey();
   const here = new Set(data.activities.map(a => a.id));
   const goneHere = new Set(data.retired.map(r => r.id));
   const inCopy = new Set([...copy.activities, ...copy.retired].map(c => c.id));
@@ -1354,52 +1387,112 @@ function restorePlan() {
   }
   const idOf = id => twins.get(Number(id)) ?? id;
   const rekey = byDay => Object.fromEntries(Object.entries(byDay).map(([d, v]) => [d, Object.fromEntries(Object.entries(v).map(([k, x]) => [idOf(k), x]))]));
+  // The record starts on the earlier first day, so a copy from an older device keeps its week. Things
+  // from this device then count only from this device's first day, and the copy's only until the copy
+  // ends (or this device began, if sooner).
+  const shift = !other && !!copy.since && copy.since < data.since;
+  const since = (shift ? copy.since : data.since) || copy.since || today;
+  const copyEnd = shift && copyLast && copyLast < data.since ? copyLast : data.since;
+  const copyEndAt = copyEnd === copyLast && copyLast < data.since ? copyLastAt : '';
+  const mineFrom = r => (shift && (!r.from || r.from < data.since) ? { ...r, from: data.since } : r);
+  // Taken out here today, and back in this copy (such as after the wrong copy was restored): it keeps
+  // its place, so a reminder put off or a tick made this morning still counts.
+  const goneToday = id => data.retired.filter(r => r.id === id && r.removed === today).pop();
+  const revived = new Set();
+  const rescheduled = []; // this device's own days for a thing the copy has on other days
+  const sameDays = (x, y) => x.repeat === y.repeat && x.date === y.date && [...x.days].sort().join() === [...y.days].sort().join();
   const activities = copy.activities.map(c => {
     const id = idOf(c.id);
-    const mine = data.activities.find(a => a.id === id);
+    const own = data.activities.find(a => a.id === id) || goneToday(id);
+    // Ticked today on the device the copy came from: it is today's here too, shown as done.
+    const soonest = from => (copy.completed[today]?.[c.id] !== undefined && from > today ? today : from);
     // New here: it starts afresh, so it is not blamed for days it was not in the routine here.
-    if (!mine) return { ...c, from: [startDay(c.time, c.repeat), c.from].sort().pop() };
-    return twins.has(c.id) ? { ...c, id, from: [mine.from, c.from].sort()[0] } : c;
+    if (!own) return { ...c, from: soonest([startDay(c.time, c.repeat), c.from].sort().pop()) };
+    if (!here.has(id)) revived.add(id);
+    // Already here: it counts from when it started here (the copy's own days are kept below).
+    if (!here.has(id) || sameDays(own, c)) return { ...c, id, from: soonest(mineFrom(own).from) };
+    // On other days in the copy: the days already past here keep this device's days, and the copy's
+    // start today (tomorrow, if it was not due here today and its time has passed).
+    rescheduled.push(mineFrom(retire(own)));
+    return { ...c, id, from: soonest([mineFrom(own).from, occursOn(own) ? today : startDay(c.time, c.repeat)].sort().pop()) };
   });
   const ids = new Set(activities.map(a => a.id));
-  // The record starts on the earlier first day, so a copy from an older device keeps its week. Things
-  // from this device then count only from this device's first day, and the copy's only until then.
-  const since = [data.since, copy.since].filter(Boolean).sort()[0] || today;
-  const mineFrom = r => (data.since && (!r.from || r.from < data.since) ? { ...r, from: data.since } : r);
-  const copyUntil = r => (data.since && r.removed > data.since ? { ...r, removed: data.since, removedAt: '' } : r);
+  const copyRetired = copy.retired.map(r => ({ ...r, id: idOf(r.id) }));
   const retired = [
-    ...copy.retired.map(r => ({ ...r, id: idOf(r.id) })).filter(r => !ids.has(r.id) && !here.has(r.id) && !goneHere.has(r.id)).map(copyUntil),
-    ...(since < data.since ? copy.activities.filter(c => !here.has(idOf(c.id)) && (!c.from || c.from < data.since)).map(c => ({ ...retire(c), removed: data.since, removedAt: '' })) : []),
-    ...data.retired.map(r => (since < data.since ? mineFrom(r) : r)), // this device's own removals are the true ones here
-    ...data.activities.filter(a => !ids.has(a.id)).map(a => (since < data.since ? mineFrom(retire(a)) : retire(a))),
+    // The copy's removals: on its own days only when it is older, else only things never here.
+    ...(other ? [] : shift ? copyRetired.filter(r => !r.from || r.from <= copyEnd).map(r => (r.removed > copyEnd ? { ...r, removed: copyEnd, removedAt: copyEndAt } : r))
+      : copyRetired.filter(r => !ids.has(r.id) && !here.has(r.id) && !goneHere.has(r.id))),
+    // The copy's things, on the copy's own days.
+    ...(shift ? copy.activities.filter(c => !c.from || c.from <= copyEnd).map(c => ({ ...retire({ ...c, id: idOf(c.id) }), removed: copyEnd, removedAt: copyEndAt })) : []),
+    ...data.retired.map(mineFrom), // this device's own removals are the true ones here
+    ...rescheduled,
+    ...data.activities.filter(a => !ids.has(a.id)).map(a => mineFrom(retire(a))),
   ];
-  // Ticked here today, but the copy has the same thing at another time: it will be asked for again.
+  // Both devices' ticks are kept, thing by thing. A tick taken back here is not brought back by the copy.
+  const merge = (theirs, mine, skip = () => false) => {
+    if (other) return mine;
+    const out = {};
+    for (const [d, v] of Object.entries(rekey(theirs))) out[d] = Object.fromEntries(Object.entries(v).filter(([k]) => !skip(d, k)));
+    for (const [d, v] of Object.entries(mine)) out[d] = { ...out[d], ...v };
+    return out;
+  };
+  const seen = other ? data.seen : { ...copy.seen };
+  if (!other) {
+    for (const [d, spans] of Object.entries(data.seen)) {
+      seen[d] = [...(copy.seen[d] || []), ...spans].sort((x, y) => x[0].localeCompare(y[0]))
+        .reduce((all, [from, to]) => {
+          const last = all[all.length - 1];
+          if (last && from <= last[1]) { if (to > last[1]) last[1] = to; } else all.push([from, to]);
+          return all;
+        }, []);
+    }
+  }
+  // Ticked here today, but not kept: the question says so, and what will be asked for instead.
   const done = data.completed[today] || {};
-  const again = other ? [] : data.activities.filter(a => a.id in done && !ids.has(a.id))
-    .map(a => ({ a, at: done[a.id], c: activities.find(c => !here.has(c.id) && sameName(c.title, a.title) && c.from <= today && occursOn(c)) }))
-    .filter(x => x.c);
+  const comesToday = c => !here.has(c.id) && !revived.has(c.id) && occursOn(c) && c.time > nowHHMM();
+  const ticked = data.activities.filter(a => a.id in done && !ids.has(a.id));
+  const again = other ? [] : ticked.map(a => ({ a, at: done[a.id], c: activities.find(c => comesToday(c) && sameName(c.title, a.title)) })).filter(x => x.c);
+  const lost = ticked.filter(a => a.must && !again.some(x => x.a === a)).map(a => ({ a, at: done[a.id] }));
+  const coming = lost.length ? activities.filter(c => c.must && comesToday(c) && !again.some(x => x.c === c)) : [];
   return {
-    again,
+    again, lost, coming,
     result: {
-      ...copy, pin, calls: data.calls, since, activities, retired,
-      completed: { ...rekey(copy.completed), ...data.completed },
-      undone: { ...rekey(copy.undone), ...data.undone },
-      seen: { ...copy.seen, ...data.seen },
-      raised: { ...rekey(copy.raised), ...data.raised },
+      ...copy, pin, calls: data.calls, since, activities, retired, seen,
+      // Where the device is, and so the emergency number, is a fact about this device.
+      region: data.region, emergency: data.emergency, regionOk: data.regionOk,
+      completed: merge(copy.completed, data.completed, (d, k) => !!data.undone[d]?.[k]),
+      undone: merge(copy.undone, data.undone, (d, k) => data.completed[d]?.[k] !== undefined),
+      raised: merge(copy.raised, data.raised),
     },
   };
 }
 
+// The emergency number a set of data would use.
+const numberOf = d => (d.region === 'other' && d.emergency ? d.emergency : (REGIONS[d.region] || REGIONS.other).emergency);
+const countryOf = d => (REGIONS[d.region] || REGIONS.other).name;
+
 function restoreQuestion() {
   const plan = restorePlan();
   if (!plan) return '';
-  if (plan.fresh) return `${copyLine()}Replace the example with this copy?`;
+  const copy = ui.restore;
+  if (plan.fresh) {
+    const moved = plan.moved ? ` This copy was made with the emergency number ${numberOf(copy)} (${countryOf(copy)}), but this device seems to be in ${countryOf(plan.result)}, so Hazel will use ${numberOf(plan.result)} until you check the country.` : '';
+    return `${copyLine()}Replace the example with this copy?${moved}`;
+  }
   const pin = ui.keepHistory ? ' The PIN is cleared.' : data.pin ? ' The PIN stays as it is.' : plan.result.pin ? ' The copy’s PIN will then be needed to open Family settings.' : '';
-  const again = plan.again.map(({ a, at, c }) => ` ${a.title} was ticked here at ${timeText(at)}, but this copy has it at ${timeText(c.time)}, so Hazel will ask for it again then.`).join('');
-  // Important things that are new here and whose time has passed today start later, like anything new.
-  const later = plan.result.activities.filter(a => a.must && !data.activities.some(x => x.id === a.id) && a.from > dayKey() && firstDay(a))
+  const number = numberOf(copy) !== region().emergency || copy.region !== data.region
+    ? ` The emergency number stays ${region().emergency} (${region().name}); this copy was made with ${numberOf(copy)} (${countryOf(copy)}).` : '';
+  const shows = n => (n.text && (!n.until || n.until >= dayKey()) ? n.text : '');
+  const note = shows(copy.note) && shows(copy.note) !== shows(data.note) ? ` The note on the first screen will read “${sentence(shows(copy.note))}”`
+    : !shows(copy.note) && shows(data.note) ? ' The note on the first screen is taken down.' : '';
+  const at = t => (t ? ` at ${timeText(t)}` : ' today');
+  const again = plan.again.map(({ a, at: t, c }) => ` ${a.title} was ticked here${at(t)}, but this copy has it at ${timeText(c.time)}, so Hazel will ask for it again then.`).join('');
+  const lost = plan.lost.map(({ a, at: t }) => ` ${a.title} was ticked here${at(t)} and is not in this copy.`).join('')
+    + (plan.coming.length ? ` This copy has ${listText(plan.coming.map(c => `${c.title} at ${timeText(c.time)}`))}, new on this device, and Hazel will ask for ${plan.coming.length > 1 ? 'them' : 'it'} then.` : '');
+  // Important things whose time has passed today, or not yet started here, start later, like anything new.
+  const later = plan.result.activities.filter(a => a.must && a.from > dayKey() && firstDay(a))
     .map(a => ` ${a.title} is new on this device and starts ${startsText(firstDay(a))}.`).join('');
-  return `${copyLine()}Replace the people, routine, details and settings (such as the writing size) on this device with this copy?${pin} Ticks already recorded here are kept.${again}${later}`;
+  return `${copyLine()}Replace the people, routine, details and settings (such as the writing size) on this device with this copy?${pin}${number}${note} Ticks already recorded here are kept.${again}${lost}${later}`;
 }
 
 // Says whose copy is about to be restored, and when it was made, so the wrong one is caught first.
@@ -1598,7 +1691,7 @@ const familyPanels = {
         <form novalidate data-form="restore">
           <label class="field">Restore from a copy<textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
           ${ui.confirming === 'restore'
-            ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+            ? confirmBox(ui.restoreAsked = restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
             : '<button class="secondary">Restore</button>'}
         </form>
         <div class="divider"></div>
@@ -1856,8 +1949,23 @@ function render(...focus) {
   lastLive = liveText();
   shownDay = dayKey();
   restoreDraft();
+  if (screen === 'home') fitHero();
   const target = ['[data-autofocus]', ...focus].filter(Boolean).map(sel => app.querySelector(sel)).find(Boolean);
   target?.focus({ preventScroll: true });
+}
+
+// On a tablet on its side the words beside the clock have a fixed space. When there are more than
+// fit, the bedtime message makes way first (Read still says it), then the greeting (the part of the
+// day still shows), so that last night's lines are never the ones out of sight.
+function fitHero() {
+  const hero = app.querySelector('.hero');
+  const main = hero?.querySelector('.hero-main');
+  if (!main) return;
+  hero.classList.remove('shed-rest', 'shed-greeting');
+  for (const cls of ['shed-rest', 'shed-greeting']) {
+    if (main.scrollHeight <= main.clientHeight + 1) break;
+    hero.classList.add(cls);
+  }
 }
 
 // --- Keeping what is typed ---------------------------------------------------
@@ -1982,14 +2090,14 @@ function fitSheet(measure = true) {
   else words.removeAttribute('tabindex');
 }
 promptEl.addEventListener('scroll', () => fitSheet(false), { capture: true, passive: true });
-window.addEventListener('resize', () => fitSheet());
+window.addEventListener('resize', () => { fitSheet(); fitHero(); });
 // Help is on every card that comes up by itself or stays a while, so it is never more than two taps away.
 const SHEET_HELP = '<button class="help-btn sheet-help" data-action="sheet-help">🛟 I need help</button>';
 
 function homeToTop() {
   window.scrollTo(0, 0);
-  const hero = app.querySelector('.hero');
-  if (hero) hero.scrollTop = 0;
+  // On a tablet on its side only the words beside the clock scroll, when there are more than fit.
+  for (const el of app.querySelectorAll('.hero, .hero-main')) el.scrollTop = 0;
 }
 
 function closeSheet() {
@@ -2054,6 +2162,7 @@ function showCalling(link) {
       <p>Stay on the phone. They will tell you what to do.</p>
     </div>` : ''}`, `
     <button class="primary" data-action="sheet-close">OK</button>
+    ${emergency && !dial ? `<p class="ring-side">Not ringing? Dial ${esc(number)} on a phone.</p>` : ''}
     ${emergency ? '' : SHEET_HELP}`);
   // Left alone, it goes away by itself so the clock and reminders come back.
   sheet.timer = setTimeout(closeSheet, (emergency ? 30 : 5) * 60_000);
@@ -2606,12 +2715,13 @@ const actions = {
     const [a] = data.activities.splice(i, 1);
     // Kept for the family record, so earlier days (and today, if it was ticked or already past)
     // still show what was planned and what was ticked.
-    data.retired.push(retire(a));
+    const entry = retire(a);
+    data.retired.push(entry);
     markSetup();
     render(FAMILY_HEADING);
     saved(`Removed “${a.title}”.`, { action: { label: 'Put it back', run() {
       data.activities.splice(i, 0, a);
-      data.retired = data.retired.filter(r => r.id !== a.id);
+      data.retired = data.retired.filter(r => r !== entry); // only this removal: earlier days keep their record
       saved(`“${a.title}” is back.`);
       render(FAMILY_HEADING);
     } } });
@@ -2668,6 +2778,12 @@ const actions = {
   'restore-apply'() {
     const plan = restorePlan();
     if (!plan) return;
+    if (restoreQuestion() !== ui.restoreAsked) {
+      renderKeeping(); // the question as it now stands, with the pasted copy still in its box
+      guard();
+      app.querySelector('.confirm [data-action="cancel"]')?.closest('.confirm').scrollIntoView({ block: 'nearest' });
+      return toast('The time has moved on, so the question has changed. Please read it again.');
+    }
     Object.assign(data, plan.result);
     Object.assign(ui, { restore: null, keepHistory: false, confirming: null, unlocked: true, forgot: false });
     applySettings();
@@ -3211,7 +3327,7 @@ function tick() {
   }
   // The first screen left scrolled part of the way down goes back to showing the clock. What is
   // under a finger has then moved, so a tap already on its way is dropped.
-  if (ui.screen === 'home' && !sheet && idle > 90_000 && (window.scrollY > 0 || app.querySelector('.hero')?.scrollTop)) {
+  if (ui.screen === 'home' && !sheet && idle > 90_000 && (window.scrollY > 0 || app.querySelector('.hero')?.scrollTop || app.querySelector('.hero-main')?.scrollTop)) {
     homeToTop();
     guard(1000);
   }

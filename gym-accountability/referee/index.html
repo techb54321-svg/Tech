@@ -93,7 +93,8 @@
   const DN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const topic = g('tp');
   const name = g('n') || 'Your friend', ref = g('r'), target = +g('t') || 3, pledge = +g('p') || 0, conseq = g('c'), d = +g('d') || 1, mode = g('m') || 'manual', gym = g('g'), hour = g('h') === '' ? 9 : +g('h'), server = g('s'), token = g('k'), dep = +g('dep') || 0;
-  const money = n => n.toLocaleString(undefined, { style:'currency', currency:'USD', maximumFractionDigits:0 });
+  const cur = /^[A-Z]{3}$/.test(g('cur')) ? g('cur') : 'USD';
+  const money = n => { try { return n.toLocaleString(undefined, { style:'currency', currency:cur, currencyDisplay:'narrowSymbol', maximumFractionDigits:0 }); } catch (e) { return '$' + Math.round(n); } };
   const hour12 = h => `${((h + 11) % 12) + 1}${h < 12 ? 'am' : 'pm'}`;
   const $ = id => document.getElementById(id);
   document.title = `${name} wants you as referee`;

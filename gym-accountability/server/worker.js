@@ -13,7 +13,7 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
-const VERSION = '2026-11-16c'; // shown on the status page so you can tell which code is running
+const VERSION = '2026-11-16d'; // shown on the status page so you can tell which code is running
 const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
 const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
@@ -347,6 +347,7 @@ export function summaryText(st, wk, now) {
   if (w) { done = w.done; result = w.result; }
   else if (st.freezes[wk] !== undefined) { done = days.length; result = 'frozen'; }
   else { done = days.length; result = done >= target ? 'pass' : 'fail'; }
+  const cash = n => { try { return new Intl.NumberFormat('en', { style: 'currency', currency: c.currency || 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 0 }).format(n); } catch { return '$' + n; } };
   const pledge = Number(c.pledge) || 0, hasDeposit = (Number(c.deposited) || 0) > 0;
   const leftBefore = Number(c.depositLeft) || 0, owedBefore = Number(c.owed) || 0;
   const left = w ? leftBefore : (result === 'fail' ? Math.max(0, leftBefore - pledge) : leftBefore);
@@ -356,16 +357,16 @@ export function summaryText(st, wk, now) {
   let s = `Ironclad weekly: ${name} went to the gym ${done}/${target} days${days.length ? ` (${dayNames})` : ''} in the week of ${range}. `;
   if (result === 'pass') {
     s += `VERDICT: PASS. Streak: ${(Number(c.streak) || 0) + (w ? 0 : 1)} week(s).`;
-    if (short > 0) s += ` Still outstanding from earlier: $${short}; collect it.`;
-    else if (hasDeposit) s += ` Deposit intact: $${left}.`;
+    if (short > 0) s += ` Still outstanding from earlier: ${cash(short)}; collect it.`;
+    else if (hasDeposit) s += ` Deposit intact: ${cash(left)}.`;
   } else if (result === 'frozen') {
     s += `FROZEN in advance (${st.freezes[wk] || 'illness/travel'}). Doesn't count either way.`;
   } else {
     s += `VERDICT: FAIL.`;
-    if (hasDeposit) s += ` $${pledge} is forfeited from the deposit${c.consequence ? `: send it to ${c.consequence} and keep the receipt` : ''}.`;
-    else s += ` ${name} owes you $${pledge}${c.consequence ? `, to be sent to ${c.consequence}` : ''}. Collect it.`;
-    if (short > 0) s += ` ${name} also owes you $${short} on top; collect that too.`;
-    if (hasDeposit) s += ` Deposit left: $${left}.`;
+    if (hasDeposit) s += ` ${cash(pledge)} is forfeited from the deposit${c.consequence ? `: send it to ${c.consequence} and keep the receipt` : ''}.`;
+    else s += ` ${name} owes you ${cash(pledge)}${c.consequence ? `, to be sent to ${c.consequence}` : ''}. Collect it.`;
+    if (short > 0) s += ` ${name} also owes you ${cash(short)} on top; collect that too.`;
+    if (hasDeposit) s += ` Deposit left: ${cash(left)}.`;
   }
   if (noData) s += ` The app reported no sessions at all this week.`;
   if (stale) s += ` Last report from the app: ${st.lastReport ? fmtDay(new Date(st.lastReport).toISOString().slice(0, 10)) : 'never'}. Treat silence as failure.`;
@@ -444,7 +445,7 @@ export function refereeData(st, token, origin) {
   return {
     name: c.name || 'Your friend', refereeName: c.refereeName || '', gym: c.gym || '', target: c.target || 3, weekStart: c.weekStart ?? 1,
     minMinutes: c.minMinutes || 30, pledge: c.pledge || 0, consequence: c.consequence || '', deposited: c.deposited || 0, depositLeft: c.depositLeft || 0,
-    owed: c.owed || 0, streak: c.streak || 0, startWeek: c.startWeek || '', week: c.week || '', done: c.done || 0, days: c.days || [], warmup: !!c.warmup, frozen: !!c.frozen,
+    owed: c.owed || 0, streak: c.streak || 0, currency: c.currency || 'USD', startWeek: c.startWeek || '', week: c.week || '', done: c.done || 0, days: c.days || [], warmup: !!c.warmup, frozen: !!c.frozen,
     agreedAt: st.agreedAt || null, lastReport: st.lastReport || null, subscribers: st.subs.length,
     events: st.events.slice(-30).reverse().map(e => ({ ts: e.ts, event: e.event, text: e.text, ok: e.ok, photo: e.photo ? `${origin}/r/${token}/photo/${e.photo}` : null })),
     icon: appUrl(st) + 'icon-192.png',
@@ -540,7 +541,7 @@ let D = ${JSON.stringify(data).replace(/</g, '\\u003c')};
 const $ = id => document.getElementById(id);
 const DN = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], DS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money = n => (n||0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0});
+const money = n => { try { return (n||0).toLocaleString(undefined,{style:'currency',currency:D.currency||'USD',currencyDisplay:'narrowSymbol',maximumFractionDigits:0}); } catch (e) { return '$' + Math.round(n||0); } };
 const toast = (m, ms=3000) => { const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), ms); };
 const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;

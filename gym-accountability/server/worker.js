@@ -13,7 +13,7 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
-const VERSION = '2026-11-16b'; // shown on the status page so you can tell which code is running
+const VERSION = '2026-11-16c'; // shown on the status page so you can tell which code is running
 const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
 const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
@@ -59,6 +59,7 @@ async function route(request, env) {
   try { body = await request.json(); } catch { return J({ error: 'bad json' }, 400); }
 
   if (url.pathname === '/register') return register(env, request, J);
+  if (url.pathname === '/interest') return interest(env, request, body, J);
 
   const st = await authed(env, body);
   if (!st) return J({ error: 'This app is not recognised by the alerts server. Turn Ironclad alerts off and on again in Settings.' }, 401);
@@ -110,6 +111,31 @@ async function route(request, env) {
     return J({ ok: true, week: wk, text: summaryText(st, wk, now) });
   }
   return J({ error: 'not found' }, 404);
+}
+
+/* ---------------- Pro pricing test (no payments; just measures interest) ---------------- */
+const INTEREST_EVENTS = new Set(['view', 'tap:pro', 'tap:coach', 'join:pro', 'join:coach']);
+async function interest(env, request, body, J) {
+  const ev = String(body.event || '');
+  if (!INTEREST_EVENTS.has(ev)) return J({ error: 'unknown event' }, 400);
+  const from = String(body.from || 'site').toLowerCase().replace(/[^a-z]/g, '').slice(0, 12) || 'site';
+  if (ev.startsWith('join:')) {
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!/^[^\s@]{1,64}@[^\s@]{1,190}\.[a-z]{2,}$/i.test(email)) return J({ error: "That email doesn't look right." }, 400);
+    const ipHash = (await sha256hex('ip:' + (request.headers.get('CF-Connecting-IP') || 'unknown'))).slice(0, 24);
+    const rlKey = `rl:join:${ipHash}:${Math.floor(Date.now() / 3600e3)}`, n = +(await env.STATE.get(rlKey) || 0);
+    if (n >= 10) return J({ error: 'Too many sign-ups from here. Try again in an hour.' }, 429);
+    await env.STATE.put(rlKey, String(n + 1), { expirationTtl: 7200 });
+    const list = JSON.parse(await env.STATE.get('pro:waitlist') || '[]'), plan = ev.slice(5);
+    if (list.some(x => x.email === email && x.plan === plan)) return J({ ok: true, already: true });
+    list.push({ email, plan, note: String(body.note || '').trim().slice(0, 300), from, ts: Date.now() });
+    await env.STATE.put('pro:waitlist', JSON.stringify(list.slice(-5000)));
+  }
+  const s = JSON.parse(await env.STATE.get('pro:stats') || 'null') || { since: Date.now(), counts: {}, from: {} };
+  s.counts[ev] = (s.counts[ev] || 0) + 1;
+  (s.from[from] ||= {})[ev] = (s.from[from][ev] || 0) + 1;
+  await env.STATE.put('pro:stats', JSON.stringify(s));
+  return J({ ok: true });
 }
 
 /* ---------------- accounts ---------------- */
@@ -605,6 +631,20 @@ render();
 </script></body></html>`;
 }
 
+async function proCard(env) {
+  const s = JSON.parse(await env.STATE.get('pro:stats') || 'null');
+  if (!s) return `<div class="card"><h2>Pro pricing test</h2><p class="small muted" style="margin:0">No visits to the pricing page yet. Results show up here.</p></div>`;
+  const c = k => s.counts[k] || 0, pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+  const row = (label, v, note = '') => `<div class="kv"><span>${label}</span><b>${v}${note ? ` <span class="muted small" style="font-weight:500">${note}</span>` : ''}</b></div>`;
+  return `<div class="card"><h2>Pro pricing test</h2>
+    ${row('Pricing page visitors', c('view'))}
+    ${row('Tapped "Join Pro"', c('tap:pro'), pct(c('tap:pro'), c('view')))}
+    ${row('Left an email for Pro', c('join:pro'), pct(c('join:pro'), c('view')))}
+    ${row('Tapped "Join the Coach waitlist"', c('tap:coach'), pct(c('tap:coach'), c('view')))}
+    ${row('Left an email for Coach', c('join:coach'), pct(c('join:coach'), c('view')))}
+    <p class="small muted" style="margin:10px 0 0">Counting since ${new Date(s.since).toLocaleDateString('en-US')}. Percentages are of visitors. The email list, with any comments people left, is private: in Cloudflare open <b>Storage &amp; Databases → KV → ironclad</b> and view the key <code>pro:waitlist</code>.</p></div>`;
+}
+
 /* ---------------- status page (the developer's setup checklist) ---------------- */
 async function statusPage(env, url) {
   if (!env.STATE) return page(shell('Ironclad alerts server', `<h1>Almost there.</h1><div class="card"><p><b>Add storage:</b> in this Worker's <b>Settings → Bindings</b>, add a <b>KV namespace</b> with the variable name <code>STATE</code>, then reload this page.</p></div>`));
@@ -623,6 +663,7 @@ async function statusPage(env, url) {
       <p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:14px;background:rgba(0,0,0,.35);padding:12px;border-radius:12px;border:1px solid var(--line)" id="addr">${escH(url.origin)}</p>
       <button class="primary" id="copy">Copy the address</button>
       <p class="small muted">It contains nothing secret. Each app gets its own private key when it signs up.</p></div>
+    ${await proCard(env)}
     <script>document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('addr').textContent);document.getElementById('copy').textContent='Copied ✓'}catch(e){document.getElementById('copy').textContent='Select and copy it'}}</script>`;
   return page(shell('Ironclad alerts server', body));
 }

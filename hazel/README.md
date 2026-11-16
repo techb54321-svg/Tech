@@ -100,9 +100,15 @@ or enter the PIN if one is set).
 - **"Is Hazel ready?"** checklist, **Try a reminder now**, and a **backup copy**
   to restore after a new or cleared device. The copy has no spaces in it, so an
   email program that wraps long lines cannot damage it. Before a copy replaces
-  anything, Hazel says whose it is and when it was made. On a device already in
-  use, the ticks recorded on it are kept, so a dose ticked that morning is never
-  asked for again. A forgotten PIN is cleared with a backup copy the same way.
+  anything, Hazel says whose it is, when it was made, and what it replaces
+  (the people, routine, details and settings; the PIN just used stays). On a
+  device already in use, the ticks recorded on it are kept, even when the copy
+  was made on another device: the same thing at the same time is matched up,
+  so a dose ticked that morning is never asked for again, and the family record
+  keeps both devices' days without blaming either for the other's routine. If a
+  tick cannot be carried over (the copy has that thing at another time), the
+  question says so before anything is replaced. A forgotten PIN is cleared with
+  a backup copy the same way.
 - **Nothing typed is thrown away without a word.** A panel is saved before
   another button or the Back button leaves it, and a half-filled form asks
   first. A question asked on the set-up screen leaves the form filled in, and

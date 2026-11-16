@@ -191,6 +191,10 @@ button:disabled { opacity: .55; cursor: not-allowed; }
   :root:not([data-size='normal']) .attention :is(.pill, .thumb) { display: none; }
   :root:not([data-size='normal']) .attention .next-head { margin: 0 0 4px; }
   :root:not([data-size='normal']) .hero.compact .taken.same { display: none; } /* the card just below names it */
+  :root[data-size='largest'] .hero.compact .taken { font-size: 1.05rem; } /* one line each, so the green button stays on the first screen */
+}
+@media (max-width: 699px) {
+  :root[data-size='largest'] .hero.compact .sound-hint { font-size: max(1rem, 20px); padding: 4px 12px; }
 }
 .hold { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; } /* a held finger that drifts must not turn into a scroll */
 
@@ -479,6 +483,7 @@ fieldset.field legend { padding: 0; }
 .prompt-card .say-card { text-align: left; margin: 0 0 12px; font-size: 1.25rem; }
 .big-number { font-size: 2.4rem; font-weight: 850; line-height: 1.15; margin: 4px 0 14px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; user-select: all; }
 .big-number.address { font-size: 1.5rem; }
+.ring-note .short { display: none; }
 /* A phone on its side is very short: no picture, a smaller heading, and the buttons two abreast under
    the green one. (After the rules above, so that the smaller heading wins.) */
 @media (max-height: 480px) {
@@ -490,12 +495,22 @@ fieldset.field legend { padding: 0; }
   .prompt-card .prompt-actions > * { margin: 0; min-height: 44px; padding: 8px 10px; }
   .prompt-card .prompt-actions .primary { grid-column: 1 / -1; }
   .prompt-body, .prompt-actions { max-height: calc(100dvh - 56px); }
-  /* Well done: a bigger OK, with "Oops, I haven't done it yet" well clear of it. */
-  .prompt-card.sheet-done .prompt-actions { row-gap: 22px; }
-  .prompt-card.sheet-done .prompt-actions .primary { min-height: 52px; }
+  /* Well done: a bigger OK, and "Oops, I haven't done it yet" last, across the bottom, well clear of it. */
+  .prompt-card.sheet-done .prompt-actions { row-gap: 6px; }
+  .prompt-card.sheet-done .prompt-actions .primary { min-height: 52px; margin-bottom: 16px; }
+  .prompt-card.sheet-done .prompt-actions .oops { order: 1; grid-column: 1 / -1; }
+  .prompt-card.sheet-done .prompt-actions:not(:has(.tell)) .sheet-help { grid-column: 1 / -1; }
   /* Calling: one or two buttons, so the number to dial and "Tell them" get the room. */
   .prompt-card.sheet-call .prompt-actions { flex: 0 0 30%; grid-template-columns: 1fr; }
-  .prompt-card.sheet-call:has(.big-number.again) .prompt-note { display: none; } /* the heading already says "Call 000" */
+  /* The short way of saying what to do if it is not ringing. At the largest writing it gives way, so
+     the name and address are whole: the heading already says "Call 000". */
+  .prompt-card.sheet-call .ring-note { font-size: 1.1rem; margin: 0 0 6px; }
+  .prompt-card.sheet-call .ring-note .long { display: none; }
+  .prompt-card.sheet-call .ring-note .short { display: inline; }
+  :root[data-size='largest'] .prompt-card.sheet-call .ring-note { display: none; }
+  /* A device that cannot ring: the heading says "Dial 000"; the note says only where to dial it. */
+  .prompt-card.sheet-call .dial-note { font-size: 1.1rem; margin: 0 0 6px; }
+  .prompt-card.sheet-call .dial-note .long { display: none; }
 }
 
 .toast {
@@ -541,10 +556,16 @@ fieldset.field legend { padding: 0; }
   .app[data-screen='home'] { overflow: clip; }
   /* The clock stays put and whole on its half while the buttons scroll beside it. The words are
      centred in the space under the Help row and never run up into it, however big the writing. */
-  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); overflow-y: auto; }
+  .app[data-screen='home'] .hero { display: flex; flex-direction: column; padding-top: 22px; padding-bottom: 130px; position: sticky; top: 20px; align-self: start; height: calc(100dvh - 40px); }
   .app[data-screen='home'] .hero.compact { padding-bottom: 14px; }
   .app[data-screen='home'] .landscape { overflow: hidden; } /* the hills hang below the panel: clipped, so the panel has nothing to scroll */
-  .app[data-screen='home'] .hero-main { margin: auto 0; }
+  /* When the words are more than the half can hold, only they scroll: Help stays in its corner and
+     the hills stay at the bottom. At night with lines to read, the words may run down over the dark
+     hills, drawn over them, with the pale moon out of their way. */
+  .app[data-screen='home'] .hero-main { margin: auto 0; min-height: 0; overflow-y: auto; position: relative; z-index: 1; }
+  .app[data-screen='home'] .hero .sound-hint { z-index: 2; }
+  .app[data-screen='home'] .hero.night:has(.taken):not(:has(.sound-hint)) { padding-bottom: 14px; }
+  .app[data-screen='home'] .hero.night:has(.taken) .sun { display: none; }
   .app[data-screen='home'] .clock { font-size: min(4.6rem, 9.6vw); }
   .app[data-screen='home'] .greeting { font-size: min(1.5rem, 3.3vw); }
   .app[data-screen='home'] .daypart { font-size: min(1.6rem, 3.5vw); }

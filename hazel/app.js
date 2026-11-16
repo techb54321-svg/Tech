@@ -374,6 +374,7 @@ function occursOn(a, d = new Date()) {
   return true;
 }
 const byTime = (a, b) => a.time.localeCompare(b.time);
+const sameName = (x, y) => x.trim().toLowerCase() === y.trim().toLowerCase();
 const todays = (d = new Date()) => data.activities.filter(a => occursOn(a, d)).sort(byTime);
 const ordinal = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
 function scheduleText(a) {
@@ -486,22 +487,34 @@ function attention() {
 // today's ticked ones with their times, and any that are past their time and not ticked.
 function tabletLines() {
   const night = lastNight();
-  // Two or more of last night's tablets not ticked: one line, with the advice said once.
+  // Two or more of last night's not ticked: one line for the tablets past their hour, with the advice
+  // said once, and one for those still inside it, whose cards come back anyway.
   const missed = night.filter(x => x.at === undefined && isTablets(x.a) && !x.due);
+  const dueNow = night.filter(x => x.at === undefined && x.due);
   const lines = [];
   for (const x of night) {
-    if (missed.length < 2 || !missed.includes(x)) lines.push({ cls: x.at === undefined ? 'warn' : 'ok', text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) });
-    else if (x === missed[0]) lines.push({ cls: 'warn', text: `Last night: ${listText(missed.map(m => m.a.title))} not ticked. Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` });
+    if (missed.length > 1 && missed.includes(x)) {
+      if (x === missed[0]) lines.push({ cls: 'warn', advice: true, text: `Last night: ${listText(missed.map(m => m.a.title))} not ticked. Ask ${helper()?.name || 'family'} or your pharmacist before taking them.` });
+    } else if (dueNow.length > 1 && dueNow.includes(x)) {
+      if (x === dueNow[0]) lines.push({ cls: 'warn', due: true, text: `Last night: ${listText(dueNow.map(m => m.a.title))} not ticked.` });
+    } else lines.push({ cls: x.at === undefined ? 'warn' : 'ok', advice: missed.includes(x), due: dueNow.includes(x), text: (x.at === undefined ? '' : '✓ ') + lastNightText(x) });
   }
   const top = attention()?.a;
-  for (const a of todays().filter(x => x.must)) {
-    if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${a.title}, ${doneText(a.id).toLowerCase()}` });
+  const must = todays().filter(x => x.must);
+  // Two of today's with the same name are told apart by their times.
+  const name = a => (must.some(x => x !== a && sameName(x.title, a.title)) ? `${a.title} (${timeText(a.time)})` : a.title);
+  for (const a of must) {
+    if (isDone(a.id)) lines.push({ cls: 'ok', text: `✓ ${name(a)}, ${doneText(a.id).toLowerCase()}` });
     // Past its hour, or due and not the one in the card below: either way it is named here.
     // On a small phone with bigger writing, the line for the one in the card can make way for the card's buttons.
-    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: a === top ? 'warn same' : 'warn', text: `${a.title}: not ticked` });
+    else if (minutesLate(a) >= NOW_WINDOW || (minutesLate(a) >= 0 && a !== top)) lines.push({ cls: a === top ? 'warn same' : 'warn', text: `${name(a)}: not ticked` });
   }
-  // Room for three. What is not ticked is never the line that is dropped.
-  const warn = lines.filter(l => l.cls.startsWith('warn')).slice(-3);
+  // Room for three. What is not ticked is never the line that is dropped. Among those, the advice to
+  // ask before taking last night's tablets always stays, and last night's still inside their hour
+  // (their cards come back) make way first, then the oldest.
+  const warnAll = lines.filter(l => l.cls.startsWith('warn'));
+  const keep = [...warnAll.filter(l => l.advice), ...warnAll.filter(l => !l.advice && !l.due).reverse(), ...warnAll.filter(l => l.due && !l.advice).reverse()].slice(0, 3);
+  const warn = warnAll.filter(l => keep.includes(l));
   const ok = warn.length < 3 ? lines.filter(l => !l.cls.startsWith('warn')).slice(warn.length - 3) : [];
   return lines.filter(l => warn.includes(l) || ok.includes(l));
 }
@@ -1137,10 +1150,10 @@ const screens = {
             <h3 tabindex="-1">Forgot the PIN?</h3>
             <form novalidate data-form="restore">
               <label class="field">Use a backup copy
-                <span class="hint">Paste a copy made earlier with “Make a backup copy”. If the copy was made with this PIN, Hazel simply unlocks and nothing else changes. Otherwise the people, routine and details are replaced by the copy, and the ticks already recorded on this device are kept. Either way the PIN is cleared.</span>
+                <span class="hint">Paste a copy made earlier with “Make a backup copy”. If the copy was made with this PIN, Hazel simply unlocks and nothing else changes. Otherwise the people, routine, details and settings are replaced by the copy, and the ticks already recorded on this device are kept. Either way the PIN is cleared.</span>
                 <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
               ${ui.confirming === 'restore'
-                ? confirmBox(`${copyLine()}Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+                ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
                 : '<button class="secondary">Restore</button>'}
             </form>
             <div class="divider"></div>
@@ -1301,13 +1314,93 @@ const screens = {
               <span class="hint">If this device was replaced or cleared, paste the copy you kept and everything comes back.</span>
               <textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
             ${ui.confirming === 'restore'
-              ? confirmBox(`${copyLine()}Replace the example with this copy?`, 'restore-apply', null, 'Yes, restore it', 'No')
+              ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, restore it', 'No')
               : '<button class="secondary">Restore</button>'}
           </form>
         </div>
       </section>`;
   },
 };
+
+// What restoring the pasted copy will make of this device. Worked out for the question and again
+// when it is done, so the question always says what will really happen.
+function restorePlan() {
+  const copy = ui.restore;
+  if (!copy) return null;
+  // A new or cleared device, or one only showing the example: the copy is taken as it is. Whether
+  // calls work is a fact about the device, so a new one is asked to try one.
+  if (!data.setup) return { result: { ...copy, calls: ui.screen === 'setup' ? '' : data.calls }, fresh: true, again: [] };
+  // The PIN just used to get in stays (after a forgotten PIN the copy's PIN has already been cleared).
+  const pin = !ui.keepHistory && data.pin ? data.pin : copy.pin;
+  // Someone else's copy (another name, and no full name in common): nothing ticked here is carried over
+  // to their things by name. (A new name alone may only be what she now likes to be called.)
+  const named = (x, y) => !!x && !!y && sameName(x, y);
+  const other = !!data.person && !!copy.person && !named(data.person, copy.person) && !named(data.about.fullName, copy.about.fullName);
+
+  // On a device already in use, what happened on it (ticks, when Hazel was showing, reminders) is
+  // kept, so a dose ticked this morning is never asked for again.
+  const today = dayKey();
+  const here = new Set(data.activities.map(a => a.id));
+  const goneHere = new Set(data.retired.map(r => r.id));
+  const inCopy = new Set([...copy.activities, ...copy.retired].map(c => c.id));
+  // A copy made on another device has its own ids for the same things. A thing here with exactly one
+  // twin in the copy (same name, same time) keeps its id, so its ticks stay with it.
+  const twins = new Map(); // copy id -> id here
+  const fresh = c => !here.has(c.id) && !goneHere.has(c.id);
+  for (const c of other ? [] : copy.activities.filter(fresh)) {
+    const alike = x => sameName(x.title, c.title) && x.time === c.time;
+    const mine = data.activities.filter(a => !inCopy.has(a.id) && alike(a));
+    if (mine.length === 1 && copy.activities.filter(x => fresh(x) && alike(x)).length === 1) twins.set(c.id, mine[0].id);
+  }
+  const idOf = id => twins.get(Number(id)) ?? id;
+  const rekey = byDay => Object.fromEntries(Object.entries(byDay).map(([d, v]) => [d, Object.fromEntries(Object.entries(v).map(([k, x]) => [idOf(k), x]))]));
+  const activities = copy.activities.map(c => {
+    const id = idOf(c.id);
+    const mine = data.activities.find(a => a.id === id);
+    // New here: it starts afresh, so it is not blamed for days it was not in the routine here.
+    if (!mine) return { ...c, from: [startDay(c.time, c.repeat), c.from].sort().pop() };
+    return twins.has(c.id) ? { ...c, id, from: [mine.from, c.from].sort()[0] } : c;
+  });
+  const ids = new Set(activities.map(a => a.id));
+  // The record starts on the earlier first day, so a copy from an older device keeps its week. Things
+  // from this device then count only from this device's first day, and the copy's only until then.
+  const since = [data.since, copy.since].filter(Boolean).sort()[0] || today;
+  const mineFrom = r => (data.since && (!r.from || r.from < data.since) ? { ...r, from: data.since } : r);
+  const copyUntil = r => (data.since && r.removed > data.since ? { ...r, removed: data.since, removedAt: '' } : r);
+  const retired = [
+    ...copy.retired.map(r => ({ ...r, id: idOf(r.id) })).filter(r => !ids.has(r.id) && !here.has(r.id) && !goneHere.has(r.id)).map(copyUntil),
+    ...(since < data.since ? copy.activities.filter(c => !here.has(idOf(c.id)) && (!c.from || c.from < data.since)).map(c => ({ ...retire(c), removed: data.since, removedAt: '' })) : []),
+    ...data.retired.map(r => (since < data.since ? mineFrom(r) : r)), // this device's own removals are the true ones here
+    ...data.activities.filter(a => !ids.has(a.id)).map(a => (since < data.since ? mineFrom(retire(a)) : retire(a))),
+  ];
+  // Ticked here today, but the copy has the same thing at another time: it will be asked for again.
+  const done = data.completed[today] || {};
+  const again = other ? [] : data.activities.filter(a => a.id in done && !ids.has(a.id))
+    .map(a => ({ a, at: done[a.id], c: activities.find(c => !here.has(c.id) && sameName(c.title, a.title) && c.from <= today && occursOn(c)) }))
+    .filter(x => x.c);
+  return {
+    again,
+    result: {
+      ...copy, pin, calls: data.calls, since, activities, retired,
+      completed: { ...rekey(copy.completed), ...data.completed },
+      undone: { ...rekey(copy.undone), ...data.undone },
+      seen: { ...copy.seen, ...data.seen },
+      raised: { ...rekey(copy.raised), ...data.raised },
+    },
+  };
+}
+
+function restoreQuestion() {
+  const plan = restorePlan();
+  if (!plan) return '';
+  if (plan.fresh) return `${copyLine()}Replace the example with this copy?`;
+  const pin = ui.keepHistory ? ' The PIN is cleared.' : data.pin ? ' The PIN stays as it is.' : plan.result.pin ? ' The copy’s PIN will then be needed to open Family settings.' : '';
+  const again = plan.again.map(({ a, at, c }) => ` ${a.title} was ticked here at ${timeText(at)}, but this copy has it at ${timeText(c.time)}, so Hazel will ask for it again then.`).join('');
+  // Important things that are new here and whose time has passed today start later, like anything new.
+  const later = plan.result.activities.filter(a => a.must && !data.activities.some(x => x.id === a.id) && a.from > dayKey() && firstDay(a))
+    .map(a => ` ${a.title} is new on this device and starts ${startsText(firstDay(a))}.`).join('');
+  return `${copyLine()}Replace the people, routine, details and settings (such as the writing size) on this device with this copy?${pin} Ticks already recorded here are kept.${again}${later}`;
+}
 
 // Says whose copy is about to be restored, and when it was made, so the wrong one is caught first.
 function copyLine() {
@@ -1505,7 +1598,7 @@ const familyPanels = {
         <form novalidate data-form="restore">
           <label class="field">Restore from a copy<textarea name="backup" rows="3" placeholder="Paste a backup copy here"></textarea></label>
           ${ui.confirming === 'restore'
-            ? confirmBox(`${copyLine()}Replace the people, routine and details on this device with this copy? Ticks already recorded here are kept.`, 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
+            ? confirmBox(restoreQuestion(), 'restore-apply', null, 'Yes, replace', 'No, keep what is here')
             : '<button class="secondary">Restore</button>'}
         </form>
         <div class="divider"></div>
@@ -1729,7 +1822,7 @@ function homeSpeech() {
   const earlier = earlierNotDone().filter(a => a !== top?.a && !a.must);
   const overdue = !!top && top.late >= NOW_WINDOW;
   // The thing at the top that is past its hour is said once, with its advice, before anything else.
-  const lines = tabletLines().filter(l => !(overdue && l.text === `${top.a.title}: not ticked`));
+  const lines = tabletLines().filter(l => !(overdue && l.cls.includes('same')));
   return [
     `${greeting()}.`,
     `It is ${clockText()}, ${partLine()}, ${fmt({ day: 'numeric', month: 'long' })}.`,
@@ -1943,15 +2036,17 @@ function showCalling(link) {
   const who = link.dataset.name || number;
   const address = number.includes('@');
   const heading = emergency ? `${dial ? 'Dial' : 'Call'} ${number}` : dial ? `Ring ${who}` : `Calling ${who}`;
-  const how = dial ? 'This device cannot make the call. Use the house phone or a mobile, and dial:'
-    : emergency ? `If you cannot hear it ringing, dial ${esc(number)} on a phone now.`
+  // The emergency number is already in the heading ("Call 000", "Dial 000"), so on a short screen it
+  // is not shown again, and the name and address get the room.
+  const how = dial ? (emergency ? '<span class="long">This device cannot make the call. </span>Use the house phone or a mobile.' : 'This device cannot make the call. Use the house phone or a mobile, and dial:')
+    : emergency ? `<span class="long">If you cannot hear it ringing, dial ${esc(number)} on a phone now.</span><span class="short">Not ringing? Dial ${esc(number)} on a phone.</span>`
     : address ? 'If the call does not start, open FaceTime and call:'
     : 'If the call does not start, dial this on your phone:';
   openSheet('call', `
     ${emergency ? '' : '<div class="prompt-pic" aria-hidden="true">📞</div>'}
     <h2 id="sheet-title">${esc(heading)}</h2>
-    <p class="prompt-note">${how}</p>
-    <p class="big-number ${address ? 'address' : ''} ${emergency && !dial ? 'again' : ''}">${esc(number)}</p>
+    <p class="prompt-note ${emergency ? (dial ? 'dial-note' : 'ring-note') : ''}">${how}</p>
+    <p class="big-number ${address ? 'address' : ''} ${emergency ? 'again' : ''}">${esc(number)}</p>
     ${emergency ? `<div class="say-card">
       <strong>Tell them</strong>
       ${data.about.fullName ? `<p>My name is <b>${esc(data.about.fullName)}</b>.</p>` : ''}
@@ -2571,37 +2666,9 @@ const actions = {
     copyText(ui.backup, 'Copied. Paste it into an email or message to yourself.').then(ok => { if (ok) markBackedUp(); });
   },
   'restore-apply'() {
-    if (!ui.restore) return;
-    // On a device already in use, what happened on it (ticks, when Hazel was showing, reminders) is
-    // kept, so a dose ticked this morning is never asked for again. After a forgotten PIN so is the
-    // record of anything that is in the routine here but not in the copy.
-    const copy = ui.restore;
-    const fresh = ui.screen === 'setup'; // a new or cleared device
-    const calls = data.calls;
-    const happened = fresh ? {} : {
-      since: [data.since, copy.since].filter(Boolean).sort()[0] || dayKey(),
-      completed: { ...copy.completed, ...data.completed },
-      undone: { ...copy.undone, ...data.undone },
-      seen: { ...copy.seen, ...data.seen },
-      raised: { ...copy.raised, ...data.raised },
-    };
-    Object.assign(data, ui.keepHistory ? {
-      ...copy,
-      // Anything the copy brings that is not in the routine here starts afresh, so it is not blamed
-      // for days it was not there and is never listed twice beside its own removed entry.
-      activities: copy.activities.map(a => (data.activities.some(x => x.id === a.id) ? a : { ...a, from: startDay(a.time, a.repeat) })),
-      since: data.since || copy.since || dayKey(),
-      // This device's own record of an item it still has is the true one here.
-      retired: [...copy.retired.filter(c => !data.activities.some(a => a.id === c.id)), ...data.retired.filter(r => !copy.retired.some(c => c.id === r.id)),
-        ...data.activities.filter(a => !copy.activities.some(c => c.id === a.id)).map(retire)],
-      completed: { ...copy.completed, ...data.completed },
-      undone: { ...copy.undone, ...data.undone },
-      seen: { ...copy.seen, ...data.seen },
-      raised: { ...copy.raised, ...data.raised },
-    } : { ...copy, ...happened });
-    // Whether calls work is a fact about the device, not the copy: a new device is asked to try one,
-    // and a device that has already answered keeps its answer.
-    data.calls = fresh ? '' : calls;
+    const plan = restorePlan();
+    if (!plan) return;
+    Object.assign(data, plan.result);
     Object.assign(ui, { restore: null, keepHistory: false, confirming: null, unlocked: true, forgot: false });
     applySettings();
     try { navigator.storage?.persist?.(); } catch { /* optional */ }
@@ -2786,11 +2853,13 @@ const forms = {
       country: place !== data.region || (place === 'other' && emergency !== (data.emergency || REGIONS.other.emergency)),
       calls: calls !== data.calls,
     };
+    let keptNumber = false; // the country question answered with the same country: said so, so a family who meant to change it sees
     if (!unattended) {
       if (pin && !/^\d{4,8}$/.test(pin)) return showError(f, 'The PIN must be 4 to 8 digits, or left blank.', 'pin');
       if (place === 'other' && !validEmergency(emergency)) return showError(f, 'Please type the emergency number for this country, digits only.', 'emergency');
       // The one-off country question is answered by changing the country, or by pressing Save after
       // "No, change the country". Saving something else, or the save made on leaving, does not answer it.
+      keptNumber = ui.regionAsked && bySave && !differs.country && !data.regionOk;
       if (differs.country || (ui.regionAsked && bySave)) data.regionOk = true;
       data.region = place;
       data.emergency = place === 'other' ? emergency : '';
@@ -2813,7 +2882,7 @@ const forms = {
     data.awake ? requestWakeLock() : releaseWakeLock();
     dirty = false;
     if (unattended) return void save(); // nobody is there to read a message: the panel says later what was left out
-    saved('Settings saved.');
+    saved(keptNumber ? `Settings saved. The emergency number stays ${region().emergency} (${region().name}).` : 'Settings saved.');
     render('form[data-form="settings"] .primary');
   },
   restore(f) {
@@ -3044,8 +3113,9 @@ document.addEventListener('keydown', e => {
   // In the longer forms the Enter (or Go) key never saves from inside a box: in a text box it moves
   // to the next one, and on a choice it does nothing. Saving half a form by accident would leave
   // Hazel set up with no people and no tablets. Only the Save button itself saves.
+  // So does Settings while the question about the country is open: only Save answers it.
   if (e.key === 'Enter' && e.target.matches?.('input, select')
-    && e.target.closest('form[data-form="setup"], form[data-form="activity"], form[data-form="contact"]')) {
+    && e.target.closest(`form[data-form="setup"], form[data-form="activity"], form[data-form="contact"]${ui.regionAsked && !data.regionOk ? ', form[data-form="settings"]' : ''}`)) {
     e.preventDefault();
     if (e.target.matches('select, [type="checkbox"], [type="radio"], [type="file"]')) return;
     const fields = [...e.target.form.querySelectorAll('input, select, textarea, button')].filter(x => !x.disabled && x.type !== 'file' && x.offsetParent);

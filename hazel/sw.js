@@ -1,5 +1,5 @@
 // Offline support: cache the app shell, serve it cache-first, refresh in the background.
-const CACHE = 'hazel-v6';
+const CACHE = 'hazel-v7';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
 self.addEventListener('install', e => {

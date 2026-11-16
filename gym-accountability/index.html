@@ -886,7 +886,7 @@ function renderToday(){
   }).join('');
 
   const banners = [];
-  if (ON_OLD_HOME) banners.push(['warn',`🏠 Ironclad has moved to <b>ironclad.coach</b>. Bring your contract with you; it takes a minute. <button style="padding:6px 10px;margin-left:6px" id="btn-move">Move my contract</button>`]);
+  if (ON_OLD_HOME && NEW_HOME_UP) banners.push(['warn',`🏠 Ironclad has moved to <b>ironclad.coach</b>. Bring your contract with you; it takes a minute. <button style="padding:6px 10px;margin-left:6px" id="btn-move">Move my contract</button>`]);
   if (tampered) banners.push(['bad',"⚠️ Someone edited the ledger outside the app. This record can't be trusted any more. Your referee has been told, or will be."]);
   const o = owed(), dl = depositLeft();
   if (o>0) banners.push(['bad',`💸 You owe ${esc(cfg.referee.name)} ${money(o)}${hasDeposit() ? ' beyond your deposit' : ''}. Pay it, then tell us. <button class="btn-danger" style="padding:6px 10px;margin-left:6px" id="btn-paid">I've paid</button>`]);
@@ -1830,7 +1830,10 @@ $('btn-install').onclick = () => { if (isStandalone()) return toast("You're alre
 /* ---------- Ironclad moved to ironclad.coach ---------- */
 const NEW_HOME = 'https://ironclad.coach/app/';
 const ON_OLD_HOME = location.hostname === 'techb54321-svg.github.io';
-if (ON_OLD_HOME && !load(LS.cfg, null)) location.replace(NEW_HOME);
+let NEW_HOME_UP = false;
+// Only point people at the new address once it actually answers.
+async function newHomeIsUp(){ try { await fetch(NEW_HOME + 'manifest.webmanifest?probe=' + Date.now(), { mode:'no-cors', cache:'no-store' }); return true; } catch { return false; } }
+if (ON_OLD_HOME) newHomeIsUp().then(up => { NEW_HOME_UP = up; if (!up) return; if (!load(LS.cfg, null)) location.replace(NEW_HOME); else if (cfg) renderToday(); });
 function moveSheet(){
   openSheet(`<h3>Ironclad has moved</h3><p class="small muted">Its new home is <b>ironclad.coach</b>. Your contract lives on this phone under the old address, so bring it across in three steps. Your referee, alerts and history all come with it.</p>
     <div class="inst-steps">

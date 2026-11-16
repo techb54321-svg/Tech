@@ -1,5 +1,5 @@
 // Offline cache so the app opens inside the gym even with no signal.
-const CACHE = 'ironclad-v3';
+const CACHE = 'ironclad-v4';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', './privacy.html', './fonts/fonts.css', './fonts/bricolage-grotesque-latin.woff2', './fonts/inter-latin.woff2', './fonts/caveat-latin.woff2'];
 
 self.addEventListener('install', e => {
@@ -10,6 +10,7 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (new URL(e.request.url).origin !== self.location.origin) return; // only the app's own files; never fake other sites
   e.respondWith(
     fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
       .catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))

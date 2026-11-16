@@ -419,6 +419,7 @@
             <div class="promise"><div class="badge"><svg class="ico"><use href="#i-users"/></svg></div><div><b>A referee holds your deposit</b><span>Miss a week and it goes somewhere you'll hate.</span></div></div>
             <div class="promise"><div class="badge"><svg class="ico"><use href="#i-shield"/></svg></div><div><b>A log that shows tampering</b><span>Every entry is sealed to the one before it.</span></div></div>
           </div>
+          <button type="button" id="welcome-import" class="btn-block iconbtn" style="justify-content:center;margin-top:14px;background:none;border-style:dashed"><svg class="ico"><use href="#i-up"/></svg>Already have Ironclad? Restore a backup</button>
         </div>
       </div>
 
@@ -1746,6 +1747,7 @@ $('btn-export').onclick = async () => {
   toast('Encrypting…'); download(name, JSON.stringify(await encryptBackup(payload, pass)), 'application/json'); toast('Encrypted backup saved.');
 };
 $('btn-import').onclick = () => $('import-file').click();
+$('welcome-import').onclick = () => $('import-file').click();
 $('import-file').onchange = async () => {
   const f = $('import-file').files[0]; if (!f) return;
   try {

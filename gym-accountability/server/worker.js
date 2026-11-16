@@ -13,8 +13,8 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
-const APP_URL = 'https://techb54321-svg.github.io/Tech/gym-accountability/'; // where the Ironclad app lives
-const APP_ORIGINS = [new URL(APP_URL).origin, 'https://ironclad.coach', 'https://www.ironclad.coach']; // where the app may call from
+const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
+const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
 const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

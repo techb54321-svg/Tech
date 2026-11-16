@@ -104,7 +104,7 @@
 </main>
 <script>
   let text = '';
-  fetch('worker.js').then(r => r.text()).then(t => { text = t; document.getElementById('code').textContent = t; }).catch(() => { document.getElementById('code').textContent = 'Could not load the code. Open worker.js in this folder instead.'; });
+  fetch('worker.js?v=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => { text = t; document.getElementById('code').textContent = t; }).catch(() => { document.getElementById('code').textContent = 'Could not load the code. Open worker.js in this folder instead.'; });
   document.getElementById('copy').onclick = async () => {
     const m = document.getElementById('copymsg');
     try { await navigator.clipboard.writeText(text); m.textContent = '✓ Copied. Paste it into the Cloudflare editor.'; }

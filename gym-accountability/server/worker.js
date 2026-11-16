@@ -14,7 +14,7 @@
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
 const APP_URL = 'https://techb54321-svg.github.io/Tech/gym-accountability/'; // where the Ironclad app lives
-const APP_ORIGIN = new URL(APP_URL).origin;
+const APP_ORIGINS = [new URL(APP_URL).origin, 'https://ironclad.coach', 'https://www.ironclad.coach']; // where the app may call from
 const DAY = 86400000;
 const DN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -26,7 +26,7 @@ const page = (s, status = 200) => new Response(s, { status, headers: { 'Content-
 const json = (o, status = 200, extra = {}) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json', ...extra } });
 function corsFor(request) {
   const o = request.headers.get('Origin');
-  if (o && (o === APP_ORIGIN || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o))) return { 'Access-Control-Allow-Origin': o, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+  if (o && (APP_ORIGINS.includes(o) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o))) return { 'Access-Control-Allow-Origin': o, Vary: 'Origin', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
   return {};
 }
 

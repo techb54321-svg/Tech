@@ -886,6 +886,7 @@ function renderToday(){
   }).join('');
 
   const banners = [];
+  if (ON_OLD_HOME) banners.push(['warn',`🏠 Ironclad has moved to <b>ironclad.coach</b>. Bring your contract with you; it takes a minute. <button style="padding:6px 10px;margin-left:6px" id="btn-move">Move my contract</button>`]);
   if (tampered) banners.push(['bad',"⚠️ Someone edited the ledger outside the app. This record can't be trusted any more. Your referee has been told, or will be."]);
   const o = owed(), dl = depositLeft();
   if (o>0) banners.push(['bad',`💸 You owe ${esc(cfg.referee.name)} ${money(o)}${hasDeposit() ? ' beyond your deposit' : ''}. Pay it, then tell us. <button class="btn-danger" style="padding:6px 10px;margin-left:6px" id="btn-paid">I've paid</button>`]);
@@ -904,6 +905,7 @@ function renderToday(){
   const br = $('btn-retry'); if (br) br.onclick = ()=>{ lastDeliveryError=''; flushOutbox(); };
   const bi = $('btn-invite2'); if (bi) bi.onclick = inviteReferee;
   const bi3 = $('btn-invite3'); if (bi3) bi3.onclick = inviteReferee;
+  const bm = $('btn-move'); if (bm) bm.onclick = moveSheet;
   const bt = $('btn-topup2'); if (bt) bt.onclick = topUpDeposit;
   checkRefereeAgreement();
   escalate(st);
@@ -1825,6 +1827,22 @@ function maybeOfferInstall(tries = 0){
 }
 $('btn-install').onclick = () => { if (isStandalone()) return toast("You're already in the app."); installSheet(); };
 
+/* ---------- Ironclad moved to ironclad.coach ---------- */
+const NEW_HOME = 'https://ironclad.coach/app/';
+const ON_OLD_HOME = location.hostname === 'techb54321-svg.github.io';
+if (ON_OLD_HOME && !load(LS.cfg, null)) location.replace(NEW_HOME);
+function moveSheet(){
+  openSheet(`<h3>Ironclad has moved</h3><p class="small muted">Its new home is <b>ironclad.coach</b>. Your contract lives on this phone under the old address, so bring it across in three steps. Your referee, alerts and history all come with it.</p>
+    <div class="inst-steps">
+      <div><i>1</i><span><b>Save a backup.</b> Pick a passphrase you'll remember for the next two minutes.</span></div>
+      <div><i>2</i><span><b>Open ironclad.coach</b> and tap <b>Already have Ironclad? Restore a backup</b>. Pick the file, enter the passphrase.</span></div>
+      <div><i>3</i><span><b>Add the new one to your home screen</b> and remove the old icon.</span></div>
+    </div>
+    <button class="btn-primary btn-block" style="margin-top:12px" id="mv-backup">1. Save a backup</button>
+    <a class="btn-block" href="${NEW_HOME}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:8px;padding:13px 16px;border-radius:16px;border:1px solid var(--line);background:var(--bg2);font-weight:600;color:var(--text)">2. Open ironclad.coach</a>
+    <button class="btn-block" style="margin-top:8px" id="sheet-close">Later</button>`);
+  $('mv-backup').onclick = () => { closeSheet(); $('btn-export').click(); };
+}
 (async function boot(){
   setIntegrity(await verifyLedger());
   if (cfg) {

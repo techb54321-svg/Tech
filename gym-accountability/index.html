@@ -1174,7 +1174,7 @@ $('s-search-btn').onclick = runSearch;
 $('s-search').addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); runSearch(); } });
 function randomTopic(){ const a='abcdefghjkmnpqrstuvwxyz23456789'; let t='gym-'; for (let i=0;i<10;i++) t+=a[Math.floor(Math.random()*a.length)]; return t; }
 // The shared alerts server, e.g. 'https://ironclad.yourname.workers.dev'. Until it's set, the app offers Manual only.
-const ALERTS_SERVER_URL = '';
+const ALERTS_SERVER_URL = 'https://ironclad.techb54321.workers.dev';
 const ALERTS_SERVER = String(window.IRONCLAD_ALERTS_SERVER || ALERTS_SERVER_URL).replace(/\/+$/, '');
 let keptChannel = null; // the channel already in use when editing (kept unless the user switches)
 function modeAuto(){ return document.querySelector('#s-mode input:checked').value === 'auto'; }

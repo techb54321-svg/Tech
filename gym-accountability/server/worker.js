@@ -13,6 +13,7 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
+const VERSION = '2026-11-16b'; // shown on the status page so you can tell which code is running
 const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
 const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
@@ -51,7 +52,7 @@ async function route(request, env) {
   const m = url.pathname.match(/^\/r\/([a-z0-9]{10,40})(\/.*)?$/);
   if (m) return refereeRoute(request, env, url, m[1], m[2] || '');
   if (request.method === 'GET' && url.pathname === '/') return statusPage(env, url);
-  if (request.method === 'GET' && url.pathname === '/health') return J({ ok: !!env.STATE });
+  if (request.method === 'GET' && url.pathname === '/health') return J({ ok: !!env.STATE, version: VERSION });
   if (request.method !== 'POST') return J({ error: 'not found' }, 404);
   if (!env.STATE) return J({ error: 'The alerts server has no storage yet.' }, 500);
   let body;
@@ -616,6 +617,7 @@ async function statusPage(env, url) {
       ${tick(true, 'Storage connected')}
       ${tick(true, 'Notification keys ready')}
       ${tick(!!lastCron, 'Hourly check (cron)', lastCron ? `ran ${ago(lastCron)}` : 'add trigger <code>0 * * * *</code>')}
+      ${tick(true, 'Server code version', VERSION)}
     </div>
     <div class="card" style="border-color:rgba(255,176,32,.35)"><h2>The address the app needs</h2>
       <p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:14px;background:rgba(0,0,0,.35);padding:12px;border-radius:12px;border:1px solid var(--line)" id="addr">${escH(url.origin)}</p>

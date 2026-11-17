@@ -178,6 +178,11 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D;transform:scale(1);transform-origin:50% 45%}
 .layer video.hold{transform:scale(1.08);transition:transform var(--hold,5s) cubic-bezier(.3,0,.4,1)}
 .layer video.cut{opacity:0;transition:opacity .5s ease}
+.flow-arrow{position:absolute;width:7.5%;aspect-ratio:1;transform:translate(-50%,-50%) rotate(var(--r,0deg));opacity:0;transition:opacity .35s ease;pointer-events:none;z-index:2;filter:drop-shadow(0 3px 4px rgba(0,0,0,.35))}
+.flow-arrow.on{opacity:1}
+.flow-arrow svg{width:100%;height:100%;display:block;animation:nudge .8s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateX(18%)}}
+@media (prefers-reduced-motion:reduce){.flow-arrow svg{animation:none}}
 .layer video.cut.show{opacity:1}
 .qopt.hint{animation:hint 1.1s ease-in-out infinite}
 @keyframes hint{50%{box-shadow:0 0 0 8px #F4B82E,0 6px 0 rgba(126,15,41,.25);background:#FFFDF6}}
@@ -527,7 +532,7 @@ const SCENES = [
   {id:'home', clip:'v6-home', clen:10, core:true, task:'hand', voice:'home', vdur:9.99, words:[0,.29,.64,1.24,1.49,2.35,2.6,3.09,3.38,3.52,3.66,4.55,4.85,5.06,5.45,6.25,6.53,6.71,7.11,7.9,8.93], text:"I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump, thump-thump!"},
   {id:'squeeze', clip:'v5-squeeze', clen:10, core:true, task:'fist', voice:'squeeze', vdur:10.91, words:[0,.31,.56,.7,1.3,1.59,1.83,2.17,2.33,3.08,3.72,3.86,4.62,4.85,5.11,5.7,6.8,7.13,7.43,8.21,8.6,8.82,9.02,9.39,9.75,10.15], text:"Now make a fist. That's how big I am! Squeeze it tight... and let go. Squeeze... and let go. That's what I do, all day long!"},
   {id:'loop', clip:'v2-loop', core:true, voice:'loop', vdur:8.17, words:[0,.37,.73,.91,1.56,1.72,2.07,2.46,2.61,2.75,2.95,3.7,4.15,4.3,4.51,5.24,5.54,6.39,6.56,6.94,7.41,7.54], text:"Every time I squeeze, I push blood up to your head, down to your toes, and all the way back to me!"},
-  {id:'doors', clip:'v7-doors', clen:10, core:true, sfx:'beat2', task:'say', voice:'doors', vdur:13.37, words:[0,.7,.88,1.08,1.28,1.71,2.46,3.08,4.15,4.46,4.77,5.17,5.62,6.3,6.54,6.66,7.01,7.38,7.88,8.15,8.71,10.09,10.41,10.53,10.74,11.22,12.27], text:"Inside me there are four rooms, called chambers, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
+  {id:'doors', clip:'v8-doors', clen:10, arrows:[{x:8, y:28, r:0, from:1.4, to:4.2}, {x:87, y:28, r:180, from:1.4, to:4.2}, {x:37.5, y:9, r:-90, from:7.4, to:10}, {x:60.5, y:8, r:-90, from:7.4, to:10}], core:true, sfx:'beat2', task:'say', voice:'doors', vdur:13.37, words:[0,.7,.88,1.08,1.28,1.71,2.46,3.08,4.15,4.46,4.77,5.17,5.62,6.3,6.54,6.66,7.01,7.38,7.88,8.15,8.71,10.09,10.41,10.53,10.74,11.22,12.27], text:"Inside me there are four rooms, called chambers, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
   {id:'listen', clip:'v5-listen', clen:10, core:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
   {id:'whoosh', clip:'v5-whoosh', clen:15, detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:18.9, voicedFor:{doctor:'Dr Sarah'}, words:[0,.27,.76,1.2,1.45,1.89,2.57,3.41,4.01,4.57,5.61,6.07,6.57,6.83,7.25,7.59,8.56,9.11,9.49,9.81,10.41,10.84,11.08,12.09,12.63,13.28,13.82,14.12,14.25,14.8,15.7,16.03,16.31,16.88,17.15,17.78], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through my doors nice and fast, like water whooshing through a garden hose. And my doors are working perfectly!"},
   {id:'common', clip:'v6-hug', clen:5, cuts:[{at:3.4, clip:'v6-kids', clen:10}], detect:'common', voice:'common', vdur:14.4, words:[0,.33,.49,1.07,2.07,2.45,3.6,4.13,4.32,4.64,4.78,5.14,5.41,5.77,6.01,6.22,7.29,7.88,8.16,8.29,8.5,9.08,9.78,10.4,10.93,12.42,12.83,13.31,13.47], text:"Is a whoosh scary? No way! Lots and lots of kids have one, just like you. Doctors call it an innocent murmur. Innocent means harmless. I'm healthy and strong!"},
@@ -1142,7 +1147,9 @@ const player = (() => {
     if (s.kind === 'quiz') return `<div class="card card-quiz"${dir}><div class="qh"><span class="mini" aria-hidden="true"></span><h3 class="qq"></h3></div><div class="qopts"></div><div class="dots">${qz().q.map(() => '<i></i>').join('')}</div></div>`;
     if (s.kind === 'award') return `<div class="card card-award"${dir}><div class="rosette" style="background-image:url(avatars/${S.avatar}.jpg)" role="img" aria-label="${esc(S.name)}'s buddy"></div><div class="badge">${esc(qz().badge)}</div><div class="who">${esc(S.name)}</div></div>`;
     const vtag = (c, cls) => `<video${cls ? ` class="${cls}"` : ''} poster="scenes/${c}.jpg" muted playsinline preload="auto"><source src="scenes/${c}.webm" type="video/webm"><source src="scenes/${c}.mp4" type="video/mp4"></video>`;
-    if (s.clip) return vtag(s.clip) + (s.cuts || []).map(c => vtag(c.clip, 'cut')).join('');
+    const ARROW = '<svg viewBox="0 0 100 100" aria-hidden="true"><path d="M8 38h48V18l36 32-36 32V62H8z" fill="#F4B82E" stroke="#7E0F29" stroke-width="5" stroke-linejoin="round"/></svg>';
+    const arrows = (s.arrows || []).map((a, k) => `<span class="flow-arrow" data-k="${k}" style="left:${a.x}%;top:${a.y}%;--r:${a.r}deg">${ARROW}</span>`).join('');
+    if (s.clip) return vtag(s.clip) + (s.cuts || []).map(c => vtag(c.clip, 'cut')).join('') + arrows;
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
   function load(scenes){
@@ -1202,6 +1209,11 @@ const player = (() => {
     if (!playing) { kb?.pause(); return; }
     raf = requestAnimationFrame(tick);
     if (vid) vid.play().catch(() => {});
+    if (vid && s.arrows) {
+      const marks = $$('.flow-arrow', $$('.layer', stage)[i]);
+      marks.forEach(m => m.classList.remove('on'));
+      vid.ontimeupdate = () => { if (my !== token) return; const t = vid.currentTime; marks.forEach(m => { const a = s.arrows[+m.dataset.k]; m.classList.toggle('on', t >= a.from && t <= a.to); }); };
+    }
     (s.cuts || []).forEach((c, k) => setTimeout(() => { if (my !== token || !playing) return; const v = vids[k + 1]; if (!v) return; v.classList.add('show'); v.play().catch(() => {}); vid.pause(); }, (s.lead || 450) + c.at * 1000));
     sfx(s.sfx);
     (s.sfxAt || []).forEach(x => setTimeout(() => { if (my === token && playing) sfx(x.k); }, x.at * 1000));

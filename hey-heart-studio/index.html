@@ -173,7 +173,8 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .player{max-width:1040px;width:100%;margin:0 auto;background:#0D161D;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(13,22,29,.35);color:#F4EFE6}
 .stage{position:relative;aspect-ratio:16/9;overflow:hidden;overflow:clip;contain:paint;background:#0D161D;max-width:100%}
 .layer{position:absolute;inset:0;opacity:0;transition:opacity .7s ease}
-.layer.on{opacity:1}
+.layer{pointer-events:none}
+.layer.on{opacity:1;pointer-events:auto;z-index:1}
 .layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D}
 .layer img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
 .caption{min-height:calc(2.6em + 26px);padding:13px max(18px,5%);display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--display),"Noto Sans","Segoe UI",sans-serif;font-weight:600;font-size:clamp(16px,2vw,25px);line-height:1.3;color:#FFF8EA;background:#13212A;border-top:1px solid rgba(255,255,255,.06);text-wrap:balance}
@@ -211,6 +212,37 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .card-end ul{list-style:none;margin:4% 0 0;padding:0;display:grid;gap:clamp(4px,1.2vw,14px)}
 .card-end li{display:flex;gap:.6em;align-items:center;font-family:var(--display);font-weight:600;font-size:clamp(13px,2.2vw,28px);color:#FFF8EA}
 .card-end li::before{content:"✓";flex:none;width:1.4em;height:1.4em;border-radius:50%;display:grid;place-items:center;background:#F4B82E;color:#7E0F29;font-size:.8em;font-weight:700}
+.card-quiz{background:radial-gradient(circle at 15% 10%,#FFE08A 0,transparent 45%),#F4B82E;padding:3% 5%;align-content:center;justify-items:center;gap:3.5%}
+.card-quiz .qh{display:flex;align-items:center;gap:2.5%;width:100%;justify-content:center}
+.card-quiz .qh .mini{width:clamp(44px,9vw,110px);aspect-ratio:1;border-radius:50%;flex:none;background:url(scenes/see-you.jpg) 50% 56%/260% no-repeat,#F6E4D2;border:4px solid #fff}
+.card-quiz .qh h3{margin:0;font-family:var(--display);font-weight:700;color:#7E0F29;font-size:clamp(18px,3.6vw,46px);line-height:1.1;text-wrap:balance}
+.card-quiz .dots{display:flex;gap:8px}
+.card-quiz .dots i{width:12px;height:12px;border-radius:50%;background:rgba(126,15,41,.25)}
+.card-quiz .dots i.on{background:#B3163A}
+.qopts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3%;width:100%}
+.qopt{border:0;border-radius:22px;background:#FFF8EA;cursor:pointer;padding:4% 3%;display:grid;justify-items:center;gap:6%;box-shadow:0 6px 0 rgba(126,15,41,.25);font-family:var(--display);font-weight:600;color:#1D2E3F;font-size:clamp(12px,1.9vw,24px);line-height:1.15;transition:transform .12s}
+.qopt:hover{transform:translateY(-3px)}
+.qopt .pic{font-size:clamp(34px,7vw,92px);line-height:1;width:100%;aspect-ratio:16/10;display:grid;place-items:center;border-radius:14px;background:#FCEFC9;overflow:hidden;max-width:100%}
+.qopt .pic img{width:100%;height:100%;object-fit:cover}
+.qopt.right{background:#D8F3E3;box-shadow:0 0 0 5px #23825A,0 6px 0 rgba(35,130,90,.35)}
+.qopt.wrong{animation:shake .45s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.card-award{background:radial-gradient(circle at 50% 35%,#2A8A90 0,transparent 60%),#1C6E74;justify-items:center;align-content:center;gap:3%}
+.card-award .rosette{position:relative;width:clamp(120px,24vw,300px);aspect-ratio:1;border-radius:50%;background:url(avatars/hazel.jpg) 50% 18%/150% no-repeat,#F6E4D2;border:clamp(6px,1.2vw,14px) solid #F4B82E;box-shadow:0 0 0 clamp(4px,.8vw,10px) #B3163A}
+.card-award .rosette::after{content:"";position:absolute;left:50%;bottom:-22%;width:34%;height:30%;transform:translateX(-50%);background:linear-gradient(90deg,#B3163A 0 48%,transparent 48% 52%,#B3163A 52%);clip-path:polygon(0 0,100% 0,100% 100%,75% 80%,50% 100%,25% 80%,0 100%);z-index:-1}
+.card-award .badge{font-family:var(--display);font-weight:700;color:#FFD45C;font-size:clamp(22px,5vw,64px);line-height:1;margin-top:4%}
+.card-award .who{font-family:var(--display);font-weight:600;color:#FFF8EA;font-size:clamp(16px,2.8vw,36px)}
+.turn{position:absolute;left:50%;bottom:5%;transform:translateX(-50%);z-index:4;width:min(86%,720px);background:#FFF8EA;border-radius:24px;padding:clamp(10px,2vw,20px) clamp(14px,2.6vw,26px);display:flex;align-items:center;gap:clamp(10px,2vw,20px);box-shadow:0 14px 40px rgba(0,0,0,.35);animation:pop .35s cubic-bezier(.2,1.4,.4,1)}
+.turn .ic{font-size:clamp(32px,6vw,70px);line-height:1;animation:bob 1s ease-in-out infinite}
+.turn p{margin:0;flex:1;font-family:var(--display);font-weight:600;color:#1D2E3F;font-size:clamp(15px,2.3vw,28px);line-height:1.2}
+.turn button{border:0;border-radius:99px;background:#B3163A;color:#fff;font-family:var(--display);font-weight:600;font-size:clamp(14px,2vw,22px);padding:.6em 1.1em;cursor:pointer;position:relative;overflow:hidden;flex:none}
+.turn button i{position:absolute;left:0;bottom:0;height:4px;background:#F4B82E;animation:fill var(--d,7s) linear forwards}
+@keyframes fill{from{width:0}to{width:100%}}
+@keyframes pop{from{transform:translateX(-50%) scale(.6);opacity:0}}
+@keyframes bob{50%{transform:translateY(-6px) rotate(-6deg)}}
+.confetti{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.confetti i{position:absolute;top:-6%;width:1.4%;aspect-ratio:1/1.6;border-radius:2px;animation:fall var(--t,2.2s) cubic-bezier(.3,.6,.6,1) forwards}
+@keyframes fall{to{transform:translateY(118vh) rotate(var(--r,540deg))}}
 .card-end .hero{width:clamp(80px,22vw,280px);aspect-ratio:3/4;border-radius:20px;background-size:cover;background-position:50% 40%;max-width:100%;border:clamp(3px,.5vw,6px) solid #F4B82E}
 .start{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(8,14,19,.35);border:0;cursor:pointer;color:#fff}
 .start span{display:flex;align-items:center;gap:12px;background:#B3163A;padding:clamp(10px,1.6vw,16px) clamp(18px,2.8vw,30px);border-radius:99px;font-family:var(--display);font-weight:600;font-size:clamp(15px,2vw,22px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
@@ -486,20 +518,22 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', core:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v2-hello', core:true, voice:'hello', vdur:6.83, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.46,1.13,1.51,2.26,2.55,3.92,4.18,4.44,4.55,4.76,4.88,5.14,5.61,6.06], text:"Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
-  {id:'home', clip:'v2-home', core:true, voice:'home', vdur:7.62, words:[0,.31,.64,.77,1,1.61,1.75,2.09,2.26,2.38,2.51,3.17,3.53,3.73,4.46,4.7,4.88,5.21,5.47,5.91,6.17,6.66], text:"I live in your chest, a tiny bit to the left. I'm a muscle, and I'm about as big as your fist."},
-  {id:'squeeze', clip:'v2-squeeze', core:true, sfx:'beat', voice:'squeeze', vdur:8.31, words:[0,.37,.71,.87,1.03,1.92,3.22,4.63,5.12,5.76,6.33,6.76,7.09,7.41,7.59], text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
+  {id:'hello', clip:'v3-knock', core:true, sfx:'knock', lead:900, voice:'hello', vdur:10.36, voicedFor:{name:'Mia'}, words:[0,.41,1.68,2.07,2.61,2.94,3.84,4.11,5.31,5.54,5.7,5.86,6.2,6.47,6.58,6.73,7.27,8.31,8.57,8.66,8.87,9.04,9.51,9.83], text:"Knock, knock! Hi {name}, it's me, your heart! You had a big day at the doctor's today. Want to know a secret about me?"},
+  {id:'home', clip:'v2-home', core:true, task:'hand', voice:'home', vdur:9.99, words:[0,.29,.64,1.24,1.49,2.35,2.6,3.09,3.38,3.52,3.66,4.55,4.85,5.06,5.45,6.25,6.53,6.71,7.11,7.9,8.93], text:"I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump, thump-thump!"},
+  {id:'squeeze', clip:'v2-squeeze', core:true, task:'fist', voice:'squeeze', vdur:10.91, words:[0,.31,.56,.7,1.3,1.59,1.83,2.17,2.33,3.08,3.72,3.86,4.62,4.85,5.11,5.7,6.8,7.13,7.43,8.21,8.6,8.82,9.02,9.39,9.75,10.15], text:"Now make a fist. That's how big I am! Squeeze it tight... and let go. Squeeze... and let go. That's what I do, all day long!"},
   {id:'loop', clip:'v2-loop', core:true, voice:'loop', vdur:6.04, words:[0,.34,.58,.84,1.7,2.14,2.3,2.51,3.46,3.75,4.59,4.73,5.02,5.34,5.5], text:"Up to your head, down to your toes, and all the way back to me."},
-  {id:'doors', clip:'v2-doors', core:true, sfx:'beat2', voice:'doors', vdur:7.71, words:[0,.7,1.07,1.39,1.58,1.89,2.97,3.22,3.5,4.05,4.98,5.24,5.79,6.66], text:"Inside me there are little doors. When they snap shut, they go lub-dub, lub-dub."},
+  {id:'doors', clip:'v2-doors', core:true, sfx:'beat2', task:'say', voice:'doors', vdur:9.75, words:[0,.72,.91,1.12,1.3,1.63,2.59,2.86,3.09,3.61,4.3,4.59,5.14,6.87,7.22,7.34,7.56,7.84,8.67], text:"Inside me there are little doors. When they snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
   {id:'listen', clip:'v2-listen', core:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
   {id:'whoosh', clip:'v2-whoosh', detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:13.19, voicedFor:{doctor:'Dr Sarah'}, words:[0,.3,.86,1.34,1.65,2.18,3.03,3.54,4.03,4.63,5.69,6.06,6.5,6.75,7.13,7.45,8.31,8.88,9.94,10.25,10.72,11.16,11.47,11.65,12.25], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through, like water whooshing through a garden hose."},
-  {id:'common', clip:'v2-common', detect:'common', voice:'common', vdur:13.65, words:[0,.69,.99,1.38,1.54,1.96,2.19,2.36,3.23,3.63,4.03,5.31,5.93,6.25,6.47,6.82,7.5,8.79,9.45,9.87,10.11,11.56,11.91,12.43,12.62], text:"Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means it's harmless. I'm healthy and strong!"},
+  {id:'common', clip:'v2-common', detect:'common', voice:'common', vdur:14.4, words:[0,.33,.49,1.07,2.07,2.45,3.6,4.13,4.32,4.64,4.78,5.14,5.41,5.77,6.01,6.22,7.29,7.88,8.16,8.29,8.5,9.08,9.78,10.4,10.93,12.42,12.83,13.31,13.47], text:"Is a whoosh scary? No way! Lots and lots of kids have one, just like you. Doctors call it an innocent murmur. Innocent means harmless. I'm healthy and strong!"},
   {id:'fever', clip:'v2-fever', detect:'fever', optional:true, sfx:'fast', voice:'fever', vdur:9.89, words:[0,.3,.5,.82,1.01,1.86,2.13,2.32,2.55,3,3.43,4.42,4.74,4.99,5.82,6.11,6.26,6.63,7.01,7.35,8.17,8.62,9.14], text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
   {id:'play', clip:'v2-play', detect:'play', voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
   {id:'tryit', img:'jump-drum', a:[0,22,100], b:[18,26,72], optional:true, off:true, text:"Try it! Put your hand on your chest and jump up and down ten times. Can you feel me drumming?"},
   {id:'grow', clip:'v2-grow', detect:'grow', sfx:'slow', voice:'grow', vdur:9.57, words:[0,.27,.46,.77,1.46,1.7,2.25,2.52,2.75,3.63,3.89,4.16,4.35,5.82,6.2,6.89,7.23,7.52,8.24,8.71,8.86], text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
-  {id:'bye', clip:'v2-bye', core:true, sfx:'beat', voice:'bye', vdur:1.86, voicedFor:{name:'Mia'}, words:[0,.31,.49,.79,1.21], text:"See you next beat, {name}!"},
   {id:'outro', kind:'end', core:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
+  {id:'quiz', kind:'quiz', core:true, voice:'quiz', vdur:3.07, words:[0,.62,1.41,1.7,1.88,2.1,2.3], text:"Quiz time! Let's see what you remember."},
+  {id:'award', kind:'award', core:true, sfx:'chime', voice:'expert', vdur:3.67, voicedFor:{name:'Mia'}, words:[0,.8,1.63,1.99,2.16,2.53,2.84], text:"Wow, {name}! You're a real heart expert!"},
+  {id:'bye', clip:'v2-bye', core:true, sfx:'beat', voice:'bye', vdur:1.86, voicedFor:{name:'Mia'}, words:[0,.31,.49,.79,1.21], text:"See you next beat, {name}!"},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
@@ -518,23 +552,26 @@ const NOTFOR = {loop:['little']};
 // English wording by age band (mid = the default text in SCENES)
 const AGE = {
   little: {
-    home:"I live in your chest. I'm about as big as your fist!",
-    doors:"Inside me are little doors. They go lub-dub, lub-dub!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! Want to know a secret?",
+    home:"I live in your chest. Put your hand there. Can you feel me? Thump-thump!",
+    squeeze:"Make a fist. That's how big I am! Squeeze... and let go!",
+    doors:"Inside me are little doors. They go lub-dub! Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a special listening tube.",
     whoosh:"{doctor} heard a little whoosh. Lub, whoosh, dub! That's just my blood rushing through, like water in a hose.",
-    common:"Lots of kids have a whoosh. It's a happy, healthy sound. I'm strong!",
+    common:"Is a whoosh scary? No way! Lots of kids have one. I'm strong!",
     fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
     play:"So keep running, jumping and dancing!",
     grow:"As you grow, my whoosh might go away. I'll keep beating, day and night.",
     outro:"Remember: my whoosh is okay. I'm strong. And you can play!",
   },
   big: {
-    home:"I live in your chest, a tiny bit to the left, behind your ribs. I'm a strong muscle, about the size of your fist.",
+    home:"I live in your chest, a little to the left, behind your ribs. Put your hand there... feel that? That's me, thump-thump!",
+    squeeze:"Make a fist: that's about my size. Squeeze it tight and let go. Every squeeze pushes blood around your body, about 100,000 times a day!",
     loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
-    doors:"Inside me there are four little doors called valves. When they snap shut, they make the lub-dub sound.",
+    doors:"Inside me are four little doors called valves. When they snap shut they make the lub-dub sound. Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
     whoosh:"{doctor} heard an extra sound between my beats: lub, whoosh, dub. That whoosh is blood flowing smoothly through me, like water rushing through a garden hose.",
-    common:"Doctors call this an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. I'm healthy and strong!",
+    common:"Is a whoosh something to worry about? No way! Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. I'm healthy and strong!",
     fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
     play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
     grow:"As you grow bigger, many whooshes get quieter or disappear completely. Either way, I'll keep beating about 100,000 times a day.",
@@ -552,54 +589,60 @@ const LANG = () => LANGS.find(l => l.id === S.lang) || LANGS[0];
 const TR = {
   zh: {
     intro:"这是{doctor}送给{name}的特别视频。",
-    hello:"你好，{name}！是我，你的心脏！我听说你今天去看了{doctor}。",
-    home:"我住在你的胸口里，稍微偏左一点。我是一块肌肉，大约和你的拳头一样大。",
-    squeeze:"我的工作就是挤压。挤！挤！每挤一下，就把血液送到你的全身。",
+    hello:"咚咚！你好，{name}，是我，你的心脏！你今天去看医生了，真是忙碌的一天。想知道我的一个秘密吗？",
+    home:"我住在你的胸口里，稍微偏左一点。把手放在那里……你能感觉到我吗？扑通、扑通！",
+    squeeze:"现在握紧拳头。我就这么大！用力握紧……再松开。握紧……再松开。我一整天都在这样做！",
     loop:"血液流到你的头，流到你的脚趾，然后再回到我这里。",
-    doors:"我身体里有几扇小门。它们关上的时候，会发出“扑通、扑通”的声音。",
+    doors:"我身体里有几扇小门。它们关上的时候会发出“扑通”声！跟我一起说：扑通！扑通！",
     listen:"今天{doctor}用听诊器听了我的声音。就像把耳朵贴在大人的胸口上，只是声音更大！",
     whoosh:"{doctor}还听到了一点额外的声音。听！扑、呼、通。那个“呼”的声音，只是血液流过我的声音，就像水流过花园的水管。",
-    common:"很多很多小朋友都有这样的“呼呼”声，和你一样。医生叫它“无害性杂音”。无害的意思就是没关系。我很健康，很强壮！",
+    common:"“呼呼”声可怕吗？一点也不！很多很多小朋友都有，和你一样。医生叫它“无害性杂音”。无害就是没有危险。我很健康，很强壮！",
     fever:"当你发烧，或者跑得很快的时候，我会跳得更快，所以“呼呼”声可能会更响。这也没关系！",
     play:"所以继续跑、跳、跳舞、玩耍吧，和平时一样。我是一块肌肉，肌肉最喜欢运动了！",
     tryit:"试一试！把手放在胸口上，原地跳十下。你能感觉到我在打鼓吗？",
     grow:"等你长大一些，我的“呼呼”声可能会变小，甚至消失。不管怎样，我都会日日夜夜一直跳动。",
     bye:"{name}，下次心跳见！",
     outro:"记住：我的“呼呼”声叫无害性杂音。我很健康、很强壮。你可以像平时一样玩耍！",
+    quiz:"答题时间到！看看你记住了什么。",
+    award:"哇，{name}！你是真正的心脏小专家！",
   },
   ar: {
     intro:"فيديو خاص لـ{name}، من {doctor}.",
-    hello:"مرحبًا يا {name}! إنه أنا، قلبك! سمعت أنك زرت {doctor} اليوم.",
-    home:"أعيش في صدرك، إلى اليسار قليلًا. أنا عضلة، وحجمي تقريبًا مثل قبضة يدك.",
-    squeeze:"عملي هو أن أنقبض. انقباض! انقباض! كل انقباضة تدفع الدم إلى كل جسمك.",
+    hello:"طق طق! مرحبًا يا {name}، إنه أنا، قلبك! كان يومك حافلًا عند الطبيب اليوم. هل تريد أن تعرف سرًّا عني؟",
+    home:"أعيش داخل صدرك، إلى اليسار قليلًا. ضع يدك هناك... هل تشعر بي؟ دُق-دُق، دُق-دُق!",
+    squeeze:"والآن اقبض يدك. هذا هو حجمي! اضغط بقوة... ثم أرخِ. اضغط... ثم أرخِ. هذا ما أفعله طوال اليوم!",
     loop:"إلى رأسك، وإلى أصابع قدميك، ثم يعود الدم إليّ من جديد.",
-    doors:"في داخلي أبواب صغيرة. عندما تُغلق، تصدر صوت: دُق-دُق، دُق-دُق.",
+    doors:"في داخلي أبواب صغيرة. عندما تُغلق تقول: دُق-دُق! قلها معي: دُق-دُق! دُق-دُق!",
     listen:"اليوم استمع {doctor} إليّ بالسماعة الطبية. كأنك تضع أذنك على صدر شخص كبير، لكن الصوت أعلى!",
     whoosh:"وسمع {doctor} صوتًا إضافيًا. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط صوت الدم وهو يندفع خلالي، مثل الماء في خرطوم الحديقة.",
-    common:"كثير جدًا من الأطفال لديهم هذا الصوت، مثلك تمامًا. يسميه الأطباء نفخة بريئة. بريئة تعني أنها غير مؤذية. أنا قوي وبصحة جيدة!",
+    common:"هل الصوت مخيف؟ أبدًا! كثير جدًا من الأطفال لديهم هذا الصوت، مثلك تمامًا. يسميه الأطباء نفخة بريئة. بريئة تعني غير مؤذية. أنا قوي وبصحة جيدة!",
     fever:"عندما تكون مصابًا بالحمى، أو تركض بسرعة، أنبض أسرع، لذلك قد يصبح الصوت أعلى. وهذا أمر طبيعي أيضًا!",
     play:"لذلك استمر في الركض والقفز والرقص واللعب كالمعتاد. أنا عضلة، والعضلات تحب الحركة!",
     tryit:"جرّب! ضع يدك على صدرك واقفز عشر مرات. هل تشعر بي وأنا أقرع الطبل؟",
     grow:"عندما تكبر، قد يصبح الصوت أهدأ، أو قد يختفي تمامًا. وفي كل الأحوال، سأستمر في النبض ليلًا ونهارًا.",
     bye:"أراك في النبضة القادمة يا {name}!",
     outro:"تذكّر: صوتي اسمه نفخة بريئة. أنا قوي وبصحة جيدة. ويمكنك أن تلعب كالمعتاد!",
+    quiz:"وقت المسابقة! لنرَ ماذا تتذكر.",
+    award:"واو يا {name}! أنت خبير قلوب حقيقي!",
   },
   vi: {
     intro:"Một video đặc biệt dành cho {name}, từ {doctor}.",
-    hello:"Chào {name}! Mình đây, trái tim của bạn! Mình nghe nói hôm nay bạn đã đi gặp {doctor}.",
-    home:"Mình sống trong lồng ngực của bạn, hơi lệch sang trái một chút. Mình là một cơ bắp, to bằng nắm tay của bạn.",
-    squeeze:"Nhiệm vụ của mình là bóp. Bóp! Bóp! Mỗi lần bóp sẽ đẩy máu đi khắp cơ thể bạn.",
+    hello:"Cốc cốc! Chào {name}, mình đây, trái tim của bạn! Hôm nay bạn đã có một ngày đi khám bác sĩ thật bận rộn. Bạn có muốn biết một bí mật về mình không?",
+    home:"Mình sống trong lồng ngực của bạn, hơi lệch sang trái. Đặt tay lên đó nào... bạn có cảm thấy mình không? Thịch-thịch, thịch-thịch!",
+    squeeze:"Giờ hãy nắm tay lại. Mình to bằng chừng đó đấy! Bóp thật chặt... rồi thả ra. Bóp... rồi thả ra. Mình làm vậy suốt cả ngày!",
     loop:"Lên tới đầu, xuống tới ngón chân, rồi quay trở về với mình.",
-    doors:"Bên trong mình có những cánh cửa nhỏ. Khi chúng đóng lại, chúng kêu thịch-thịch, thịch-thịch.",
+    doors:"Bên trong mình có những cánh cửa nhỏ. Khi đóng lại, chúng kêu thịch-thịch! Nói cùng mình nào: thịch-thịch! Thịch-thịch!",
     listen:"Hôm nay {doctor} đã nghe mình bằng ống nghe. Giống như áp tai vào ngực người lớn, nhưng nghe to hơn!",
     whoosh:"Và {doctor} nghe thấy một âm thanh nữa. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là tiếng máu chảy qua mình, giống như nước chảy qua vòi tưới cây.",
-    common:"Rất nhiều bạn nhỏ cũng có tiếng vù giống bạn. Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không sao cả. Mình khỏe mạnh và mạnh mẽ!",
+    common:"Tiếng vù có đáng sợ không? Không hề! Rất nhiều bạn nhỏ cũng có, giống như bạn. Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không nguy hiểm. Mình khỏe mạnh và mạnh mẽ!",
     fever:"Khi bạn bị sốt, hoặc chạy thật nhanh, mình đập nhanh hơn, nên tiếng vù có thể to hơn. Điều đó cũng không sao!",
     play:"Vì vậy hãy cứ chạy, nhảy, múa và vui chơi như mọi khi. Mình là cơ bắp, và cơ bắp rất thích vận động!",
     tryit:"Thử nhé! Đặt tay lên ngực và nhảy lên nhảy xuống mười lần. Bạn có cảm thấy mình đang đánh trống không?",
     grow:"Khi bạn lớn hơn, tiếng vù có thể nhỏ đi, hoặc biến mất hẳn. Dù thế nào, mình vẫn sẽ đập suốt ngày đêm.",
     bye:"Hẹn gặp lại ở nhịp đập tiếp theo nhé, {name}!",
     outro:"Hãy nhớ: tiếng vù của mình gọi là tiếng thổi vô hại. Mình khỏe mạnh và mạnh mẽ. Và bạn có thể vui chơi như mọi khi!",
+    quiz:"Đến giờ đố vui! Xem bạn nhớ được gì nào.",
+    award:"Ồ, {name}! Bạn đúng là chuyên gia về trái tim!",
   },
 };
 const UI = {
@@ -616,6 +659,29 @@ const UI = {
        bullets:{mid:['Trái tim mình khỏe mạnh','Tiếng vù là tiếng thổi vô hại','Mình có thể chạy nhảy vui chơi như mọi khi']},
        title:'Video trái tim của {name}', play:'Phát video của {name}', found:'Chúng tôi phát hiện gì', means:'Điều đó có nghĩa là gì', todo:'Cần làm gì', seek:'Đi khám ngay nếu', questions:'Câu hỏi của bạn'},
 };
+const QZ = {
+  en: {q:['How big is your heart?','What makes the whoosh sound?','Can you still run and play?'],
+       o:[['As big as your fist','As big as a house','As tiny as an ant'],['Blood whooshing through','A sneezing dragon','A noisy train'],['Yes!','No, sit still']],
+       yes:'Yes! You got it!', nearly:'Ooh, nearly! Have another go.', badge:'Heart Expert',
+       hand:'Your turn! Put your hand on your chest. Can you feel it?', fist:'Your turn! Make a fist and squeeze.', say:'Your turn! Say it out loud: lub-dub!', did:'I did it!'},
+  zh: {q:['你的心脏有多大？','“呼呼”声是什么发出的？','你还能跑和玩吗？'],
+       o:[['和你的拳头一样大','和房子一样大','和蚂蚁一样小'],['血液呼呼流过','打喷嚏的小龙','吵闹的火车'],['能！','不能，要坐着不动']],
+       yes:'对啦！你答对了！', nearly:'哎呀，差一点！再试一次。', badge:'心脏小专家',
+       hand:'轮到你啦！把手放在胸口上，能感觉到吗？', fist:'轮到你啦！握紧拳头，用力挤一挤。', say:'轮到你啦！大声说：扑通！', did:'我做到了！'},
+  ar: {q:['ما حجم قلبك؟','ما الذي يصدر صوت الوشوشة؟','هل ما زال بإمكانك الركض واللعب؟'],
+       o:[['بحجم قبضة يدك','بحجم بيت','صغير مثل النملة'],['الدم وهو يندفع','تنين يعطس','قطار مزعج'],['نعم!','لا، أجلس بلا حراك']],
+       yes:'نعم! أحسنت!', nearly:'أوه، اقتربت! حاول مرة أخرى.', badge:'خبير القلوب',
+       hand:'دورك! ضع يدك على صدرك. هل تشعر به؟', fist:'دورك! اقبض يدك واضغط.', say:'دورك! قلها بصوت عالٍ: دُق-دُق!', did:'فعلتها!'},
+  vi: {q:['Trái tim bạn to cỡ nào?','Tiếng vù là do đâu?','Bạn vẫn có thể chạy nhảy vui chơi chứ?'],
+       o:[['To bằng nắm tay','To bằng ngôi nhà','Nhỏ như con kiến'],['Máu chảy vù vù','Chú rồng hắt xì','Đoàn tàu ồn ào'],['Có!','Không, phải ngồi yên']],
+       yes:'Đúng rồi! Giỏi quá!', nearly:'Ôi, gần đúng rồi! Thử lại nhé.', badge:'Chuyên gia trái tim',
+       hand:'Đến lượt bạn! Đặt tay lên ngực. Bạn có cảm thấy không?', fist:'Đến lượt bạn! Nắm tay lại và bóp.', say:'Đến lượt bạn! Nói to lên: thịch-thịch!', did:'Mình làm được rồi!'},
+};
+const qz = () => QZ[S.lang] || QZ.en;
+// picture for each answer: emoji, or a scene still; the first answer in each question is the right one (shuffled on screen)
+const QPIC = [['✊','🏠','🐜'], ['img:v2-whoosh','🐉','🚂'], ['⚽','🛋️']];
+const QVOICE = [{voice:'q1', vdur:2.04}, {voice:'q2', vdur:2.69}, {voice:'q3', vdur:2.51}];
+const TASK_ICON = {hand:'🫶', fist:'✊', say:'🗣️'};
 const t = k => fill(((UI[S.lang] || UI.en)[k]) ?? UI.en[k]);
 const bullets = () => { const b = (UI[S.lang] || UI.en).bullets; return (b[band()] || b.mid).map(fill); };
 const SUM = {
@@ -879,13 +945,18 @@ function renderReview(){
     el.className = 'scene' + (on ? '' : ' off');
     let thumb;
     if (s.kind === 'title') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#B3163A;font-size:22px">Hey ${esc(S.name)}!</div>`;
+    else if (s.kind === 'quiz') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#7E0F29;font-size:20px">Quiz · 3 questions</div>`;
+    else if (s.kind === 'award') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#FFD45C;font-size:20px">Heart Expert award</div>`;
     else if (s.kind === 'end') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:600;color:#FFD45C;font-size:17px">${esc(S.name)}'s heart facts</div>`;
     else if (s.clip) thumb = `<div class="thumb"><img src="scenes/${s.clip}.jpg" alt="" loading="lazy"></div>`;
     else thumb = `<div class="thumb"><img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}" loading="lazy"></div>`;
     const vtag = (s.clip ? '<span class="pill ok">Animated</span>' : '') + (voiceOK(s) ? '<span class="pill ok">Voiced</span>' : s.voice ? '<span class="pill warn">Computer voice</span>' : '');
     const tag = vtag + (s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
       : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>');
-    const why = s.voice && !voiceOK(s) ? voiceWhy(s) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
+    const why = s.kind === 'quiz' ? 'Three picture questions check what the child understood. Heart cheers a right answer and gently encourages another go.'
+      : s.kind === 'award' ? "A reward badge with the child's name and video buddy."
+      : s.task ? 'Interactive: the video pauses so the child can join in. ' + (s.voice && !voiceOK(s) ? voiceWhy(s) : '')
+      : s.voice && !voiceOK(s) ? voiceWhy(s) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
     el.innerHTML = `${thumb}
       <div class="scene-b">
         <div class="tags">${tag}<span class="why">${esc(why)}</span></div>
@@ -918,7 +989,7 @@ $('#approve').addEventListener('click', () => {
   go('family');
 });
 $('#preview').addEventListener('click', () => go('family'));
-function estimate(s){ if (voiceOK(s)) return Math.max(4500, (s.lead || 450) + s.vdur * 1000 + 950); const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
+function estimate(s){ if (s.kind === 'quiz') return 30000; if (voiceOK(s)) return Math.max(4500, (s.lead || 450) + s.vdur * 1000 + 950); const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
 const estTotal = () => activeScenes().reduce((a, s) => a + estimate(s), 0);
 
 /* ---------- family ---------- */
@@ -973,6 +1044,19 @@ function pop(t){
   v.gain.setValueAtTime(.5, t); v.gain.exponentialRampToValueAtTime(0.0001, t + .16);
   o.connect(v).connect(master); o.start(t); o.stop(t + .2);
 }
+function knock(t){
+  if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
+  const n = AC.createBufferSource(), f = AC.createBiquadFilter(), v = AC.createGain();
+  n.buffer = noiseBuf; f.type = 'bandpass'; f.frequency.value = 900; f.Q.value = 3;
+  v.gain.setValueAtTime(.9, t); v.gain.exponentialRampToValueAtTime(0.0001, t + .09);
+  n.connect(f).connect(v).connect(master); n.start(t); n.stop(t + .1); thump(t, .5);
+}
+function chime(t, fq, g = .22){
+  const o = AC.createOscillator(), v = AC.createGain();
+  o.type = 'sine'; o.frequency.value = fq;
+  v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(g, t + .02); v.gain.exponentialRampToValueAtTime(0.0001, t + .5);
+  o.connect(v).connect(master); o.start(t); o.stop(t + .55);
+}
 function sfx(kind){
   if (!kind || !audio()) return;
   const t = AC.currentTime + .05;
@@ -980,6 +1064,9 @@ function sfx(kind){
   if (kind === 'beat') { beat(t); beat(t + .85); }
   if (kind === 'beat2') { beat(t); beat(t + .8); beat(t + 1.6); }
   if (kind === 'pop') pop(t);
+  if (kind === 'knock') { knock(t); knock(t + .22); }
+  if (kind === 'chime') { chime(t, 660); chime(t + .12, 880); chime(t + .24, 1320); }
+  if (kind === 'buzz') { chime(t, 330, .12); chime(t + .14, 262, .12); }
   if (kind === 'fast') for (let i = 0; i < 7; i++) beat(t + i * .42, .8);
   if (kind === 'slow') for (let i = 0; i < 3; i++) beat(t + i * 1.4, .5);
   if (kind === 'murmur') for (let i = 0; i < 3; i++) { const t0 = t + i * .95; thump(t0); whoosh(t0 + .07, .3); thump(t0 + .44, .7); }
@@ -1023,6 +1110,8 @@ const player = (() => {
     const dir = LANG().rtl ? ' dir="rtl"' : '';
     if (s.kind === 'title') return `<div class="card card-title"${dir}><div><div class="felt">${esc(t('hey'))}</div><div class="sub">${esc(t('sub'))}</div><div class="from">${esc(t('from'))}</div></div><div class="disc" role="img" aria-label="The child's video buddy with Heart" style="background:url(avatars/${S.avatar}.jpg) 50% 18%/150% no-repeat,#F6E4D2"><span class="hb"></span></div></div>`;
     if (s.kind === 'end') return `<div class="card card-end"${dir}><div><h3>${esc(t('facts'))}</h3><ul>${bullets().map(b => `<li>${esc(b)}</li>`).join('')}</ul></div><div class="hero" role="img" aria-label="The child's video buddy" style="background-image:url(avatars/${S.avatar}.jpg)"></div></div>`;
+    if (s.kind === 'quiz') return `<div class="card card-quiz"${dir}><div class="qh"><span class="mini" aria-hidden="true"></span><h3 class="qq"></h3></div><div class="qopts"></div><div class="dots">${qz().q.map(() => '<i></i>').join('')}</div></div>`;
+    if (s.kind === 'award') return `<div class="card card-award"${dir}><div class="rosette" style="background-image:url(avatars/${S.avatar}.jpg)" role="img" aria-label="${esc(S.name)}'s buddy"></div><div class="badge">${esc(qz().badge)}</div><div class="who">${esc(S.name)}</div></div>`;
     if (s.clip) return `<video poster="scenes/${s.clip}.jpg" muted loop playsinline preload="auto"><source src="scenes/${s.clip}.webm" type="video/webm"><source src="scenes/${s.clip}.mp4" type="video/mp4"></video>`;
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
@@ -1074,10 +1163,12 @@ const player = (() => {
     raf = requestAnimationFrame(tick);
     if (vid) vid.play().catch(() => {});
     sfx(s.sfx);
+    if (s.kind === 'award') confetti();
+    if (s.kind === 'quiz') { runQuiz(s, my); return; }
     const lead = s.lead || 450;
     const next = () => { if (my !== token || !playing) return; if (idx < list.length - 1) show(idx + 1); else end(); };
     let finished = false;
-    const done = () => { if (finished) return; finished = true; hitWord(1e9); musicDuck(false); const wait = Math.max(950, 4500 - (performance.now() - t0)); setTimeout(next, wait); };
+    const done = () => { if (finished) return; finished = true; hitWord(1e9); musicDuck(false); const wait = Math.max(950, 4500 - (performance.now() - t0)); if (s.task) yourTurn(s, my).then(next); else setTimeout(next, wait); };
     const safety = setTimeout(done, dur * 1.9 + 2500);
     setTimeout(() => {
       if (my !== token || !playing) return clearTimeout(safety);
@@ -1105,6 +1196,84 @@ const player = (() => {
       clearTimeout(safety); setTimeout(() => { if (my === token) done(); }, Math.max(0, dur - lead - 950));
       wordsTimed(text, dur - lead - 1000, my);
     }, lead);
+  }
+  // say one line: the recorded voice when it matches, otherwise the computer voice
+  function say(line, my){
+    return new Promise(res => {
+      if (my !== token || !playing) return res();
+      setCaption(line.text);
+      const fin = () => { hitWord(1e9); musicDuck(false); res(); };
+      if (!voiceOn) { setTimeout(fin, 1200); return; }
+      musicDuck(true);
+      if (line.voice && S.lang === 'en' && (!line.named || S.name === 'Mia')) {
+        vo.src = `voice/${line.voice}.mp3`; vo.currentTime = 0; vo.ontimeupdate = null;
+        const guard = setTimeout(fin, line.vdur * 1000 + 1500);
+        vo.onended = () => { clearTimeout(guard); fin(); };
+        vo.play().catch(() => {});
+        return;
+      }
+      if ('speechSynthesis' in window && window.SpeechSynthesisUtterance) {
+        const u = new SpeechSynthesisUtterance(line.text);
+        const vv = voiceFor(LANG().tts); if (vv) u.voice = vv; u.lang = vv?.lang || LANG().tts; u.rate = .92; u.pitch = 1.12;
+        const guard = setTimeout(fin, 9000);
+        u.onend = u.onerror = () => { clearTimeout(guard); fin(); };
+        speechSynthesis.speak(u); return;
+      }
+      setTimeout(fin, 2500);
+    });
+  }
+  function confetti(){
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const c = document.createElement('div'); c.className = 'confetti';
+    const cols = ['#B3163A','#F4B82E','#1C6E74','#FFF8EA','#E4506F','#5CB8B9'];
+    for (let k = 0; k < 46; k++) { const i = document.createElement('i'); i.style.left = Math.random() * 100 + '%'; i.style.background = cols[k % cols.length]; i.style.setProperty('--t', (1.6 + Math.random() * 1.4) + 's'); i.style.setProperty('--r', (Math.random() * 900 - 450) + 'deg'); i.style.animationDelay = Math.random() * .4 + 's'; c.appendChild(i); }
+    stage.appendChild(c); setTimeout(() => c.remove(), 3600);
+  }
+  function yourTurn(s, my){
+    return new Promise(res => {
+      if (my !== token || !playing) return;
+      const q = qz(), wait = 8000;
+      const box = document.createElement('div'); box.className = 'turn'; box.dir = LANG().rtl ? 'rtl' : 'ltr';
+      box.innerHTML = `<span class="ic" aria-hidden="true">${TASK_ICON[s.task]}</span><p>${esc(q[s.task])}</p><button type="button" style="--d:${wait}ms">${esc(q.did)}<i></i></button>`;
+      stage.appendChild(box);
+      if (s.task === 'hand') sfx('slow');
+      let over = false;
+      const fin = (tapped) => { if (over) return; over = true; clearTimeout(tm); box.remove(); if (tapped) { sfx('chime'); confetti(); } if (my === token && playing) setTimeout(res, tapped ? 900 : 200); };
+      $('button', box).onclick = () => fin(true);
+      const tm = setTimeout(() => fin(false), wait);
+    });
+  }
+  async function runQuiz(s, my){
+    const card = $$('.layer', stage)[idx];
+    const q = qz(), qq = $('.qq', card), box = $('.qopts', card), dots = $$('.dots i', card);
+    qq.textContent = '';
+    await say({voice: 'quiz', vdur: 3.07, text: sceneText(s)}, my);
+    for (let k = 0; k < q.q.length; k++) {
+      if (my !== token || !playing) return;
+      dots.forEach((d, j) => d.classList.toggle('on', j <= k));
+      qq.textContent = q.q[k];
+      const order = q.o[k].map((label, j) => j).sort(() => Math.random() - .5);
+      box.innerHTML = order.map(j => { const pic = QPIC[k][j]; return `<button type="button" class="qopt" data-j="${j}"><span class="pic">${pic.startsWith('img:') ? `<img src="scenes/${pic.slice(4)}.jpg" alt="">` : pic}</span>${esc(q.o[k][j])}</button>`; }).join('');
+      const answered = new Promise(res => {
+        const auto = setTimeout(res, 45000);
+        $$('.qopt', box).forEach(b => b.onclick = async () => {
+          if (my !== token) return;
+          if (b.dataset.j === '0') {
+            clearTimeout(auto); $$('.qopt', box).forEach(x => x.onclick = null);
+            b.classList.add('right'); sfx('chime'); confetti();
+            await say({voice: 'yes', vdur: 1.58, text: q.yes}, my); setTimeout(res, 500);
+          } else {
+            b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx('buzz');
+            say({voice: 'nearly', vdur: 2.69, text: q.nearly}, my);
+          }
+        });
+      });
+      say({...QVOICE[k], text: q.q[k]}, my);
+      await answered;
+    }
+    if (my !== token || !playing) return;
+    hitWord(1e9);
+    if (idx < list.length - 1) show(idx + 1); else end();
   }
   function wordsTimed(text, ms, my){
     const ws = $$('.w', cap); ws.forEach((w, k) => setTimeout(() => { if (my === token) w.classList.add('hit'); }, (k / ws.length) * ms));

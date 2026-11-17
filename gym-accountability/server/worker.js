@@ -13,7 +13,7 @@
 // Setup: paste this file into a Worker, bind a KV namespace as STATE, add the
 // cron trigger "0 * * * *". Keys are generated automatically on first use.
 
-const VERSION = '2026-11-16e'; // shown on the status page so you can tell which code is running
+const VERSION = '2026-11-17a'; // shown on the status page so you can tell which code is running
 const APP_URL = 'https://ironclad.coach/app/'; // where the Ironclad app lives
 const APP_ORIGINS = ['https://ironclad.coach', 'https://www.ironclad.coach', 'https://techb54321-svg.github.io']; // where the app may call from (the last is the old address)
 const DAY = 86400000;
@@ -60,6 +60,7 @@ async function route(request, env) {
 
   if (url.pathname === '/register') return register(env, request, J);
   if (url.pathname === '/interest') return interest(env, request, body, J);
+  if (url.pathname === '/count') return count(env, request, body, J);
 
   const st = await authed(env, body);
   if (!st) return J({ error: 'This app is not recognised by the alerts server. Turn Ironclad alerts off and on again in Settings.' }, 401);
@@ -111,6 +112,44 @@ async function route(request, env) {
     return J({ ok: true, week: wk, text: summaryText(st, wk, now) });
   }
   return J({ error: 'not found' }, 404);
+}
+
+/* ---------------- anonymous usage counts: daily totals only, never who ---------------- */
+const USAGE = [['visit', 'Website visits'], ['new', 'New users'], ['install', 'Home screen installs'], ['sign', 'Contracts signed'], ['agree', 'Referees said yes']];
+const CLIENT_USAGE = new Set(['visit', 'new', 'install', 'sign']);
+async function bump(env, ev) {
+  const key = 'stats:' + new Date().toISOString().slice(0, 10);
+  const d = JSON.parse(await env.STATE.get(key) || '{}'); d[ev] = (d[ev] || 0) + 1;
+  await env.STATE.put(key, JSON.stringify(d), { expirationTtl: 400 * 86400 });
+  const all = JSON.parse(await env.STATE.get('stats:all') || 'null') || { since: Date.now() }; all[ev] = (all[ev] || 0) + 1;
+  await env.STATE.put('stats:all', JSON.stringify(all));
+}
+async function count(env, request, body, J) {
+  const ev = String(body.e || '');
+  if (!CLIENT_USAGE.has(ev)) return J({ error: 'unknown event' }, 400);
+  // A soft cap so one network can't pump the numbers. The network is hashed, and the hash expires after two hours.
+  const ipHash = (await sha256hex('ip:' + (request.headers.get('CF-Connecting-IP') || 'unknown'))).slice(0, 24);
+  const rlKey = `rl:count:${ipHash}:${Math.floor(Date.now() / 3600e3)}`, n = +(await env.STATE.get(rlKey) || 0);
+  if (n >= 30) return J({ ok: true });
+  await env.STATE.put(rlKey, String(n + 1), { expirationTtl: 7200 });
+  await bump(env, ev);
+  return J({ ok: true });
+}
+async function usageCard(env) {
+  const all = JSON.parse(await env.STATE.get('stats:all') || 'null');
+  if (!all) return `<div class="card"><h2>Users</h2><p class="small muted" style="margin:0">Nothing counted yet. Visits, new users, installs and signed contracts show up here once the new app code is live.</p></div>`;
+  const days = [...Array(7)].map((_, i) => new Date(Date.now() - i * 86400e3).toISOString().slice(0, 10));
+  const rows = await Promise.all(days.map(async d => [d, JSON.parse(await env.STATE.get('stats:' + d) || '{}')]));
+  const wk = k => rows.reduce((a, [, r]) => a + (r[k] || 0), 0);
+  const label = d => new Date(d + 'T12:00:00Z').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const th = 'style="text-align:right;padding:6px 8px;font-weight:600"', td = 'style="text-align:right;padding:6px 8px;font-variant-numeric:tabular-nums"';
+  return `<div class="card"><h2>Users</h2>
+    ${USAGE.map(([k, l]) => `<div class="kv"><span>${l}</span><b>${all[k] || 0} <span class="muted small" style="font-weight:500">${wk(k)} this week</span></b></div>`).join('')}
+    <div style="overflow-x:auto;margin-top:12px"><table style="border-collapse:collapse;font-size:13px;width:100%;min-width:460px">
+      <tr class="muted"><th style="text-align:left;padding:6px 8px;font-weight:600">Day</th><th ${th}>Visits</th><th ${th}>New</th><th ${th}>Installs</th><th ${th}>Signed</th><th ${th}>Referees</th></tr>
+      ${rows.map(([d, r]) => `<tr style="border-top:1px solid var(--line)"><td style="padding:6px 8px">${label(d)}</td>${USAGE.map(([k]) => `<td ${td}>${r[k] || 0}</td>`).join('')}</tr>`).join('')}
+    </table></div>
+    <p class="small muted" style="margin:10px 0 0">Counting since ${new Date(all.since).toLocaleDateString('en-AU')}. Anonymous daily totals: nothing about who did it is kept. "New users" is a first visit to the app on a new phone or browser.</p></div>`;
 }
 
 /* ---------------- Pro pricing test (no payments; just measures interest) ---------------- */
@@ -201,6 +240,7 @@ async function agree(env, st, name) {
     if (!allow(st, 'agree', 10, 3600e3)) return slowDown();
     st.agreedAt = Date.now(); st.agreedBy = String(name || st.cfg?.refereeName || '').slice(0, 60); st.agreedHow = 'tapped Agree on the referee page';
     await saveAcct(env, st);
+    await bump(env, 'agree');
   }
   return json({ ok: true, agreedAt: st.agreedAt, name: st.cfg?.name || '' });
 }
@@ -664,6 +704,7 @@ async function statusPage(env, url) {
       <p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:14px;background:rgba(0,0,0,.35);padding:12px;border-radius:12px;border:1px solid var(--line)" id="addr">${escH(url.origin)}</p>
       <button class="primary" id="copy">Copy the address</button>
       <p class="small muted">It contains nothing secret. Each app gets its own private key when it signs up.</p></div>
+    ${await usageCard(env)}
     ${await proCard(env)}
     <script>document.getElementById('copy').onclick=async()=>{try{await navigator.clipboard.writeText(document.getElementById('addr').textContent);document.getElementById('copy').textContent='Copied ✓'}catch(e){document.getElementById('copy').textContent='Select and copy it'}}</script>`;
   return page(shell('Ironclad alerts server', body));

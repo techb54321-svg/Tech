@@ -174,6 +174,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .stage{position:relative;aspect-ratio:16/9;overflow:hidden;overflow:clip;contain:paint;background:#0D161D;max-width:100%}
 .layer{position:absolute;inset:0;opacity:0;transition:opacity .7s ease}
 .layer.on{opacity:1}
+.layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D}
 .layer img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
 .layer.pic::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(8,14,19,.8));pointer-events:none}.caption{position:absolute;left:50%;bottom:5.5%;transform:translateX(-50%);z-index:3;pointer-events:none;width:min(88%,900px);text-align:center;font-family:var(--display);font-weight:600;font-size:clamp(15px,2.3vw,30px);line-height:1.25;color:#FFF8EA;text-shadow:0 2px 8px rgba(0,0,0,.55);text-wrap:balance;transition:opacity .3s}
 .caption .w{transition:color .12s}
@@ -445,9 +446,9 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', core:true, sfx:'beat', text:"A special video for {name}, from {doctor}."},
-  {id:'hello', img:'pop-hello', a:[0,15,100], b:[34,20,64], core:true, sfx:'pop', text:"Pop! Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
+  {id:'hello', img:'pop-hello', a:[0,15,100], b:[34,20,64], core:true, sfx:'pop', video:'heart-hello', dur:8510, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.95,1.29,1.97,2.36,3.14,3.47,4.95,5.2,5.42,5.55,5.74,5.85,6.11,6.54,6.94], text:"Pop! Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
   {id:'home', img:'chest-map', a:[0,17,100], b:[14,22,72], core:true, text:"I live in your chest, a tiny bit to the left. I'm a muscle, and I'm about as big as your fist."},
-  {id:'squeeze', img:'squeeze', a:[8,27,84], b:[20,29,60], core:true, sfx:'beat', text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
+  {id:'squeeze', img:'squeeze', a:[8,27,84], b:[20,29,60], core:true, sfx:'beat', video:'heart-squeeze', dur:9110, words:[0,.37,.71,.87,1.03,1.92,3.22,4.63,5.12,5.76,6.33,6.76,7.09,7.41,7.59], text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
   {id:'loop', img:'blood-loop', a:[0,14,100], b:[12,24,76], core:true, text:"Up to your head, down to your toes, and all the way back to me."},
   {id:'doors', img:'heart-doors', a:[0,23,100], b:[10,25,80], core:true, sfx:'beat2', text:"Inside me there are little doors. When they snap shut, they go lub-dub, lub-dub."},
   {id:'listen', img:'listen', a:[0,22,100], b:[14,26,72], core:true, text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
@@ -654,6 +655,8 @@ function frame(img, r, aspect = 9/16){
 const isOn = s => S.include[s.id] ?? (s.core || (s.detect ? S.detected.has(s.detect) : !s.off));
 const sceneText = s => fill(S.edits[s.id] ?? s.text);
 const activeScenes = () => SCENES.filter(isOn);
+// an animated, voiced clip is used only while its words still match what was recorded
+const useVid = s => !!s.video && !(s.id in S.edits) && (!s.voicedFor || (S.name === s.voicedFor.name && S.doc === s.voicedFor.doctor));
 
 /* ---------- review ---------- */
 function renderReview(){
@@ -668,10 +671,12 @@ function renderReview(){
     let thumb;
     if (s.kind === 'title') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#B3163A;font-size:22px">Hey ${esc(S.name)}!</div>`;
     else if (s.kind === 'end') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:600;color:#FFD45C;font-size:17px">${esc(S.name)}'s heart facts</div>`;
+    else if (useVid(s)) thumb = `<div class="thumb"><img src="scenes/${s.video}.jpg" alt="" loading="lazy"></div>`;
     else thumb = `<div class="thumb"><img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}" loading="lazy"></div>`;
-    const tag = s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
-      : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>';
-    const why = s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
+    const vtag = useVid(s) ? '<span class="pill ok">Animated + voiced</span>' : s.video ? '<span class="pill warn">Still + computer voice</span>' : '';
+    const tag = vtag + (s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
+      : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>');
+    const why = s.video && !useVid(s) ? (s.id in S.edits ? 'Wording changed, so the recorded voice no longer matches. The new line will be recorded before sending.' : `Recorded for ${s.voicedFor.name}. A new name line is recorded for each child.`) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
     el.innerHTML = `${thumb}
       <div class="scene-b">
         <div class="tags">${tag}<span class="why">${esc(why)}</span></div>
@@ -700,7 +705,7 @@ $('#approve').addEventListener('click', () => {
   go('family');
 });
 $('#preview').addEventListener('click', () => go('family'));
-function estimate(s){ const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
+function estimate(s){ if (useVid(s)) return s.dur; const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
 const estTotal = () => activeScenes().reduce((a, s) => a + estimate(s), 0);
 
 /* ---------- family ---------- */
@@ -785,6 +790,7 @@ const player = (() => {
   function layerHTML(s){
     if (s.kind === 'title') return `<div class="card card-title"><div><div class="felt">Hey ${esc(S.name)}!</div><div class="sub">Your heart has something to tell you</div><div class="from">A video from ${esc(S.doc)}</div></div><div class="disc" role="img" aria-label="The heart character"></div></div>`;
     if (s.kind === 'end') return `<div class="card card-end"><div><h3>${esc(S.name)}'s heart facts</h3><ul><li>My heart is healthy and strong</li><li>My whoosh is an innocent murmur</li><li>I can run and play like always</li></ul></div><div class="hero" role="img" aria-label="The heart character waving"></div></div>`;
+    if (useVid(s)) return `<video poster="scenes/${s.video}.jpg" playsinline preload="auto"><source src="scenes/${s.video}.webm" type="video/webm"><source src="scenes/${s.video}.mp4" type="video/mp4"></video>`;
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
   function load(scenes){
@@ -821,6 +827,23 @@ const player = (() => {
     setCaption(text);
     dur = estimate(s); t0 = performance.now();
     if (kb) kb.cancel(); kb = null;
+    $$('.layer video', stage).forEach(v => { v.pause(); v.ontimeupdate = v.onended = null; });
+    const vid = $$('.layer', stage)[i].querySelector('video');
+    if (vid) {
+      if (autoplay !== undefined) playing = autoplay;
+      setPlayIcon(); cancelAnimationFrame(raf); paintSegs(0);
+      vid.currentTime = 0; vid.muted = !voiceOn;
+      if (!playing) return;
+      raf = requestAnimationFrame(tick);
+      const ws = $$('.w', cap);
+      vid.ontimeupdate = () => { if (my !== token) return; const t = vid.currentTime - .3; ws.forEach((w, k) => w.classList.toggle('hit', s.words[k] !== undefined && t >= s.words[k])); };
+      let over = false;
+      const fin = () => { if (over || my !== token || !playing) return; over = true; hitWord(1e9); setTimeout(() => { if (my !== token || !playing) return; if (idx < list.length - 1) show(idx + 1); else end(); }, 500); };
+      vid.onended = fin;
+      setTimeout(fin, s.dur + 2500); // never stall if the clip can't play
+      vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
+      return;
+    }
     const img = $$('.layer', stage)[i].querySelector('img');
     if (img && s.a) kb = img.animate([{transform: frame(null, s.a)}, {transform: frame(null, s.b)}], {duration: dur + 1500, easing: 'ease-in-out', fill: 'forwards'});
     if (autoplay !== undefined) playing = autoplay;
@@ -864,6 +887,7 @@ const player = (() => {
   }
   function pause(){
     playing = false; token++; setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
+    $$('.layer video', stage).forEach(v => v.pause());
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }
   function stop(){ if (playing) pause(); }

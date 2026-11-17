@@ -176,10 +176,29 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .layer.on{opacity:1}
 .layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D}
 .layer img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
-.layer.pic::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(8,14,19,.8));pointer-events:none}.caption{position:absolute;left:50%;bottom:5.5%;transform:translateX(-50%);z-index:3;pointer-events:none;width:min(88%,900px);text-align:center;font-family:var(--display);font-weight:600;font-size:clamp(15px,2.3vw,30px);line-height:1.25;color:#FFF8EA;text-shadow:0 2px 8px rgba(0,0,0,.55);text-wrap:balance;transition:opacity .3s}
+.caption{min-height:calc(2.6em + 26px);padding:13px max(18px,5%);display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--display),"Noto Sans","Segoe UI",sans-serif;font-weight:600;font-size:clamp(16px,2vw,25px);line-height:1.3;color:#FFF8EA;background:#13212A;border-top:1px solid rgba(255,255,255,.06);text-wrap:balance}
+.caption p{margin:0;max-width:900px}
+.caption.hidden p{visibility:hidden}
+.card-title .disc{position:relative}
+.card-title .disc .hb{position:absolute;right:-6%;bottom:-4%;width:42%;aspect-ratio:1;border-radius:50%;background:url(scenes/see-you.jpg) 50% 56%/260% no-repeat,#F6E4D2;border:clamp(3px,.5vw,6px) solid #F7C64D;box-shadow:0 6px 14px rgba(0,0,0,.18)}
+.avatars{display:flex;gap:8px;flex-wrap:wrap}
+.av{width:54px;height:54px;border-radius:50%;padding:0;border:3px solid transparent;background:var(--sunk);cursor:pointer;overflow:hidden;flex:none}
+.av img{width:100%;height:100%;object-fit:cover;object-position:50% 22%;transform:scale(1.5);transform-origin:50% 20%}
+.av[aria-pressed="true"]{border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 22%,transparent)}
+.seg{display:inline-flex;gap:4px;background:var(--sunk);padding:4px;border-radius:99px}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:99px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;font-variant-numeric:tabular-nums}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.pers{display:grid;gap:14px}
+.pers .row{display:grid;gap:6px}
+.pers .lab,.f-lab{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.03em}
+.pers select,.lang-sel{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-weight:700;color:var(--ink)}
+.pers .hint{font-size:12.5px;color:var(--muted)}
+.consult-extra{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;margin-top:14px}
+.fam-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fam-who{display:flex;gap:14px;align-items:center}
+.fam-who img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 22%;background:var(--sunk);border:3px solid var(--yellow)}
 .caption .w{transition:color .12s}
 .caption .w.hit{color:var(--cap-hi,#FFD45C)}
-.caption.hidden{opacity:0}
 .card{position:absolute;inset:0;display:grid;align-items:center}
 .card-title{background:radial-gradient(circle at 20% 15%,#FFD866 0,transparent 45%),radial-gradient(circle at 85% 90%,#E9A21B 0,transparent 50%),#F4B82E;grid-template-columns:1.1fr .9fr;padding:0 6%;gap:4%}
 .card-title .felt{font-family:var(--display);font-weight:700;color:#B3163A;font-size:clamp(30px,7.4vw,96px);line-height:.95;text-shadow:0 3px 0 #7E0F29,0 8px 18px rgba(126,15,41,.25);letter-spacing:.5px}
@@ -192,7 +211,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .card-end ul{list-style:none;margin:4% 0 0;padding:0;display:grid;gap:clamp(4px,1.2vw,14px)}
 .card-end li{display:flex;gap:.6em;align-items:center;font-family:var(--display);font-weight:600;font-size:clamp(13px,2.2vw,28px);color:#FFF8EA}
 .card-end li::before{content:"✓";flex:none;width:1.4em;height:1.4em;border-radius:50%;display:grid;place-items:center;background:#F4B82E;color:#7E0F29;font-size:.8em;font-weight:700}
-.card-end .hero{width:clamp(80px,22vw,280px);aspect-ratio:3/4;border-radius:20px;background:url(scenes/see-you.jpg) 50% 62%/190% no-repeat;max-width:100%}
+.card-end .hero{width:clamp(80px,22vw,280px);aspect-ratio:3/4;border-radius:20px;background-size:cover;background-position:50% 40%;max-width:100%;border:clamp(3px,.5vw,6px) solid #F4B82E}
 .start{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(8,14,19,.35);border:0;cursor:pointer;color:#fff}
 .start span{display:flex;align-items:center;gap:12px;background:#B3163A;padding:clamp(10px,1.6vw,16px) clamp(18px,2.8vw,30px);border-radius:99px;font-family:var(--display);font-weight:600;font-size:clamp(15px,2vw,22px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .start svg{width:1.2em;height:1.2em}
@@ -255,6 +274,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
   .book{grid-template-columns:80px minmax(0,1fr)}
   .card-title{grid-template-columns:1.3fr .7fr}
   .card-title .sub{display:none}
+  .consult-extra{grid-template-columns:minmax(0,1fr)}
   .segs{order:-1;flex-basis:100%;padding:4px 2px 8px}
   .scene-count{margin-left:auto}
 }
@@ -294,6 +314,10 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
           <label class="f">Age<select id="f-age"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
           <label class="f">Parent / carer<input id="f-parent" value="Priya" autocomplete="off" maxlength="20"></label>
           <label class="f">Clinician<input id="f-doc" value="Dr Sarah" autocomplete="off" maxlength="24"></label>
+        </div>
+        <div class="consult-extra">
+          <div class="row"><div class="f-lab" style="margin-bottom:6px">Video buddy: pick one that looks like the child</div><div class="avatars" data-avatars></div></div>
+          <label class="f">Family's language<select id="f-lang" data-lang></select></label>
         </div>
         <label class="consent"><input type="checkbox" id="f-consent" checked><span><b>Family has agreed to recording.</b> Audio is transcribed and then deleted. Only the approved video and summary are kept.</span></label>
       </div>
@@ -353,6 +377,14 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
     <div class="story" id="story"></div>
     <aside class="side">
       <div class="panel">
+        <div class="panel-h"><h2>Personalise</h2><span class="pill teal" id="pers-pill">Age 5–7 · English</span></div>
+        <div class="panel-b pers">
+          <div class="row"><span class="lab">Age</span><div class="seg" data-band role="group" aria-label="Age band"></div><span class="hint" id="band-hint"></span></div>
+          <div class="row"><span class="lab">Language</span><select id="rv-lang" data-lang aria-label="Language"></select><span class="hint" id="lang-hint"></span></div>
+          <div class="row"><span class="lab">Video buddy</span><div class="avatars" data-avatars></div></div>
+        </div>
+      </div>
+      <div class="panel">
         <div class="panel-h"><h2>Summary for parents</h2><span class="pill teal">Sent with video</span></div>
         <div class="panel-b" id="summary-edit"></div>
       </div>
@@ -370,18 +402,24 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 <!-- ============ 3. FAMILY ============ -->
 <section class="view" data-view="family" hidden>
   <div class="fam-head">
-    <div>
-      <div class="eyebrow" id="fam-eyebrow">For Mia and family</div>
-      <h1 id="fam-title">Mia's heart video</h1>
+    <div class="fam-who">
+      <img id="fam-av" src="avatars/hazel.jpg" alt="">
+      <div>
+        <div class="eyebrow" id="fam-eyebrow">For Mia and family</div>
+        <h1 id="fam-title">Mia's heart video</h1>
+      </div>
     </div>
-    <span class="pill ok" id="fam-badge">✓ Approved by Dr Sarah</span>
+    <div class="fam-tools">
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px">Language <select class="lang-sel" id="fam-lang" data-lang aria-label="Language"></select></label>
+      <span class="pill ok" id="fam-badge">✓ Approved by Dr Sarah</span>
+    </div>
   </div>
   <div class="family-grid">
     <div class="player" id="player">
       <div class="stage" id="stage">
-        <div class="caption" id="caption" aria-live="polite"></div>
         <button class="start" id="start"><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><b id="start-label">Play Mia's video</b></span></button>
       </div>
+      <div class="caption" id="caption" aria-live="polite"></div>
       <div class="controls">
         <button class="cbtn" id="c-prev" aria-label="Previous scene"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
         <button class="cbtn" id="c-play" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
@@ -389,6 +427,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
         <div class="segs" id="segs"></div>
         <span class="scene-count" id="count">1 / 1</span>
         <button class="cbtn" id="c-voice" aria-pressed="true" aria-label="Narration on/off"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
+        <button class="cbtn" id="c-music" aria-pressed="true" aria-label="Music on/off" title="Music"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg></button>
         <button class="cbtn" id="c-cc" aria-pressed="true" aria-label="Captions on/off"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1z"/></svg></button>
         <button class="cbtn" id="c-full" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
       </div>
@@ -439,6 +478,7 @@ const S = {
   name: 'Mia', age: 5, parent: 'Priya', doc: 'Dr Sarah',
   detected: new Set(['whoosh','common','fever','play','grow']), // sample defaults so review/family work on direct load
   edits: {}, include: {}, summary: null, approved: false,
+  lang: 'en', avatar: 'hazel',
 };
 const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent).replace(/\{doctor\}/g, S.doc);
 
@@ -469,6 +509,168 @@ const WHY = {
   grow:'From the consult: "get quieter, or go away completely, as children grow"',
 };
 
+
+/* ---------- age, language, avatars ---------- */
+const band = () => S.age <= 4 ? 'little' : S.age >= 8 ? 'big' : 'mid';
+const BANDS = [['little','3–4'],['mid','5–7'],['big','8–10']];
+const BAND_AGE = {little:4, mid:5, big:8};
+const NOTFOR = {loop:['little']};
+// English wording by age band (mid = the default text in SCENES)
+const AGE = {
+  little: {
+    home:"I live in your chest. I'm about as big as your fist!",
+    doors:"Inside me are little doors. They go lub-dub, lub-dub!",
+    listen:"Today {doctor} listened to me with a special listening tube.",
+    whoosh:"{doctor} heard a little whoosh. Lub, whoosh, dub! That's just my blood rushing through, like water in a hose.",
+    common:"Lots of kids have a whoosh. It's a happy, healthy sound. I'm strong!",
+    fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
+    play:"So keep running, jumping and dancing!",
+    grow:"As you grow, my whoosh might go away. I'll keep beating, day and night.",
+    outro:"Remember: my whoosh is okay. I'm strong. And you can play!",
+  },
+  big: {
+    home:"I live in your chest, a tiny bit to the left, behind your ribs. I'm a strong muscle, about the size of your fist.",
+    loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
+    doors:"Inside me there are four little doors called valves. When they snap shut, they make the lub-dub sound.",
+    listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
+    whoosh:"{doctor} heard an extra sound between my beats: lub, whoosh, dub. That whoosh is blood flowing smoothly through me, like water rushing through a garden hose.",
+    common:"Doctors call this an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. I'm healthy and strong!",
+    fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
+    play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
+    grow:"As you grow bigger, many whooshes get quieter or disappear completely. Either way, I'll keep beating about 100,000 times a day.",
+    outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
+  },
+};
+const LANGS = [
+  {id:'en', label:'English', tts:'en-AU'},
+  {id:'zh', label:'中文 (普通话)', tts:'zh-CN'},
+  {id:'ar', label:'العربية (Arabic)', tts:'ar-SA', rtl:true},
+  {id:'vi', label:'Tiếng Việt', tts:'vi-VN'},
+];
+const LANG = () => LANGS.find(l => l.id === S.lang) || LANGS[0];
+// Draft translations for the demo. They need certified medical translation before real use.
+const TR = {
+  zh: {
+    intro:"这是{doctor}送给{name}的特别视频。",
+    hello:"砰！你好，{name}！是我，你的心脏！我听说你今天去看了{doctor}。",
+    home:"我住在你的胸口里，稍微偏左一点。我是一块肌肉，大约和你的拳头一样大。",
+    squeeze:"我的工作就是挤压。挤！挤！每挤一下，就把血液送到你的全身。",
+    loop:"血液流到你的头，流到你的脚趾，然后再回到我这里。",
+    doors:"我身体里有几扇小门。它们关上的时候，会发出“扑通、扑通”的声音。",
+    listen:"今天{doctor}用听诊器听了我的声音。就像把耳朵贴在大人的胸口上，只是声音更大！",
+    whoosh:"{doctor}还听到了一点额外的声音。听！扑、呼、通。那个“呼”的声音，只是血液流过我的声音，就像水流过花园的水管。",
+    common:"很多很多小朋友都有这样的“呼呼”声，和你一样。医生叫它“无害性杂音”。无害的意思就是没关系。我很健康，很强壮！",
+    fever:"当你发烧，或者跑得很快的时候，我会跳得更快，所以“呼呼”声可能会更响。这也没关系！",
+    play:"所以继续跑、跳、跳舞、玩耍吧，和平时一样。我是一块肌肉，肌肉最喜欢运动了！",
+    tryit:"试一试！把手放在胸口上，原地跳十下。你能感觉到我在打鼓吗？",
+    grow:"等你长大一些，我的“呼呼”声可能会变小，甚至消失。不管怎样，我都会日日夜夜一直跳动。",
+    bye:"{name}，下次心跳见！",
+    outro:"记住：我的“呼呼”声叫无害性杂音。我很健康、很强壮。你可以像平时一样玩耍！",
+  },
+  ar: {
+    intro:"فيديو خاص لـ{name}، من {doctor}.",
+    hello:"بوب! مرحبًا يا {name}! إنه أنا، قلبك! سمعت أنك زرت {doctor} اليوم.",
+    home:"أعيش في صدرك، إلى اليسار قليلًا. أنا عضلة، وحجمي تقريبًا مثل قبضة يدك.",
+    squeeze:"عملي هو أن أنقبض. انقباض! انقباض! كل انقباضة تدفع الدم إلى كل جسمك.",
+    loop:"إلى رأسك، وإلى أصابع قدميك، ثم يعود الدم إليّ من جديد.",
+    doors:"في داخلي أبواب صغيرة. عندما تُغلق، تصدر صوت: دُق-دُق، دُق-دُق.",
+    listen:"اليوم استمع {doctor} إليّ بالسماعة الطبية. كأنك تضع أذنك على صدر شخص كبير، لكن الصوت أعلى!",
+    whoosh:"وسمع {doctor} صوتًا إضافيًا. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط صوت الدم وهو يندفع خلالي، مثل الماء في خرطوم الحديقة.",
+    common:"كثير جدًا من الأطفال لديهم هذا الصوت، مثلك تمامًا. يسميه الأطباء نفخة بريئة. بريئة تعني أنها غير مؤذية. أنا قوي وبصحة جيدة!",
+    fever:"عندما تكون مصابًا بالحمى، أو تركض بسرعة، أنبض أسرع، لذلك قد يصبح الصوت أعلى. وهذا أمر طبيعي أيضًا!",
+    play:"لذلك استمر في الركض والقفز والرقص واللعب كالمعتاد. أنا عضلة، والعضلات تحب الحركة!",
+    tryit:"جرّب! ضع يدك على صدرك واقفز عشر مرات. هل تشعر بي وأنا أقرع الطبل؟",
+    grow:"عندما تكبر، قد يصبح الصوت أهدأ، أو قد يختفي تمامًا. وفي كل الأحوال، سأستمر في النبض ليلًا ونهارًا.",
+    bye:"أراك في النبضة القادمة يا {name}!",
+    outro:"تذكّر: صوتي اسمه نفخة بريئة. أنا قوي وبصحة جيدة. ويمكنك أن تلعب كالمعتاد!",
+  },
+  vi: {
+    intro:"Một video đặc biệt dành cho {name}, từ {doctor}.",
+    hello:"Bốp! Chào {name}! Mình đây, trái tim của bạn! Mình nghe nói hôm nay bạn đã đi gặp {doctor}.",
+    home:"Mình sống trong lồng ngực của bạn, hơi lệch sang trái một chút. Mình là một cơ bắp, to bằng nắm tay của bạn.",
+    squeeze:"Nhiệm vụ của mình là bóp. Bóp! Bóp! Mỗi lần bóp sẽ đẩy máu đi khắp cơ thể bạn.",
+    loop:"Lên tới đầu, xuống tới ngón chân, rồi quay trở về với mình.",
+    doors:"Bên trong mình có những cánh cửa nhỏ. Khi chúng đóng lại, chúng kêu thịch-thịch, thịch-thịch.",
+    listen:"Hôm nay {doctor} đã nghe mình bằng ống nghe. Giống như áp tai vào ngực người lớn, nhưng nghe to hơn!",
+    whoosh:"Và {doctor} nghe thấy một âm thanh nữa. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là tiếng máu chảy qua mình, giống như nước chảy qua vòi tưới cây.",
+    common:"Rất nhiều bạn nhỏ cũng có tiếng vù giống bạn. Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không sao cả. Mình khỏe mạnh và mạnh mẽ!",
+    fever:"Khi bạn bị sốt, hoặc chạy thật nhanh, mình đập nhanh hơn, nên tiếng vù có thể to hơn. Điều đó cũng không sao!",
+    play:"Vì vậy hãy cứ chạy, nhảy, múa và vui chơi như mọi khi. Mình là cơ bắp, và cơ bắp rất thích vận động!",
+    tryit:"Thử nhé! Đặt tay lên ngực và nhảy lên nhảy xuống mười lần. Bạn có cảm thấy mình đang đánh trống không?",
+    grow:"Khi bạn lớn hơn, tiếng vù có thể nhỏ đi, hoặc biến mất hẳn. Dù thế nào, mình vẫn sẽ đập suốt ngày đêm.",
+    bye:"Hẹn gặp lại ở nhịp đập tiếp theo nhé, {name}!",
+    outro:"Hãy nhớ: tiếng vù của mình gọi là tiếng thổi vô hại. Mình khỏe mạnh và mạnh mẽ. Và bạn có thể vui chơi như mọi khi!",
+  },
+};
+const UI = {
+  en: {hey:'Hey {name}!', sub:'Your heart has something to tell you', from:'A video from {doctor}', facts:"{name}'s heart facts",
+       bullets:{little:['My heart is strong','My whoosh is okay','I can play!'], mid:['My heart is healthy and strong','My whoosh is an innocent murmur','I can run and play like always'], big:['My heart is healthy and strong','My whoosh is a harmless innocent murmur','I can do every sport I love']},
+       title:"{name}'s heart video", play:"Play {name}'s video", found:'What we found', means:'What it means', todo:'What to do', seek:'Get help if', questions:'Your questions'},
+  zh: {hey:'你好，{name}！', sub:'你的心脏有话要对你说', from:'来自{doctor}的视频', facts:'{name}的心脏小知识',
+       bullets:{mid:['我的心脏健康又强壮','我的“呼呼”声是无害性杂音','我可以像平时一样跑和玩']},
+       title:'{name}的心脏视频', play:'播放{name}的视频', found:'我们发现了什么', means:'这意味着什么', todo:'接下来怎么做', seek:'出现以下情况请就医', questions:'您的问题'},
+  ar: {hey:'مرحبًا يا {name}!', sub:'قلبك يريد أن يخبرك بشيء', from:'فيديو من {doctor}', facts:'حقائق عن قلب {name}',
+       bullets:{mid:['قلبي قوي وبصحة جيدة','الصوت الذي أسمعه نفخة بريئة','أستطيع أن أركض وألعب كالمعتاد']},
+       title:'فيديو قلب {name}', play:'شغّل فيديو {name}', found:'ما وجدناه', means:'ماذا يعني ذلك', todo:'ما يجب فعله', seek:'اطلب المساعدة إذا', questions:'أسئلتكم'},
+  vi: {hey:'Chào {name}!', sub:'Trái tim có điều muốn nói với bạn', from:'Video từ {doctor}', facts:'Điều cần nhớ về trái tim của {name}',
+       bullets:{mid:['Trái tim mình khỏe mạnh','Tiếng vù là tiếng thổi vô hại','Mình có thể chạy nhảy vui chơi như mọi khi']},
+       title:'Video trái tim của {name}', play:'Phát video của {name}', found:'Chúng tôi phát hiện gì', means:'Điều đó có nghĩa là gì', todo:'Cần làm gì', seek:'Đi khám ngay nếu', questions:'Câu hỏi của bạn'},
+};
+const t = k => fill(((UI[S.lang] || UI.en)[k]) ?? UI.en[k]);
+const bullets = () => { const b = (UI[S.lang] || UI.en).bullets; return (b[band()] || b.mid).map(fill); };
+const SUM = {
+  zh: {found:"{doctor}听了{name}的心脏，听到了无害性杂音：这是血液流过健康心脏时发出的轻柔“呼呼”声。",
+       means:"无害的意思是没有危险。{name}的心脏健康，功能正常。无害性杂音在儿童中非常常见，随着成长通常会变轻或消失。发烧或运动后，声音可能会更明显。",
+       todo:"没有任何限制：{name}可以像平时一样跑步、游泳、跳舞和玩耍。不需要做心脏超声或其他检查。您的家庭医生可以在常规检查时再听一听。",
+       seek:"如果{name}出现晕倒、运动时胸痛、异常气促，或嘴唇周围发紫，请看家庭医生或去急诊科。",
+       qa:[["我的心脏坏了吗？","没有。{name}的心脏健康又强壮。（视频里也回答了这个问题。）"],["{name}需要停止运动吗？","不需要，没有任何限制。"],["{name}需要做心脏超声吗？","根据今天的检查，不需要。"]]},
+  ar: {found:"استمع {doctor} إلى قلب {name} وسمع نفخة بريئة: صوت خفيف يشبه الوشوشة يحدثه الدم أثناء مروره في قلب سليم.",
+       means:"بريئة تعني غير مؤذية. قلب {name} سليم ويعمل بشكل طبيعي. النفخات البريئة شائعة جدًا عند الأطفال، وغالبًا ما تخف أو تختفي مع النمو. قد تكون أوضح عند الحمى أو بعد ممارسة الرياضة.",
+       todo:"لا توجد أي قيود: يمكن لـ{name} الركض والسباحة والرقص واللعب كالمعتاد. لا حاجة لتخطيط صدى القلب أو فحوصات أخرى. يمكن لطبيب العائلة الاستماع مجددًا في الفحوصات الروتينية.",
+       seek:"راجع طبيب العائلة أو اذهب إلى قسم الطوارئ إذا أُغمي على {name}، أو شعر بألم في الصدر أثناء الرياضة، أو ضيق تنفس غير معتاد، أو ظهر لون أزرق حول الشفتين.",
+       qa:[["هل قلبي مكسور؟","لا. قلب {name} سليم وقوي. (الإجابة موجودة في الفيديو أيضًا.)"],["هل يجب أن يتوقف {name} عن الرياضة؟","لا. لا توجد أي قيود."],["هل يحتاج {name} إلى تخطيط صدى القلب؟","ليس بناءً على فحص اليوم."]]},
+  vi: {found:"{doctor} đã nghe tim của {name} và nghe thấy tiếng thổi vô hại: một âm thanh vù nhẹ do máu chảy qua một trái tim khỏe mạnh.",
+       means:"Vô hại nghĩa là không nguy hiểm. Tim của {name} khỏe mạnh và hoạt động bình thường. Tiếng thổi vô hại rất phổ biến ở trẻ em và thường nhỏ đi hoặc biến mất khi trẻ lớn lên. Tiếng thổi có thể rõ hơn khi trẻ bị sốt hoặc sau khi vận động.",
+       todo:"Không có giới hạn nào: {name} có thể chạy, bơi, nhảy múa và vui chơi như bình thường. Không cần siêu âm tim hay làm thêm xét nghiệm. Bác sĩ gia đình có thể nghe lại tim trong các lần khám định kỳ.",
+       seek:"Hãy đến bác sĩ gia đình hoặc khoa cấp cứu nếu {name} bị ngất, đau ngực khi vận động, khó thở bất thường, hoặc môi tím tái.",
+       qa:[["Tim con có bị hỏng không?","Không. Tim của {name} khỏe mạnh. (Video cũng trả lời câu hỏi này.)"],["{name} có cần ngừng chơi thể thao không?","Không. Không có giới hạn nào."],["{name} có cần siêu âm tim không?","Dựa trên lần khám hôm nay thì không cần."]]},
+};
+const AVATARS = [
+  {id:'hazel', n:'Hazel'}, {id:'leo', n:'Leo'}, {id:'aisha', n:'Aisha'},
+  {id:'finn', n:'Finn'}, {id:'zuri', n:'Zuri'}, {id:'sam', n:'Sam'},
+];
+function renderPickers(){
+  $$('[data-avatars]').forEach(box => {
+    box.innerHTML = AVATARS.map(a => `<button type="button" class="av" data-av="${a.id}" aria-pressed="${S.avatar === a.id}" title="${a.n}"><img src="avatars/${a.id}.jpg" alt="${a.n}"></button>`).join('');
+  });
+  $$('[data-band]').forEach(box => {
+    box.innerHTML = BANDS.map(([id, l]) => `<button type="button" data-b="${id}" aria-pressed="${band() === id}">${l}</button>`).join('');
+  });
+  $$('[data-lang]').forEach(sel => { if (!sel.options.length) sel.innerHTML = LANGS.map(l => `<option value="${l.id}">${esc(l.label)}</option>`).join(''); sel.value = S.lang; });
+}
+document.addEventListener('click', e => {
+  const av = e.target.closest('[data-av]');
+  if (av) { S.avatar = av.dataset.av; S.approved = false; renderPickers(); refresh(); return; }
+  const b = e.target.closest('[data-b]');
+  if (b) { setAge(BAND_AGE[b.dataset.b]); }
+});
+document.addEventListener('change', e => { if (e.target.matches('[data-lang]')) setLang(e.target.value); });
+function setAge(a){
+  const had = Object.keys(S.edits).length;
+  S.age = a; $('#f-age').value = String(a); S.edits = {}; S.approved = false;
+  renderPickers(); refresh();
+  if (had) toast('Age changed, so the wording was reset to the version for that age.');
+}
+function setLang(l){
+  S.lang = l; S.edits = {}; S.summary = null; S.approved = false;
+  renderPickers(); refresh();
+}
+function refresh(){
+  const v = location.hash.slice(1);
+  if (v === 'review') renderReview();
+  if (v === 'family') renderFamily();
+}
+
 /* ---------- sample consult ---------- */
 const T = [
   {s:'doc', t:"Hi {name}, hi {parent}. Thanks for coming in. I've had a really good listen to {name}'s heart today."},
@@ -491,6 +693,7 @@ const WHO = {doc:()=>S.doc, par:()=>`${S.parent} (parent)`, kid:()=>S.name};
 
 /* ---------- summary ---------- */
 function defaultSummary(){
+  if (SUM[S.lang]) { const x = SUM[S.lang]; return {found: fill(x.found), means: fill(x.means), todo: fill(x.todo), seek: fill(x.seek)}; }
   const f = S.detected.has('fever') ? ' It may sound louder with a fever or after exercise.' : '';
   return {
     found: fill("{doctor} listened to {name}'s heart and heard an innocent murmur: a soft whooshing sound made by blood flowing through a healthy heart."),
@@ -499,7 +702,7 @@ function defaultSummary(){
     seek: fill("See your GP, or go to the emergency department, if {name} faints, has chest pain during exercise, gets unusually breathless, or looks blue around the lips."),
   };
 }
-const QA = () => [
+const QA = () => SUM[S.lang] ? SUM[S.lang].qa.map(([q, a]) => [fill(q), fill(a)]) : [
   [fill('Is my heart broken?'), fill("No. {name}'s heart is healthy and strong. (This is answered in the video too.)")],
   [fill('Does {name} need to stop sport?'), 'No. There are no restrictions at all.'],
   [fill('Will {name} need an echo?'), "Not based on today's examination."],
@@ -529,10 +732,11 @@ function syncNames(){
   S.name = ($('#f-name').value.trim() || 'Mia').replace(/[^\p{L}\p{M}' -]/gu, '').slice(0, 20) || 'Mia';
   S.parent = $('#f-parent').value.trim() || 'Priya';
   S.doc = $('#f-doc').value.trim() || 'Dr Sarah';
-  S.age = +$('#f-age').value;
+  if (S.age !== +$('#f-age').value) { S.age = +$('#f-age').value; S.edits = {}; }
   $('#build').textContent = `Build ${S.name}'s video`;
   $('#proc-title').textContent = `Building ${S.name}'s video`;
   S.summary = null;
+  if (typeof renderPickers === 'function') renderPickers();
 }
 ['#f-name','#f-parent','#f-doc','#f-age'].forEach(s => $(s).addEventListener('input', syncNames));
 
@@ -652,11 +856,12 @@ function frame(img, r, aspect = 9/16){
   const [x, y, w] = r; const sc = 100 / w;
   return `scale(${sc}) translate(${-x}%, ${-y}%)`;
 }
-const isOn = s => S.include[s.id] ?? (s.core || (s.detect ? S.detected.has(s.detect) : !s.off));
-const sceneText = s => fill(S.edits[s.id] ?? s.text);
+const isOn = s => S.include[s.id] ?? ((NOTFOR[s.id] || []).includes(band()) ? false : (s.core || (s.detect ? S.detected.has(s.detect) : !s.off)));
+const baseText = s => S.lang !== 'en' ? (TR[S.lang]?.[s.id] ?? s.text) : (AGE[band()]?.[s.id] ?? s.text);
+const sceneText = s => fill(S.edits[s.id] ?? baseText(s));
 const activeScenes = () => SCENES.filter(isOn);
 // an animated, voiced clip is used only while its words still match what was recorded
-const useVid = s => !!s.video && !(s.id in S.edits) && (!s.voicedFor || (S.name === s.voicedFor.name && S.doc === s.voicedFor.doctor));
+const useVid = s => !!s.video && S.lang === 'en' && !(s.id in S.edits) && (!s.voicedFor || (S.name === s.voicedFor.name && S.doc === s.voicedFor.doctor));
 
 /* ---------- review ---------- */
 function renderReview(){
@@ -676,7 +881,7 @@ function renderReview(){
     const vtag = useVid(s) ? '<span class="pill ok">Animated + voiced</span>' : s.video ? '<span class="pill warn">Still + computer voice</span>' : '';
     const tag = vtag + (s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
       : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>');
-    const why = s.video && !useVid(s) ? (s.id in S.edits ? 'Wording changed, so the recorded voice no longer matches. The new line will be recorded before sending.' : `Recorded for ${s.voicedFor.name}. A new name line is recorded for each child.`) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
+    const why = s.video && !useVid(s) ? (S.lang !== 'en' ? 'Recorded in English. In this demo other languages use the computer voice over the still picture.' : s.id in S.edits ? 'Wording changed, so the recorded voice no longer matches. The new line will be recorded before sending.' : `Recorded for ${s.voicedFor.name}. A new name line is recorded for each child.`) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
     el.innerHTML = `${thumb}
       <div class="scene-b">
         <div class="tags">${tag}<span class="why">${esc(why)}</span></div>
@@ -688,6 +893,10 @@ function renderReview(){
     $('input[type=checkbox]', el).addEventListener('change', e => { S.include[s.id] = e.target.checked; S.approved = false; renderReview(); });
     story.appendChild(el);
   });
+  renderPickers();
+  $('#pers-pill').textContent = `Age ${BANDS.find(b => b[0] === band())[1]} · ${LANG().label.split(' (')[0]}`;
+  $('#band-hint').textContent = {little:'Shorter, simpler words. Skips the blood-vessel scene.', mid:'The standard script.', big:'More detail: valves, arteries and veins, and the term "innocent murmur".'}[band()];
+  $('#lang-hint').textContent = S.lang === 'en' ? '' : 'Draft translation for the demo. Needs certified medical translation before real use. Age versions are English-only for now.';
   if (!S.summary) S.summary = defaultSummary();
   const labels = {found:'What we found', means:'What it means', todo:'What to do', seek:'Get help if'};
   $('#summary-edit').innerHTML = Object.keys(labels).map(k => `<label class="sum-field ${k}"><b>${labels[k]}</b><textarea id="sum-${k}" rows="3">${esc(S.summary[k])}</textarea></label>`).join('');
@@ -711,18 +920,21 @@ const estTotal = () => activeScenes().reduce((a, s) => a + estimate(s), 0);
 /* ---------- family ---------- */
 function renderFamily(){
   if (!S.summary) S.summary = defaultSummary();
-  $('#fam-title').textContent = `${S.name}'s heart video`;
+  renderPickers();
+  $('#fam-av').src = `avatars/${S.avatar}.jpg`;
+  $('#fam-title').textContent = t('title');
+  $('#grown').dir = LANG().rtl ? 'rtl' : 'ltr';
   $('#fam-eyebrow').textContent = `For ${S.name} and ${S.parent} · from ${S.doc}`;
   $('#fam-badge').textContent = S.approved ? `✓ Approved by ${S.doc}` : 'Preview: not yet approved';
   $('#fam-badge').className = 'pill ' + (S.approved ? 'ok' : 'warn');
-  $('#start-label').textContent = `Play ${S.name}'s video`;
+  $('#start-label').textContent = t('play');
   const sm = S.summary;
   $('#grown').innerHTML = `
-    <div class="panel"><div class="panel-b"><h3>What we found</h3><p>${esc(sm.found)}</p></div></div>
-    <div class="panel"><div class="panel-b"><h3>What it means</h3><p>${esc(sm.means)}</p></div></div>
-    <div class="panel"><div class="panel-b"><h3>What to do</h3><p>${esc(sm.todo)}</p></div></div>
-    <div class="panel seek-card"><div class="panel-b"><h3>Get help if</h3><p>${esc(sm.seek)}</p></div></div>
-    <div class="panel span2"><div class="panel-b"><h3>Your questions</h3><div class="qa">${QA().map(([q,a]) => `<div><b>${esc(q)}</b>${esc(a)}</div>`).join('')}</div></div></div>
+    <div class="panel"><div class="panel-b"><h3>${esc(t('found'))}</h3><p>${esc(sm.found)}</p></div></div>
+    <div class="panel"><div class="panel-b"><h3>${esc(t('means'))}</h3><p>${esc(sm.means)}</p></div></div>
+    <div class="panel"><div class="panel-b"><h3>${esc(t('todo'))}</h3><p>${esc(sm.todo)}</p></div></div>
+    <div class="panel seek-card"><div class="panel-b"><h3>${esc(t('seek'))}</h3><p>${esc(sm.seek)}</p></div></div>
+    <div class="panel span2"><div class="panel-b"><h3>${esc(t('questions'))}</h3><div class="qa">${QA().map(([q,a]) => `<div><b>${esc(q)}</b>${esc(a)}</div>`).join('')}</div></div></div>
     <div class="panel span2"><div class="panel-b book"><img src="scenes/book-cover.jpg" alt="Cover of Hey Heart, Why Do You Beat?"><div><h3>Keep the conversation going</h3><p>Read <b>Hey Heart, Why Do You Beat?</b> together at bedtime. It's by Dr Sarah Hanieh and features the same heart friend from ${esc(S.name)}'s video.</p></div></div></div>
     <div class="panel"><div class="panel-b"><h3>Rewatch any time</h3><p>This link stays active for 12 months. Share it with grandparents, carers or ${esc(S.name)}'s teacher.</p></div></div>`;
   player.load(activeScenes());
@@ -778,6 +990,21 @@ function pickVoice(){
   voice = vs.slice().sort((a, b) => score(b) - score(a))[0];
 }
 if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
+function voiceFor(tag){
+  if (tag.startsWith('en')) return voice;
+  if (!('speechSynthesis' in window)) return null;
+  const pre = tag.split('-')[0].toLowerCase();
+  const vs = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().replace('_', '-').startsWith(pre));
+  return vs.find(v => v.lang.replace('_', '-') === tag) || vs[0] || null;
+}
+/* ---------- background music ---------- */
+const music = new Audio('music/theme.mp3');
+music.loop = true; music.preload = 'auto';
+let musicOn = true;
+const MUSIC_VOL = .16;
+function musicPlay(){ if (!musicOn) return; music.volume = MUSIC_VOL; music.play().catch(() => {}); }
+function musicPause(){ music.pause(); }
+function musicDuck(on){ music.volume = on ? MUSIC_VOL * .55 : MUSIC_VOL; }
 
 /* ---------- player ---------- */
 const player = (() => {
@@ -788,15 +1015,16 @@ const player = (() => {
     pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>',
   };
   function layerHTML(s){
-    if (s.kind === 'title') return `<div class="card card-title"><div><div class="felt">Hey ${esc(S.name)}!</div><div class="sub">Your heart has something to tell you</div><div class="from">A video from ${esc(S.doc)}</div></div><div class="disc" role="img" aria-label="The heart character"></div></div>`;
-    if (s.kind === 'end') return `<div class="card card-end"><div><h3>${esc(S.name)}'s heart facts</h3><ul><li>My heart is healthy and strong</li><li>My whoosh is an innocent murmur</li><li>I can run and play like always</li></ul></div><div class="hero" role="img" aria-label="The heart character waving"></div></div>`;
+    const dir = LANG().rtl ? ' dir="rtl"' : '';
+    if (s.kind === 'title') return `<div class="card card-title"${dir}><div><div class="felt">${esc(t('hey'))}</div><div class="sub">${esc(t('sub'))}</div><div class="from">${esc(t('from'))}</div></div><div class="disc" role="img" aria-label="The child's video buddy with Heart" style="background:url(avatars/${S.avatar}.jpg) 50% 18%/150% no-repeat,#F6E4D2"><span class="hb"></span></div></div>`;
+    if (s.kind === 'end') return `<div class="card card-end"${dir}><div><h3>${esc(t('facts'))}</h3><ul>${bullets().map(b => `<li>${esc(b)}</li>`).join('')}</ul></div><div class="hero" role="img" aria-label="The child's video buddy" style="background-image:url(avatars/${S.avatar}.jpg)"></div></div>`;
     if (useVid(s)) return `<video poster="scenes/${s.video}.jpg" playsinline preload="auto"><source src="scenes/${s.video}.webm" type="video/webm"><source src="scenes/${s.video}.mp4" type="video/mp4"></video>`;
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
   function load(scenes){
     stop(); list = scenes; idx = 0; started = false;
     $$('.layer', stage).forEach(l => l.remove());
-    list.forEach((s, i) => { const d = document.createElement('div'); d.className = 'layer' + (s.kind ? '' : ' pic') + (i === 0 ? ' on' : ''); d.innerHTML = layerHTML(s); stage.insertBefore(d, cap); });
+    list.forEach((s, i) => { const d = document.createElement('div'); d.className = 'layer' + (s.kind ? '' : ' pic') + (i === 0 ? ' on' : ''); d.innerHTML = layerHTML(s); stage.insertBefore(d, $('#start')); });
     segs.innerHTML = list.map((s, i) => `<button aria-label="Scene ${i + 1}"><i></i></button>`).join('');
     $$('button', segs).forEach((b, i) => b.onclick = () => { started = true; $('#start').hidden = true; show(i, true); });
     $('#start').hidden = false; cap.innerHTML = ''; setCount(); setPlayIcon();
@@ -812,7 +1040,8 @@ const player = (() => {
   }
   function setCaption(text){
     let pos = 0;
-    cap.innerHTML = text.split(/(\s+)/).map(w => { const st = pos; pos += w.length; return /\s/.test(w) ? w : `<span class="w" data-s="${st}">${esc(w)}</span>`; }).join('');
+    cap.dir = LANG().rtl ? 'rtl' : 'ltr';
+    cap.innerHTML = '<p>' + text.split(/(\s+)/).map(w => { const st = pos; pos += w.length; return /\s/.test(w) ? w : `<span class="w" data-s="${st}">${esc(w)}</span>`; }).join('') + '</p>';
     cap.classList.toggle('hidden', !ccOn);
   }
   function hitWord(ci){
@@ -832,7 +1061,7 @@ const player = (() => {
     if (vid) {
       if (autoplay !== undefined) playing = autoplay;
       setPlayIcon(); cancelAnimationFrame(raf); paintSegs(0);
-      vid.currentTime = 0; vid.muted = !voiceOn;
+      vid.currentTime = 0; vid.muted = !voiceOn; musicDuck(true);
       if (!playing) return;
       raf = requestAnimationFrame(tick);
       const ws = $$('.w', cap);
@@ -844,6 +1073,7 @@ const player = (() => {
       vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
       return;
     }
+    musicDuck(false);
     const img = $$('.layer', stage)[i].querySelector('img');
     if (img && s.a) kb = img.animate([{transform: frame(null, s.a)}, {transform: frame(null, s.b)}], {duration: dur + 1500, easing: 'ease-in-out', fill: 'forwards'});
     if (autoplay !== undefined) playing = autoplay;
@@ -861,7 +1091,7 @@ const player = (() => {
       if (voiceOn && 'speechSynthesis' in window && window.SpeechSynthesisUtterance) {
         try {
           const u = new SpeechSynthesisUtterance(text.replace(/lub-dub/gi, 'lub dub'));
-          if (voice) u.voice = voice; u.lang = voice?.lang || 'en-AU'; u.rate = .92; u.pitch = 1.12;
+          const vv = voiceFor(LANG().tts); if (vv) u.voice = vv; u.lang = vv?.lang || LANG().tts; u.rate = .92; u.pitch = 1.12;
           u.onboundary = e => { if (my === token) hitWord(e.charIndex); };
           u.onend = () => { if (my === token) { clearTimeout(safety); dur = performance.now() - t0 + 950; done(); } };
           u.onerror = () => { if (my === token) { clearTimeout(safety); setTimeout(done, Math.max(0, dur - lead - 950)); } };
@@ -878,16 +1108,18 @@ const player = (() => {
   }
   function end(){
     playing = false; setPlayIcon(); cancelAnimationFrame(raf); paintSegs(1);
+    let v = music.volume; const fo = setInterval(() => { v -= .02; if (v <= 0) { clearInterval(fo); musicPause(); music.currentTime = 0; } else music.volume = v; }, 120);
     $$('button', segs).forEach(b => b.classList.add('done'));
   }
   function play(){
     audio(); started = true; $('#start').hidden = true;
     if (idx >= list.length - 1 && !playing && $$('button.done', segs).length === list.length) idx = 0;
-    playing = true; show(idx);
+    playing = true; musicPlay(); show(idx);
   }
   function pause(){
     playing = false; token++; setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
     $$('.layer video', stage).forEach(v => v.pause());
+    musicPause();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }
   function stop(){ if (playing) pause(); }
@@ -896,6 +1128,7 @@ const player = (() => {
   $('#c-next').onclick = () => { started = true; $('#start').hidden = true; audio(); show(Math.min(idx + 1, list.length - 1), playing || true); };
   $('#c-prev').onclick = () => { started = true; $('#start').hidden = true; audio(); show(Math.max(idx - 1, 0), playing || true); };
   $('#c-voice').onclick = e => { voiceOn = !voiceOn; e.currentTarget.setAttribute('aria-pressed', voiceOn); if (playing) show(idx); };
+  $('#c-music').onclick = e => { musicOn = !musicOn; e.currentTarget.setAttribute('aria-pressed', musicOn); if (musicOn && playing) musicPlay(); else musicPause(); };
   $('#c-cc').onclick = e => { ccOn = !ccOn; e.currentTarget.setAttribute('aria-pressed', ccOn); cap.classList.toggle('hidden', !ccOn); };
   $('#c-full').onclick = () => { const p = $('#player'); (document.fullscreenElement ? document.exitFullscreen() : p.requestFullscreen?.())?.catch?.(() => {}); };
   document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
@@ -918,6 +1151,7 @@ $('#lib').innerHTML = LIB.map(x => `<div class="panel topic">
   <div class="art">${x.img ? `<img src="scenes/${x.img}.jpg" alt="" loading="lazy" style="transform:scale(${100 / x.r[2]}) translate(${-x.r[0]}%,${-x.r[1]}%)">` : `<div class="ph">${esc(x.t.split(' · ')[0])}</div>`}</div>
   <div class="panel-b"><span class="pill ${x.st === 'mute' ? 'mute' : x.st}">${esc(x.s)}</span><h3>${esc(x.t)}</h3><p>${esc(x.d)}</p></div></div>`).join('');
 
+renderPickers();
 syncNames();
 route();
 })();

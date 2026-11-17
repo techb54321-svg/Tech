@@ -175,8 +175,13 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .layer{position:absolute;inset:0;opacity:0;transition:opacity .7s ease}
 .layer{pointer-events:none}
 .layer.on{opacity:1;pointer-events:auto;z-index:1}
-.layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D}
-.layer img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
+.layer video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#0D161D;transform:scale(1);transform-origin:50% 45%}
+.layer video.hold{transform:scale(1.08);transition:transform var(--hold,5s) cubic-bezier(.3,0,.4,1)}
+.layer video.cut{opacity:0;transition:opacity .5s ease}
+.layer video.cut.show{opacity:1}
+.qopt.hint{animation:hint 1.1s ease-in-out infinite}
+@keyframes hint{50%{box-shadow:0 0 0 8px #F4B82E,0 6px 0 rgba(126,15,41,.25);background:#FFFDF6}}
+.layer > img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
 .caption{min-height:calc(2.6em + 26px);padding:13px max(18px,5%);display:flex;align-items:center;justify-content:center;text-align:center;font-family:var(--display),"Noto Sans","Segoe UI",sans-serif;font-weight:600;font-size:clamp(16px,2vw,25px);line-height:1.3;color:#FFF8EA;background:#13212A;border-top:1px solid rgba(255,255,255,.06);text-wrap:balance}
 .caption p{margin:0;max-width:900px}
 .caption.hidden p{visibility:hidden}
@@ -219,11 +224,11 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .card-quiz .dots{display:flex;gap:8px}
 .card-quiz .dots i{width:12px;height:12px;border-radius:50%;background:rgba(126,15,41,.25)}
 .card-quiz .dots i.on{background:#B3163A}
-.qopts{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3%;width:100%}
-.qopt{border:0;border-radius:22px;background:#FFF8EA;cursor:pointer;padding:4% 3%;display:grid;justify-items:center;gap:6%;box-shadow:0 6px 0 rgba(126,15,41,.25);font-family:var(--display);font-weight:600;color:#1D2E3F;font-size:clamp(12px,1.9vw,24px);line-height:1.15;transition:transform .12s}
-.qopt:hover{transform:translateY(-3px)}
+.qopts{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3%;width:100%}
+.qopt{min-width:0;border:0;border-radius:22px;background:#FFF8EA;cursor:pointer;padding:4% 3%;display:grid;justify-items:center;gap:6%;box-shadow:0 6px 0 rgba(126,15,41,.25);font-family:var(--display);font-weight:600;color:#1D2E3F;font-size:clamp(12px,1.9vw,24px);line-height:1.15;transition:transform .12s}
+.qopt:hover{filter:brightness(1.04);box-shadow:0 0 0 4px #FFF8EA,0 6px 0 rgba(126,15,41,.25)}
 .qopt .pic{font-size:clamp(34px,7vw,92px);line-height:1;width:100%;aspect-ratio:16/10;display:grid;place-items:center;border-radius:14px;background:#FCEFC9;overflow:hidden;max-width:100%}
-.qopt .pic img{width:100%;height:100%;object-fit:cover}
+.qopt .pic img{width:100%;height:100%;object-fit:cover;display:block;min-width:0}
 .qopt.right{background:#D8F3E3;box-shadow:0 0 0 5px #23825A,0 6px 0 rgba(35,130,90,.35)}
 .qopt.wrong{animation:shake .45s}
 @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
@@ -524,7 +529,7 @@ const SCENES = [
   {id:'loop', clip:'v2-loop', core:true, voice:'loop', vdur:6.04, words:[0,.34,.58,.84,1.7,2.14,2.3,2.51,3.46,3.75,4.59,4.73,5.02,5.34,5.5], text:"Up to your head, down to your toes, and all the way back to me."},
   {id:'doors', clip:'v2-doors', core:true, sfx:'beat2', task:'say', voice:'doors', vdur:9.75, words:[0,.72,.91,1.12,1.3,1.63,2.59,2.86,3.09,3.61,4.3,4.59,5.14,6.87,7.22,7.34,7.56,7.84,8.67], text:"Inside me there are little doors. When they snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
   {id:'listen', clip:'v2-listen', core:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', clip:'v2-whoosh', detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:13.19, voicedFor:{doctor:'Dr Sarah'}, words:[0,.3,.86,1.34,1.65,2.18,3.03,3.54,4.03,4.63,5.69,6.06,6.5,6.75,7.13,7.45,8.31,8.88,9.94,10.25,10.72,11.16,11.47,11.65,12.25], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through, like water whooshing through a garden hose."},
+  {id:'whoosh', clip:'v2-whoosh', cuts:[{at:14.3, clip:'v2-listen'}], detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:20.85, voicedFor:{doctor:'Dr Sarah'}, words:[0,.27,.74,1.14,1.37,1.8,2.32,3.22,4.91,6.75,8.1,8.51,9.03,9.27,9.65,9.94,10.83,11.39,11.75,11.91,12.35,12.89,13,13.15,13.67,14.37,14.68,15.24,15.43,15.88,16.37,16.56,17.65,17.9,18.04,18.84,19.02,19.25,19.47,20.05], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through me, like water in a garden hose. Your chest is still nice and small, so the stethoscope can hear it really well!"},
   {id:'common', clip:'v2-common', detect:'common', voice:'common', vdur:14.4, words:[0,.33,.49,1.07,2.07,2.45,3.6,4.13,4.32,4.64,4.78,5.14,5.41,5.77,6.01,6.22,7.29,7.88,8.16,8.29,8.5,9.08,9.78,10.4,10.93,12.42,12.83,13.31,13.47], text:"Is a whoosh scary? No way! Lots and lots of kids have one, just like you. Doctors call it an innocent murmur. Innocent means harmless. I'm healthy and strong!"},
   {id:'fever', clip:'v2-fever', detect:'fever', optional:true, sfx:'fast', voice:'fever', vdur:9.89, words:[0,.3,.5,.82,1.01,1.86,2.13,2.32,2.55,3,3.43,4.42,4.74,4.99,5.82,6.11,6.26,6.63,7.01,7.35,8.17,8.62,9.14], text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
   {id:'play', clip:'v2-play', detect:'play', voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
@@ -557,7 +562,7 @@ const AGE = {
     squeeze:"Make a fist. That's how big I am! Squeeze... and let go!",
     doors:"Inside me are little doors. They go lub-dub! Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a special listening tube.",
-    whoosh:"{doctor} heard a little whoosh. Lub, whoosh, dub! That's just my blood rushing through, like water in a hose.",
+    whoosh:"{doctor} heard a little whoosh. Lub, whoosh, dub! That's just my blood rushing through, like water in a hose. Your chest is small, so the doctor can hear it easily.",
     common:"Is a whoosh scary? No way! Lots of kids have one. I'm strong!",
     fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
     play:"So keep running, jumping and dancing!",
@@ -570,7 +575,7 @@ const AGE = {
     loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
     doors:"Inside me are four little doors called valves. When they snap shut they make the lub-dub sound. Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
-    whoosh:"{doctor} heard an extra sound between my beats: lub, whoosh, dub. That whoosh is blood flowing smoothly through me, like water rushing through a garden hose.",
+    whoosh:"{doctor} heard an extra sound between my beats: lub, whoosh, dub. That whoosh is blood flowing fast and smoothly through me, like water rushing through a garden hose. Kids' chests are thin, so a stethoscope picks it up easily.",
     common:"Is a whoosh something to worry about? No way! Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. I'm healthy and strong!",
     fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
     play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
@@ -595,7 +600,7 @@ const TR = {
     loop:"血液流到你的头，流到你的脚趾，然后再回到我这里。",
     doors:"我身体里有几扇小门。它们关上的时候会发出“扑通”声！跟我一起说：扑通！扑通！",
     listen:"今天{doctor}用听诊器听了我的声音。就像把耳朵贴在大人的胸口上，只是声音更大！",
-    whoosh:"{doctor}还听到了一点额外的声音。听！扑、呼、通。那个“呼”的声音，只是血液流过我的声音，就像水流过花园的水管。",
+    whoosh:"{doctor}还听到了一点额外的声音。听！扑、呼、通。那个“呼”的声音，只是血液流过我的声音，就像水流过花园的水管。你的胸口还小小的，所以听诊器能听得特别清楚！",
     common:"“呼呼”声可怕吗？一点也不！很多很多小朋友都有，和你一样。医生叫它“无害性杂音”。无害就是没有危险。我很健康，很强壮！",
     fever:"当你发烧，或者跑得很快的时候，我会跳得更快，所以“呼呼”声可能会更响。这也没关系！",
     play:"所以继续跑、跳、跳舞、玩耍吧，和平时一样。我是一块肌肉，肌肉最喜欢运动了！",
@@ -614,7 +619,7 @@ const TR = {
     loop:"إلى رأسك، وإلى أصابع قدميك، ثم يعود الدم إليّ من جديد.",
     doors:"في داخلي أبواب صغيرة. عندما تُغلق تقول: دُق-دُق! قلها معي: دُق-دُق! دُق-دُق!",
     listen:"اليوم استمع {doctor} إليّ بالسماعة الطبية. كأنك تضع أذنك على صدر شخص كبير، لكن الصوت أعلى!",
-    whoosh:"وسمع {doctor} صوتًا إضافيًا. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط صوت الدم وهو يندفع خلالي، مثل الماء في خرطوم الحديقة.",
+    whoosh:"وسمع {doctor} صوتًا إضافيًا. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط صوت الدم وهو يندفع خلالي، مثل الماء في خرطوم الحديقة. صدرك ما زال صغيرًا، لذلك تسمعه السماعة الطبية بوضوح!",
     common:"هل الصوت مخيف؟ أبدًا! كثير جدًا من الأطفال لديهم هذا الصوت، مثلك تمامًا. يسميه الأطباء نفخة بريئة. بريئة تعني غير مؤذية. أنا قوي وبصحة جيدة!",
     fever:"عندما تكون مصابًا بالحمى، أو تركض بسرعة، أنبض أسرع، لذلك قد يصبح الصوت أعلى. وهذا أمر طبيعي أيضًا!",
     play:"لذلك استمر في الركض والقفز والرقص واللعب كالمعتاد. أنا عضلة، والعضلات تحب الحركة!",
@@ -633,7 +638,7 @@ const TR = {
     loop:"Lên tới đầu, xuống tới ngón chân, rồi quay trở về với mình.",
     doors:"Bên trong mình có những cánh cửa nhỏ. Khi đóng lại, chúng kêu thịch-thịch! Nói cùng mình nào: thịch-thịch! Thịch-thịch!",
     listen:"Hôm nay {doctor} đã nghe mình bằng ống nghe. Giống như áp tai vào ngực người lớn, nhưng nghe to hơn!",
-    whoosh:"Và {doctor} nghe thấy một âm thanh nữa. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là tiếng máu chảy qua mình, giống như nước chảy qua vòi tưới cây.",
+    whoosh:"Và {doctor} nghe thấy một âm thanh nữa. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là tiếng máu chảy qua mình, giống như nước chảy trong vòi tưới cây. Ngực của bạn còn nhỏ, nên ống nghe nghe thấy rất rõ!",
     common:"Tiếng vù có đáng sợ không? Không hề! Rất nhiều bạn nhỏ cũng có, giống như bạn. Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không nguy hiểm. Mình khỏe mạnh và mạnh mẽ!",
     fever:"Khi bạn bị sốt, hoặc chạy thật nhanh, mình đập nhanh hơn, nên tiếng vù có thể to hơn. Điều đó cũng không sao!",
     play:"Vì vậy hãy cứ chạy, nhảy, múa và vui chơi như mọi khi. Mình là cơ bắp, và cơ bắp rất thích vận động!",
@@ -661,26 +666,27 @@ const UI = {
 };
 const QZ = {
   en: {q:['How big is your heart?','What makes the whoosh sound?','Can you still run and play?'],
-       o:[['As big as your fist','As big as a house','As tiny as an ant'],['Blood whooshing through','A sneezing dragon','A noisy train'],['Yes!','No, sit still']],
-       yes:'Yes! You got it!', nearly:'Ooh, nearly! Have another go.', badge:'Heart Expert',
+       o:[['As big as your fist','As big as a house','As tiny as an ant'],['Blood whooshing through, like a hose','A sneezing dragon','A noisy train'],['Yes!','No, sit still']],
+       yes:['Yes! I\'m as big as your fist!','Yes! It\'s just your blood whooshing through your healthy heart. Nothing to worry about!','Yes! Run, jump and play as much as you like. I love it!'], nearly:'Ooh, nearly! Have another go.', badge:'Heart Expert',
        hand:'Your turn! Put your hand on your chest. Can you feel it?', fist:'Your turn! Make a fist and squeeze.', say:'Your turn! Say it out loud: lub-dub!', did:'I did it!'},
   zh: {q:['你的心脏有多大？','“呼呼”声是什么发出的？','你还能跑和玩吗？'],
        o:[['和你的拳头一样大','和房子一样大','和蚂蚁一样小'],['血液呼呼流过','打喷嚏的小龙','吵闹的火车'],['能！','不能，要坐着不动']],
-       yes:'对啦！你答对了！', nearly:'哎呀，差一点！再试一次。', badge:'心脏小专家',
+       yes:['对啦！我和你的拳头一样大！','对啦！那只是血液呼呼流过你健康的心脏，一点也不用担心！','对啦！想怎么跑、怎么跳、怎么玩都可以。我最喜欢了！'], nearly:'哎呀，差一点！再试一次。', badge:'心脏小专家',
        hand:'轮到你啦！把手放在胸口上，能感觉到吗？', fist:'轮到你啦！握紧拳头，用力挤一挤。', say:'轮到你啦！大声说：扑通！', did:'我做到了！'},
   ar: {q:['ما حجم قلبك؟','ما الذي يصدر صوت الوشوشة؟','هل ما زال بإمكانك الركض واللعب؟'],
        o:[['بحجم قبضة يدك','بحجم بيت','صغير مثل النملة'],['الدم وهو يندفع','تنين يعطس','قطار مزعج'],['نعم!','لا، أجلس بلا حراك']],
-       yes:'نعم! أحسنت!', nearly:'أوه، اقتربت! حاول مرة أخرى.', badge:'خبير القلوب',
+       yes:['نعم! أنا بحجم قبضة يدك!','نعم! إنه فقط دمك وهو يندفع في قلبك السليم. لا داعي للقلق!','نعم! اركض واقفز والعب كما تحب. أنا أحب ذلك!'], nearly:'أوه، اقتربت! حاول مرة أخرى.', badge:'خبير القلوب',
        hand:'دورك! ضع يدك على صدرك. هل تشعر به؟', fist:'دورك! اقبض يدك واضغط.', say:'دورك! قلها بصوت عالٍ: دُق-دُق!', did:'فعلتها!'},
   vi: {q:['Trái tim bạn to cỡ nào?','Tiếng vù là do đâu?','Bạn vẫn có thể chạy nhảy vui chơi chứ?'],
        o:[['To bằng nắm tay','To bằng ngôi nhà','Nhỏ như con kiến'],['Máu chảy vù vù','Chú rồng hắt xì','Đoàn tàu ồn ào'],['Có!','Không, phải ngồi yên']],
-       yes:'Đúng rồi! Giỏi quá!', nearly:'Ôi, gần đúng rồi! Thử lại nhé.', badge:'Chuyên gia trái tim',
+       yes:['Đúng rồi! Mình to bằng nắm tay của bạn!','Đúng rồi! Đó chỉ là máu chảy vù vù qua trái tim khỏe mạnh của bạn. Không có gì phải lo cả!','Đúng rồi! Cứ chạy nhảy vui chơi thoải mái nhé. Mình thích lắm!'], nearly:'Ôi, gần đúng rồi! Thử lại nhé.', badge:'Chuyên gia trái tim',
        hand:'Đến lượt bạn! Đặt tay lên ngực. Bạn có cảm thấy không?', fist:'Đến lượt bạn! Nắm tay lại và bóp.', say:'Đến lượt bạn! Nói to lên: thịch-thịch!', did:'Mình làm được rồi!'},
 };
 const qz = () => QZ[S.lang] || QZ.en;
 // picture for each answer: emoji, or a scene still; the first answer in each question is the right one (shuffled on screen)
 const QPIC = [['✊','🏠','🐜'], ['img:v2-whoosh','🐉','🚂'], ['⚽','🛋️']];
 const QVOICE = [{voice:'q1', vdur:2.04}, {voice:'q2', vdur:2.69}, {voice:'q3', vdur:2.51}];
+const YVOICE = [{voice:'yes1', vdur:3.2}, {voice:'yes2', vdur:7.8}, {voice:'yes3', vdur:5.53}];
 const TASK_ICON = {hand:'🫶', fist:'✊', say:'🗣️'};
 const t = k => fill(((UI[S.lang] || UI.en)[k]) ?? UI.en[k]);
 const bullets = () => { const b = (UI[S.lang] || UI.en).bullets; return (b[band()] || b.mid).map(fill); };
@@ -1112,7 +1118,8 @@ const player = (() => {
     if (s.kind === 'end') return `<div class="card card-end"${dir}><div><h3>${esc(t('facts'))}</h3><ul>${bullets().map(b => `<li>${esc(b)}</li>`).join('')}</ul></div><div class="hero" role="img" aria-label="The child's video buddy" style="background-image:url(avatars/${S.avatar}.jpg)"></div></div>`;
     if (s.kind === 'quiz') return `<div class="card card-quiz"${dir}><div class="qh"><span class="mini" aria-hidden="true"></span><h3 class="qq"></h3></div><div class="qopts"></div><div class="dots">${qz().q.map(() => '<i></i>').join('')}</div></div>`;
     if (s.kind === 'award') return `<div class="card card-award"${dir}><div class="rosette" style="background-image:url(avatars/${S.avatar}.jpg)" role="img" aria-label="${esc(S.name)}'s buddy"></div><div class="badge">${esc(qz().badge)}</div><div class="who">${esc(S.name)}</div></div>`;
-    if (s.clip) return `<video poster="scenes/${s.clip}.jpg" muted loop playsinline preload="auto"><source src="scenes/${s.clip}.webm" type="video/webm"><source src="scenes/${s.clip}.mp4" type="video/mp4"></video>`;
+    const vtag = (c, cls) => `<video${cls ? ` class="${cls}"` : ''} poster="scenes/${c}.jpg" muted playsinline preload="auto"><source src="scenes/${c}.webm" type="video/webm"><source src="scenes/${c}.mp4" type="video/mp4"></video>`;
+    if (s.clip) return vtag(s.clip) + (s.cuts || []).map(c => vtag(c.clip, 'cut')).join('');
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
   function load(scenes){
@@ -1153,8 +1160,17 @@ const player = (() => {
     $$('.layer video', stage).forEach(v => v.pause());
     vo.pause(); vo.ontimeupdate = vo.onended = vo.onerror = null;
     musicDuck(false);
-    const vid = $$('.layer', stage)[i].querySelector('video');
-    if (vid) { vid.currentTime = 0; vid.playbackRate = Math.max(.6, Math.min(1, 5000 / dur)); }
+    const vids = $$('video', $$('.layer', stage)[i]);
+    const vid = vids[0];
+    // fit the clip to the narration: play once (slowed a little if needed), then hold the last frame with a slow push-in
+    const cutAt = (s.cuts && s.cuts[0]) ? (s.lead || 450) + s.cuts[0].at * 1000 : dur;
+    vids.forEach((v, k) => {
+      v.classList.remove('hold', 'show'); v.style.removeProperty('--hold'); v.onended = null;
+      v.currentTime = 0;
+      const span = k === 0 ? cutAt : dur - cutAt;
+      v.playbackRate = Math.max(.55, Math.min(1, 5000 / Math.max(1000, span - 600)));
+      v.onended = () => { if (my !== token) return; const left = Math.max(1500, span - (5000 / v.playbackRate)) + 1500; v.style.setProperty('--hold', left + 'ms'); v.classList.add('hold'); };
+    });
     const img = $$('.layer', stage)[i].querySelector('img');
     if (img && s.a) kb = img.animate([{transform: frame(null, s.a)}, {transform: frame(null, s.b)}], {duration: dur + 1500, easing: 'ease-in-out', fill: 'forwards'});
     if (autoplay !== undefined) playing = autoplay;
@@ -1162,6 +1178,7 @@ const player = (() => {
     if (!playing) { kb?.pause(); return; }
     raf = requestAnimationFrame(tick);
     if (vid) vid.play().catch(() => {});
+    (s.cuts || []).forEach((c, k) => setTimeout(() => { if (my !== token || !playing) return; const v = vids[k + 1]; if (!v) return; v.classList.add('show'); v.play().catch(() => {}); vid.pause(); }, (s.lead || 450) + c.at * 1000));
     sfx(s.sfx);
     if (s.kind === 'award') confetti();
     if (s.kind === 'quiz') { runQuiz(s, my); return; }
@@ -1243,27 +1260,34 @@ const player = (() => {
       const tm = setTimeout(() => fin(false), wait);
     });
   }
+  let quizAt = {idx: -1, k: 0};
   async function runQuiz(s, my){
     const card = $$('.layer', stage)[idx];
     const q = qz(), qq = $('.qq', card), box = $('.qopts', card), dots = $$('.dots i', card);
-    qq.textContent = '';
-    await say({voice: 'quiz', vdur: 3.07, text: sceneText(s)}, my);
-    for (let k = 0; k < q.q.length; k++) {
+    if (quizAt.idx !== idx) quizAt = {idx, k: 0};
+    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'quiz', vdur: 3.07, text: sceneText(s)}, my); }
+    for (let k = quizAt.k; k < q.q.length; k++) {
+      quizAt.k = k;
       if (my !== token || !playing) return;
       dots.forEach((d, j) => d.classList.toggle('on', j <= k));
       qq.textContent = q.q[k];
       const order = q.o[k].map((label, j) => j).sort(() => Math.random() - .5);
       box.innerHTML = order.map(j => { const pic = QPIC[k][j]; return `<button type="button" class="qopt" data-j="${j}"><span class="pic">${pic.startsWith('img:') ? `<img src="scenes/${pic.slice(4)}.jpg" alt="">` : pic}</span>${esc(q.o[k][j])}</button>`; }).join('');
+      let misses = 0;
       const answered = new Promise(res => {
-        const auto = setTimeout(res, 45000);
+        // after 20 quiet seconds, show which answer is right so nobody gets stuck
+        const nudge = setTimeout(() => { if (my === token) $('.qopt[data-j="0"]', box)?.classList.add('hint'); }, 20000);
         $$('.qopt', box).forEach(b => b.onclick = async () => {
-          if (my !== token) return;
+          // a tap while the video is paused (screen locked, tab switched, pause pressed) resumes the quiz on this question
+          if (my !== token || !playing) { if (!playing) play(); return; }
           if (b.dataset.j === '0') {
-            clearTimeout(auto); $$('.qopt', box).forEach(x => x.onclick = null);
-            b.classList.add('right'); sfx('chime'); confetti();
-            await say({voice: 'yes', vdur: 1.58, text: q.yes}, my); setTimeout(res, 500);
+            clearTimeout(nudge); $$('.qopt', box).forEach(x => x.onclick = null);
+            b.classList.remove('hint'); b.classList.add('right'); sfx('chime'); confetti();
+            await say({...YVOICE[k], text: q.yes[k]}, my); quizAt.k = k + 1; setTimeout(res, 600);
           } else {
+            misses++;
             b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx('buzz');
+            if (misses >= 2) $('.qopt[data-j="0"]', box)?.classList.add('hint');
             say({voice: 'nearly', vdur: 2.69, text: q.nearly}, my);
           }
         });
@@ -1272,6 +1296,7 @@ const player = (() => {
       await answered;
     }
     if (my !== token || !playing) return;
+    quizAt = {idx: -1, k: 0};
     hitWord(1e9);
     if (idx < list.length - 1) show(idx + 1); else end();
   }

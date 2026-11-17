@@ -1,0 +1,900 @@
+<meta charset="utf-8">
+<title>Hey Body Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: clinic workspace (consult → review → family) in book colours; the video player is always a dark "screening room". */
+:root{
+  --bg:#F2F6F5; --surface:#FFFFFF; --sunk:#E8EFEE; --line:#D3DFDD;
+  --ink:#1D2E3F; --muted:#5A6B74;
+  --red:#B3163A; --red-ink:#FFFFFF; --teal:#1C6E74; --teal-soft:#D8ECEB;
+  --yellow:#F3B72B; --yellow-soft:#FCEFC9;
+  --ok:#23825A; --warn:#A25B00; --warn-soft:#FBEBD3; --danger:#B3163A; --danger-soft:#F8DDE3;
+  --display:"Fredoka","Baloo 2","Trebuchet MS",system-ui,sans-serif;
+  --body:"Nunito","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:14px; --shadow:0 1px 2px rgba(29,46,63,.06),0 6px 20px rgba(29,46,63,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101A21; --surface:#18252E; --sunk:#132029; --line:#2A3B46;
+  --ink:#EAF1F1; --muted:#9BADB4;
+  --red:#E4506F; --red-ink:#1A0A0F; --teal:#5CB8B9; --teal-soft:#1D3A3E;
+  --yellow:#F5C451; --yellow-soft:#3A3220;
+  --ok:#5CC796; --warn:#F0B45A; --warn-soft:#3A2B17; --danger:#F0738E; --danger-soft:#3D1D25;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101A21; --surface:#18252E; --sunk:#132029; --line:#2A3B46;
+  --ink:#EAF1F1; --muted:#9BADB4;
+  --red:#E4506F; --red-ink:#1A0A0F; --teal:#5CB8B9; --teal-soft:#1D3A3E;
+  --yellow:#F5C451; --yellow-soft:#3A3220;
+  --ok:#5CC796; --warn:#F0B45A; --warn-soft:#3A2B17; --danger:#F0738E; --danger-soft:#3D1D25;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.15;text-wrap:balance;margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:20px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.brand .dot{width:38px;height:38px;border-radius:50%;background:url(scenes/see-you.jpg) 50% 52%/300% no-repeat,var(--yellow);border:2px solid var(--yellow)}
+.brand b{font-family:var(--display);font-size:21px;font-weight:700;color:var(--red);letter-spacing:.2px}
+.brand span{font-family:var(--display);font-size:13px;font-weight:600;color:var(--teal);background:var(--teal-soft);padding:1px 8px;border-radius:99px}
+nav.steps{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+nav.steps a{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--muted);font-weight:700;font-size:14px;padding:7px 12px;border-radius:99px}
+nav.steps a i{font-style:normal;width:21px;height:21px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--sunk);color:var(--muted)}
+nav.steps a[aria-current="page"]{background:var(--ink);color:var(--surface)}
+nav.steps a[aria-current="page"] i{background:var(--yellow);color:#1D2E3F}
+.demo-badge{font-size:12px;font-weight:700;color:var(--warn);background:var(--warn-soft);padding:3px 9px;border-radius:99px;white-space:nowrap}
+
+main{padding-block:26px 64px}
+.view[hidden]{display:none!important}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--teal)}
+.lede{color:var(--muted);max-width:66ch;margin:6px 0 0}
+.page-head{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px}
+.page-head h1{font-size:clamp(26px,3.4vw,36px)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.panel-h h2{font-size:18px}
+.panel-b{padding:16px 18px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:99px;padding:10px 18px;font-weight:800;cursor:pointer;text-decoration:none;transition:transform .12s,filter .12s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--red);color:var(--red-ink)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-ghost{background:var(--sunk);color:var(--ink)}
+.btn-ghost:hover{background:var(--line)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+.btn-lg{padding:13px 24px;font-size:16px}
+
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.03em}
+label.f input,label.f select{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;font-size:15px;font-weight:600;color:var(--ink);min-width:0}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:800;padding:2px 9px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.teal{background:var(--teal-soft);color:var(--teal)}
+.pill.red{background:var(--danger-soft);color:var(--danger)}
+.pill.mute{background:var(--sunk);color:var(--muted)}
+
+/* consult */
+.consult-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:18px;align-items:start}
+.patient{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.consent{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:10px 12px;border-radius:10px;background:var(--yellow-soft);font-size:14px}
+.consent input{margin-top:3px;width:18px;height:18px;accent-color:var(--red)}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:4px;border-radius:99px}
+.tabs button{border:0;background:none;padding:6px 14px;border-radius:99px;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.rec-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.rec{width:64px;height:64px;border-radius:50%;border:0;background:var(--red);color:#fff;cursor:pointer;display:grid;place-items:center;flex:none;box-shadow:0 0 0 6px color-mix(in srgb,var(--red) 18%,transparent)}
+.rec[disabled]{opacity:.45;cursor:not-allowed}
+.rec svg{width:26px;height:26px}
+.rec.on{animation:pulse 1.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 13px color-mix(in srgb,var(--red) 8%,transparent)}}
+.wave{display:flex;gap:3px;align-items:center;height:30px}
+.wave b{width:4px;border-radius:3px;background:var(--teal);height:6px;transition:height .12s}
+.rec-meta{font-size:14px;color:var(--muted)}
+.rec-meta strong{color:var(--ink);display:block;font-size:15px}
+.transcript{margin-top:16px;height:400px;overflow:auto;border-radius:12px;background:var(--bg);border:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.line{display:grid;grid-template-columns:92px minmax(0,1fr);gap:10px;animation:rise .35s ease-out both}
+.line .who{font-size:12px;font-weight:800;color:var(--muted);padding-top:2px}
+.line.doc .who{color:var(--teal)}
+.line.kid .who{color:var(--red)}
+.line p{margin:0}
+.line mark{background:var(--yellow-soft);color:inherit;border-radius:4px;padding:0 2px}
+.empty{margin:auto;text-align:center;color:var(--muted);max-width:36ch;font-size:14px}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-radius:12px;background:var(--bg);padding:12px;resize:vertical;margin-top:14px}
+.ai-group{padding:12px 0;border-top:1px dashed var(--line)}
+.ai-group:first-child{border-top:0;padding-top:0}
+.ai-group h3{font-family:var(--body);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.ai-item{display:flex;gap:8px;align-items:flex-start;font-size:14px;padding:6px 0;animation:rise .35s ease-out both}
+.ai-item .k{flex:none;width:8px;height:8px;border-radius:50%;margin-top:7px;background:var(--teal)}
+.ai-item small{display:block;color:var(--muted);font-size:12.5px}
+.g-dx .k{background:var(--red)} .g-safety .k{background:var(--warn)} .g-q .k{background:var(--yellow)}
+.ai-none{font-size:13px;color:var(--muted)}
+.build-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:16px}
+.notice{font-size:13px;color:var(--muted)}
+.match-msg{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14px;background:var(--sunk)}
+
+/* processing overlay */
+.overlay{position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:blur(6px);display:grid;place-items:center;padding:16px}
+.proc{width:min(440px,100%);padding:22px}
+.proc h2{font-size:22px;margin-bottom:14px}
+.proc ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.proc li{display:flex;gap:10px;align-items:center;color:var(--muted);font-weight:700}
+.proc li .s{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:12px}
+.proc li.run{color:var(--ink)} .proc li.run .s{border-color:var(--teal);border-top-color:transparent;animation:spin .8s linear infinite}
+.proc li.done{color:var(--ink)} .proc li.done .s{background:var(--ok);border-color:var(--ok);color:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* review */
+.review-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px;align-items:start}
+.story{display:grid;gap:10px}
+.scene{display:grid;grid-template-columns:200px minmax(0,1fr) auto;gap:14px;padding:12px;align-items:start;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.scene.off{opacity:.55}
+.scene.off .thumb{filter:grayscale(1)}
+.thumb{position:relative;aspect-ratio:16/9;border-radius:9px;overflow:hidden;contain:paint;background:#0E1820;max-width:100%}
+.thumb img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0}
+.thumb .n{position:absolute;left:6px;top:6px;background:rgba(14,24,32,.75);color:#fff;font-size:11px;font-weight:800;padding:1px 7px;border-radius:99px}
+.scene-b{min-width:0;display:grid;gap:6px}
+.scene-b .tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.scene-b .why{font-size:12.5px;color:var(--muted)}
+.scene-b textarea{width:100%;border:1px solid transparent;background:var(--bg);border-radius:8px;padding:7px 9px;resize:vertical;min-height:58px;font-size:14px;line-height:1.45}
+.scene-b textarea:hover,.scene-b textarea:focus{border-color:var(--line)}
+.switch{position:relative;width:42px;height:24px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:.15s}
+.switch span::after{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch input:checked+span{background:var(--ok)}
+.switch input:checked+span::after{transform:translateX(18px)}
+.switch input:disabled{cursor:not-allowed}
+.switch input:focus-visible+span{outline:3px solid var(--yellow);outline-offset:2px}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px);display:grid;gap:14px}
+.sum-field{display:grid;gap:4px;margin-bottom:12px}
+.sum-field b{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.sum-field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 9px;resize:vertical;font-size:14px;min-height:64px}
+.sum-field.seek textarea{border-color:color-mix(in srgb,var(--danger) 40%,var(--line))}
+.signoff{display:flex;gap:10px;align-items:flex-start;font-size:14px;margin:4px 0 14px}
+.signoff input{width:18px;height:18px;margin-top:2px;accent-color:var(--ok)}
+.audit{font-size:12.5px;color:var(--muted);display:grid;gap:3px;margin-top:12px}
+
+/* player */
+.player{max-width:1040px;width:100%;margin:0 auto;background:#0D161D;border-radius:18px;overflow:hidden;box-shadow:0 18px 50px rgba(13,22,29,.35);color:#F4EFE6}
+.stage{position:relative;aspect-ratio:16/9;overflow:hidden;overflow:clip;contain:paint;background:#0D161D;max-width:100%}
+.layer{position:absolute;inset:0;opacity:0;transition:opacity .7s ease}
+.layer.on{opacity:1}
+.layer img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0;will-change:transform}
+.layer.pic::after{content:"";position:absolute;inset:auto 0 0;height:45%;background:linear-gradient(transparent,rgba(8,14,19,.8));pointer-events:none}.caption{position:absolute;left:50%;bottom:5.5%;transform:translateX(-50%);z-index:3;pointer-events:none;width:min(88%,900px);text-align:center;font-family:var(--display);font-weight:600;font-size:clamp(15px,2.3vw,30px);line-height:1.25;color:#FFF8EA;text-shadow:0 2px 8px rgba(0,0,0,.55);text-wrap:balance;transition:opacity .3s}
+.caption .w{transition:color .12s}
+.caption .w.hit{color:var(--cap-hi,#FFD45C)}
+.caption.hidden{opacity:0}
+.card{position:absolute;inset:0;display:grid;align-items:center}
+.card-title{background:radial-gradient(circle at 20% 15%,#FFD866 0,transparent 45%),radial-gradient(circle at 85% 90%,#E9A21B 0,transparent 50%),#F4B82E;grid-template-columns:1.1fr .9fr;padding:0 6%;gap:4%}
+.card-title .felt{font-family:var(--display);font-weight:700;color:#B3163A;font-size:clamp(30px,7.4vw,96px);line-height:.95;text-shadow:0 3px 0 #7E0F29,0 8px 18px rgba(126,15,41,.25);letter-spacing:.5px}
+.card-title .sub{font-family:var(--display);font-weight:600;color:#1C5F66;font-size:clamp(14px,2.3vw,30px);margin-top:3%}
+.card-title .from{display:inline-block;margin-top:5%;font-family:var(--body);font-weight:800;font-size:clamp(10px,1.3vw,16px);color:#1C5F66;background:rgba(255,255,255,.45);padding:.4em 1em;border-radius:99px}
+.card-title .disc{aspect-ratio:1;border-radius:50%;background:url(scenes/see-you.jpg) 50% 58%/230% no-repeat,#F6E4D2;border:clamp(4px,.8vw,10px) dashed rgba(255,255,255,.75);outline:clamp(5px,1vw,12px) solid #F7C64D;max-width:100%}
+.card-end{background:radial-gradient(circle at 80% 10%,#2A8A90 0,transparent 55%),#1C6E74;grid-template-columns:1fr auto;padding:0 6%;gap:4%}
+.card-end::before{content:"";position:absolute;inset:3.2%;border:2px dashed rgba(255,248,234,.55);border-radius:22px;pointer-events:none}
+.card-end h3{font-family:var(--display);font-weight:700;color:#FFD45C;font-size:clamp(20px,4.2vw,54px)}
+.card-end ul{list-style:none;margin:4% 0 0;padding:0;display:grid;gap:clamp(4px,1.2vw,14px)}
+.card-end li{display:flex;gap:.6em;align-items:center;font-family:var(--display);font-weight:600;font-size:clamp(13px,2.2vw,28px);color:#FFF8EA}
+.card-end li::before{content:"✓";flex:none;width:1.4em;height:1.4em;border-radius:50%;display:grid;place-items:center;background:#F4B82E;color:#7E0F29;font-size:.8em;font-weight:700}
+.card-end .hero{width:clamp(80px,22vw,280px);aspect-ratio:3/4;border-radius:20px;background:url(scenes/see-you.jpg) 50% 62%/190% no-repeat;max-width:100%}
+.start{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:rgba(8,14,19,.35);border:0;cursor:pointer;color:#fff}
+.start span{display:flex;align-items:center;gap:12px;background:#B3163A;padding:clamp(10px,1.6vw,16px) clamp(18px,2.8vw,30px);border-radius:99px;font-family:var(--display);font-weight:600;font-size:clamp(15px,2vw,22px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.start svg{width:1.2em;height:1.2em}
+.controls{display:flex;align-items:center;gap:6px;padding:10px 12px;flex-wrap:wrap}
+.cbtn{width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:#F4EFE6;cursor:pointer;display:grid;place-items:center;flex:none}
+.cbtn:hover{background:rgba(255,255,255,.16)}
+.cbtn svg{width:18px;height:18px}
+.cbtn[aria-pressed="false"]{opacity:.5}
+.segs{flex:1 1 200px;display:flex;gap:3px;min-width:0;padding:0 6px}
+.segs button{flex:1;height:8px;border:0;padding:0;border-radius:4px;background:rgba(255,255,255,.16);cursor:pointer;position:relative;overflow:hidden}
+.segs button i{position:absolute;inset:0;width:calc(var(--p,0)*100%);background:#F4B82E;border-radius:4px}
+.segs button.done i{width:100%}
+.scene-count{font-size:13px;font-weight:700;color:#B8C4C9;min-width:62px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* family */
+.family-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+.fam-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.fam-head h1{font-size:clamp(26px,3.6vw,40px);color:var(--red)}
+.grown{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.grown .panel-b h3{font-size:17px;margin-bottom:6px}
+.grown p{margin:0;font-size:14.5px}
+.seek-card{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+.seek-card h3{color:var(--danger)}
+.qa{display:grid;gap:10px}
+.qa div{font-size:14.5px}
+.qa b{display:block}
+.book{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;align-items:center}
+.book img{width:100%;display:block;border-radius:10px;box-shadow:var(--shadow)}
+.span2{grid-column:span 2}
+
+/* library */
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.topic{overflow:hidden;display:flex;flex-direction:column}
+.topic .art{aspect-ratio:16/9;position:relative;overflow:hidden;contain:paint;background:var(--sunk);max-width:100%}
+.topic .art img{position:absolute;left:0;top:0;width:100%;transform-origin:0 0}
+.topic .art .ph{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:28px;color:var(--muted);background:repeating-linear-gradient(135deg,var(--sunk) 0 12px,var(--bg) 12px 24px)}
+.topic .panel-b{display:grid;gap:6px;flex:1;align-content:start}
+.topic h3{font-size:17px}
+.topic p{margin:0;font-size:13.5px;color:var(--muted)}
+.principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0 26px}
+.principles .panel-b b{font-family:var(--display);font-weight:600;font-size:17px;display:block;margin-bottom:4px}
+.principles p{margin:0;font-size:14px;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:11px 18px;border-radius:99px;font-weight:700;font-size:14px;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.25);max-width:calc(100% - 32px);text-align:center}
+
+@media (max-width:900px){
+  .consult-grid,.review-grid{grid-template-columns:minmax(0,1fr)}
+  .side{position:static}
+  .grown,.principles{grid-template-columns:minmax(0,1fr)}
+  .span2{grid-column:auto}
+  .patient{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:620px){
+  .scene{grid-template-columns:minmax(0,1fr) auto}
+  .scene .thumb{grid-column:1/-1}
+  nav.steps{margin-left:0;width:100%}
+  nav.steps a{padding:6px 9px;font-size:13px}
+  .transcript{height:340px}
+  .line{grid-template-columns:minmax(0,1fr);gap:0}
+  .book{grid-template-columns:80px minmax(0,1fr)}
+  .card-title{grid-template-columns:1.3fr .7fr}
+  .card-title .sub{display:none}
+  .segs{order:-1;flex-basis:100%;padding:4px 2px 8px}
+  .scene-count{margin-left:auto}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#consult" aria-label="Hey Body Studio home"><span class="dot" aria-hidden="true"></span><b>Hey Body</b><span>Studio</span></a>
+    <nav class="steps" aria-label="Steps">
+      <a href="#consult" data-nav="consult"><i>1</i>Consult</a>
+      <a href="#review" data-nav="review"><i>2</i>Review</a>
+      <a href="#family" data-nav="family"><i>3</i>Family video</a>
+      <a href="#library" data-nav="library"><i>◎</i>Scene library</a>
+    </nav>
+    <span class="demo-badge" title="Everything runs in this page. The AI steps are simulated and no patient data is stored or sent.">Demo · simulated AI</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 1. CONSULT ============ -->
+<section class="view" data-view="consult">
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Step 1 · In the room</div>
+      <h1>Listen to the consult</h1>
+      <p class="lede">Hey Body listens while you talk to the family, picks out the diagnosis and the key messages, and matches them to scenes you've already approved. Try the sample: a 5-year-old referred by their GP for a heart murmur.</p>
+    </div>
+  </div>
+
+  <div class="consult-grid">
+    <div class="panel">
+      <div class="panel-b">
+        <div class="patient">
+          <label class="f">Child's first name<input id="f-name" value="Mia" autocomplete="off" maxlength="20"></label>
+          <label class="f">Age<select id="f-age"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+          <label class="f">Parent / carer<input id="f-parent" value="Priya" autocomplete="off" maxlength="20"></label>
+          <label class="f">Clinician<input id="f-doc" value="Dr Sarah" autocomplete="off" maxlength="24"></label>
+        </div>
+        <label class="consent"><input type="checkbox" id="f-consent" checked><span><b>Family has agreed to recording.</b> Audio is transcribed and then deleted. Only the approved video and summary are kept.</span></label>
+      </div>
+      <div class="panel-h" style="border-top:1px solid var(--line)">
+        <div class="tabs" role="tablist" aria-label="Input mode">
+          <button role="tab" id="tab-listen" aria-selected="true">Listen to consult</button>
+          <button role="tab" id="tab-notes" aria-selected="false">Paste notes</button>
+        </div>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px">Speed
+          <select id="f-speed"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select></label>
+      </div>
+      <div class="panel-b" id="mode-listen">
+        <div class="rec-row">
+          <button class="rec" id="rec" aria-label="Start listening"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg></button>
+          <div class="wave" id="wave" aria-hidden="true"></div>
+          <div class="rec-meta" id="rec-meta"><strong>Ready to listen</strong>Press the button to replay the sample consult.</div>
+        </div>
+        <div class="transcript" id="transcript" aria-live="polite">
+          <p class="empty" id="t-empty">The live transcript appears here. Phrases the AI uses are highlighted so you can see why each scene was chosen.</p>
+        </div>
+      </div>
+      <div class="panel-b" id="mode-notes" hidden>
+        <p class="notice" style="margin:0">Prefer not to record? Paste or type your consult notes. Try words like <em>innocent murmur</em>, <em>asthma</em> or <em>constipation</em>.</p>
+        <textarea class="notes" id="notes" aria-label="Consult notes">Innocent systolic murmur, heard at the left sternal edge. Structurally normal heart on examination. Reassured parents: very common, harmless. No activity restrictions. May be louder with fever. No echo needed. Safety-net advice given (syncope, exertional chest pain, breathlessness, cyanosis).</textarea>
+        <div class="build-bar"><span class="notice">The AI only matches notes to approved topics. It never writes new medical content.</span><button class="btn btn-ghost" id="analyse">Analyse notes</button></div>
+        <div id="match-msg"></div>
+      </div>
+    </div>
+
+    <div class="panel" aria-label="AI notes">
+      <div class="panel-h"><h2>What Hey Body heard</h2><span class="pill mute" id="ai-status">Waiting</span></div>
+      <div class="panel-b" id="ai">
+        <div class="ai-group g-dx"><h3>Diagnosis</h3><div class="ai-none" data-empty>Not detected yet</div></div>
+        <div class="ai-group g-msg"><h3>Messages for the child</h3><div class="ai-none" data-empty>Each one switches on a scene</div></div>
+        <div class="ai-group g-q"><h3>Questions the family asked</h3><div class="ai-none" data-empty>Answered in the video or summary</div></div>
+        <div class="ai-group g-plan"><h3>Plan</h3><div class="ai-none" data-empty>Goes in the parent summary</div></div>
+        <div class="ai-group g-safety"><h3>When to get help</h3><div class="ai-none" data-empty>Parent summary only</div></div>
+      </div>
+      <div class="panel-b" style="border-top:1px solid var(--line)">
+        <button class="btn btn-primary btn-lg" id="build" style="width:100%" disabled>Build Mia's video</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. REVIEW ============ -->
+<section class="view" data-view="review" hidden>
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Step 2 · Before the family leaves</div>
+      <h1 id="rv-title">Check Mia's video</h1>
+      <p class="lede">Every scene comes from your approved library. Switch scenes on or off and adjust the wording. Nothing reaches the family until you sign off.</p>
+    </div>
+    <button class="btn btn-ghost" id="preview">▶ Preview video</button>
+  </div>
+  <div class="review-grid">
+    <div class="story" id="story"></div>
+    <aside class="side">
+      <div class="panel">
+        <div class="panel-h"><h2>Summary for parents</h2><span class="pill teal">Sent with video</span></div>
+        <div class="panel-b" id="summary-edit"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-b">
+          <label class="signoff"><input type="checkbox" id="signoff"><span>I've checked every scene and the summary, and they match what I told this family.</span></label>
+          <button class="btn btn-primary btn-lg" id="approve" style="width:100%" disabled>Approve and send to family</button>
+          <div class="audit" id="audit"></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ============ 3. FAMILY ============ -->
+<section class="view" data-view="family" hidden>
+  <div class="fam-head">
+    <div>
+      <div class="eyebrow" id="fam-eyebrow">For Mia and family</div>
+      <h1 id="fam-title">Mia's heart video</h1>
+    </div>
+    <span class="pill ok" id="fam-badge">✓ Approved by Dr Sarah</span>
+  </div>
+  <div class="family-grid">
+    <div class="player" id="player">
+      <div class="stage" id="stage">
+        <div class="caption" id="caption" aria-live="polite"></div>
+        <button class="start" id="start"><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><b id="start-label">Play Mia's video</b></span></button>
+      </div>
+      <div class="controls">
+        <button class="cbtn" id="c-prev" aria-label="Previous scene"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+        <button class="cbtn" id="c-play" aria-label="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <button class="cbtn" id="c-next" aria-label="Next scene"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+        <div class="segs" id="segs"></div>
+        <span class="scene-count" id="count">1 / 1</span>
+        <button class="cbtn" id="c-voice" aria-pressed="true" aria-label="Narration on/off"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
+        <button class="cbtn" id="c-cc" aria-pressed="true" aria-label="Captions on/off"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1z"/></svg></button>
+        <button class="cbtn" id="c-full" aria-label="Full screen"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
+      </div>
+    </div>
+
+    <div>
+      <div class="eyebrow" style="margin-bottom:10px">For grown-ups</div>
+      <div class="grown" id="grown"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LIBRARY ============ -->
+<section class="view" data-view="library" hidden>
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">The scene library</div>
+      <h1>Every scene is written and signed off by a paediatrician</h1>
+      <p class="lede">The AI's job is narrow: match what was said in the room to scenes that already exist, then personalise the name and the plan. That keeps every video accurate, on-brand and ready in seconds.</p>
+    </div>
+  </div>
+  <div class="principles">
+    <div class="panel"><div class="panel-b"><b>Approved, not generated</b><p>Medical content is written once, checked by clinicians and version-controlled. The AI never invents an explanation.</p></div></div>
+    <div class="panel"><div class="panel-b"><b>Personal where it helps</b><p>The child's name, what the doctor actually said, the questions they asked, and the family's own plan.</p></div></div>
+    <div class="panel"><div class="panel-b"><b>Clinician in the loop</b><p>One-tap sign-off before anything is sent. Every edit is logged against the library version.</p></div></div>
+  </div>
+  <div class="lib-grid" id="lib"></div>
+</section>
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="panel proc" role="status">
+    <h2 id="proc-title">Building Mia's video</h2>
+    <ol id="proc-steps"></ol>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- state ---------- */
+const S = {
+  name: 'Mia', age: 5, parent: 'Priya', doc: 'Dr Sarah',
+  detected: new Set(['whoosh','common','fever','play','grow']), // sample defaults so review/family work on direct load
+  edits: {}, include: {}, summary: null, approved: false,
+};
+const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent).replace(/\{doctor\}/g, S.doc);
+
+/* ---------- scene library: Heart · Innocent murmur v1.0 ---------- */
+// a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
+const SCENES = [
+  {id:'intro', kind:'title', core:true, sfx:'beat', text:"A special video for {name}, from {doctor}."},
+  {id:'hello', img:'pop-hello', a:[0,15,100], b:[34,20,64], core:true, sfx:'pop', text:"Pop! Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
+  {id:'home', img:'chest-map', a:[0,17,100], b:[14,22,72], core:true, text:"I live in your chest, a tiny bit to the left. I'm a muscle, and I'm about as big as your fist."},
+  {id:'squeeze', img:'squeeze', a:[8,27,84], b:[20,29,60], core:true, sfx:'beat', text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
+  {id:'loop', img:'blood-loop', a:[0,14,100], b:[12,24,76], core:true, text:"Up to your head, down to your toes, and all the way back to me."},
+  {id:'doors', img:'heart-doors', a:[0,23,100], b:[10,25,80], core:true, sfx:'beat2', text:"Inside me there are little doors. When they snap shut, they go lub-dub, lub-dub."},
+  {id:'listen', img:'listen', a:[0,22,100], b:[14,26,72], core:true, text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
+  {id:'whoosh', img:'blood-line', a:[0,24,100], b:[28,36,68], detect:'whoosh', sfx:'murmur', lead:3000, text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through, like water whooshing through a garden hose."},
+  {id:'common', img:'celebrate', a:[0,26,100], b:[16,27,70], detect:'common', text:"Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means it's harmless. I'm healthy and strong!"},
+  {id:'fever', img:'faster', a:[0,20,100], b:[30,26,66], detect:'fever', optional:true, sfx:'fast', text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
+  {id:'play', img:'dance', a:[0,26,100], b:[20,30,70], detect:'play', text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
+  {id:'tryit', img:'jump-drum', a:[0,22,100], b:[18,26,72], optional:true, off:true, text:"Try it! Put your hand on your chest and jump up and down ten times. Can you feel me drumming?"},
+  {id:'grow', img:'sleep-slow', a:[0,24,100], b:[26,26,70], detect:'grow', sfx:'slow', text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
+  {id:'bye', img:'see-you', a:[5,33,90], b:[20,35,60], core:true, sfx:'beat', text:"See you next beat, {name}!"},
+  {id:'outro', kind:'end', core:true, text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
+];
+const WHY = {
+  whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
+  common:'From the consult: "Innocent means harmless" + child asked "Is my heart broken?"',
+  fever:'From the consult: "sounds louder when {name} has a fever"',
+  play:'From the consult: "No restrictions at all"',
+  grow:'From the consult: "get quieter, or go away completely, as children grow"',
+};
+
+/* ---------- sample consult ---------- */
+const T = [
+  {s:'doc', t:"Hi {name}, hi {parent}. Thanks for coming in. I've had a really good listen to {name}'s heart today."},
+  {s:'par', t:"The GP said they could hear a murmur. Honestly, I've been so worried about it.", d:[{g:'q', l:'Parent is worried about the murmur', n:'Reassurance scenes given priority'}]},
+  {s:'doc', t:"That's completely understandable. What I can hear is [a soft whooshing sound as blood flows through the heart]. It's what we call an [innocent murmur].", d:[{g:'dx', l:'Innocent (functional) heart murmur', n:'Matched: Heart · Innocent murmur v1.0'},{g:'msg', l:'The whoosh is blood flowing through the heart', key:'whoosh'}]},
+  {s:'par', t:"Innocent?"},
+  {s:'doc', t:"[Innocent means harmless.] {name}'s heart is healthy and working normally. [Lots of children have one], more than half at some point.", d:[{g:'msg', l:'Harmless and very common', key:'common'}]},
+  {s:'kid', t:"[Is my heart broken?]", d:[{g:'q', l:'Child asked: "Is my heart broken?"', n:'Answered in the video: "I\'m healthy and strong!"'}]},
+  {s:'doc', t:"Not at all, {name}! Your heart is super strong. It just makes a little whoosh while it pumps."},
+  {s:'par', t:"Does {name} need to [stop sport] or anything?", d:[{g:'q', l:'Parent asked about sport', n:'Answered in the video and summary'}]},
+  {s:'doc', t:"[No restrictions at all.] Running, swimming, dancing, everything as normal.", d:[{g:'msg', l:'No activity restrictions', key:'play'}]},
+  {s:'doc', t:"You might notice it [sounds louder when {name} has a fever] or has been running around. That's expected.", d:[{g:'msg', l:'May sound louder with fever or exercise', key:'fever'}]},
+  {s:'doc', t:"And many innocent murmurs [get quieter, or go away completely, as children grow].", d:[{g:'msg', l:'Often fades as children grow', key:'grow'}]},
+  {s:'par', t:"Will {name} need an [echo] or any more tests?", d:[{g:'q', l:'Parent asked about an echo', n:'Answer goes in the parent summary'}]},
+  {s:'doc', t:"[Not based on today's examination.] The GP can keep listening at routine check-ups.", d:[{g:'plan', l:'No echo needed. GP to listen again at routine checks'}]},
+  {s:'doc', t:"If {name} ever [faints, has chest pain with exercise, gets unusually breathless, or looks blue around the lips], see your GP or go to the emergency department.", d:[{g:'safety', l:'Fainting, chest pain with exercise, unusual breathlessness, blue lips', n:'See GP or go to ED'}]},
+  {s:'par', t:"Okay. That's a huge relief. Thank you so much."},
+];
+const WHO = {doc:()=>S.doc, par:()=>`${S.parent} (parent)`, kid:()=>S.name};
+
+/* ---------- summary ---------- */
+function defaultSummary(){
+  const f = S.detected.has('fever') ? ' It may sound louder with a fever or after exercise.' : '';
+  return {
+    found: fill("{doctor} listened to {name}'s heart and heard an innocent murmur: a soft whooshing sound made by blood flowing through a healthy heart."),
+    means: fill("Innocent means harmless. {name}'s heart is healthy and working normally. Innocent murmurs are very common in children and often get quieter or disappear as they grow.") + f,
+    todo: fill("No restrictions: {name} can run, swim, dance and play as normal. No echo or further tests are needed. Your GP can listen again at routine check-ups."),
+    seek: fill("See your GP, or go to the emergency department, if {name} faints, has chest pain during exercise, gets unusually breathless, or looks blue around the lips."),
+  };
+}
+const QA = () => [
+  [fill('Is my heart broken?'), fill("No. {name}'s heart is healthy and strong. (This is answered in the video too.)")],
+  [fill('Does {name} need to stop sport?'), 'No. There are no restrictions at all.'],
+  [fill('Will {name} need an echo?'), "Not based on today's examination."],
+];
+
+/* ---------- routing ---------- */
+const VIEWS = ['consult','review','family','library'];
+function route(){
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : 'consult';
+  $$('.view').forEach(el => el.hidden = el.dataset.view !== v);
+  $$('nav.steps a').forEach(a => { if (a.dataset.nav !== v) a.removeAttribute('aria-current'); else a.setAttribute('aria-current','page'); });
+  if (v !== 'family') player.stop();
+  if (v === 'review') renderReview();
+  if (v === 'family') renderFamily();
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+const go = v => { if (location.hash === '#' + v) route(); else location.hash = v; };
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3600);
+}
+
+/* ---------- names ---------- */
+function syncNames(){
+  S.name = ($('#f-name').value.trim() || 'Mia').replace(/[^\p{L}\p{M}' -]/gu, '').slice(0, 20) || 'Mia';
+  S.parent = $('#f-parent').value.trim() || 'Priya';
+  S.doc = $('#f-doc').value.trim() || 'Dr Sarah';
+  S.age = +$('#f-age').value;
+  $('#build').textContent = `Build ${S.name}'s video`;
+  $('#proc-title').textContent = `Building ${S.name}'s video`;
+  S.summary = null;
+}
+['#f-name','#f-parent','#f-doc','#f-age'].forEach(s => $(s).addEventListener('input', syncNames));
+
+/* ---------- consult: listen mode ---------- */
+const wave = $('#wave');
+for (let i = 0; i < 22; i++) wave.appendChild(document.createElement('b'));
+let waveTimer = 0;
+function waveOn(on){
+  clearInterval(waveTimer);
+  const bars = $$('b', wave);
+  if (!on) { bars.forEach(b => b.style.height = '6px'); return; }
+  waveTimer = setInterval(() => bars.forEach(b => b.style.height = (6 + Math.random() * 24) + 'px'), 120);
+}
+function resetAI(){
+  $$('#ai .ai-group').forEach(g => { $$('.ai-item', g).forEach(x => x.remove()); $('[data-empty]', g).hidden = false; });
+  $('#ai-status').className = 'pill mute'; $('#ai-status').textContent = 'Waiting';
+}
+function addAI(d){
+  const g = $('#ai .g-' + d.g); if (!g) return;
+  $('[data-empty]', g).hidden = true;
+  const el = document.createElement('div');
+  el.className = 'ai-item';
+  el.innerHTML = `<span class="k"></span><div>${esc(d.l)}${d.n ? `<small>${esc(d.n)}</small>` : ''}${d.key ? `<small>Adds scene: ${esc(fill(SCENES.find(s => s.detect === d.key).text).split('.')[0].slice(0,46))}…</small>` : ''}</div>`;
+  g.appendChild(el);
+}
+let listening = false, runId = 0;
+$('#rec').addEventListener('click', async () => {
+  if (listening) { runId++; listening = false; stopRec('Paused'); return; }
+  if (!$('#f-consent').checked) { toast('Tick the consent box before recording.'); return; }
+  syncNames();
+  const id = ++runId; listening = true;
+  $('#transcript').innerHTML = ''; resetAI();
+  S.detected = new Set(); $('#build').disabled = true;
+  $('#rec').classList.add('on'); $('#rec').setAttribute('aria-label','Stop listening'); waveOn(true);
+  $('#rec-meta').innerHTML = '<strong>Listening…</strong>Transcribing on the fly';
+  $('#ai-status').className = 'pill warn'; $('#ai-status').textContent = 'Listening';
+  for (let i = 0; i < T.length; i++) {
+    const L = T[i];
+    const words = L.t.split(' ').length;
+    await sleep((700 + words * 230) / +$('#f-speed').value);
+    if (id !== runId) return;
+    const line = document.createElement('div');
+    line.className = 'line ' + L.s;
+    const html = esc(fill(L.t)).replace(/\[(.+?)\]/g, '<mark>$1</mark>');
+    line.innerHTML = `<span class="who">${esc(WHO[L.s]())}</span><p>${html}</p>`;
+    $('#transcript').appendChild(line);
+    $('#transcript').scrollTop = 1e6;
+    (L.d || []).forEach(d => { if (d.key) S.detected.add(d.key); addAI({...d, l: fill(d.l), n: d.n && fill(d.n)}); });
+  }
+  listening = false; stopRec('Consult captured');
+  $('#ai-status').className = 'pill ok'; $('#ai-status').textContent = 'Ready';
+  $('#build').disabled = false;
+});
+function stopRec(msg){
+  $('#rec').classList.remove('on'); $('#rec').setAttribute('aria-label','Start listening'); waveOn(false);
+  $('#rec-meta').innerHTML = `<strong>${esc(msg)}</strong>${msg === 'Paused' ? 'Press again to restart the sample.' : `${T.length} turns · audio deleted after transcription`}`;
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- consult: notes mode ---------- */
+function setTab(listen){
+  $('#tab-listen').setAttribute('aria-selected', listen); $('#tab-notes').setAttribute('aria-selected', !listen);
+  $('#mode-listen').hidden = !listen; $('#mode-notes').hidden = listen;
+}
+$('#tab-listen').onclick = () => setTab(true);
+$('#tab-notes').onclick = () => setTab(false);
+const OTHER = [
+  [/asthma|wheez|puffer|spacer|inhaler/i, 'Lungs · Asthma and using a spacer'],
+  [/constipat|stool|poo|movicol|laxative/i, 'Tummy · Constipation'],
+  [/gastro|vomit|diarrh|hydrat/i, 'Tummy · Gastro and staying hydrated'],
+  [/otitis|ear infection|eardrum/i, 'Ears · Middle ear infection'],
+  [/eczema|dermatitis|moisturis/i, 'Skin · Eczema and moisturising'],
+  [/fractur|broken|cast|plaster/i, 'Bones · Broken arm and plaster cast'],
+  [/blood test|cannula|needle/i, 'Procedures · Having a blood test'],
+];
+$('#analyse').addEventListener('click', () => {
+  syncNames();
+  const txt = $('#notes').value; const box = $('#match-msg');
+  resetAI();
+  if (/murmur/i.test(txt)) {
+    S.detected = new Set(['whoosh','common','grow']);
+    if (/no (activity )?restriction|sport|normal activit|play/i.test(txt)) S.detected.add('play');
+    if (/fever|louder|febrile/i.test(txt)) S.detected.add('fever');
+    addAI({g:'dx', l:'Innocent (functional) heart murmur', n:'Matched: Heart · Innocent murmur v1.0'});
+    [...S.detected].forEach(k => addAI({g:'msg', l:{whoosh:'The whoosh is blood flowing through the heart',common:'Harmless and very common',grow:'Often fades as children grow',play:'No activity restrictions',fever:'May sound louder with fever'}[k], key:k}));
+    if (/echo/i.test(txt)) addAI({g:'plan', l: /no echo/i.test(txt) ? 'No echo needed' : 'Echo mentioned: check plan wording'});
+    if (/safety|syncope|faint|cyanos|chest pain/i.test(txt)) addAI({g:'safety', l:'Safety-net advice given', n:'Standard red flags added to parent summary'});
+    $('#ai-status').className = 'pill ok'; $('#ai-status').textContent = 'Ready';
+    box.innerHTML = `<div class="match-msg">Matched <b>Heart · Innocent murmur</b> with ${S.detected.size} personalised scenes.</div>`;
+    $('#build').disabled = false;
+  } else {
+    const hit = OTHER.find(([re]) => re.test(txt));
+    $('#build').disabled = true;
+    box.innerHTML = hit
+      ? `<div class="match-msg">Matched <b>${esc(hit[1])}</b>. Scenes for this topic are still in production, so no video can be made yet. See the <a href="#library">scene library</a>.</div>`
+      : `<div class="match-msg">No approved topic matched these notes. Hey Body won't make a video unless it matches a topic you've approved.</div>`;
+  }
+});
+
+/* ---------- build (processing) ---------- */
+$('#build').addEventListener('click', async () => {
+  syncNames(); S.edits = {}; S.include = {}; S.summary = null; S.approved = false;
+  const steps = ['Removing the audio recording', 'Finding the diagnosis', 'Matching approved scenes', `Personalising for ${S.name}`, 'Writing the parent summary'];
+  const ol = $('#proc-steps');
+  ol.innerHTML = steps.map(s => `<li><span class="s"></span>${esc(s)}</li>`).join('');
+  $('#overlay').hidden = false;
+  const lis = $$('li', ol);
+  for (const li of lis) { li.className = 'run'; await sleep(520); li.className = 'done'; $('.s', li).textContent = '✓'; }
+  await sleep(300);
+  $('#overlay').hidden = true;
+  go('review');
+});
+
+/* ---------- crop helper ---------- */
+function frame(img, r, aspect = 9/16){
+  // show window r=[x,y,w] (percent of square page) in a box of the given height/width ratio
+  const [x, y, w] = r; const sc = 100 / w;
+  return `scale(${sc}) translate(${-x}%, ${-y}%)`;
+}
+const isOn = s => S.include[s.id] ?? (s.core || (s.detect ? S.detected.has(s.detect) : !s.off));
+const sceneText = s => fill(S.edits[s.id] ?? s.text);
+const activeScenes = () => SCENES.filter(isOn);
+
+/* ---------- review ---------- */
+function renderReview(){
+  $('#rv-title').textContent = `Check ${S.name}'s video`;
+  const story = $('#story'); story.innerHTML = '';
+  let n = 0;
+  SCENES.forEach(s => {
+    const on = isOn(s);
+    if (on) n++;
+    const el = document.createElement('div');
+    el.className = 'scene' + (on ? '' : ' off');
+    let thumb;
+    if (s.kind === 'title') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#B3163A;font-size:22px">Hey ${esc(S.name)}!</div>`;
+    else if (s.kind === 'end') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:600;color:#FFD45C;font-size:17px">${esc(S.name)}'s heart facts</div>`;
+    else thumb = `<div class="thumb"><img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}" loading="lazy"></div>`;
+    const tag = s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
+      : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>';
+    const why = s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
+    el.innerHTML = `${thumb}
+      <div class="scene-b">
+        <div class="tags">${tag}<span class="why">${esc(why)}</span></div>
+        <textarea id="ed-${s.id}" aria-label="Narration for scene ${s.id}" rows="2">${esc(sceneText(s))}</textarea>
+      </div>
+      <label class="switch" title="${s.core ? 'Core scenes are always included' : 'Include this scene'}"><input type="checkbox" id="in-${s.id}" ${on ? 'checked' : ''} ${s.core ? 'disabled' : ''} aria-label="Include scene"><span></span></label>`;
+    const th = $('.thumb', el); if (on) th.insertAdjacentHTML('beforeend', `<span class="n">${n}</span>`);
+    $('textarea', el).addEventListener('input', e => { S.edits[s.id] = e.target.value; S.approved = false; updateApprove(); });
+    $('input[type=checkbox]', el).addEventListener('change', e => { S.include[s.id] = e.target.checked; S.approved = false; renderReview(); });
+    story.appendChild(el);
+  });
+  if (!S.summary) S.summary = defaultSummary();
+  const labels = {found:'What we found', means:'What it means', todo:'What to do', seek:'Get help if'};
+  $('#summary-edit').innerHTML = Object.keys(labels).map(k => `<label class="sum-field ${k}"><b>${labels[k]}</b><textarea id="sum-${k}" rows="3">${esc(S.summary[k])}</textarea></label>`).join('');
+  Object.keys(labels).forEach(k => $('#sum-' + k).addEventListener('input', e => { S.summary[k] = e.target.value; S.approved = false; updateApprove(); }));
+  const edited = Object.keys(S.edits).length;
+  $('#audit').innerHTML = `<span>Library: Heart · Innocent murmur v1.0</span><span>${n} scenes · about ${Math.round(estTotal() / 60000 * 10) / 10} min</span><span>${edited ? `${edited} wording change${edited > 1 ? 's' : ''} will be logged` : 'No wording changes'}</span>`;
+  $('#signoff').checked = S.approved;
+  updateApprove();
+}
+function updateApprove(){ $('#approve').disabled = !$('#signoff').checked; }
+$('#signoff').addEventListener('change', updateApprove);
+$('#approve').addEventListener('click', () => {
+  S.approved = true;
+  toast(`Sent to ${S.parent}'s phone (demo only, nothing was sent)`);
+  go('family');
+});
+$('#preview').addEventListener('click', () => go('family'));
+function estimate(s){ const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
+const estTotal = () => activeScenes().reduce((a, s) => a + estimate(s), 0);
+
+/* ---------- family ---------- */
+function renderFamily(){
+  if (!S.summary) S.summary = defaultSummary();
+  $('#fam-title').textContent = `${S.name}'s heart video`;
+  $('#fam-eyebrow').textContent = `For ${S.name} and ${S.parent} · from ${S.doc}`;
+  $('#fam-badge').textContent = S.approved ? `✓ Approved by ${S.doc}` : 'Preview: not yet approved';
+  $('#fam-badge').className = 'pill ' + (S.approved ? 'ok' : 'warn');
+  $('#start-label').textContent = `Play ${S.name}'s video`;
+  const sm = S.summary;
+  $('#grown').innerHTML = `
+    <div class="panel"><div class="panel-b"><h3>What we found</h3><p>${esc(sm.found)}</p></div></div>
+    <div class="panel"><div class="panel-b"><h3>What it means</h3><p>${esc(sm.means)}</p></div></div>
+    <div class="panel"><div class="panel-b"><h3>What to do</h3><p>${esc(sm.todo)}</p></div></div>
+    <div class="panel seek-card"><div class="panel-b"><h3>Get help if</h3><p>${esc(sm.seek)}</p></div></div>
+    <div class="panel span2"><div class="panel-b"><h3>Your questions</h3><div class="qa">${QA().map(([q,a]) => `<div><b>${esc(q)}</b>${esc(a)}</div>`).join('')}</div></div></div>
+    <div class="panel span2"><div class="panel-b book"><img src="scenes/book-cover.jpg" alt="Cover of Hey Heart, Why Do You Beat?"><div><h3>Keep the conversation going</h3><p>Read <b>Hey Heart, Why Do You Beat?</b> together at bedtime. It's by Dr Sarah Hanieh and features the same heart friend from ${esc(S.name)}'s video.</p></div></div></div>
+    <div class="panel"><div class="panel-b"><h3>Rewatch any time</h3><p>This link stays active for 12 months. Share it with grandparents, carers or ${esc(S.name)}'s teacher.</p></div></div>`;
+  player.load(activeScenes());
+}
+
+/* ---------- audio ---------- */
+let AC = null, master = null;
+function audio(){
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = .55; master.connect(AC.destination); } catch { AC = null; } }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function thump(t, g = 1){
+  const o = AC.createOscillator(), v = AC.createGain(), f = AC.createBiquadFilter();
+  f.type = 'lowpass'; f.frequency.value = 180;
+  o.frequency.setValueAtTime(95, t); o.frequency.exponentialRampToValueAtTime(42, t + .14);
+  v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(g, t + .012); v.gain.exponentialRampToValueAtTime(0.0001, t + .22);
+  o.connect(f).connect(v).connect(master); o.start(t); o.stop(t + .25);
+}
+let noiseBuf = null;
+function whoosh(t, d = .3, g = .35){
+  if (!noiseBuf) { noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1; }
+  const n = AC.createBufferSource(), f = AC.createBiquadFilter(), v = AC.createGain();
+  n.buffer = noiseBuf; f.type = 'bandpass'; f.Q.value = .9;
+  f.frequency.setValueAtTime(380, t); f.frequency.linearRampToValueAtTime(1100, t + d * .6); f.frequency.linearRampToValueAtTime(500, t + d);
+  v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(g, t + d * .35); v.gain.linearRampToValueAtTime(0.0001, t + d);
+  n.connect(f).connect(v).connect(master); n.start(t); n.stop(t + d + .05);
+}
+function pop(t){
+  const o = AC.createOscillator(), v = AC.createGain();
+  o.type = 'triangle'; o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(1300, t + .09);
+  v.gain.setValueAtTime(.5, t); v.gain.exponentialRampToValueAtTime(0.0001, t + .16);
+  o.connect(v).connect(master); o.start(t); o.stop(t + .2);
+}
+function sfx(kind){
+  if (!kind || !audio()) return;
+  const t = AC.currentTime + .05;
+  const beat = (t0, g = 1) => { thump(t0, g); thump(t0 + .24, g * .7); };
+  if (kind === 'beat') { beat(t); beat(t + .85); }
+  if (kind === 'beat2') { beat(t); beat(t + .8); beat(t + 1.6); }
+  if (kind === 'pop') pop(t);
+  if (kind === 'fast') for (let i = 0; i < 7; i++) beat(t + i * .42, .8);
+  if (kind === 'slow') for (let i = 0; i < 3; i++) beat(t + i * 1.4, .5);
+  if (kind === 'murmur') for (let i = 0; i < 3; i++) { const t0 = t + i * .95; thump(t0); whoosh(t0 + .07, .3); thump(t0 + .44, .7); }
+}
+
+/* ---------- speech ---------- */
+let voice = null;
+function pickVoice(){
+  if (!('speechSynthesis' in window)) return;
+  const vs = speechSynthesis.getVoices(); if (!vs.length) return;
+  const score = v => (/en-AU/i.test(v.lang) ? 40 : /en-GB/i.test(v.lang) ? 30 : /^en/i.test(v.lang) ? 20 : 0) + (/natural|neural|online|google|karen|catherine|samantha/i.test(v.name) ? 8 : 0) + (/female|karen|catherine|samantha|zira|libby|sonia/i.test(v.name) ? 3 : 0);
+  voice = vs.slice().sort((a, b) => score(b) - score(a))[0];
+}
+if ('speechSynthesis' in window) { pickVoice(); speechSynthesis.addEventListener?.('voiceschanged', pickVoice); }
+
+/* ---------- player ---------- */
+const player = (() => {
+  const stage = $('#stage'), cap = $('#caption'), segs = $('#segs');
+  let list = [], idx = 0, playing = false, token = 0, kb = null, t0 = 0, dur = 1, raf = 0, voiceOn = true, ccOn = true, started = false;
+  const icons = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>',
+  };
+  function layerHTML(s){
+    if (s.kind === 'title') return `<div class="card card-title"><div><div class="felt">Hey ${esc(S.name)}!</div><div class="sub">Your heart has something to tell you</div><div class="from">A video from ${esc(S.doc)}</div></div><div class="disc" role="img" aria-label="The heart character"></div></div>`;
+    if (s.kind === 'end') return `<div class="card card-end"><div><h3>${esc(S.name)}'s heart facts</h3><ul><li>My heart is healthy and strong</li><li>My whoosh is an innocent murmur</li><li>I can run and play like always</li></ul></div><div class="hero" role="img" aria-label="The heart character waving"></div></div>`;
+    return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
+  }
+  function load(scenes){
+    stop(); list = scenes; idx = 0; started = false;
+    $$('.layer', stage).forEach(l => l.remove());
+    list.forEach((s, i) => { const d = document.createElement('div'); d.className = 'layer' + (s.kind ? '' : ' pic') + (i === 0 ? ' on' : ''); d.innerHTML = layerHTML(s); stage.insertBefore(d, cap); });
+    segs.innerHTML = list.map((s, i) => `<button aria-label="Scene ${i + 1}"><i></i></button>`).join('');
+    $$('button', segs).forEach((b, i) => b.onclick = () => { started = true; $('#start').hidden = true; show(i, true); });
+    $('#start').hidden = false; cap.innerHTML = ''; setCount(); setPlayIcon();
+  }
+  function setCount(){ $('#count').textContent = `${Math.min(idx + 1, list.length)} / ${list.length}`; }
+  function setPlayIcon(){ $('#c-play').innerHTML = playing ? icons.pause : icons.play; $('#c-play').setAttribute('aria-label', playing ? 'Pause' : 'Play'); }
+  function paintSegs(p){
+    $$('button', segs).forEach((b, i) => { b.classList.toggle('done', i < idx); b.querySelector('i').style.setProperty('--p', i === idx ? p : 0); });
+  }
+  function tick(){
+    const p = Math.min(1, (performance.now() - t0) / dur); paintSegs(p);
+    if (playing) raf = requestAnimationFrame(tick);
+  }
+  function setCaption(text){
+    let pos = 0;
+    cap.innerHTML = text.split(/(\s+)/).map(w => { const st = pos; pos += w.length; return /\s/.test(w) ? w : `<span class="w" data-s="${st}">${esc(w)}</span>`; }).join('');
+    cap.classList.toggle('hidden', !ccOn);
+  }
+  function hitWord(ci){
+    $$('.w', cap).forEach(w => w.classList.toggle('hit', +w.dataset.s <= ci));
+  }
+  function show(i, autoplay){
+    if (i < 0 || i >= list.length) return;
+    const my = ++token; idx = i; setCount();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    $$('.layer', stage).forEach((l, k) => l.classList.toggle('on', k === i));
+    const s = list[i]; const text = sceneText(s);
+    setCaption(text);
+    dur = estimate(s); t0 = performance.now();
+    if (kb) kb.cancel(); kb = null;
+    const img = $$('.layer', stage)[i].querySelector('img');
+    if (img && s.a) kb = img.animate([{transform: frame(null, s.a)}, {transform: frame(null, s.b)}], {duration: dur + 1500, easing: 'ease-in-out', fill: 'forwards'});
+    if (autoplay !== undefined) playing = autoplay;
+    setPlayIcon(); cancelAnimationFrame(raf); paintSegs(0);
+    if (!playing) { kb?.pause(); return; }
+    raf = requestAnimationFrame(tick);
+    sfx(s.sfx);
+    const lead = s.lead || 450;
+    const next = () => { if (my !== token || !playing) return; if (idx < list.length - 1) show(idx + 1); else end(); };
+    let finished = false;
+    const done = () => { if (finished) return; finished = true; hitWord(1e9); setTimeout(next, 950); };
+    const safety = setTimeout(done, dur * 1.9 + 2500);
+    setTimeout(() => {
+      if (my !== token || !playing) return clearTimeout(safety);
+      if (voiceOn && 'speechSynthesis' in window && window.SpeechSynthesisUtterance) {
+        try {
+          const u = new SpeechSynthesisUtterance(text.replace(/lub-dub/gi, 'lub dub'));
+          if (voice) u.voice = voice; u.lang = voice?.lang || 'en-AU'; u.rate = .92; u.pitch = 1.12;
+          u.onboundary = e => { if (my === token) hitWord(e.charIndex); };
+          u.onend = () => { if (my === token) { clearTimeout(safety); dur = performance.now() - t0 + 950; done(); } };
+          u.onerror = () => { if (my === token) { clearTimeout(safety); setTimeout(done, Math.max(0, dur - lead - 950)); } };
+          speechSynthesis.speak(u);
+          return;
+        } catch {}
+      }
+      clearTimeout(safety); setTimeout(() => { if (my === token) done(); }, Math.max(0, dur - lead - 950));
+      wordsTimed(text, dur - lead - 1000, my);
+    }, lead);
+  }
+  function wordsTimed(text, ms, my){
+    const ws = $$('.w', cap); ws.forEach((w, k) => setTimeout(() => { if (my === token) w.classList.add('hit'); }, (k / ws.length) * ms));
+  }
+  function end(){
+    playing = false; setPlayIcon(); cancelAnimationFrame(raf); paintSegs(1);
+    $$('button', segs).forEach(b => b.classList.add('done'));
+  }
+  function play(){
+    audio(); started = true; $('#start').hidden = true;
+    if (idx >= list.length - 1 && !playing && $$('button.done', segs).length === list.length) idx = 0;
+    playing = true; show(idx);
+  }
+  function pause(){
+    playing = false; token++; setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  }
+  function stop(){ if (playing) pause(); }
+  $('#start').onclick = play;
+  $('#c-play').onclick = () => playing ? pause() : play();
+  $('#c-next').onclick = () => { started = true; $('#start').hidden = true; audio(); show(Math.min(idx + 1, list.length - 1), playing || true); };
+  $('#c-prev').onclick = () => { started = true; $('#start').hidden = true; audio(); show(Math.max(idx - 1, 0), playing || true); };
+  $('#c-voice').onclick = e => { voiceOn = !voiceOn; e.currentTarget.setAttribute('aria-pressed', voiceOn); if (playing) show(idx); };
+  $('#c-cc').onclick = e => { ccOn = !ccOn; e.currentTarget.setAttribute('aria-pressed', ccOn); cap.classList.toggle('hidden', !ccOn); };
+  $('#c-full').onclick = () => { const p = $('#player'); (document.fullscreenElement ? document.exitFullscreen() : p.requestFullscreen?.())?.catch?.(() => {}); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
+  return {load, stop};
+})();
+
+/* ---------- library ---------- */
+const LIB = [
+  {t:'Heart · Innocent murmur', d:'Why some hearts make a whoosh, and why it\'s harmless.', st:'ok', s:'Approved · 15 scenes', img:'celebrate', r:[0,24,90]},
+  {t:'Heart · Fast heartbeat with fever', d:'Why hearts speed up when you\'re sick or running.', st:'teal', s:'Script written', img:'faster', r:[8,20,86]},
+  {t:'Tummy · Constipation', d:'Hey Tummy explains poos, water and fibre, and how to sit on the toilet.', st:'warn', s:'In production', img:'hey-tummy', r:[14,30,72]},
+  {t:'Tummy · Gastro and staying hydrated', d:'Small sips, rest, and when to come back.', st:'warn', s:'In production', img:'hey-tummy', r:[30,40,46]},
+  {t:'Lungs · Asthma and using a spacer', d:'Squeezy tubes, puffers, and the spacer step by step.', st:'teal', s:'Script written'},
+  {t:'Ears · Middle ear infection', d:'Why ears hurt after a cold, and how they get better.', st:'mute', s:'Planned'},
+  {t:'Skin · Eczema and moisturising', d:'Itchy skin, gentle washes and lots of cream.', st:'mute', s:'Planned'},
+  {t:'Bones · Broken arm and plaster cast', d:'How bones knit back together inside a cast.', st:'mute', s:'Planned'},
+  {t:'Procedures · Having a blood test', d:'What happens, what it feels like, and brave breathing.', st:'mute', s:'Planned'},
+];
+$('#lib').innerHTML = LIB.map(x => `<div class="panel topic">
+  <div class="art">${x.img ? `<img src="scenes/${x.img}.jpg" alt="" loading="lazy" style="transform:scale(${100 / x.r[2]}) translate(${-x.r[0]}%,${-x.r[1]}%)">` : `<div class="ph">${esc(x.t.split(' · ')[0])}</div>`}</div>
+  <div class="panel-b"><span class="pill ${x.st === 'mute' ? 'mute' : x.st}">${esc(x.s)}</span><h3>${esc(x.t)}</h3><p>${esc(x.d)}</p></div></div>`).join('');
+
+syncNames();
+route();
+})();
+</script>

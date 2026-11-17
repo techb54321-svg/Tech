@@ -485,21 +485,21 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 /* ---------- scene library: Heart · Innocent murmur v1.0 ---------- */
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
-  {id:'intro', kind:'title', core:true, sfx:'beat', text:"A special video for {name}, from {doctor}."},
-  {id:'hello', img:'pop-hello', a:[0,15,100], b:[34,20,64], core:true, sfx:'pop', video:'heart-hello', dur:8510, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.95,1.29,1.97,2.36,3.14,3.47,4.95,5.2,5.42,5.55,5.74,5.85,6.11,6.54,6.94], text:"Pop! Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
-  {id:'home', img:'chest-map', a:[0,17,100], b:[14,22,72], core:true, text:"I live in your chest, a tiny bit to the left. I'm a muscle, and I'm about as big as your fist."},
-  {id:'squeeze', img:'squeeze', a:[8,27,84], b:[20,29,60], core:true, sfx:'beat', video:'heart-squeeze', dur:9110, words:[0,.37,.71,.87,1.03,1.92,3.22,4.63,5.12,5.76,6.33,6.76,7.09,7.41,7.59], text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
-  {id:'loop', img:'blood-loop', a:[0,14,100], b:[12,24,76], core:true, text:"Up to your head, down to your toes, and all the way back to me."},
-  {id:'doors', img:'heart-doors', a:[0,23,100], b:[10,25,80], core:true, sfx:'beat2', text:"Inside me there are little doors. When they snap shut, they go lub-dub, lub-dub."},
-  {id:'listen', img:'listen', a:[0,22,100], b:[14,26,72], core:true, text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', img:'blood-line', a:[0,24,100], b:[28,36,68], detect:'whoosh', sfx:'murmur', lead:3000, text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through, like water whooshing through a garden hose."},
-  {id:'common', img:'celebrate', a:[0,26,100], b:[16,27,70], detect:'common', text:"Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means it's harmless. I'm healthy and strong!"},
-  {id:'fever', img:'faster', a:[0,20,100], b:[30,26,66], detect:'fever', optional:true, sfx:'fast', text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
-  {id:'play', img:'dance', a:[0,26,100], b:[20,30,70], detect:'play', text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
+  {id:'intro', kind:'title', core:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
+  {id:'hello', clip:'v2-hello', core:true, voice:'hello', vdur:6.83, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.46,1.13,1.51,2.26,2.55,3.92,4.18,4.44,4.55,4.76,4.88,5.14,5.61,6.06], text:"Hi {name}! It's me, your heart! I heard you went to see {doctor} today."},
+  {id:'home', clip:'v2-home', core:true, voice:'home', vdur:7.62, words:[0,.31,.64,.77,1,1.61,1.75,2.09,2.26,2.38,2.51,3.17,3.53,3.73,4.46,4.7,4.88,5.21,5.47,5.91,6.17,6.66], text:"I live in your chest, a tiny bit to the left. I'm a muscle, and I'm about as big as your fist."},
+  {id:'squeeze', clip:'v2-squeeze', core:true, sfx:'beat', voice:'squeeze', vdur:8.31, words:[0,.37,.71,.87,1.03,1.92,3.22,4.63,5.12,5.76,6.33,6.76,7.09,7.41,7.59], text:"My job is to squeeze. Squeeze! Squeeze! Every squeeze pushes blood all around your body."},
+  {id:'loop', clip:'v2-loop', core:true, voice:'loop', vdur:6.04, words:[0,.34,.58,.84,1.7,2.14,2.3,2.51,3.46,3.75,4.59,4.73,5.02,5.34,5.5], text:"Up to your head, down to your toes, and all the way back to me."},
+  {id:'doors', clip:'v2-doors', core:true, sfx:'beat2', voice:'doors', vdur:7.71, words:[0,.7,1.07,1.39,1.58,1.89,2.97,3.22,3.5,4.05,4.98,5.24,5.79,6.66], text:"Inside me there are little doors. When they snap shut, they go lub-dub, lub-dub."},
+  {id:'listen', clip:'v2-listen', core:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
+  {id:'whoosh', clip:'v2-whoosh', detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:13.19, voicedFor:{doctor:'Dr Sarah'}, words:[0,.3,.86,1.34,1.65,2.18,3.03,3.54,4.03,4.63,5.69,6.06,6.5,6.75,7.13,7.45,8.31,8.88,9.94,10.25,10.72,11.16,11.47,11.65,12.25], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through, like water whooshing through a garden hose."},
+  {id:'common', clip:'v2-common', detect:'common', voice:'common', vdur:13.65, words:[0,.69,.99,1.38,1.54,1.96,2.19,2.36,3.23,3.63,4.03,5.31,5.93,6.25,6.47,6.82,7.5,8.79,9.45,9.87,10.11,11.56,11.91,12.43,12.62], text:"Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means it's harmless. I'm healthy and strong!"},
+  {id:'fever', clip:'v2-fever', detect:'fever', optional:true, sfx:'fast', voice:'fever', vdur:9.89, words:[0,.3,.5,.82,1.01,1.86,2.13,2.32,2.55,3,3.43,4.42,4.74,4.99,5.82,6.11,6.26,6.63,7.01,7.35,8.17,8.62,9.14], text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
+  {id:'play', clip:'v2-play', detect:'play', voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
   {id:'tryit', img:'jump-drum', a:[0,22,100], b:[18,26,72], optional:true, off:true, text:"Try it! Put your hand on your chest and jump up and down ten times. Can you feel me drumming?"},
-  {id:'grow', img:'sleep-slow', a:[0,24,100], b:[26,26,70], detect:'grow', sfx:'slow', text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
-  {id:'bye', img:'see-you', a:[5,33,90], b:[20,35,60], core:true, sfx:'beat', text:"See you next beat, {name}!"},
-  {id:'outro', kind:'end', core:true, text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
+  {id:'grow', clip:'v2-grow', detect:'grow', sfx:'slow', voice:'grow', vdur:9.57, words:[0,.27,.46,.77,1.46,1.7,2.25,2.52,2.75,3.63,3.89,4.16,4.35,5.82,6.2,6.89,7.23,7.52,8.24,8.71,8.86], text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
+  {id:'bye', clip:'v2-bye', core:true, sfx:'beat', voice:'bye', vdur:1.86, voicedFor:{name:'Mia'}, words:[0,.31,.49,.79,1.21], text:"See you next beat, {name}!"},
+  {id:'outro', kind:'end', core:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
@@ -552,7 +552,7 @@ const LANG = () => LANGS.find(l => l.id === S.lang) || LANGS[0];
 const TR = {
   zh: {
     intro:"这是{doctor}送给{name}的特别视频。",
-    hello:"砰！你好，{name}！是我，你的心脏！我听说你今天去看了{doctor}。",
+    hello:"你好，{name}！是我，你的心脏！我听说你今天去看了{doctor}。",
     home:"我住在你的胸口里，稍微偏左一点。我是一块肌肉，大约和你的拳头一样大。",
     squeeze:"我的工作就是挤压。挤！挤！每挤一下，就把血液送到你的全身。",
     loop:"血液流到你的头，流到你的脚趾，然后再回到我这里。",
@@ -569,7 +569,7 @@ const TR = {
   },
   ar: {
     intro:"فيديو خاص لـ{name}، من {doctor}.",
-    hello:"بوب! مرحبًا يا {name}! إنه أنا، قلبك! سمعت أنك زرت {doctor} اليوم.",
+    hello:"مرحبًا يا {name}! إنه أنا، قلبك! سمعت أنك زرت {doctor} اليوم.",
     home:"أعيش في صدرك، إلى اليسار قليلًا. أنا عضلة، وحجمي تقريبًا مثل قبضة يدك.",
     squeeze:"عملي هو أن أنقبض. انقباض! انقباض! كل انقباضة تدفع الدم إلى كل جسمك.",
     loop:"إلى رأسك، وإلى أصابع قدميك، ثم يعود الدم إليّ من جديد.",
@@ -586,7 +586,7 @@ const TR = {
   },
   vi: {
     intro:"Một video đặc biệt dành cho {name}, từ {doctor}.",
-    hello:"Bốp! Chào {name}! Mình đây, trái tim của bạn! Mình nghe nói hôm nay bạn đã đi gặp {doctor}.",
+    hello:"Chào {name}! Mình đây, trái tim của bạn! Mình nghe nói hôm nay bạn đã đi gặp {doctor}.",
     home:"Mình sống trong lồng ngực của bạn, hơi lệch sang trái một chút. Mình là một cơ bắp, to bằng nắm tay của bạn.",
     squeeze:"Nhiệm vụ của mình là bóp. Bóp! Bóp! Mỗi lần bóp sẽ đẩy máu đi khắp cơ thể bạn.",
     loop:"Lên tới đầu, xuống tới ngón chân, rồi quay trở về với mình.",
@@ -861,7 +861,11 @@ const baseText = s => S.lang !== 'en' ? (TR[S.lang]?.[s.id] ?? s.text) : (AGE[ba
 const sceneText = s => fill(S.edits[s.id] ?? baseText(s));
 const activeScenes = () => SCENES.filter(isOn);
 // an animated, voiced clip is used only while its words still match what was recorded
-const useVid = s => !!s.video && S.lang === 'en' && !(s.id in S.edits) && (!s.voicedFor || (S.name === s.voicedFor.name && S.doc === s.voicedFor.doctor));
+const voiceOK = s => !!s.voice && S.lang === 'en' && !(s.id in S.edits) && baseText(s) === s.text && (!s.voicedFor || ((s.voicedFor.name === undefined || S.name === s.voicedFor.name) && (s.voicedFor.doctor === undefined || S.doc === s.voicedFor.doctor)));
+const voiceWhy = s => S.lang !== 'en' ? 'Recorded in English. Other languages use the computer voice for now.'
+  : s.id in S.edits ? 'Wording changed, so the recorded voice no longer matches. The new line is recorded before sending.'
+  : baseText(s) !== s.text ? 'The wording for this age differs from the recording, so it uses the computer voice until that version is recorded.'
+  : `Recorded for ${[s.voicedFor?.name, s.voicedFor?.doctor].filter(Boolean).join(' and ')}. A new line is recorded for each family.`;
 
 /* ---------- review ---------- */
 function renderReview(){
@@ -876,12 +880,12 @@ function renderReview(){
     let thumb;
     if (s.kind === 'title') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#B3163A;font-size:22px">Hey ${esc(S.name)}!</div>`;
     else if (s.kind === 'end') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:600;color:#FFD45C;font-size:17px">${esc(S.name)}'s heart facts</div>`;
-    else if (useVid(s)) thumb = `<div class="thumb"><img src="scenes/${s.video}.jpg" alt="" loading="lazy"></div>`;
+    else if (s.clip) thumb = `<div class="thumb"><img src="scenes/${s.clip}.jpg" alt="" loading="lazy"></div>`;
     else thumb = `<div class="thumb"><img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}" loading="lazy"></div>`;
-    const vtag = useVid(s) ? '<span class="pill ok">Animated + voiced</span>' : s.video ? '<span class="pill warn">Still + computer voice</span>' : '';
+    const vtag = (s.clip ? '<span class="pill ok">Animated</span>' : '') + (voiceOK(s) ? '<span class="pill ok">Voiced</span>' : s.voice ? '<span class="pill warn">Computer voice</span>' : '');
     const tag = vtag + (s.detect && S.detected.has(s.detect) ? '<span class="pill teal">From this consult</span>'
       : s.core ? '<span class="pill mute">Core scene</span>' : '<span class="pill warn">Optional</span>');
-    const why = s.video && !useVid(s) ? (S.lang !== 'en' ? 'Recorded in English. In this demo other languages use the computer voice over the still picture.' : s.id in S.edits ? 'Wording changed, so the recorded voice no longer matches. The new line will be recorded before sending.' : `Recorded for ${s.voicedFor.name}. A new name line is recorded for each child.`) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
+    const why = s.voice && !voiceOK(s) ? voiceWhy(s) : s.detect ? fill(WHY[s.detect]) : s.id === 'tryit' ? 'Optional activity. Good for children who learn by doing.' : s.kind ? 'Personalised with the child and clinician names.' : 'Explains how the heart works. Always included.';
     el.innerHTML = `${thumb}
       <div class="scene-b">
         <div class="tags">${tag}<span class="why">${esc(why)}</span></div>
@@ -914,7 +918,7 @@ $('#approve').addEventListener('click', () => {
   go('family');
 });
 $('#preview').addEventListener('click', () => go('family'));
-function estimate(s){ if (useVid(s)) return s.dur; const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
+function estimate(s){ if (voiceOK(s)) return Math.max(4500, (s.lead || 450) + s.vdur * 1000 + 950); const w = sceneText(s).split(/\s+/).length; return Math.max(3800, w * 390 + 1400) + (s.lead || 0); }
 const estTotal = () => activeScenes().reduce((a, s) => a + estimate(s), 0);
 
 /* ---------- family ---------- */
@@ -1010,6 +1014,7 @@ function musicDuck(on){ music.volume = on ? MUSIC_VOL * .55 : MUSIC_VOL; }
 const player = (() => {
   const stage = $('#stage'), cap = $('#caption'), segs = $('#segs');
   let list = [], idx = 0, playing = false, token = 0, kb = null, t0 = 0, dur = 1, raf = 0, voiceOn = true, ccOn = true, started = false;
+  const vo = new Audio(); vo.preload = 'auto';
   const icons = {
     play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>',
@@ -1018,7 +1023,7 @@ const player = (() => {
     const dir = LANG().rtl ? ' dir="rtl"' : '';
     if (s.kind === 'title') return `<div class="card card-title"${dir}><div><div class="felt">${esc(t('hey'))}</div><div class="sub">${esc(t('sub'))}</div><div class="from">${esc(t('from'))}</div></div><div class="disc" role="img" aria-label="The child's video buddy with Heart" style="background:url(avatars/${S.avatar}.jpg) 50% 18%/150% no-repeat,#F6E4D2"><span class="hb"></span></div></div>`;
     if (s.kind === 'end') return `<div class="card card-end"${dir}><div><h3>${esc(t('facts'))}</h3><ul>${bullets().map(b => `<li>${esc(b)}</li>`).join('')}</ul></div><div class="hero" role="img" aria-label="The child's video buddy" style="background-image:url(avatars/${S.avatar}.jpg)"></div></div>`;
-    if (useVid(s)) return `<video poster="scenes/${s.video}.jpg" playsinline preload="auto"><source src="scenes/${s.video}.webm" type="video/webm"><source src="scenes/${s.video}.mp4" type="video/mp4"></video>`;
+    if (s.clip) return `<video poster="scenes/${s.clip}.jpg" muted loop playsinline preload="auto"><source src="scenes/${s.clip}.webm" type="video/webm"><source src="scenes/${s.clip}.mp4" type="video/mp4"></video>`;
     return `<img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}">`;
   }
   function load(scenes){
@@ -1056,38 +1061,36 @@ const player = (() => {
     setCaption(text);
     dur = estimate(s); t0 = performance.now();
     if (kb) kb.cancel(); kb = null;
-    $$('.layer video', stage).forEach(v => { v.pause(); v.ontimeupdate = v.onended = null; });
-    const vid = $$('.layer', stage)[i].querySelector('video');
-    if (vid) {
-      if (autoplay !== undefined) playing = autoplay;
-      setPlayIcon(); cancelAnimationFrame(raf); paintSegs(0);
-      vid.currentTime = 0; vid.muted = !voiceOn; musicDuck(true);
-      if (!playing) return;
-      raf = requestAnimationFrame(tick);
-      const ws = $$('.w', cap);
-      vid.ontimeupdate = () => { if (my !== token) return; const t = vid.currentTime - .3; ws.forEach((w, k) => w.classList.toggle('hit', s.words[k] !== undefined && t >= s.words[k])); };
-      let over = false;
-      const fin = () => { if (over || my !== token || !playing) return; over = true; hitWord(1e9); setTimeout(() => { if (my !== token || !playing) return; if (idx < list.length - 1) show(idx + 1); else end(); }, 500); };
-      vid.onended = fin;
-      setTimeout(fin, s.dur + 2500); // never stall if the clip can't play
-      vid.play().catch(() => { vid.muted = true; vid.play().catch(() => {}); });
-      return;
-    }
+    $$('.layer video', stage).forEach(v => v.pause());
+    vo.pause(); vo.ontimeupdate = vo.onended = vo.onerror = null;
     musicDuck(false);
+    const vid = $$('.layer', stage)[i].querySelector('video');
+    if (vid) { vid.currentTime = 0; vid.playbackRate = Math.max(.6, Math.min(1, 5000 / dur)); }
     const img = $$('.layer', stage)[i].querySelector('img');
     if (img && s.a) kb = img.animate([{transform: frame(null, s.a)}, {transform: frame(null, s.b)}], {duration: dur + 1500, easing: 'ease-in-out', fill: 'forwards'});
     if (autoplay !== undefined) playing = autoplay;
     setPlayIcon(); cancelAnimationFrame(raf); paintSegs(0);
     if (!playing) { kb?.pause(); return; }
     raf = requestAnimationFrame(tick);
+    if (vid) vid.play().catch(() => {});
     sfx(s.sfx);
     const lead = s.lead || 450;
     const next = () => { if (my !== token || !playing) return; if (idx < list.length - 1) show(idx + 1); else end(); };
     let finished = false;
-    const done = () => { if (finished) return; finished = true; hitWord(1e9); setTimeout(next, 950); };
+    const done = () => { if (finished) return; finished = true; hitWord(1e9); musicDuck(false); const wait = Math.max(950, 4500 - (performance.now() - t0)); setTimeout(next, wait); };
     const safety = setTimeout(done, dur * 1.9 + 2500);
     setTimeout(() => {
       if (my !== token || !playing) return clearTimeout(safety);
+      if (voiceOn && voiceOK(s)) {
+        const ws = $$('.w', cap);
+        vo.src = `voice/${s.voice}.mp3`; vo.currentTime = 0; musicDuck(true);
+        vo.ontimeupdate = () => { if (my !== token) return; const tt = vo.currentTime; ws.forEach((w, k) => w.classList.toggle('hit', s.words[k] !== undefined && tt >= s.words[k])); };
+        vo.onended = () => { if (my === token) { clearTimeout(safety); done(); } };
+        vo.onerror = () => { if (my === token) { clearTimeout(safety); setTimeout(done, s.vdur * 1000); } };
+        vo.play().catch(() => { if (my === token) { clearTimeout(safety); wordsTimed(text, s.vdur * 1000, my); setTimeout(done, s.vdur * 1000); } });
+        return;
+      }
+      if (voiceOn) musicDuck(true);
       if (voiceOn && 'speechSynthesis' in window && window.SpeechSynthesisUtterance) {
         try {
           const u = new SpeechSynthesisUtterance(text.replace(/lub-dub/gi, 'lub dub'));
@@ -1119,6 +1122,7 @@ const player = (() => {
   function pause(){
     playing = false; token++; setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
     $$('.layer video', stage).forEach(v => v.pause());
+    vo.pause();
     musicPause();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }

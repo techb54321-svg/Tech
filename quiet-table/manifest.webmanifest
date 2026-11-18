@@ -1,0 +1,13 @@
+{
+  "name": "Quiet Table",
+  "short_name": "Quiet Table",
+  "description": "Find nearby restaurants where you can enjoy a conversation without shouting.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f3ea",
+  "theme_color": "#1f4d3a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

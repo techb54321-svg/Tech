@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Quiet Table</title>
+<meta name="description" content="Find nearby restaurants where you can enjoy a conversation without shouting." />
+<meta name="theme-color" content="#1f4d3a" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <h1 class="brand"><span aria-hidden="true">🍽️</span> Quiet Table</h1>
+  <div class="topbar-actions">
+    <button type="button" class="link-btn" data-open="settings">Settings</button>
+    <button type="button" class="link-btn" data-open="help">Help</button>
+  </div>
+</header>
+
+<div id="demo-banner" class="demo-banner" hidden>
+  Demo mode: these restaurants and ratings are made up, to show how the app works.
+  <a href="./">Leave demo</a>
+</div>
+
+<main id="main">
+
+  <!-- ============ SEARCH SCREEN ============ -->
+  <section id="screen-search" class="screen" aria-labelledby="search-title">
+    <h2 id="search-title" tabindex="-1">Find a quiet place to eat</h2>
+    <p class="lead">Restaurants where you can talk and be heard without raising your voice.</p>
+
+    <div class="card">
+      <h3>1. Where are you?</h3>
+      <button type="button" id="btn-locate" class="btn btn-secondary btn-block">
+        <span aria-hidden="true">📍</span> Use my current location
+      </button>
+      <p class="or">or type a town, street or postcode</p>
+      <form id="place-form" class="row">
+        <label for="place-input" class="visually-hidden">Town, street or postcode</label>
+        <input id="place-input" type="text" autocomplete="off" placeholder="e.g. Oxford" />
+        <button type="submit" class="btn btn-secondary">Search</button>
+      </form>
+      <ul id="place-choices" class="choices" hidden></ul>
+      <p id="location-status" class="status" role="status" aria-live="polite"></p>
+    </div>
+
+    <div class="card">
+      <h3 id="radius-label">2. How far will you travel?</h3>
+      <div id="radius-buttons" class="pill-group" role="radiogroup" aria-labelledby="radius-label"></div>
+    </div>
+
+    <div class="card">
+      <h3><label for="cuisine">3. What kind of food?</label></h3>
+      <select id="cuisine"></select>
+    </div>
+
+    <div class="card">
+      <h3 id="price-label">4. Price</h3>
+      <p class="hint">Tap one or more, or leave them all off for any price. Places nobody has priced yet are still shown.</p>
+      <div id="price-buttons" class="pill-group" role="group" aria-labelledby="price-label"></div>
+    </div>
+
+    <div class="card">
+      <h3>5. How quiet?</h3>
+      <div id="quiet-buttons" class="pill-group stack" role="radiogroup" aria-label="How quiet"></div>
+    </div>
+
+    <button type="button" id="btn-find" class="btn btn-primary btn-block btn-big" disabled>
+      Find quiet restaurants
+    </button>
+    <p id="find-hint" class="hint center">First, tell us where you are (step 1).</p>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section id="screen-results" class="screen" hidden aria-labelledby="results-title">
+    <button type="button" class="btn btn-ghost back" data-go="search">← Change my search</button>
+    <h2 id="results-title" tabindex="-1">Restaurants near you</h2>
+    <p id="results-summary" class="lead" role="status" aria-live="polite"></p>
+
+    <div class="sort-row" role="radiogroup" aria-label="Sort order">
+      <span>Show:</span>
+      <button type="button" class="pill" data-sort="quiet" aria-pressed="true">Quietest first</button>
+      <button type="button" class="pill" data-sort="near" aria-pressed="false">Nearest first</button>
+    </div>
+
+    <div id="results-loading" class="loading" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Looking for restaurants…</p>
+    </div>
+    <ol id="results-list" class="results"></ol>
+    <button type="button" id="btn-more" class="btn btn-secondary btn-block" hidden>Show more</button>
+  </section>
+
+  <!-- ============ RATE SCREEN ============ -->
+  <section id="screen-rate" class="screen" hidden aria-labelledby="rate-title">
+    <button type="button" class="btn btn-ghost back" data-go="results">← Back to the list</button>
+    <h2 id="rate-title" tabindex="-1">How noisy was it?</h2>
+    <p class="lead" id="rate-place"></p>
+
+    <form id="rate-form">
+      <fieldset class="card">
+        <legend>Could you hold a conversation?</legend>
+        <div class="pill-group stack">
+          <label class="choice"><input type="radio" name="talk" value="4" required /> <span>😊 Yes, easily</span></label>
+          <label class="choice"><input type="radio" name="talk" value="3" /> <span>🙂 Yes, with a little effort</span></label>
+          <label class="choice"><input type="radio" name="talk" value="2" /> <span>😕 We had to raise our voices</span></label>
+          <label class="choice"><input type="radio" name="talk" value="1" /> <span>😣 We could hardly hear each other</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="card">
+        <legend>Background music</legend>
+        <div class="pill-group stack">
+          <label class="choice"><input type="radio" name="music" value="none" /> <span>No music</span></label>
+          <label class="choice"><input type="radio" name="music" value="soft" /> <span>Soft, in the background</span></label>
+          <label class="choice"><input type="radio" name="music" value="loud" /> <span>Too loud</span></label>
+        </div>
+      </fieldset>
+
+      <fieldset class="card">
+        <legend>Anything that helped or hurt? <span class="optional">(optional)</span></legend>
+        <div class="pill-group stack" id="feature-checks"></div>
+      </fieldset>
+
+      <fieldset class="card">
+        <legend>Roughly how much per person? <span class="optional">(optional)</span></legend>
+        <div class="pill-group" id="rate-price"></div>
+      </fieldset>
+
+      <div class="card">
+        <h3>Measure the noise <span class="optional">(optional)</span></h3>
+        <p class="hint">If you're at the restaurant now, your phone can take a 10-second reading. It only listens for those 10 seconds and nothing is recorded or saved except the number.</p>
+        <div class="meter">
+          <div class="meter-value"><span id="meter-db">--</span> <small>dB</small></div>
+          <div class="meter-bar" aria-hidden="true"><div id="meter-fill"></div></div>
+          <p id="meter-status" class="status" role="status" aria-live="polite"></p>
+        </div>
+        <button type="button" id="btn-measure" class="btn btn-secondary btn-block">🎤 Measure for 10 seconds</button>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-big">Save my rating</button>
+    </form>
+  </section>
+</main>
+
+<!-- ============ DIALOGS ============ -->
+<dialog id="dlg-settings" aria-labelledby="settings-title">
+  <form method="dialog">
+    <h2 id="settings-title">Settings</h2>
+    <fieldset>
+      <legend>Text size</legend>
+      <div class="pill-group" id="textsize-buttons"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Distances in</legend>
+      <div class="pill-group" id="unit-buttons"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Currency symbol for prices</legend>
+      <div class="pill-group" id="currency-buttons"></div>
+    </fieldset>
+    <button class="btn btn-primary btn-block" value="close">Done</button>
+  </form>
+</dialog>
+
+<dialog id="dlg-help" aria-labelledby="help-title">
+  <form method="dialog">
+    <h2 id="help-title">How Quiet Table works</h2>
+    <p><strong>Finding places.</strong> Tell us where you are, how far you'll go, and what you'd like to eat. We list the restaurants and cafés nearby.</p>
+    <p><strong>Quiet ratings come from diners like you.</strong> After a meal, tap <em>“Rate the noise”</em> and answer two quick questions. You can also let your phone measure the noise for 10 seconds.</p>
+    <p><strong>What the labels mean:</strong></p>
+    <ul class="legend">
+      <li><span class="badge q4">Quiet</span> Easy conversation, soft or no music.</li>
+      <li><span class="badge q3">Fairly quiet</span> Conversation takes a little effort.</li>
+      <li><span class="badge q2">Noisy</span> You'll need to raise your voice.</li>
+      <li><span class="badge q1">Very noisy</span> Hard to hear each other.</li>
+      <li><span class="badge q0">Not rated yet</span> No one has rated it. Be the first!</li>
+    </ul>
+    <p><strong>Tip:</strong> Most places are quieter at lunchtime and early evening than on Friday and Saturday nights. Ask for a corner table or a booth, away from the kitchen and the bar.</p>
+    <p class="small">Restaurant details come from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
+    <p class="small"><a href="?demo">Try the demo</a> to see the app with sample ratings.</p>
+    <button class="btn btn-primary btn-block" value="close">Close</button>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

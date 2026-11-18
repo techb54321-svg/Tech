@@ -32,6 +32,8 @@ jobs:
         env:
           # Served from https://<user>.github.io/Tech/ — must match the repo name.
           VITE_BASE: /Tech/
+      - name: Add Quiet Table to the site
+        run: cp -r ../quiet-table dist/quiet-table
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

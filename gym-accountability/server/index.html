@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Alerts setup</title>
+<meta name="description" content="One-time setup of the Ironclad alerts server, for the person running Ironclad." />
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#07080c" />
+<link rel="icon" href="../icon-192.png" type="image/png" />
+<link href="../fonts/fonts.css" rel="stylesheet" />
+<style>
+  :root{color-scheme:dark;--bg:#07080c;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#f3f5fa;--muted:#8a93a6;--dim:#5c6578;--accent:#ffb020;--accent2:#ff5e1a;--ok:#3ddc97;--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--sans:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.55}
+  body::before{content:"";position:fixed;top:-60vmax;left:-30vmax;width:120vmax;height:120vmax;border-radius:50%;background:radial-gradient(closest-side,rgba(255,140,40,.25),transparent 70%);filter:blur(50px);z-index:-1}
+  main{max-width:600px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px 60px}
+  a{color:var(--accent)}
+  .back{font-size:14px;font-weight:600;text-decoration:none}
+  h1{font-family:var(--display);font-size:clamp(36px,10vw,52px);line-height:1;letter-spacing:-.04em;margin:18px 0 12px}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:#c3c9d6;font-size:17px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));border:1px solid var(--line);border-radius:24px;padding:20px;margin:16px 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .step{display:flex;gap:14px}
+  .num{flex:none;width:34px;height:34px;border-radius:12px;display:grid;place-items:center;font-family:var(--display);font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1d0e00}
+  .step h2{font-family:var(--display);font-size:21px;letter-spacing:-.01em;margin:3px 0 6px}
+  .step>div{flex:1;min-width:0}
+  ol{padding-left:20px;margin:8px 0}li{margin:7px 0}
+  b{font-weight:700}
+  code{background:rgba(0,0,0,.4);border:1px solid var(--line);padding:2px 7px;border-radius:7px;font-size:13.5px;white-space:nowrap}
+  .muted{color:var(--muted)}.small{font-size:13.5px}
+  button{font:inherit;font-weight:800;cursor:pointer;border:0;border-radius:16px;padding:15px 18px;width:100%;margin-top:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1d0e00;font-family:var(--display);font-size:17px;box-shadow:0 12px 30px -12px rgba(255,110,30,.8)}
+  button.ghost{background:rgba(255,255,255,.05);color:var(--text);border:1px solid var(--line2);box-shadow:none;font-family:var(--sans);font-size:15px}
+  pre{background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:14px;padding:12px;max-height:240px;overflow:auto;font-size:11.5px}
+  .gets{display:grid;gap:8px;margin-top:14px}
+  .gets div{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid var(--line);font-size:14.5px}
+  .gets span{font-size:20px}
+  .tip{border-left:3px solid var(--accent);padding:4px 12px;margin:10px 0 0;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <a class="back" href="../">← Back to Ironclad</a>
+  <h1>Switch on <em>Ironclad alerts.</em></h1>
+  <p class="lede">For the person running Ironclad only. About ten minutes, once. After this, alerts work for everyone who uses the app, and nobody else ever sees this page.</p>
+  <div class="gets">
+    <div><span>🏋️</span>Every user's referee gets their check-ins, with photos on Android</div>
+    <div><span>⚖️</span>Weekly verdicts go out on schedule, even if someone goes quiet</div>
+    <div><span>🔒</span>Each user gets their own private space, locked with their own key</div>
+  </div>
+  <p class="small muted" style="margin-top:14px">Easiest on a computer, but a phone works. Keep this page open in one tab and Cloudflare in another. The free plan comfortably handles a few dozen active users.</p>
+
+  <div class="card step"><div class="num">1</div><div>
+    <h2>Make a free Cloudflare account</h2>
+    <p>Go to <a href="https://dash.cloudflare.com/sign-up" target="_blank" rel="noopener">dash.cloudflare.com/sign-up</a> and sign up. The free plan is plenty. No card needed.</p>
+  </div></div>
+
+  <div class="card step"><div class="num">2</div><div>
+    <h2>Create the server</h2>
+    <ol>
+      <li>In the left menu, open <b>Workers &amp; Pages</b>, then tap <b>Create</b>.</li>
+      <li>Choose to start from <b>Hello World</b>. Name it <code>ironclad</code> and tap <b>Deploy</b>.</li>
+      <li>Tap <b>Edit code</b>. Select everything in the editor, delete it, and paste the server code.</li>
+      <li>Tap <b>Deploy</b>.</li>
+    </ol>
+    <button id="copy">Copy the server code</button>
+    <p class="small muted" id="copymsg" style="text-align:center;margin:8px 0 0"></p>
+    <details><summary class="small muted" style="cursor:pointer;margin-top:8px">Show the code</summary><pre id="code">loading…</pre></details>
+  </div></div>
+
+  <div class="card step"><div class="num">3</div><div>
+    <h2>Give it storage</h2>
+    <ol>
+      <li>In the left menu, open <b>Storage &amp; Databases → KV</b> and tap <b>Create</b>. Name it <code>ironclad</code>.</li>
+      <li>Go back to your <b>ironclad</b> Worker. Open <b>Settings → Bindings</b>, tap <b>Add</b>, and pick <b>KV namespace</b>.</li>
+      <li>Set the variable name to <code>STATE</code>, choose the <code>ironclad</code> namespace, and save.</li>
+    </ol>
+    <p class="tip">The name must be exactly <b>STATE</b>, in capitals.</p>
+  </div></div>
+
+  <div class="card step"><div class="num">4</div><div>
+    <h2>Turn on the hourly check</h2>
+    <p>Still in the Worker's <b>Settings</b>, find <b>Triggers → Cron Triggers</b>, tap <b>Add</b>, and enter <code>0 * * * *</code> (every hour). This is what sends the weekly verdict on time.</p>
+  </div></div>
+
+  <div class="card step"><div class="num">5</div><div>
+    <h2>Copy the server's address</h2>
+    <p>Open your Worker's address. It's shown at the top of the Worker's page and ends in <code>.workers.dev</code>. Your server page appears with a checklist; everything should be ticked.</p>
+    <p>Tap <b>Copy the address</b>. That's the only thing the app needs. It's built into the app once, and from then on Ironclad alerts switch on for everyone.</p>
+    <p class="tip">The address isn't secret. Every app gets its own private key automatically when someone turns alerts on.</p>
+  </div></div>
+
+  <div class="card">
+    <h2 style="font-family:var(--display);font-size:21px;margin:0 0 8px">If something's off</h2>
+    <ul style="padding-left:20px;margin:0">
+      <li><b>The server page says "Almost there"</b>: the storage binding is missing or not named <code>STATE</code> (step 3).</li>
+      <li><b>A user's Today screen says "alerts off"</b>: their referee agreed but hasn't tapped Turn on alerts. They should resend the link.</li>
+      <li><b>Lots of people sign up at once</b>: sign-ups are capped at 200 a day and 5 an hour from one network, to protect the free plan.</li>
+      <li><b>No weekly verdict arrived</b>: check that the checklist on your server page shows the hourly check ran.</li>
+      <li><b>An iPhone referee sees no Turn on alerts button</b>: they need iOS 16.4 or later, and must open Ironclad from the Home Screen, not Safari.</li>
+    </ul>
+
+  </div>
+</main>
+<script>
+  let text = '';
+  fetch('worker.js?v=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => { text = t; document.getElementById('code').textContent = t; }).catch(() => { document.getElementById('code').textContent = 'Could not load the code. Open worker.js in this folder instead.'; });
+  document.getElementById('copy').onclick = async () => {
+    const m = document.getElementById('copymsg');
+    try { await navigator.clipboard.writeText(text); m.textContent = '✓ Copied. Paste it into the Cloudflare editor.'; }
+    catch { m.textContent = 'Copy failed. Open "Show the code", select it all and copy.'; }
+  };
+</script>
+</body>
+</html>

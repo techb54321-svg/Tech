@@ -1,0 +1,12 @@
+name = "ironclad"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["0 * * * *"]
+
+# Create the namespace with: npx wrangler kv namespace create STATE
+# then paste the id it prints here.
+[[kv_namespaces]]
+binding = "STATE"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

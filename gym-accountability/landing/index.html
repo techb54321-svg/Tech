@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ironclad</title>
+<meta name="description" content="Gym accountability with teeth. GPS-verified check-ins, a friend holding your deposit, and a log that shows tampering." />
+<meta name="theme-color" content="#07080c" />
+<link rel="canonical" href="https://ironclad.coach/" />
+<script>fetch('https://ironclad.coach/app/manifest.webmanifest?probe=' + Date.now(), { mode: 'no-cors', cache: 'no-store' }).then(function () { location.replace('https://ironclad.coach/' + location.hash); }).catch(function () {});</script>
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Ironclad" />
+<meta property="og:title" content="Ironclad: make quitting expensive" />
+<meta property="og:description" content="Gym accountability with teeth. GPS-verified check-ins, a friend holding your deposit, and a log that shows tampering." />
+<meta property="og:url" content="https://techb54321-svg.github.io/Tech/ironclad/" />
+<meta property="og:image" content="https://techb54321-svg.github.io/Tech/gym-accountability/og.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="/Tech/gym-accountability/icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="/Tech/gym-accountability/apple-touch-icon.png" />
+<link href="/Tech/gym-accountability/fonts/fonts.css" rel="stylesheet" />
+<style>
+  :root{color-scheme:dark;--bg:#07080c;--line:rgba(255,255,255,.08);--line2:rgba(255,255,255,.14);--text:#f3f5fa;--muted:#8a93a6;--dim:#5c6578;--accent:#ffb020;--accent2:#ff5e1a;--ok:#3ddc97;--display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;--sans:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;--ease:cubic-bezier(.2,.8,.2,1)}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.55;overflow-x:hidden}
+  a{color:inherit}
+  .bg{position:fixed;inset:0;overflow:hidden;z-index:-1;pointer-events:none}
+  .glow{position:absolute;border-radius:50%;filter:blur(60px)}
+  .g1{width:110vmax;height:110vmax;left:-50vmax;top:-70vmax;background:radial-gradient(closest-side,rgba(255,140,40,.32),transparent 70%)}
+  .g2{width:80vmax;height:80vmax;right:-40vmax;top:30vh;background:radial-gradient(closest-side,rgba(61,220,151,.16),transparent 70%)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:calc(16px + env(safe-area-inset-top)) 0 10px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:.16em;text-transform:uppercase;text-decoration:none}
+  .brand img{width:32px;height:32px;border-radius:9px}.brand em{font-style:normal;color:var(--accent)}
+  .pill{font-weight:700;font-size:14px;padding:9px 16px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.04);text-decoration:none}
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;padding:40px 0 30px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:800;margin:0 0 14px}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(52px,9vw,104px);line-height:.9;letter-spacing:-.05em;margin:0 0 22px}
+  h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{font-size:clamp(17px,2.2vw,21px);color:#c3c9d6;max-width:520px;margin:0 0 28px}
+  .ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;text-decoration:none;font-family:var(--display);font-weight:800;font-size:18px;padding:17px 26px;border-radius:18px;transition:transform .15s var(--ease)}
+  .btn:active{transform:scale(.97)}
+  .primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1d0e00;box-shadow:0 16px 40px -14px rgba(255,110,30,.9),inset 0 1px 0 rgba(255,255,255,.35)}
+  .ghost{border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--text);font-family:var(--sans);font-size:16px;font-weight:700}
+  .hint{margin-top:16px;font-size:14px;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
+  .hint svg{flex:none;width:18px;height:18px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;margin-top:2px}
+  .phones{position:relative;height:620px}
+  .phone{position:absolute;width:270px;aspect-ratio:9/19.5;border-radius:44px;padding:10px;background:#181b24;box-shadow:0 40px 90px -24px rgba(0,0,0,.95),0 0 0 1.5px rgba(255,255,255,.09),inset 0 0 0 1px rgba(255,255,255,.04)}
+  .phone img{display:block;width:100%;height:100%;object-fit:cover;object-position:top;border-radius:35px}
+  .p1{left:0;top:70px;transform:rotate(-7deg);opacity:.92}
+  .p2{left:50%;top:0;transform:translateX(-50%);z-index:2;width:290px}
+  .p3{right:0;top:80px;transform:rotate(7deg);opacity:.92}
+  section{padding:56px 0}
+  h2{font-family:var(--display);font-size:clamp(34px,5.5vw,56px);line-height:1;letter-spacing:-.04em;margin:0 0 14px}
+  .sub{color:var(--muted);font-size:17px;max-width:620px;margin:0 0 30px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:26px;padding:22px;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  .step .shot{height:300px;border-radius:18px;overflow:hidden;margin:-6px -6px 18px;background:#0c0e14;border:1px solid var(--line)}
+  .step .shot img{width:100%;height:100%;object-fit:cover;object-position:top}
+  .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:10px;font-family:var(--display);font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1d0e00;margin-bottom:10px}
+  .step h3,.feat h3{font-family:var(--display);font-size:22px;letter-spacing:-.015em;margin:0 0 6px}
+  .step p,.feat p{color:var(--muted);margin:0;font-size:15px}
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .feat .ic{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,176,32,.2),rgba(255,94,26,.08));margin-bottom:14px}
+  .feat .ic svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .final{text-align:center;padding:70px 0 40px}
+  .final h2{font-size:clamp(40px,7vw,72px)}
+  footer{color:var(--dim);font-size:13.5px;text-align:center;padding:30px 0 calc(40px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+  .reveal.in{opacity:1;transform:none}
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;padding-top:24px;gap:10px}
+    .phones{height:auto;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;margin:20px -20px 0;padding:10px 20px 30px;scrollbar-width:none}
+    .phones::-webkit-scrollbar{display:none}
+    .phone{position:relative;left:auto;right:auto;top:auto;transform:none!important;opacity:1;flex:none;width:236px;scroll-snap-align:center}
+    .p2{order:-1;width:236px}
+    .steps,.feats{grid-template-columns:1fr}
+    .step .shot{height:260px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}.reveal{opacity:1;transform:none}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="bg" aria-hidden="true"><div class="glow g1"></div><div class="glow g2"></div></div>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="#"><img src="/Tech/gym-accountability/icon-192.png" alt=""><span>Iron<em>clad</em></span></a>
+    <a class="pill" href="/Tech/gym-accountability/">Open the app</a>
+  </nav>
+
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Gym accountability, with teeth</p>
+      <h1>Make quitting <em>expensive.</em></h1>
+      <p class="lede">Three sessions a week. A friend holding your money. An app that won't take your word for it.</p>
+      <div class="ctas">
+        <a class="btn primary" href="/Tech/gym-accountability/">Open Ironclad</a>
+        <a class="btn ghost" href="#how">How it works</a>
+      </div>
+      <p class="hint" id="hint"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg><span id="hint-text">Free. No account. Works best on your phone, added to your home screen.</span></p>
+    </div>
+    <div class="phones" aria-label="Screens from the app">
+      <div class="phone p1"><img src="welcome.webp" alt="Welcome screen: Make quitting expensive" loading="eager"></div>
+      <div class="phone p2"><img src="today.webp" alt="Today: 2 of 3 sessions done, on track" loading="eager"></div>
+      <div class="phone p3"><img src="celebrate.webp" alt="Celebration: 2 down, 1 to go" loading="lazy"></div>
+    </div>
+  </header>
+
+  <section id="how">
+    <p class="eyebrow">How it works</p>
+    <h2 class="reveal">Three moves. No wriggle room.</h2>
+    <p class="sub reveal">Most fitness apps believe you. Ironclad checks.</p>
+    <div class="steps">
+      <div class="card step reveal"><div class="shot"><img src="contract.webp" alt="The contract you sign" loading="lazy"></div><span class="num">1</span><h3>Sign the deal</h3><p>Pick your gym, how often, and what a missed week costs. Then press and hold to sign. It turns into a contract with your name on it.</p></div>
+      <div class="card step reveal"><div class="shot"><img src="session.webp" alt="A live session timer" loading="lazy"></div><span class="num">2</span><h3>Prove you showed up</h3><p>Check-ins only count with your phone inside the gym, and only after the minimum stay. Leave early and it doesn't count.</p></div>
+      <div class="card step reveal"><div class="shot"><img src="today.webp" alt="The weekly dashboard with the deposit" loading="lazy"></div><span class="num">3</span><h3>Your referee holds the money</h3><p>A friend keeps your deposit and gets the verdict every week. Miss a week and the money goes somewhere you'll hate.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">What's inside</p>
+    <h2 class="reveal">Built so you can't cheat yourself.</h2>
+    <div class="feats" style="margin-top:28px">
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div><h3>GPS at both ends</h3><p>Checked when you arrive and when you leave. Photo proof if you want it.</p></div>
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>A log that shows tampering</h3><p>Every entry is sealed to the one before it. Edit anything outside the app and it shows.</p></div>
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 003.4 0"/></svg></div><h3>Your referee hears it live</h3><p>Real notifications for every check-in, and the weekly verdict on schedule, even if you go quiet.</p></div>
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M16 15h2"/></svg></div><h3>Real stakes</h3><p>A deposit up front, so nobody has to chase you. What's left comes back to you.</p></div>
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><path d="M12 2v20M4.9 4.9l14.2 14.2M2 12h20M4.9 19.1L19.1 4.9"/></svg></div><h3>Fair freezes</h3><p>Ill or away? Freeze a week, declared before, never after.</p></div>
+      <div class="card feat reveal"><div class="ic"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div><h3>Private by design</h3><p>No account, no tracking. Your location never leaves your phone. <a href="/Tech/gym-accountability/privacy.html" style="color:var(--accent)">See exactly what's stored</a>.</p></div>
+    </div>
+  </section>
+
+
+  <section class="final">
+    <h2 class="reveal">Your next workout<br>just got <em style="font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent">expensive.</em></h2>
+    <a class="btn primary" style="margin-top:14px" href="/Tech/gym-accountability/">Open Ironclad</a>
+  </section>
+</div>
+<footer>Ironclad · Free, no account, no tracking · <a href="/Tech/gym-accountability/privacy.html" style="color:var(--muted)">Your data, plainly</a></footer>
+<script>
+  // Platform-specific install hint
+  (function(){
+    const ua = navigator.userAgent, ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), android = /android/i.test(ua);
+    const safari = ios && /safari/i.test(ua) && !/crios|fxios|edgios/i.test(ua);
+    const t = document.getElementById('hint-text');
+    if (ios && !safari) t.textContent = 'On iPhone, open this page in Safari to add Ironclad to your home screen.';
+    else if (ios) t.textContent = 'On iPhone: open Ironclad, then Share → Add to Home Screen. It walks you through it.';
+    else if (android) t.textContent = 'On Android: open Ironclad and tap Install when it asks.';
+    else t.textContent = "Best on your phone. Send yourself this link, or scan it from your computer's share menu.";
+  })();
+  // Gentle reveal on scroll
+  (function(){
+    const els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) return els.forEach(e => e.classList.add('in'));
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: .15 });
+    els.forEach(e => io.observe(e));
+  })();
+</script>
+</body>
+</html>

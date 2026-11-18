@@ -1,7 +1,7 @@
 // Caches the app itself so it opens quickly and works as an installed app.
 // Restaurant searches always go to the network.
-const CACHE = "quiet-table-v2";
-const SHELL = ["./", "index.html", "styles.css", "app.js", "data.js", "config.js", "icon.svg", "manifest.webmanifest"];
+const CACHE = "quiet-table-v3";
+const SHELL = ["./", "index.html", "styles.css", "app.js", "data.js", "config.js", "icon.svg", "manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

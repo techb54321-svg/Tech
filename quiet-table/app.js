@@ -1,65 +1,77 @@
 /* Quiet Table — find restaurants where you can hear each other.
  *
  * Restaurant listings: OpenStreetMap via the Overpass API (free, no key).
- * Town search: OpenStreetMap Nominatim.
- * Quiet ratings: entered by diners. In this version they are stored on the
- * device (see `Store` below). Swap Store for a shared backend so everyone
- * sees everyone's ratings.
+ * Town search: OpenStreetMap Nominatim. Map: Leaflet + OpenStreetMap tiles.
+ * Quiet ratings: entered by diners (stored on the device for now — see `Store`),
+ * plus "likely" verdicts from photos & reviews via the analysis server (config.js).
  */
 (function () {
   "use strict";
 
   const D = window.QT_DATA;
+  const CFG = window.QT_CONFIG || {};
   const DEMO = new URLSearchParams(location.search).has("demo");
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
-  const OVERPASS = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-  ];
+  const OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"];
   const NOMINATIM = "https://nominatim.openstreetmap.org/search";
-  const MAX_RESULTS = 600; // cap on what we ask Overpass for
-  const CFG = window.QT_CONFIG || {};
+  const LEAFLET = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/";
+  const MAX_RESULTS = 600;
   const PAGE = 20;
 
-  // ------------------------------------------------------------------ storage
+  // ================================================================ storage
   function load(key, fallback) {
-    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-    catch { return fallback; }
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
   }
   function save(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ }
   }
 
-  /** Ratings store. Replace these two functions with API calls for a shared database. */
+  /** Diner ratings. Replace with API calls to a shared database so everyone sees everyone's ratings. */
   const Store = {
     key: DEMO ? "qt.demoRatings" : "qt.ratings",
     all() { return load(this.key, {}); },
-    get(placeId) { return this.all()[placeId] || []; },
-    add(placeId, rating) {
+    get(id) { return this.all()[id] || []; },
+    add(id, rating) { const all = this.all(); (all[id] = all[id] || []).push(rating); save(this.key, all); },
+  };
+
+  /** Places the user has hearted. */
+  const Saved = {
+    key: DEMO ? "qt.demoSaved" : "qt.saved",
+    all() { return load(this.key, {}); },
+    has(id) { return !!this.all()[id]; },
+    toggle(p) {
       const all = this.all();
-      (all[placeId] = all[placeId] || []).push(rating);
+      if (all[p.id]) delete all[p.id];
+      else {
+        const { id, name, amenity, cuisine, lat, lon, addr, phone, website, hours, wheelchair, liveMusic, sportsTv, demoPredict } = p;
+        all[p.id] = { id, name, amenity, cuisine, lat, lon, addr, phone, website, hours, wheelchair, liveMusic, sportsTv, demoPredict, savedAt: Date.now() };
+      }
       save(this.key, all);
+      return !!all[p.id];
     },
   };
 
-  // ------------------------------------------------------------------ state
-  const settings = Object.assign({ text: "l", unit: "km", currency: guessCurrency() }, load("qt.settings", {}));
+  // ================================================================ state
+  const settings = Object.assign({ text: "l", unit: "km", currency: guessCurrency(), theme: "auto" }, load("qt.settings", {}));
   const saved = load("qt.search", {});
   const state = {
-    loc: null, // { lat, lon, label }
+    loc: null,
     radius: saved.radius || 5000,
     cuisine: saved.cuisine || "any",
     prices: new Set(saved.prices || []),
     quiet: saved.quiet || "all",
     sort: "quiet",
+    view: "list",
     places: [],
     shown: PAGE,
     ratingFor: null,
     measuredDb: null,
-    predictions: loadPredictionCache(), // id -> verdict from photos & reviews (or null)
+    predictions: loadPredictionCache(),
     pending: new Set(),
+    tab: "search",
+    screen: "search",
   };
 
   function guessCurrency() {
@@ -68,12 +80,9 @@
     if (/-(ie|fr|de|es|it|nl|at|be|pt|fi|gr)$/.test(lang)) return "€";
     return "$";
   }
-
   function persistSearch() {
     save("qt.search", { radius: state.radius, cuisine: state.cuisine, prices: [...state.prices], quiet: state.quiet });
   }
-
-  // Verdicts worked out from photos & reviews, remembered on this phone for a week.
   function loadPredictionCache() {
     if (DEMO) return {};
     const c = load("qt.predictions", {}), out = {}, now = Date.now();
@@ -84,11 +93,11 @@
     if (DEMO) return;
     const c = load("qt.predictions", {}), now = Date.now();
     for (const [id, r] of Object.entries(state.predictions)) if (r && !c[id]) c[id] = { r, t: now };
-    const entries = Object.entries(c).sort((a, b) => b[1].t - a[1].t).slice(0, 500);
-    save("qt.predictions", Object.fromEntries(entries));
+    save("qt.predictions", Object.fromEntries(Object.entries(c).sort((a, b) => b[1].t - a[1].t).slice(0, 500)));
   }
 
-  // ------------------------------------------------------------------ helpers
+  // ================================================================ helpers
+  const icon = (name) => `<svg class="i" aria-hidden="true"><use href="#i-${name}"/></svg>`;
   function esc(s) {
     return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
@@ -102,27 +111,26 @@
   function fmtDistance(m) {
     if (settings.unit === "mi") {
       const mi = m / MI;
-      return mi < 0.1 ? "less than 0.1 miles" : `${+mi.toFixed(mi < 10 ? 1 : 0)} mile${mi === 1 ? "" : "s"}`;
+      return mi < 0.1 ? "under 0.1 miles" : `${+mi.toFixed(mi < 10 ? 1 : 0)} mile${mi === 1 ? "" : "s"}`;
     }
-    return m < 1000 ? `${Math.round(m / 10) * 10} metres` : `${+(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
+    return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${+(m / 1000).toFixed(m < 10000 ? 1 : 0)} km`;
   }
   function radiusOptions() {
     return settings.unit === "mi"
-      ? [1, 3, 5, 10, 15].map((n) => ({ m: Math.round(n * MI), label: `${n} mile${n > 1 ? "s" : ""}` }))
-      : [1, 2, 5, 10, 20].map((n) => ({ m: n * 1000, label: `${n} km` }));
+      ? [1, 3, 5, 10, 15].map((n) => ({ value: Math.round(n * MI), label: `${n} mi` }))
+      : [1, 2, 5, 10, 20].map((n) => ({ value: n * 1000, label: `${n} km` }));
   }
-  function priceLabel(n) { return settings.currency.repeat(n); }
-  function priceWords(n) { return ["", "Inexpensive", "Moderate", "Pricey", "Very expensive"][n]; }
-  function titleCase(s) { return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()); }
+  const priceLabel = (n) => settings.currency.repeat(n);
+  const priceWords = (n) => ["", "Inexpensive", "Moderate", "Pricey", "Very expensive"][n];
+  const titleCase = (s) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   function cuisineText(tag, amenity) {
-    const parts = (tag || "").split(/[;,]/).map((s) => s.trim()).filter(Boolean).slice(0, 3).map(titleCase);
+    const parts = (tag || "").split(/[;,]/).map((s) => s.trim()).filter(Boolean).slice(0, 2).map(titleCase);
     if (!parts.length) return amenity === "cafe" ? "Café" : "Restaurant";
     return parts.join(", ") + (amenity === "cafe" ? " café" : "");
   }
   function prettyHours(h) {
-    if (!h) return "";
     const days = { Mo: "Mon", Tu: "Tue", We: "Wed", Th: "Thu", Fr: "Fri", Sa: "Sat", Su: "Sun", PH: "Holidays" };
-    return h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, (d) => days[d]).replace(/-/g, " – ").replace(/;\s*/g, "; ").replace(/\boff\b/g, "closed");
+    return h.replace(/\b(Mo|Tu|We|Th|Fr|Sa|Su|PH)\b/g, (d) => days[d]).replace(/-/g, "–").replace(/;\s*/g, " · ").replace(/\boff\b/g, "closed");
   }
   function timeAgo(t) {
     const days = Math.floor((Date.now() - t) / 86400000);
@@ -132,30 +140,27 @@
     const months = Math.floor(days / 30);
     return months < 12 ? `${months} month${months > 1 ? "s" : ""} ago` : "over a year ago";
   }
-
   let toastTimer;
   function toast(msg) {
     const el = $("#toast");
-    el.textContent = msg;
+    el.innerHTML = `${icon("check")}<span>${esc(msg)}</span>`;
     el.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (el.hidden = true), 4000);
+    toastTimer = setTimeout(() => (el.hidden = true), 3500);
   }
-
   async function fetchWithTimeout(url, opts = {}, ms = 30000) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), ms);
-    try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
-    finally { clearTimeout(t); }
+    try { return await fetch(url, { ...opts, signal: ctrl.signal }); } finally { clearTimeout(t); }
   }
 
-  // ------------------------------------------------------------------ quiet score
-  /** dB (A-weighted, approx.) -> conversation score on the same 1–4 scale. */
-  function dbToScore(db) { return db <= 65 ? 4 : db <= 70 ? 3 : db <= 76 ? 2 : 1; }
+  // ================================================================ quiet score
+  const dbToScore = (db) => (db <= 65 ? 4 : db <= 70 ? 3 : db <= 76 ? 2 : 1);
 
   function summarise(ratings) {
     if (!ratings.length) return { level: 0, count: 0 };
-    let sum = 0, n = 0, music = { none: 0, soft: 0, loud: 0 }, dbs = [], prices = [], feats = {};
+    let sum = 0, n = 0;
+    const music = { none: 0, soft: 0, loud: 0 }, dbs = [], prices = [], feats = {};
     for (const r of ratings) {
       sum += r.talk; n++;
       if (r.db) { sum += dbToScore(r.db); n++; dbs.push(r.db); }
@@ -164,14 +169,17 @@
       for (const f of r.features || []) feats[f] = (feats[f] || 0) + 1;
     }
     const score = sum / n;
-    const level = score >= 3.25 ? 4 : score >= 2.5 ? 3 : score >= 1.75 ? 2 : 1;
     prices.sort((a, b) => a - b);
-    const price = prices.length ? prices[Math.floor(prices.length / 2)] : 0;
-    const db = dbs.length ? Math.round(dbs.reduce((a, b) => a + b, 0) / dbs.length) : null;
-    const loudMusic = music.loud > (music.none + music.soft) / 2 && music.loud > 0;
-    const topFeatures = Object.entries(feats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => D.features.find((f) => f.id === id)).filter(Boolean);
-    const latest = Math.max(...ratings.map((r) => r.t || 0));
-    return { level, score, count: ratings.length, price, db, loudMusic, topFeatures, latest };
+    return {
+      level: score >= 3.25 ? 4 : score >= 2.5 ? 3 : score >= 1.75 ? 2 : 1,
+      score,
+      count: ratings.length,
+      price: prices.length ? prices[Math.floor(prices.length / 2)] : 0,
+      db: dbs.length ? Math.round(dbs.reduce((a, b) => a + b, 0) / dbs.length) : null,
+      loudMusic: music.loud > 0 && music.loud > (music.none + music.soft) / 2,
+      topFeatures: Object.entries(feats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => D.features.find((f) => f.id === id)).filter(Boolean),
+      latest: Math.max(...ratings.map((r) => r.t || 0)),
+    };
   }
 
   const PRED_LEVEL = { quiet: 4, fairly_quiet: 3, noisy: 2, very_noisy: 1 };
@@ -199,82 +207,108 @@
   }
 
   const LEVELS = {
-    4: { cls: "q4", text: "Quiet", sub: "Easy to talk" },
-    3: { cls: "q3", text: "Fairly quiet", sub: "Talking takes a little effort" },
-    2: { cls: "q2", text: "Noisy", sub: "You may need to raise your voice" },
-    1: { cls: "q1", text: "Very noisy", sub: "Hard to hear each other" },
-    0: { cls: "q0", text: "Not rated yet", sub: "" },
+    4: { cls: "q4", text: "Quiet", sub: "Easy to talk — conversation comes naturally." },
+    3: { cls: "q3", text: "Fairly quiet", sub: "Talking takes a little effort at busy times." },
+    2: { cls: "q2", text: "Noisy", sub: "You may need to raise your voice." },
+    1: { cls: "q1", text: "Very noisy", sub: "Hard to hear each other." },
+    0: { cls: "q0", text: "Not rated yet", sub: "No one has rated the noise here yet." },
   };
 
-  // ------------------------------------------------------------------ screens
-  function show(name) {
+  const bars = (level) => `<span class="bars" aria-hidden="true">${[1, 2, 3, 4].map((n) => `<i class="${n <= level ? "on" : ""}"></i>`).join("")}</span>`;
+  function qBadge(q) {
+    if (q.pending) return `<span class="qbadge checking">${bars(0)}Checking…</span>`;
+    const L = LEVELS[q.level];
+    const text = q.predicted ? `Likely ${L.text.toLowerCase()}` : L.text;
+    return `<span class="qbadge ${L.cls}${q.predicted ? " predicted" : ""}">${bars(q.level)}${text}</span>`;
+  }
+
+  // ================================================================ navigation
+  const TAB_OF = { search: "search", results: "search", details: null, rate: null, saved: "saved", help: "help" };
+  function show(name, { push = true } = {}) {
+    state.screen = name;
+    if (TAB_OF[name]) state.tab = TAB_OF[name];
     for (const s of $$(".screen")) s.hidden = s.id !== `screen-${name}`;
+    $$(".tab").forEach((t) => (t.dataset.tab === state.tab ? t.setAttribute("aria-current", "page") : t.removeAttribute("aria-current")));
+    $("#btn-back").hidden = ["search", "saved", "help"].includes(name);
     window.scrollTo(0, 0);
-    const h = $(`#screen-${name} h2`);
+    const h = $(`#screen-${name} h1`);
     if (h) h.focus({ preventScroll: true });
-    if (history.state?.screen !== name) history.pushState({ screen: name }, "", location.search || location.pathname);
+    if (push && history.state?.screen !== name) history.pushState({ screen: name, tab: state.tab }, "", location.search || location.pathname);
   }
   window.addEventListener("popstate", (e) => {
     const name = e.state?.screen || "search";
-    for (const s of $$(".screen")) s.hidden = s.id !== `screen-${name}`;
+    if (e.state?.tab) state.tab = e.state.tab;
+    if (name === "results" && !state.places.length) { show("search", { push: false }); return; }
+    if (name === "saved") renderSaved();
+    show(name, { push: false });
+    if (name === "results") renderResults();
   });
-
-  // ------------------------------------------------------------------ settings UI
-  function applySettings() {
-    document.documentElement.dataset.text = settings.text;
-    save("qt.settings", settings);
+  function goBack() {
+    if (history.state && history.length > 1 && state.screen !== "search") history.back();
+    else show("search");
   }
-  function pillRadio(container, options, current, onPick) {
+
+  // ================================================================ controls
+  function segRadio(container, options, current, onPick, cls = "seg") {
     container.innerHTML = "";
     for (const o of options) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "pill";
+      b.className = cls;
       b.setAttribute("role", "radio");
       b.setAttribute("aria-checked", String(o.value === current));
-      b.textContent = o.label;
+      b.innerHTML = o.html || esc(o.label);
       b.addEventListener("click", () => {
-        $$(".pill", container).forEach((x) => x.setAttribute("aria-checked", "false"));
+        $$(`.${cls}`, container).forEach((x) => x.setAttribute("aria-checked", "false"));
         b.setAttribute("aria-checked", "true");
         onPick(o.value);
       });
       container.appendChild(b);
     }
   }
+
+  function applySettings() {
+    const root = document.documentElement;
+    root.dataset.text = settings.text;
+    if (settings.theme === "auto") delete root.dataset.theme; else root.dataset.theme = settings.theme;
+    save("qt.settings", settings);
+  }
   function renderSettings() {
-    pillRadio($("#textsize-buttons"), [
-      { value: "l", label: "Large" }, { value: "xl", label: "Larger" }, { value: "xxl", label: "Largest" },
+    segRadio($("#textsize-buttons"), [
+      { value: "l", html: `<span style="font-size:.9rem">Large</span>` },
+      { value: "xl", html: `<span style="font-size:1.05rem">Larger</span>` },
+      { value: "xxl", html: `<span style="font-size:1.2rem">Largest</span>` },
     ], settings.text, (v) => { settings.text = v; applySettings(); });
-    pillRadio($("#unit-buttons"), [
-      { value: "km", label: "Kilometres" }, { value: "mi", label: "Miles" },
-    ], settings.unit, (v) => {
+    segRadio($("#unit-buttons"), [{ value: "km", label: "Kilometres" }, { value: "mi", label: "Miles" }], settings.unit, (v) => {
       settings.unit = v; applySettings();
-      // snap radius to the nearest option in the new unit
       const opts = radiusOptions();
-      state.radius = opts.reduce((best, o) => Math.abs(o.m - state.radius) < Math.abs(best.m - state.radius) ? o : best).m;
-      persistSearch(); renderSearchControls();
-      if (state.places.length) renderResults();
+      state.radius = opts.reduce((best, o) => (Math.abs(o.value - state.radius) < Math.abs(best.value - state.radius) ? o : best)).value;
+      persistSearch(); renderSearchControls(); refreshCurrent();
     });
-    pillRadio($("#currency-buttons"), ["$", "£", "€"].map((c) => ({ value: c, label: c })), settings.currency, (v) => {
-      settings.currency = v; applySettings(); renderSearchControls();
-      if (state.places.length) renderResults();
+    segRadio($("#currency-buttons"), ["$", "£", "€"].map((c) => ({ value: c, label: c })), settings.currency, (v) => {
+      settings.currency = v; applySettings(); renderSearchControls(); refreshCurrent();
+    });
+    segRadio($("#theme-buttons"), [{ value: "auto", label: "Automatic" }, { value: "light", label: "Light" }, { value: "dark", label: "Dark" }], settings.theme, (v) => {
+      settings.theme = v; applySettings();
     });
   }
+  function refreshCurrent() {
+    if (state.screen === "results") renderResults();
+    if (state.screen === "saved") renderSaved();
+    if (state.screen === "details" && state.detailId) renderDetails(state.detailId);
+  }
 
-  // ------------------------------------------------------------------ search UI
   function renderSearchControls() {
-    pillRadio($("#radius-buttons"), radiusOptions().map((o) => ({ value: o.m, label: o.label })), state.radius, (v) => { state.radius = v; persistSearch(); });
+    segRadio($("#radius-buttons"), radiusOptions(), state.radius, (v) => { state.radius = v; persistSearch(); });
 
-    const sel = $("#cuisine");
-    sel.innerHTML = D.cuisines.map((c) => `<option value="${c.id}">${esc(c.label)}</option>`).join("");
-    sel.value = state.cuisine;
+    segRadio($("#cuisine-chips"), D.cuisines.map((c) => ({ value: c.id, label: c.label })), state.cuisine, (v) => { state.cuisine = v; persistSearch(); }, "chip");
 
     const pc = $("#price-buttons");
     pc.innerHTML = "";
     for (let n = 1; n <= 4; n++) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "pill";
+      b.className = "seg";
       b.setAttribute("aria-pressed", String(state.prices.has(n)));
       b.setAttribute("aria-label", `${priceWords(n)} (${priceLabel(n)})`);
       b.textContent = priceLabel(n);
@@ -286,18 +320,19 @@
       pc.appendChild(b);
     }
 
-    pillRadio($("#quiet-buttons"), [
-      { value: "all", label: "Show everything, quietest at the top" },
-      { value: "notnoisy", label: "Hide noisy places" },
-      { value: "quiet", label: "Only quiet places" },
-    ], state.quiet, (v) => { state.quiet = v; persistSearch(); });
+    segRadio($("#quiet-buttons"), [
+      { value: "all", html: `<span class="radio"></span><span>Show everything, quietest first</span>` },
+      { value: "notnoisy", html: `<span class="radio"></span><span>Hide noisy places</span>` },
+      { value: "quiet", html: `<span class="radio"></span><span>Only quiet places</span>` },
+    ], state.quiet, (v) => { state.quiet = v; persistSearch(); }, "option");
   }
 
+  // ================================================================ location
   function setLocation(loc) {
     state.loc = loc;
     const st = $("#location-status");
     st.className = "status ok";
-    st.textContent = `✓ Searching near: ${loc.label}`;
+    st.innerHTML = `${icon("check")}<span>Searching near ${esc(loc.label)}</span>`;
     $("#btn-find").disabled = false;
     $("#find-hint").hidden = true;
     $("#place-choices").hidden = true;
@@ -307,22 +342,20 @@
     st.className = "status err";
     st.textContent = msg;
   }
-
   function useMyLocation() {
-    if (DEMO) { setLocation({ lat: 51.5, lon: -0.12, label: "Demo town centre" }); return; }
+    if (DEMO) { setLocation({ lat: 51.5, lon: -0.12, label: "the demo town centre" }); return; }
     if (!navigator.geolocation) { locationError("Your device can't share its location. Please type a town instead."); return; }
     const st = $("#location-status");
     st.className = "status";
     st.textContent = "Finding where you are…";
     navigator.geolocation.getCurrentPosition(
-      (p) => setLocation({ lat: p.coords.latitude, lon: p.coords.longitude, label: "your current location" }),
+      (p) => setLocation({ lat: p.coords.latitude, lon: p.coords.longitude, label: "your current location", here: true }),
       (err) => locationError(err.code === 1
-        ? "Location permission was turned off. You can type a town instead, or allow location in your phone's settings."
+        ? "Location is turned off for this app. Type a town instead, or allow location in your phone's settings."
         : "We couldn't find your location. Please type a town instead."),
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 }
     );
   }
-
   async function searchPlace(q) {
     q = q.trim();
     if (!q) { locationError("Please type a town, street or postcode."); return; }
@@ -337,6 +370,7 @@
       const hits = await res.json();
       if (!hits.length) { locationError(`We couldn't find “${q}”. Try adding the town or country.`); return; }
       if (hits.length === 1) { setLocation({ lat: +hits[0].lat, lon: +hits[0].lon, label: hits[0].display_name }); return; }
+      st.className = "status";
       st.textContent = "Which one did you mean?";
       const ul = $("#place-choices");
       ul.innerHTML = "";
@@ -344,7 +378,7 @@
         const li = document.createElement("li");
         const b = document.createElement("button");
         b.type = "button";
-        b.textContent = h.display_name;
+        b.innerHTML = `${icon("pin")}<span>${esc(h.display_name)}</span>`;
         b.addEventListener("click", () => setLocation({ lat: +h.lat, lon: +h.lon, label: h.display_name }));
         li.appendChild(b);
         ul.appendChild(li);
@@ -356,13 +390,12 @@
     }
   }
 
-  // ------------------------------------------------------------------ fetching places
+  // ================================================================ fetching places
   function buildQuery({ lat, lon }, radius, cuisineId) {
     const c = D.cuisines.find((x) => x.id === cuisineId) || D.cuisines[0];
     const around = `(around:${Math.round(radius)},${lat.toFixed(6)},${lon.toFixed(6)})`;
-    const amenities = c.amenity ? [c.amenity] : ["restaurant", "cafe"];
     const clauses = [];
-    for (const a of amenities) {
+    for (const a of c.amenity ? [c.amenity] : ["restaurant", "cafe"]) {
       if (!c.match) clauses.push(`nwr["amenity"="${a}"]["name"]${around};`);
       else {
         clauses.push(`nwr["amenity"="${a}"]["name"]["cuisine"~"${c.match}",i]${around};`);
@@ -371,7 +404,6 @@
     }
     return `[out:json][timeout:25];(${clauses.join("")});out center tags ${MAX_RESULTS};`;
   }
-
   async function fetchPlaces(loc, radius, cuisineId) {
     if (DEMO) return demoPlaces(loc, radius, cuisineId);
     const body = "data=" + encodeURIComponent(buildQuery(loc, radius, cuisineId));
@@ -381,18 +413,17 @@
         const res = await fetchWithTimeout(url, { method: "POST", body, headers: { "Content-Type": "application/x-www-form-urlencoded" } }, 35000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
-        return json.elements.map((el) => fromOsm(el, loc)).filter(Boolean);
+        const seen = new Set();
+        return json.elements.map((el) => fromOsm(el, loc)).filter((p) => p && !seen.has(p.id) && seen.add(p.id));
       } catch (e) { lastErr = e; }
     }
     throw lastErr;
   }
-
   function fromOsm(el, origin) {
     const t = el.tags || {};
     const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
     if (lat == null || !t.name) return null;
     const street = [t["addr:housenumber"], t["addr:street"]].filter(Boolean).join(" ");
-    const addr = [street, t["addr:city"] || t["addr:suburb"] || t["addr:place"]].filter(Boolean).join(", ");
     return {
       id: `${el.type}/${el.id}`,
       name: t.name,
@@ -400,7 +431,7 @@
       cuisine: t.cuisine || "",
       lat, lon,
       dist: distanceM(origin, { lat, lon }),
-      addr,
+      addr: [street, t["addr:city"] || t["addr:suburb"] || t["addr:place"]].filter(Boolean).join(", "),
       phone: t.phone || t["contact:phone"] || "",
       website: t.website || t["contact:website"] || "",
       hours: t.opening_hours || "",
@@ -410,11 +441,9 @@
       takeawayOnly: t.takeaway === "only",
     };
   }
-
   function demoPlaces(loc, radius, cuisineId) {
     const c = D.cuisines.find((x) => x.id === cuisineId) || D.cuisines[0];
     const re = c.match ? new RegExp(c.match, "i") : null;
-    // Seed demo ratings once.
     const all = Store.all();
     if (!Object.keys(all).length) {
       const now = Date.now();
@@ -428,21 +457,22 @@
       D.demo.map((d, i) => {
         const lat = loc.lat + d.dy * kmLat, lon = loc.lon + d.dx * kmLon;
         return { id: `demo/${i}`, name: d.name, amenity: d.amenity || "restaurant", cuisine: d.cuisine, lat, lon,
-          dist: distanceM(loc, { lat, lon }), addr: d.addr, phone: d.phone || "", website: "", hours: d.hours || "",
+          dist: distanceM(loc, { lat, lon }), addr: d.addr, phone: d.phone || "", website: d.website || "", hours: d.hours || "",
           wheelchair: d.wheelchair || "", liveMusic: !!d.liveMusic, demoPredict: d.predict || null };
-      }).filter((p) => p.dist <= radius
-        && (c.id === "any" || (c.amenity ? p.amenity === c.amenity : re.test(p.cuisine))))
-    ), 500));
+      }).filter((p) => p.dist <= radius && (c.id === "any" || (c.amenity ? p.amenity === c.amenity : re.test(p.cuisine))))
+    ), 600));
   }
 
-  // ------------------------------------------------------------------ results
+  // ================================================================ results
   async function runSearch() {
     if (!state.loc) return;
-    state.cuisine = $("#cuisine").value;
     persistSearch();
     show("results");
+    const c = D.cuisines.find((x) => x.id === state.cuisine);
+    $("#results-title").textContent = state.cuisine === "any" ? "Restaurants near you" : `${c.label} near you`;
     $("#results-list").innerHTML = "";
     $("#btn-more").hidden = true;
+    $("#map-wrap").hidden = true;
     $("#results-summary").textContent = "";
     $("#results-loading").hidden = false;
     try {
@@ -451,7 +481,7 @@
       state.shown = PAGE;
       renderResults();
     } catch {
-      $("#results-list").innerHTML = `<li class="empty"><h3>We couldn't load restaurants just now</h3>
+      $("#results-list").innerHTML = `<li class="empty">${icon("globe")}<h2>We couldn't load restaurants</h2>
         <p>This is usually a busy server or a weak internet connection. Please wait a moment and try again.</p>
         <button type="button" class="btn btn-primary" id="btn-retry">Try again</button></li>`;
       $("#btn-retry").addEventListener("click", runSearch);
@@ -468,43 +498,68 @@
       return true;
     });
     if (state.sort === "near") list.sort((a, b) => a.dist - b.dist);
-    else list.sort((a, b) => {
-      // Rated quiet first (best score first), then unrated, then noisy; ties by distance.
-      const rank = (p) => (p.q.level === 0 ? 2.4 : p.q.score);
-      return rank(b) - rank(a) || a.dist - b.dist;
-    });
+    else list.sort((a, b) => ((b.q.level === 0 ? 2.4 : b.q.score) - (a.q.level === 0 ? 2.4 : a.q.score)) || a.dist - b.dist);
     return list;
   }
 
   function renderResults() {
     const list = filteredSorted();
-    const ul = $("#results-list");
+    state.list = list;
     const rated = list.filter((p) => p.q.count).length;
     const likely = list.filter((p) => p.q.predicted).length;
     const checking = list.slice(0, state.shown).some((p) => p.q.pending);
-    const area = `within ${fmtDistance(state.radius).replace(/^less than /, "")}`;
-    const cuisine = D.cuisines.find((c) => c.id === state.cuisine);
-    $("#results-title").textContent = state.cuisine === "any" ? "Restaurants near you" : `${cuisine.label} near you`;
-    $("#results-summary").textContent = list.length
-      ? `${list.length} place${list.length > 1 ? "s" : ""} ${area}. `
-        + (rated ? `${rated} rated by diners. ` : "")
-        + (likely ? `${likely} judged from photos and reviews. ` : "")
-        + (checking ? "Checking photos and reviews for the rest…" : (!rated && !likely ? "None have been rated for noise yet – you could be the first!" : ""))
-      : "";
+    const area = `within ${fmtDistance(state.radius)}`;
+    const parts = [];
+    if (list.length) {
+      parts.push(`${list.length} place${list.length > 1 ? "s" : ""} ${area}.`);
+      if (rated) parts.push(`${rated} rated by diners.`);
+      if (likely) parts.push(`${likely} judged from photos and reviews.`);
+      if (checking) parts.push("Checking photos and reviews…");
+      else if (!rated && !likely) parts.push("None rated for noise yet — you could be the first.");
+    }
+    $("#results-summary").textContent = parts.join(" ");
 
+    const ul = $("#results-list");
     if (!list.length) {
-      const why = state.places.length
-        ? "Some places were hidden by your quiet or price choices."
-        : "There may be no listed restaurants of this kind nearby.";
-      ul.innerHTML = `<li class="empty"><h3>No places found ${esc(area)}</h3><p>${why} Try a bigger distance or “Any kind of food”.</p>
+      const why = state.places.length ? "Some places were hidden by your quiet or price choices." : "There may be no listed restaurants of this kind nearby.";
+      ul.innerHTML = `<li class="empty">${icon("search")}<h2>No places found ${esc(area)}</h2><p>${why} Try a bigger distance or “Any kind of food”.</p>
         <button type="button" class="btn btn-primary" data-go="search">Change my search</button></li>`;
       $("#btn-more").hidden = true;
+      $("#map-wrap").hidden = true;
       return;
     }
-    ul.innerHTML = list.slice(0, state.shown).map(cardHtml).join("");
-    $("#btn-more").hidden = list.length <= state.shown;
-    $("#btn-more").textContent = `Show more (${list.length - state.shown} left)`;
+    const isMap = state.view === "map";
+    $("#map-wrap").hidden = !isMap;
+    ul.hidden = isMap;
+    ul.innerHTML = list.slice(0, state.shown).map((p, i) => cardHtml(p, i + 1)).join("");
+    $("#btn-more").hidden = isMap || list.length <= state.shown;
+    $("#btn-more").textContent = `Show ${Math.min(PAGE, list.length - state.shown)} more`;
+    if (isMap) drawMap(list.slice(0, Math.max(state.shown, 40)));
     loadPredictions(list.slice(0, state.shown));
+  }
+
+  function cardHtml(p, n) {
+    const q = p.q;
+    let src = "", why = "";
+    if (q.count) src = `<span class="card-src">${icon("users")}${q.count} diner rating${q.count > 1 ? "s" : ""}</span>`;
+    else if (q.predicted) src = `<span class="card-src">${icon("sparkle")}From photos &amp; reviews${q.confidence === "low" ? " · rough guess" : ""}</span>`;
+    else if (q.pending) src = `<span class="card-src">Looking at photos &amp; reviews</span>`;
+    if (q.predicted && q.reasons?.length) why = `<p class="card-why">${esc(q.reasons[0])}</p>`;
+    else if (q.count && q.topFeatures?.length) why = `<p class="card-why">Diners mention ${esc(q.topFeatures.map((f) => f.label.toLowerCase()).slice(0, 2).join(" and "))}</p>`;
+    else if (p.liveMusic || q.liveMusic || p.sportsTv || q.sportsTv) why = `<p class="card-why warn">${(p.liveMusic || q.liveMusic) ? "Live music at times" : "May show sport on TV"}</p>`;
+    const price = q.price ? `<span aria-label="${priceWords(q.price)}">${priceLabel(q.price)}</span>` : "";
+    const isSaved = Saved.has(p.id);
+    const dist = p.dist != null ? `<span>${icon("pin")}${esc(fmtDistance(p.dist))}</span>` : "";
+    return `<li class="card">
+      <button type="button" class="card-link" data-detail="${esc(p.id)}">
+        <span class="card-top">${n ? `<span class="card-num" aria-hidden="true">${n}</span>` : ""}${qBadge(q)}${src}</span>
+        <h2>${esc(p.name)}</h2>
+        <span class="card-meta">${dist}<span>${icon("utensils")}${esc(cuisineText(p.cuisine, p.amenity))}</span>${price}</span>
+        ${why}
+        <span class="card-more">See details ${icon("right")}</span>
+      </button>
+      <button type="button" class="save-btn" data-save="${esc(p.id)}" aria-pressed="${isSaved}" aria-label="${isSaved ? "Remove from saved" : "Save"} ${esc(p.name)}">${icon("heart")}</button>
+    </li>`;
   }
 
   // Ask the analysis server about places that have no diner ratings yet.
@@ -513,15 +568,15 @@
     if (!todo.length) return;
     if (DEMO) {
       todo.forEach((p) => state.pending.add(p.id));
-      renderResults();
-      await new Promise((r) => setTimeout(r, 1200));
+      rerender();
+      await new Promise((r) => setTimeout(r, 1400));
       todo.forEach((p) => { state.pending.delete(p.id); state.predictions[p.id] = p.demoPredict; });
-      renderResults();
+      rerender();
       return;
     }
     if (!CFG.analysisUrl) return;
     todo.forEach((p) => state.pending.add(p.id));
-    renderResults();
+    rerender();
     const batches = [];
     for (let i = 0; i < todo.length; i += 10) batches.push(todo.slice(i, i + 10));
     await Promise.all(batches.map(async (batch) => {
@@ -540,77 +595,213 @@
       }
     }));
     savePredictionCache();
-    if (!$("#screen-results").hidden) renderResults();
+    rerender();
+  }
+  function rerender() {
+    if (state.screen === "results") renderResults();
+    else if (state.screen === "details" && state.detailId) renderDetails(state.detailId);
   }
 
-  function cardHtml(p) {
-    const L = LEVELS[p.q.level];
-    const facts = [];
-    if (p.addr) facts.push(`<li>📍 ${esc(p.addr)}</li>`);
-    if (p.hours) facts.push(`<li>🕑 ${esc(prettyHours(p.hours))}</li>`);
-    if (p.wheelchair === "yes") facts.push("<li>♿ Wheelchair accessible</li>");
-    else if (p.wheelchair === "limited") facts.push("<li>♿ Limited wheelchair access</li>");
-    if (p.q.db) facts.push(`<li>🎤 Measured about ${p.q.db} dB on average</li>`);
-    if (p.q.loudMusic) facts.push(`<li class="warn">🔊 Diners say the music is loud</li>`);
-    if (p.liveMusic || p.q.liveMusic) facts.push(`<li class="warn">🎸 Has live music at times</li>`);
-    if (p.sportsTv || p.q.sportsTv) facts.push(`<li class="warn">📺 May show sport on TV</li>`);
-    if (p.q.quieterTimes) facts.push(`<li>🕰️ Quieter times: ${esc(p.q.quieterTimes)}</li>`);
-    if (p.q.topFeatures?.length) facts.push(`<li>💬 Diners mention: ${p.q.topFeatures.map((f) => esc(f.label.toLowerCase())).join("; ")}</li>`);
-
-    const price = p.q.price ? `<strong>${priceLabel(p.q.price)}</strong> ${priceWords(p.q.price).toLowerCase()}` : "price not known yet";
-    const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
-    let badge, note = "", why = "";
-    if (p.q.count) {
-      badge = `<span class="badge ${L.cls}">${L.text}</span><span class="count">${p.q.count} diner rating${p.q.count > 1 ? "s" : ""} · last rated ${timeAgo(p.q.latest)}</span>`;
-      note = L.sub;
-    } else if (p.q.predicted) {
-      badge = `<span class="badge predicted ${L.cls}">Likely ${L.text.toLowerCase()}</span><span class="count">from photos & reviews${p.q.confidence === "low" ? " · rough guess" : ""}</span>`;
-      note = L.sub;
-      if (p.q.reasons?.length) why = `<ul class="why">${p.q.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>`;
-    } else if (p.q.pending) {
-      badge = `<span class="badge checking">Checking…</span><span class="count">looking at photos & reviews</span>`;
-    } else {
-      badge = `<span class="badge ${L.cls}">${L.text}</span>`;
+  // ================================================================ map
+  let leafletPromise, map, mapLayer, miniMap;
+  function loadLeaflet() {
+    if (window.L) return Promise.resolve(window.L);
+    if (!leafletPromise) {
+      leafletPromise = new Promise((resolve, reject) => {
+        const css = document.createElement("link");
+        css.rel = "stylesheet";
+        css.href = LEAFLET + "leaflet.min.css";
+        document.head.appendChild(css);
+        const s = document.createElement("script");
+        s.src = LEAFLET + "leaflet.min.js";
+        s.onload = () => resolve(window.L);
+        s.onerror = () => { leafletPromise = null; reject(new Error("leaflet")); };
+        document.head.appendChild(s);
+      });
     }
-    return `<li class="place">
-      <div class="badge-row">${badge}</div>
-      <h3>${esc(p.name)}</h3>
-      <p class="meta"><strong>${esc(fmtDistance(p.dist))} away</strong> · ${esc(cuisineText(p.cuisine, p.amenity))} · ${price}</p>
-      ${note ? `<p class="meta">${note}</p>` : ""}
-      ${why}
-      ${facts.length ? `<ul class="facts">${facts.join("")}</ul>` : ""}
-      <div class="actions">
-        <a class="btn btn-secondary" href="${dir}" target="_blank" rel="noopener">🧭 Directions</a>
-        ${p.phone ? `<a class="btn btn-secondary" href="tel:${esc(p.phone.split(";")[0].replace(/[^\d+]/g, ""))}">📞 Call</a>` : ""}
-        ${p.website ? `<a class="btn btn-secondary" href="${esc(/^https?:/i.test(p.website) ? p.website : "https://" + p.website)}" target="_blank" rel="noopener">🌐 Website</a>` : ""}
-        <button type="button" class="btn btn-primary" data-rate="${esc(p.id)}">✍️ Rate the noise</button>
-      </div>
-    </li>`;
+    return leafletPromise;
+  }
+  function pinIcon(L, q, n) {
+    const cls = `${LEVELS[q.level].cls}${q.predicted ? " predicted" : ""}`;
+    return L.divIcon({ className: "", html: `<div class="pin ${cls}"><b>${n ?? ""}</b></div>`, iconSize: [38, 38], iconAnchor: [19, 40], popupAnchor: [0, -38] });
+  }
+  function tiles(L, m) {
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    }).addTo(m);
+  }
+  async function drawMap(list) {
+    let L;
+    try { L = await loadLeaflet(); } catch {
+      $("#map").innerHTML = `<div class="map-fallback">The map couldn't load. Please check your internet connection, or use the list.</div>`;
+      return;
+    }
+    if (!map) {
+      map = L.map("map", { zoomControl: true, scrollWheelZoom: false });
+      tiles(L, map);
+      mapLayer = L.layerGroup().addTo(map);
+    }
+    mapLayer.clearLayers();
+    const pts = [];
+    list.forEach((p, i) => {
+      const m = L.marker([p.lat, p.lon], { icon: pinIcon(L, p.q, i + 1), title: p.name, alt: p.name }).addTo(mapLayer);
+      const label = p.q.predicted ? `Likely ${LEVELS[p.q.level].text.toLowerCase()}` : LEVELS[p.q.level].text;
+      m.bindPopup(`<strong>${esc(p.name)}</strong>${esc(label)} · ${esc(fmtDistance(p.dist))}<button type="button" class="btn btn-primary" data-detail="${esc(p.id)}">See details</button>`);
+      pts.push([p.lat, p.lon]);
+    });
+    if (state.loc) {
+      L.marker([state.loc.lat, state.loc.lon], { icon: L.divIcon({ className: "", html: '<div class="me-dot"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }), keyboard: false, title: "You are here" }).addTo(mapLayer);
+      pts.push([state.loc.lat, state.loc.lon]);
+    }
+    setTimeout(() => { map.invalidateSize(); if (pts.length) map.fitBounds(pts, { padding: [36, 36], maxZoom: 16 }); }, 0);
   }
 
-  // ------------------------------------------------------------------ rating
+  // ================================================================ details
+  function getPlace(id) {
+    const live = state.places.find((x) => x.id === id);
+    if (live) return live;
+    const s = Saved.all()[id];
+    if (!s) return null;
+    return { ...s, dist: state.loc ? distanceM(state.loc, s) : null };
+  }
+  function openDetails(id) {
+    state.detailId = id;
+    renderDetails(id);
+    show("details");
+    const p = getPlace(id);
+    if (p) loadPredictions([{ ...p, q: quietInfo(p) }]);
+  }
+  function renderDetails(id) {
+    const p = getPlace(id);
+    if (!p) return;
+    const q = quietInfo(p);
+    const L = LEVELS[q.level];
+    const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
+    const isSaved = Saved.has(p.id);
+
+    let verdict;
+    if (q.pending) {
+      verdict = `<div class="verdict q0"><div class="verdict-head">${bars(0)}<div><div class="verdict-title">Checking…</div><div class="verdict-sub">Looking at photos and reviews of this place.</div></div></div></div>`;
+    } else {
+      const title = q.predicted ? `Likely ${L.text.toLowerCase()}` : L.text;
+      let list = "", src = "";
+      if (q.count) {
+        const items = [];
+        if (q.db) items.push(`Measured about ${q.db} dB on average`);
+        if (q.loudMusic) items.push("Diners say the music is too loud");
+        (q.topFeatures || []).forEach((f) => items.push(f.label));
+        list = items.length ? `<ul>${items.map((t) => `<li>${icon("check")}<span>${esc(t)}</span></li>`).join("")}</ul>` : "";
+        src = `<p class="src">${icon("users")}Based on ${q.count} diner rating${q.count > 1 ? "s" : ""} · last rated ${timeAgo(q.latest)}</p>`;
+      } else if (q.predicted) {
+        list = (q.reasons || []).length ? `<ul>${q.reasons.map((t) => `<li>${icon("check")}<span>${esc(t)}</span></li>`).join("")}</ul>` : "";
+        src = `<p class="src">${icon("sparkle")}Judged from photos and reviews${q.confidence === "low" ? " — a rough guess" : ""}. Diner ratings will replace this.</p>`;
+      } else {
+        src = `<p class="src">${icon("pencil")}Been here? Your rating will help others.</p>`;
+      }
+      verdict = `<div class="verdict ${L.cls}${q.predicted ? " predicted" : ""}">
+        <div class="verdict-head">${bars(q.level)}<div><div class="verdict-title">${title}</div><div class="verdict-sub">${esc(L.sub)}</div></div></div>
+        ${list}${src}</div>`;
+    }
+
+    const info = [];
+    if (p.addr) info.push(`<li>${icon("pin")}<span>${esc(p.addr)}</span></li>`);
+    if (p.hours) info.push(`<li>${icon("clock")}<span>${esc(prettyHours(p.hours))}<small>Opening hours — worth checking before you go</small></span></li>`);
+    if (q.quieterTimes) info.push(`<li>${icon("sun")}<span>Quieter times: ${esc(q.quieterTimes)}</span></li>`);
+    if (p.wheelchair === "yes") info.push(`<li>${icon("access")}<span>Wheelchair accessible</span></li>`);
+    else if (p.wheelchair === "limited") info.push(`<li>${icon("access")}<span>Limited wheelchair access</span></li>`);
+    if (p.liveMusic || q.liveMusic) info.push(`<li class="warn">${icon("music")}<span>Has live music at times</span></li>`);
+    if (p.sportsTv || q.sportsTv) info.push(`<li class="warn">${icon("tv")}<span>May show sport on TV</span></li>`);
+    if (p.phone) info.push(`<li>${icon("phone")}<span>${esc(p.phone.split(";")[0])}</span></li>`);
+
+    const price = q.price ? `<span>${priceLabel(q.price)} · ${priceWords(q.price)}</span>` : "";
+    const dist = p.dist != null ? `<span>${icon("pin")}${esc(fmtDistance(p.dist))} away</span>` : "";
+    const tel = p.phone ? p.phone.split(";")[0].replace(/[^\d+]/g, "") : "";
+    const web = p.website ? (/^https?:/i.test(p.website) ? p.website : "https://" + p.website) : "";
+
+    $("#details").innerHTML = `
+      <div class="detail-hero">
+        <p class="eyebrow">${esc(cuisineText(p.cuisine, p.amenity))}</p>
+        <h1 id="details-title" tabindex="-1">${esc(p.name)}</h1>
+        <p class="card-meta">${dist}${price}</p>
+        ${verdict}
+      </div>
+      <div class="action-row">
+        <a class="action" href="${dir}" target="_blank" rel="noopener">${icon("nav")}Directions</a>
+        ${tel ? `<a class="action" href="tel:${esc(tel)}">${icon("phone")}Call</a>` : ""}
+        ${web ? `<a class="action" href="${esc(web)}" target="_blank" rel="noopener">${icon("globe")}Website</a>` : ""}
+        <button type="button" class="action" data-save="${esc(p.id)}" aria-pressed="${isSaved}">${icon("heart")}${isSaved ? "Saved" : "Save"}</button>
+      </div>
+      <button type="button" class="btn btn-primary btn-block btn-xl" data-rate="${esc(p.id)}">${icon("pencil")} Rate the noise here</button>
+      ${info.length ? `<h2 class="section-title">About this place</h2><div class="info"><ul class="info-list">${info.join("")}</ul></div>` : ""}
+      <h2 class="section-title">Location</h2>
+      <div id="mini-map" class="map-mini" aria-label="Map showing ${esc(p.name)}"></div>`;
+    drawMiniMap(p, q);
+  }
+  async function drawMiniMap(p, q) {
+    let L;
+    try { L = await loadLeaflet(); } catch {
+      const el = $("#mini-map");
+      if (el) el.innerHTML = `<div class="map-fallback">${esc(p.addr || "Map unavailable offline")}</div>`;
+      return;
+    }
+    const el = $("#mini-map");
+    if (!el) return;
+    if (miniMap) { miniMap.remove(); miniMap = null; }
+    miniMap = L.map(el, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, touchZoom: false, keyboard: false }).setView([p.lat, p.lon], 16);
+    tiles(L, miniMap);
+    L.marker([p.lat, p.lon], { icon: pinIcon(L, q, ""), keyboard: false }).addTo(miniMap);
+  }
+
+  // ================================================================ saved
+  function renderSaved() {
+    const all = Object.values(Saved.all()).sort((a, b) => b.savedAt - a.savedAt);
+    const ul = $("#saved-list");
+    if (!all.length) {
+      ul.innerHTML = `<li class="empty">${icon("heart")}<h2>Nothing saved yet</h2><p>Tap the heart on any restaurant to keep it here for next time.</p>
+        <button type="button" class="btn btn-primary" data-tab="search">Find a restaurant</button></li>`;
+      return;
+    }
+    ul.innerHTML = all.map((s) => {
+      const p = { ...s, dist: state.loc ? distanceM(state.loc, s) : null };
+      return cardHtml({ ...p, q: quietInfo(p) }, 0);
+    }).join("");
+  }
+  function toggleSave(id, btn) {
+    const p = getPlace(id);
+    if (!p) return;
+    const on = Saved.toggle(p);
+    toast(on ? `Saved ${p.name}` : `Removed ${p.name}`);
+    $$(`[data-save="${CSS.escape(id)}"]`).forEach((b) => {
+      b.setAttribute("aria-pressed", String(on));
+      if (b.classList.contains("action")) b.innerHTML = `${icon("heart")}${on ? "Saved" : "Save"}`;
+      else b.setAttribute("aria-label", `${on ? "Remove from saved" : "Save"} ${p.name}`);
+    });
+    if (state.screen === "saved" && !on) renderSaved();
+  }
+
+  // ================================================================ rating
   function openRating(id) {
-    const p = state.places.find((x) => x.id === id);
+    const p = getPlace(id);
     if (!p) return;
     state.ratingFor = p;
     state.measuredDb = null;
     $("#rate-form").reset();
-    $("#rate-place").textContent = `${p.name} · ${fmtDistance(p.dist)} away`;
-    $("#meter-db").textContent = "--";
-    $("#meter-fill").style.width = "0";
-    $("#meter-status").textContent = "";
+    $("#rate-place").textContent = p.name;
+    $("#meter-db").textContent = "––";
+    $("#gauge-fill").setAttribute("stroke-dasharray", "0 100");
+    $("#meter-status").textContent = "At the restaurant? Your phone can take a 10-second reading. Nothing is recorded — only the number is kept.";
+    $("#btn-measure").innerHTML = `${icon("mic")} Measure for 10 seconds`;
     $("#feature-checks").innerHTML = D.features.map((f) =>
-      `<label class="choice"><input type="checkbox" name="feat" value="${f.id}" /> <span>${f.good ? "👍" : "👎"} ${esc(f.label)}</span></label>`).join("");
+      `<label class="chip ${f.good ? "good" : "bad"}"><input type="checkbox" name="feat" value="${f.id}" />${icon(f.good ? "check" : "x")}<span>${esc(f.label)}</span></label>`).join("");
     $("#rate-price").innerHTML = [1, 2, 3, 4].map((n) =>
-      `<label class="choice"><input type="radio" name="price" value="${n}" /> <span aria-label="${priceWords(n)}">${priceLabel(n)}</span></label>`).join("");
+      `<label class="seg"><input type="radio" name="price" value="${n}" aria-label="${priceWords(n)}" /><span>${priceLabel(n)}</span></label>`).join("");
     show("rate");
   }
-
   function submitRating(e) {
     e.preventDefault();
     const f = new FormData(e.target);
     const talk = Number(f.get("talk"));
-    if (!talk) { toast("Please answer the first question."); return; }
+    if (!talk) { toast("Please answer the first question"); $("#rate-form .option").scrollIntoView({ block: "center" }); return; }
     Store.add(state.ratingFor.id, {
       talk,
       music: f.get("music") || null,
@@ -619,30 +810,28 @@
       db: state.measuredDb,
       t: Date.now(),
     });
-    toast("Thank you! Your rating has been saved.");
-    show("results");
-    renderResults();
+    toast("Thank you — rating saved");
+    history.back();
+    setTimeout(() => { if (state.screen === "details") renderDetails(state.ratingFor.id); }, 50);
   }
 
   // Sound level meter. Phones aren't calibrated, so this is an estimate.
   const DB_OFFSET = 94; // dBFS -> rough dB SPL for a typical phone microphone
   async function measure() {
     const btn = $("#btn-measure"), st = $("#meter-status");
-    if (!navigator.mediaDevices?.getUserMedia) { st.textContent = "Your device or browser can't measure sound."; return; }
+    if (!navigator.mediaDevices?.getUserMedia) { st.textContent = "This device or browser can't measure sound."; return; }
     btn.disabled = true;
     st.textContent = "Please allow the microphone when asked…";
     let stream, ctx;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const src = ctx.createMediaStreamSource(stream);
       const an = ctx.createAnalyser();
       an.fftSize = 2048;
-      src.connect(an);
+      ctx.createMediaStreamSource(stream).connect(an);
       const buf = new Float32Array(an.fftSize);
       let energy = 0, frames = 0;
       const end = performance.now() + 10000;
-      st.textContent = "Listening… hold your phone at the table.";
       await new Promise((resolve) => {
         (function tick() {
           an.getFloatTimeDomainData(buf);
@@ -650,68 +839,95 @@
           for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
           const ms = s / buf.length;
           energy += ms; frames++;
-          const db = Math.max(30, Math.round(10 * Math.log10(ms || 1e-12) + DB_OFFSET));
-          showDb(db);
+          showDb(Math.max(30, Math.round(10 * Math.log10(ms || 1e-12) + DB_OFFSET)));
           const left = Math.ceil((end - performance.now()) / 1000);
-          if (left > 0) { st.textContent = `Listening… ${left} second${left > 1 ? "s" : ""} left`; requestAnimationFrame(tick); }
+          if (left > 0) { st.textContent = `Listening… ${left} second${left > 1 ? "s" : ""} left. Hold your phone at the table.`; requestAnimationFrame(tick); }
           else resolve();
         })();
       });
       const avg = Math.max(30, Math.round(10 * Math.log10(energy / frames || 1e-12) + DB_OFFSET));
       state.measuredDb = avg;
       showDb(avg);
-      const L = LEVELS[dbToScore(avg)];
-      st.textContent = `About ${avg} dB – that's “${L.text.toLowerCase()}”. This will be saved with your rating.`;
+      st.textContent = `About ${avg} dB — that's “${LEVELS[dbToScore(avg)].text.toLowerCase()}”. It will be saved with your rating.`;
     } catch {
-      st.textContent = "We couldn't use the microphone. That's fine – your answers above are enough.";
+      st.textContent = "We couldn't use the microphone. That's fine — your answers are enough.";
     } finally {
       stream?.getTracks().forEach((t) => t.stop());
       ctx?.close();
       btn.disabled = false;
-      btn.textContent = "🎤 Measure again";
+      btn.innerHTML = `${icon("mic")} Measure again`;
     }
   }
   function showDb(db) {
     $("#meter-db").textContent = db;
-    const fill = $("#meter-fill");
-    fill.style.width = `${Math.min(100, Math.max(0, (db - 40) / 50 * 100))}%`;
-    fill.style.background = `var(--${LEVELS[dbToScore(db)].cls})`;
+    const pct = Math.min(100, Math.max(0, ((db - 40) / 50) * 100));
+    const fill = $("#gauge-fill");
+    fill.setAttribute("stroke-dasharray", `${pct} 100`);
+    fill.style.stroke = `var(--${LEVELS[dbToScore(db)].cls})`;
   }
 
-  // ------------------------------------------------------------------ wiring
+  // ================================================================ help
+  function renderLegend() {
+    $("#legend").innerHTML = [4, 3, 2, 1, 0].map((n) =>
+      `<li>${qBadge({ level: n })}<p>${esc(LEVELS[n].sub)}</p></li>`).join("")
+      + `<li>${qBadge({ level: 4, predicted: true })}<p>Not yet rated by diners — judged from photos and reviews.</p></li>`;
+    $$("#rate-form .meter-mini").forEach((el) => { el.outerHTML = `<span class="${LEVELS[el.dataset.level].cls}">${bars(+el.dataset.level)}</span>`; });
+  }
+
+  // ================================================================ wiring
   function init() {
     if (DEMO) $("#demo-banner").hidden = false;
     applySettings();
     renderSettings();
     renderSearchControls();
-    history.replaceState({ screen: "search" }, "", location.search || location.pathname);
+    renderLegend();
+    history.replaceState({ screen: "search", tab: "search" }, "", location.search || location.pathname);
 
     $("#btn-locate").addEventListener("click", useMyLocation);
     $("#place-form").addEventListener("submit", (e) => { e.preventDefault(); searchPlace($("#place-input").value); });
-    $("#cuisine").addEventListener("change", (e) => { state.cuisine = e.target.value; persistSearch(); });
     $("#btn-find").addEventListener("click", runSearch);
     $("#btn-more").addEventListener("click", () => { state.shown += PAGE; renderResults(); });
     $("#rate-form").addEventListener("submit", submitRating);
     $("#btn-measure").addEventListener("click", measure);
+    $("#btn-back").addEventListener("click", goBack);
 
     $$("[data-sort]").forEach((b) => b.addEventListener("click", () => {
       state.sort = b.dataset.sort;
-      $$("[data-sort]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      $$("[data-sort]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
+      renderResults();
+    }));
+    $$("[data-view]").forEach((b) => b.addEventListener("click", () => {
+      state.view = b.dataset.view;
+      $$("[data-view]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
       renderResults();
     }));
 
     document.addEventListener("click", (e) => {
-      const go = e.target.closest("[data-go]");
-      if (go) { show(go.dataset.go); return; }
-      const rate = e.target.closest("[data-rate]");
+      const t = e.target;
+      const saveBtn = t.closest("[data-save]");
+      if (saveBtn) { toggleSave(saveBtn.dataset.save, saveBtn); return; }
+      const det = t.closest("[data-detail]");
+      if (det) { openDetails(det.dataset.detail); return; }
+      const rate = t.closest("[data-rate]");
       if (rate) { openRating(rate.dataset.rate); return; }
-      const open = e.target.closest("[data-open]");
+      const tab = t.closest("[data-tab]");
+      if (tab) {
+        e.preventDefault();
+        const name = tab.dataset.tab;
+        if (name === "saved") renderSaved();
+        if (name === "search" && state.tab === "search" && state.screen !== "search") { show("search"); return; }
+        if (name === "search" && state.places.length && state.screen !== "results" && state.tab !== "search") { show("results"); renderResults(); return; }
+        show(name);
+        return;
+      }
+      const go = t.closest("[data-go]");
+      if (go) { show(go.dataset.go); return; }
+      const open = t.closest("[data-open]");
       if (open) $(`#dlg-${open.dataset.open}`).showModal();
     });
+    $("#dlg-settings").addEventListener("click", (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
 
-    if ("serviceWorker" in navigator && location.protocol === "https:") {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    }
+    if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
   init();

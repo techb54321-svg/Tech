@@ -18,6 +18,25 @@ Each restaurant shows a clear noise label (**Quiet**, **Fairly quiet**,
 food type, price, address, opening hours and wheelchair access. There are
 **Directions** and **Call** buttons, and warnings for live music or sport on TV.
 
+### Look and feel
+
+Quiet Table is designed to feel like a polished phone app:
+
+- **Bottom tab bar** with Find, Saved and Help, plus a Back button at the top.
+- **List or map:** results show as cards or as colour-coded pins on a map
+  (Leaflet + OpenStreetMap).
+- **Restaurant details page** with the noise verdict and its reasons,
+  Directions / Call / Website / Save buttons, opening hours, accessibility
+  and a small map.
+- **Saved places:** tap the heart to keep a restaurant for next time.
+- **A "quiet meter"** of four bars shows noise at a glance, always with
+  words as well as colour. A dashed outline means "likely, from photos and
+  reviews".
+- **Easy to read:** large type (Figtree for text, Fraunces for headings),
+  high contrast, three text sizes, and light, dark or automatic appearance.
+  Every button is at least 48px tall.
+- **Installable** with a proper app icon (Add to Home Screen).
+
 ### Quiet ratings
 
 No public database records how loud restaurants are, so diners rate them.

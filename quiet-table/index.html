@@ -4,188 +4,312 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Quiet Table</title>
-<meta name="description" content="Find nearby restaurants where you can enjoy a conversation without shouting." />
-<meta name="theme-color" content="#1f4d3a" />
+<meta name="description" content="Find nearby restaurants where you can enjoy a real conversation, without shouting." />
+<meta name="theme-color" content="#F7F3EA" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Quiet Table" />
 <link rel="manifest" href="manifest.webmanifest" />
 <link rel="icon" href="icon.svg" type="image/svg+xml" />
-<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,600;0,700;1,400&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<!-- Icon set (stroke icons, 24×24) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7.5"/><path d="m21 21-4.5-4.5"/></symbol>
+    <symbol id="i-utensils" viewBox="0 0 24 24"><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3Zm0 0v7"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11 22 2l-9 19-2-8-8-2Z"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-access" viewBox="0 0 24 24"><circle cx="16" cy="4" r="1"/><path d="m18 19 1-7-6 1M5 8l3-3 5.5 3-2.4 3.5M4.2 14.5a5 5 0 0 0 6.9 6M13.8 17.5a5 5 0 0 0-6.9-6"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="m17 2-5 5-5-5"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5ZM15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  </defs>
+</svg>
+
 <a class="skip" href="#main">Skip to content</a>
 
-<header class="topbar">
-  <h1 class="brand"><span aria-hidden="true">🍽️</span> Quiet Table</h1>
-  <div class="topbar-actions">
-    <button type="button" class="link-btn" data-open="settings">Settings</button>
-    <button type="button" class="link-btn" data-open="help">Help</button>
+<header class="appbar">
+  <div class="appbar-inner">
+    <button type="button" class="icon-btn appbar-back" id="btn-back" hidden aria-label="Back">
+      <svg class="i"><use href="#i-left"/></svg><span>Back</span>
+    </button>
+    <a class="brand" href="./" data-tab="search" aria-label="Quiet Table home">
+      <img src="icon.svg" alt="" width="36" height="36" />
+      <span>Quiet Table</span>
+    </a>
+    <button type="button" class="icon-btn" data-open="settings" aria-label="Settings">
+      <svg class="i"><use href="#i-sliders"/></svg><span>Settings</span>
+    </button>
   </div>
 </header>
 
 <div id="demo-banner" class="demo-banner" hidden>
-  Demo mode: these restaurants and ratings are made up, to show how the app works.
-  <a href="./">Leave demo</a>
+  <svg class="i"><use href="#i-sparkle"/></svg>
+  <span>Demo — these restaurants and ratings are made up. <a href="./">Leave demo</a></span>
 </div>
 
 <main id="main">
 
-  <!-- ============ SEARCH SCREEN ============ -->
+  <!-- ===================== SEARCH ===================== -->
   <section id="screen-search" class="screen" aria-labelledby="search-title">
-    <h2 id="search-title" tabindex="-1">Find a quiet place to eat</h2>
-    <p class="lead">Restaurants where you can talk and be heard without raising your voice.</p>
+    <div class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Restaurants with good acoustics</p>
+        <h1 id="search-title" tabindex="-1">Dinner, and a real conversation.</h1>
+        <p class="lead">Find places nearby where you can hear each other — no shouting, no straining.</p>
+      </div>
+      <svg class="hero-art" viewBox="0 0 320 190" role="img" aria-label="Two friends talking across a restaurant table">
+        <circle cx="160" cy="98" r="84" class="art-glow"/>
+        <path d="M74 64c-10 8-16 20-16 34s6 26 16 34M246 64c10 8 16 20 16 34s-6 26-16 34" class="art-wave"/>
+        <path d="M90 76c-6 6-9 13-9 22s3 16 9 22M230 76c6 6 9 13 9 22s-3 16-9 22" class="art-wave"/>
+        <!-- left diner -->
+        <circle cx="112" cy="70" r="15" class="art-skin"/>
+        <path d="M97 66c0-12 8-19 17-19 7 0 13 5 13 11-6-1-13 1-18 6-4-2-9 0-12 2Z" class="art-hair-l"/>
+        <path d="M86 140c0-30 11-48 26-48s24 12 27 30l-6 18Z" class="art-coat-l"/>
+        <!-- right diner -->
+        <circle cx="208" cy="70" r="15" class="art-skin"/>
+        <path d="M193 64c1-11 8-17 16-17s15 6 15 15c0 4-1 7-3 9-2-6-7-10-14-10-6 0-11 2-14 3Z" class="art-hair-r"/>
+        <path d="M234 140c0-30-11-48-26-48s-24 12-27 30l6 18Z" class="art-coat-r"/>
+        <!-- speech -->
+        <path d="M140 46h40a8 8 0 0 1 8 8v12a8 8 0 0 1-8 8h-22l-9 8v-8h-9a8 8 0 0 1-8-8V54a8 8 0 0 1 8-8Z" class="art-bubble"/>
+        <circle cx="150" cy="60" r="3" class="art-dot"/><circle cx="160" cy="60" r="3" class="art-dot"/><circle cx="170" cy="60" r="3" class="art-dot"/>
+        <!-- table -->
+        <rect x="70" y="128" width="180" height="10" rx="5" class="art-table"/>
+        <path d="M100 138v40M220 138v40" class="art-leg"/>
+        <path d="M126 104h12l-2 18a4 4 0 0 1-8 0Z M132 122v6" class="art-glass"/>
+        <path d="M182 104h12l-2 18a4 4 0 0 1-8 0Z M188 122v6" class="art-glass"/>
+        <circle cx="160" cy="118" r="6" class="art-candle"/>
+        <path d="M160 104c3 4 3 7 0 9-3-2-3-5 0-9Z" class="art-flame"/>
+      </svg>
+    </div>
 
-    <div class="card">
-      <h3>1. Where are you?</h3>
-      <button type="button" id="btn-locate" class="btn btn-secondary btn-block">
-        <span aria-hidden="true">📍</span> Use my current location
+    <div class="sheet">
+      <section class="field" aria-labelledby="where-label">
+        <h2 id="where-label" class="field-label"><span class="step">1</span> Where are you?</h2>
+        <button type="button" id="btn-locate" class="btn btn-tonal btn-block">
+          <svg class="i"><use href="#i-locate"/></svg> Use my current location
+        </button>
+        <div class="divider"><span>or</span></div>
+        <form id="place-form" class="search-row" role="search">
+          <label for="place-input" class="visually-hidden">Town, street or postcode</label>
+          <div class="input-wrap">
+            <svg class="i"><use href="#i-search"/></svg>
+            <input id="place-input" type="text" autocomplete="off" enterkeyhint="search" placeholder="Town, street or postcode" />
+          </div>
+          <button type="submit" class="btn btn-secondary">Search</button>
+        </form>
+        <ul id="place-choices" class="choices" hidden></ul>
+        <p id="location-status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="field" aria-labelledby="radius-label">
+        <h2 id="radius-label" class="field-label"><span class="step">2</span> How far will you travel?</h2>
+        <div id="radius-buttons" class="segmented" role="radiogroup" aria-labelledby="radius-label"></div>
+      </section>
+
+      <section class="field" aria-labelledby="cuisine-label">
+        <h2 id="cuisine-label" class="field-label"><span class="step">3</span> What would you like to eat?</h2>
+        <div id="cuisine-chips" class="chips" role="radiogroup" aria-labelledby="cuisine-label"></div>
+      </section>
+
+      <section class="field" aria-labelledby="price-label">
+        <h2 id="price-label" class="field-label"><span class="step">4</span> Price</h2>
+        <div id="price-buttons" class="segmented" role="group" aria-labelledby="price-label"></div>
+        <p class="hint">Tap one or more. Places nobody has priced yet are still shown.</p>
+      </section>
+
+      <section class="field" aria-labelledby="quiet-label">
+        <h2 id="quiet-label" class="field-label"><span class="step">5</span> How quiet?</h2>
+        <div id="quiet-buttons" class="options" role="radiogroup" aria-labelledby="quiet-label"></div>
+      </section>
+
+      <button type="button" id="btn-find" class="btn btn-primary btn-block btn-xl" disabled>
+        <svg class="i"><use href="#i-search"/></svg> Find quiet restaurants
       </button>
-      <p class="or">or type a town, street or postcode</p>
-      <form id="place-form" class="row">
-        <label for="place-input" class="visually-hidden">Town, street or postcode</label>
-        <input id="place-input" type="text" autocomplete="off" placeholder="e.g. Oxford" />
-        <button type="submit" class="btn btn-secondary">Search</button>
-      </form>
-      <ul id="place-choices" class="choices" hidden></ul>
-      <p id="location-status" class="status" role="status" aria-live="polite"></p>
+      <p id="find-hint" class="hint center">Start by telling us where you are.</p>
     </div>
-
-    <div class="card">
-      <h3 id="radius-label">2. How far will you travel?</h3>
-      <div id="radius-buttons" class="pill-group" role="radiogroup" aria-labelledby="radius-label"></div>
-    </div>
-
-    <div class="card">
-      <h3><label for="cuisine">3. What kind of food?</label></h3>
-      <select id="cuisine"></select>
-    </div>
-
-    <div class="card">
-      <h3 id="price-label">4. Price</h3>
-      <p class="hint">Tap one or more, or leave them all off for any price. Places nobody has priced yet are still shown.</p>
-      <div id="price-buttons" class="pill-group" role="group" aria-labelledby="price-label"></div>
-    </div>
-
-    <div class="card">
-      <h3>5. How quiet?</h3>
-      <div id="quiet-buttons" class="pill-group stack" role="radiogroup" aria-label="How quiet"></div>
-    </div>
-
-    <button type="button" id="btn-find" class="btn btn-primary btn-block btn-big" disabled>
-      Find quiet restaurants
-    </button>
-    <p id="find-hint" class="hint center">First, tell us where you are (step 1).</p>
   </section>
 
-  <!-- ============ RESULTS SCREEN ============ -->
+  <!-- ===================== RESULTS ===================== -->
   <section id="screen-results" class="screen" hidden aria-labelledby="results-title">
-    <button type="button" class="btn btn-ghost back" data-go="search">← Change my search</button>
-    <h2 id="results-title" tabindex="-1">Restaurants near you</h2>
-    <p id="results-summary" class="lead" role="status" aria-live="polite"></p>
-
-    <div class="sort-row" role="radiogroup" aria-label="Sort order">
-      <span>Show:</span>
-      <button type="button" class="pill" data-sort="quiet" aria-pressed="true">Quietest first</button>
-      <button type="button" class="pill" data-sort="near" aria-pressed="false">Nearest first</button>
+    <div class="screen-head">
+      <h1 id="results-title" tabindex="-1">Restaurants near you</h1>
+      <p id="results-summary" class="lead" role="status" aria-live="polite"></p>
+      <div class="toolbar">
+        <div class="segmented compact" role="radiogroup" aria-label="View">
+          <button type="button" class="seg" data-view="list" role="radio" aria-checked="true"><svg class="i"><use href="#i-list"/></svg> List</button>
+          <button type="button" class="seg" data-view="map" role="radio" aria-checked="false"><svg class="i"><use href="#i-map"/></svg> Map</button>
+        </div>
+        <div class="segmented compact" role="radiogroup" aria-label="Sort order">
+          <button type="button" class="seg" data-sort="quiet" role="radio" aria-checked="true">Quietest</button>
+          <button type="button" class="seg" data-sort="near" role="radio" aria-checked="false">Nearest</button>
+        </div>
+      </div>
     </div>
 
     <div id="results-loading" class="loading" hidden>
-      <div class="spinner" aria-hidden="true"></div>
-      <p>Looking for restaurants…</p>
+      <div class="loader" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+      <p>Finding restaurants near you…</p>
     </div>
-    <ol id="results-list" class="results"></ol>
+    <div id="map-wrap" class="map-wrap" hidden>
+      <div id="map" class="map" role="application" aria-label="Map of restaurants"></div>
+      <p class="hint center">Tap a pin to see the restaurant.</p>
+    </div>
+    <ol id="results-list" class="cards"></ol>
     <button type="button" id="btn-more" class="btn btn-secondary btn-block" hidden>Show more</button>
   </section>
 
-  <!-- ============ RATE SCREEN ============ -->
+  <!-- ===================== DETAILS ===================== -->
+  <section id="screen-details" class="screen" hidden aria-labelledby="details-title">
+    <div id="details"></div>
+  </section>
+
+  <!-- ===================== RATE ===================== -->
   <section id="screen-rate" class="screen" hidden aria-labelledby="rate-title">
-    <button type="button" class="btn btn-ghost back" data-go="results">← Back to the list</button>
-    <h2 id="rate-title" tabindex="-1">How noisy was it?</h2>
-    <p class="lead" id="rate-place"></p>
+    <div class="screen-head">
+      <p class="eyebrow" id="rate-place"></p>
+      <h1 id="rate-title" tabindex="-1">How was the noise?</h1>
+      <p class="lead">Your answers help other diners find somewhere they can talk.</p>
+    </div>
 
-    <form id="rate-form">
-      <fieldset class="card">
-        <legend>Could you hold a conversation?</legend>
-        <div class="pill-group stack">
-          <label class="choice"><input type="radio" name="talk" value="4" required /> <span>😊 Yes, easily</span></label>
-          <label class="choice"><input type="radio" name="talk" value="3" /> <span>🙂 Yes, with a little effort</span></label>
-          <label class="choice"><input type="radio" name="talk" value="2" /> <span>😕 We had to raise our voices</span></label>
-          <label class="choice"><input type="radio" name="talk" value="1" /> <span>😣 We could hardly hear each other</span></label>
+    <form id="rate-form" class="sheet">
+      <fieldset class="field">
+        <legend class="field-label">Could you hold a conversation?</legend>
+        <div class="options">
+          <label class="option"><input type="radio" name="talk" value="4" required /><span class="meter-mini" data-level="4"></span><span>Yes, easily</span></label>
+          <label class="option"><input type="radio" name="talk" value="3" /><span class="meter-mini" data-level="3"></span><span>Yes, with a little effort</span></label>
+          <label class="option"><input type="radio" name="talk" value="2" /><span class="meter-mini" data-level="2"></span><span>We had to raise our voices</span></label>
+          <label class="option"><input type="radio" name="talk" value="1" /><span class="meter-mini" data-level="1"></span><span>We could hardly hear each other</span></label>
         </div>
       </fieldset>
 
-      <fieldset class="card">
-        <legend>Background music</legend>
-        <div class="pill-group stack">
-          <label class="choice"><input type="radio" name="music" value="none" /> <span>No music</span></label>
-          <label class="choice"><input type="radio" name="music" value="soft" /> <span>Soft, in the background</span></label>
-          <label class="choice"><input type="radio" name="music" value="loud" /> <span>Too loud</span></label>
+      <fieldset class="field">
+        <legend class="field-label">Background music</legend>
+        <div class="segmented" id="music-seg">
+          <label class="seg"><input type="radio" name="music" value="none" /><span>None</span></label>
+          <label class="seg"><input type="radio" name="music" value="soft" /><span>Soft</span></label>
+          <label class="seg"><input type="radio" name="music" value="loud" /><span>Too loud</span></label>
         </div>
       </fieldset>
 
-      <fieldset class="card">
-        <legend>Anything that helped or hurt? <span class="optional">(optional)</span></legend>
-        <div class="pill-group stack" id="feature-checks"></div>
+      <fieldset class="field">
+        <legend class="field-label">What did you notice? <span class="optional">Optional</span></legend>
+        <div class="chips" id="feature-checks"></div>
       </fieldset>
 
-      <fieldset class="card">
-        <legend>Roughly how much per person? <span class="optional">(optional)</span></legend>
-        <div class="pill-group" id="rate-price"></div>
+      <fieldset class="field">
+        <legend class="field-label">Roughly how much per person? <span class="optional">Optional</span></legend>
+        <div class="segmented" id="rate-price"></div>
       </fieldset>
 
-      <div class="card">
-        <h3>Measure the noise <span class="optional">(optional)</span></h3>
-        <p class="hint">If you're at the restaurant now, your phone can take a 10-second reading. It only listens for those 10 seconds and nothing is recorded or saved except the number.</p>
-        <div class="meter">
-          <div class="meter-value"><span id="meter-db">--</span> <small>dB</small></div>
-          <div class="meter-bar" aria-hidden="true"><div id="meter-fill"></div></div>
-          <p id="meter-status" class="status" role="status" aria-live="polite"></p>
+      <section class="field">
+        <h2 class="field-label">Measure the noise <span class="optional">Optional</span></h2>
+        <div class="gauge-card">
+          <div class="gauge" aria-hidden="true">
+            <svg viewBox="0 0 200 116"><path d="M20 106a80 80 0 0 1 160 0" class="gauge-track"/><path id="gauge-fill" d="M20 106a80 80 0 0 1 160 0" class="gauge-fill" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <div class="gauge-value"><span id="meter-db">––</span><small>dB</small></div>
+          </div>
+          <p id="meter-status" class="status center" role="status" aria-live="polite">At the restaurant? Your phone can take a 10-second reading. Nothing is recorded — only the number is kept.</p>
+          <button type="button" id="btn-measure" class="btn btn-tonal btn-block"><svg class="i"><use href="#i-mic"/></svg> Measure for 10 seconds</button>
         </div>
-        <button type="button" id="btn-measure" class="btn btn-secondary btn-block">🎤 Measure for 10 seconds</button>
-      </div>
+      </section>
 
-      <button type="submit" class="btn btn-primary btn-block btn-big">Save my rating</button>
+      <button type="submit" class="btn btn-primary btn-block btn-xl"><svg class="i"><use href="#i-check"/></svg> Save my rating</button>
     </form>
+  </section>
+
+  <!-- ===================== SAVED ===================== -->
+  <section id="screen-saved" class="screen" hidden aria-labelledby="saved-title">
+    <div class="screen-head">
+      <h1 id="saved-title" tabindex="-1">Saved places</h1>
+      <p class="lead">Restaurants you've marked with a heart.</p>
+    </div>
+    <ol id="saved-list" class="cards"></ol>
+  </section>
+
+  <!-- ===================== HELP ===================== -->
+  <section id="screen-help" class="screen" hidden aria-labelledby="help-title">
+    <div class="screen-head">
+      <h1 id="help-title" tabindex="-1">How it works</h1>
+      <p class="lead">Quiet Table helps you choose restaurants where conversation comes easily.</p>
+    </div>
+    <div class="sheet prose">
+      <h2>What the labels mean</h2>
+      <ul class="legend" id="legend"></ul>
+      <h2>Where the ratings come from</h2>
+      <div class="explain">
+        <svg class="i"><use href="#i-users"/></svg>
+        <p><strong>Diners like you.</strong> After a meal, tap <em>Rate the noise</em> and answer two quick questions. Your phone can also measure the sound for 10 seconds.</p>
+      </div>
+      <div class="explain">
+        <svg class="i"><use href="#i-sparkle"/></svg>
+        <p><strong>Photos and reviews.</strong> Before anyone has rated a place, we look at its photos and reviews. Carpets, tablecloths, booths, curtains and acoustic panels make a room quieter. Hard floors, high bare ceilings, a big bar or TVs make it louder. These show as <em>“Likely quiet”</em> with a dashed outline, and real diner ratings always come first.</p>
+      </div>
+      <h2>Tips for a quieter meal</h2>
+      <ul class="tips">
+        <li>Go at lunchtime or early evening. Friday and Saturday nights are the loudest.</li>
+        <li>Ask for a corner table or a booth, away from the kitchen and the bar.</li>
+        <li>Sit with your back to the wall so sound comes from in front of you.</li>
+      </ul>
+      <p class="small">Restaurant details © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
+      <a class="btn btn-secondary btn-block" href="?demo"><svg class="i"><use href="#i-sparkle"/></svg> Try the demo</a>
+    </div>
   </section>
 </main>
 
-<!-- ============ DIALOGS ============ -->
-<dialog id="dlg-settings" aria-labelledby="settings-title">
+<nav class="tabbar" aria-label="Main">
+  <button type="button" class="tab" data-tab="search" aria-current="page"><svg class="i"><use href="#i-search"/></svg><span>Find</span></button>
+  <button type="button" class="tab" data-tab="saved"><svg class="i"><use href="#i-heart"/></svg><span>Saved</span></button>
+  <button type="button" class="tab" data-tab="help"><svg class="i"><use href="#i-help"/></svg><span>Help</span></button>
+</nav>
+
+<dialog id="dlg-settings" class="bottom-sheet" aria-labelledby="settings-title">
   <form method="dialog">
+    <div class="sheet-grabber" aria-hidden="true"></div>
     <h2 id="settings-title">Settings</h2>
-    <fieldset>
-      <legend>Text size</legend>
-      <div class="pill-group" id="textsize-buttons"></div>
+    <fieldset class="field">
+      <legend class="field-label">Text size</legend>
+      <div class="segmented" id="textsize-buttons"></div>
     </fieldset>
-    <fieldset>
-      <legend>Distances in</legend>
-      <div class="pill-group" id="unit-buttons"></div>
+    <fieldset class="field">
+      <legend class="field-label">Distances in</legend>
+      <div class="segmented" id="unit-buttons"></div>
     </fieldset>
-    <fieldset>
-      <legend>Currency symbol for prices</legend>
-      <div class="pill-group" id="currency-buttons"></div>
+    <fieldset class="field">
+      <legend class="field-label">Currency</legend>
+      <div class="segmented" id="currency-buttons"></div>
+    </fieldset>
+    <fieldset class="field">
+      <legend class="field-label">Appearance</legend>
+      <div class="segmented" id="theme-buttons"></div>
     </fieldset>
     <button class="btn btn-primary btn-block" value="close">Done</button>
-  </form>
-</dialog>
-
-<dialog id="dlg-help" aria-labelledby="help-title">
-  <form method="dialog">
-    <h2 id="help-title">How Quiet Table works</h2>
-    <p><strong>Finding places.</strong> Tell us where you are, how far you'll go, and what you'd like to eat. We list the restaurants and cafés nearby.</p>
-    <p><strong>Quiet ratings come from diners like you.</strong> After a meal, tap <em>“Rate the noise”</em> and answer two quick questions. You can also let your phone measure the noise for 10 seconds.</p>
-    <p><strong>What the labels mean:</strong></p>
-    <ul class="legend">
-      <li><span class="badge q4">Quiet</span> Easy conversation, soft or no music.</li>
-      <li><span class="badge q3">Fairly quiet</span> Conversation takes a little effort.</li>
-      <li><span class="badge q2">Noisy</span> You'll need to raise your voice.</li>
-      <li><span class="badge q1">Very noisy</span> Hard to hear each other.</li>
-      <li><span class="badge q0">Not rated yet</span> No one has rated it. Be the first!</li>
-    </ul>
-    <p><strong>“Likely quiet” (dashed outline).</strong> When no diner has rated a place yet, we look at its photos and reviews: carpets, tablecloths, booths, curtains and acoustic panels make a room quieter; hard floors, high bare ceilings, a big bar or TVs make it louder. We show the reasons under the name. Ratings from real diners always take priority.</p>
-    <p><strong>Tip:</strong> Most places are quieter at lunchtime and early evening than on Friday and Saturday nights. Ask for a corner table or a booth, away from the kitchen and the bar.</p>
-    <p class="small">Restaurant details come from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors.</p>
-    <p class="small"><a href="?demo">Try the demo</a> to see the app with sample ratings.</p>
-    <button class="btn btn-primary btn-block" value="close">Close</button>
   </form>
 </dialog>
 

@@ -1,4 +1,4 @@
-/* Quiet Table — find restaurants where you can hear each other.
+/* Lindy's Table — find restaurants where you can hear each other.
  *
  * Restaurant listings: OpenStreetMap via the Overpass API (free, no key).
  * Town search: OpenStreetMap Nominatim. Map: Leaflet + OpenStreetMap tiles.

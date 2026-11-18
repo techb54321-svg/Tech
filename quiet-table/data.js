@@ -1,4 +1,4 @@
-/* Static lists and demo data for Quiet Table. */
+/* Static lists and demo data for Lindy's Table. */
 window.QT_DATA = {
   // Food types. `match` is a regular expression for the OpenStreetMap "cuisine" tag.
   // `amenity` limits the search to cafés etc. `diet` searches the diet:* tags instead.

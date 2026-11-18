@@ -1,4 +1,4 @@
-# 🍽️ Quiet Table
+# 🍽️ Lindy’s Table
 
 An easy-to-use app for finding restaurants **where you can have a conversation
 without shouting**. It's designed for baby boomers: big text, big buttons,
@@ -20,7 +20,7 @@ food type, price, address, opening hours and wheelchair access. There are
 
 ### Look and feel
 
-Quiet Table is designed to feel like a polished phone app:
+Lindy’s Table is designed to feel like a polished phone app:
 
 - **Bottom tab bar** with Find, Saved and Help, plus a Back button at the top.
 - **List or map:** results show as cards or as colour-coded pins on a map

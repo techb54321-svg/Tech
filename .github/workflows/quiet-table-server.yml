@@ -1,4 +1,4 @@
-name: Deploy Quiet Table server
+name: Deploy Lindy's Table server
 
 # Publishes quiet-table-server/ to Cloudflare Workers. Needs four repository
 # secrets (Settings → Secrets and variables → Actions):
@@ -39,7 +39,7 @@ jobs:
           [ -z "$G" ] && missing="$missing GOOGLE_MAPS_KEY"
           [ -z "$A" ] && missing="$missing ANTHROPIC_API_KEY"
           if [ -n "$missing" ]; then
-            echo "::notice::Quiet Table server not deployed yet. Missing repository secrets:$missing"
+            echo "::notice::Lindy's Table server not deployed yet. Missing repository secrets:$missing"
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -64,7 +64,7 @@ jobs:
         run: |
           npx wrangler deploy | tee deploy.log
           url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
-          echo "### Quiet Table server address" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Lindy's Table server address" >> "$GITHUB_STEP_SUMMARY"
           echo "$url" >> "$GITHUB_STEP_SUMMARY"
           echo "Server address: $url"
 

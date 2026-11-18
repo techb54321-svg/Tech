@@ -1,4 +1,4 @@
-# Quiet Table analysis server
+# Lindy’s Table analysis server
 
 This small server gives restaurants a **"Likely quiet"** label before any
 diner has rated them. For each restaurant it:
@@ -33,7 +33,7 @@ The API keys stay on the server, so they never reach people's phones.
 4. **GitHub**: in this repository go to *Settings → Secrets and variables →
    Actions → New repository secret* and add these four secrets:
    `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GOOGLE_MAPS_KEY`, `ANTHROPIC_API_KEY`.
-5. Under the **Actions** tab, run **Deploy Quiet Table server**. It prints the
+5. Under the **Actions** tab, run **Deploy Lindy’s Table server**. It prints the
    server's address (e.g. `https://quiet-table.yourname.workers.dev`). Put that
    address in `quiet-table/config.js` as `analysisUrl` and push.
 
@@ -53,7 +53,7 @@ You pay for each **new** restaurant analysed. A cached answer is reused for
   on Google's pricing page.
 
 The server analyses at most 10 restaurants per request, and only accepts
-requests from the Quiet Table website. Set the spending limits in steps 1 and 2
+requests from the Lindy’s Table website. Set the spending limits in steps 1 and 2
 as a safety net.
 
 ## Before a wide launch

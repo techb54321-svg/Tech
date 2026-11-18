@@ -1,4 +1,4 @@
-/* Quiet Table analysis server (Cloudflare Worker).
+/* Lindy's Table analysis server (Cloudflare Worker).
  *
  * The app sends a few restaurants (name + location). For each one we:
  *   1. find it on Google Places and read its details, reviews and interior photos;

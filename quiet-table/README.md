@@ -32,6 +32,19 @@ After a meal you tap **Rate the noise** and answer a few questions:
 
 As a rough guide: under about 65 dB is quiet, 66–70 is fairly quiet, 71–76 is noisy and above 76 is very noisy.
 
+### "Likely quiet" labels from photos and reviews
+
+Before anyone has rated a restaurant, the app can still give it a label. The
+companion server (`../quiet-table-server`) looks at the restaurant's Google
+photos and reviews and judges the room. Carpets, tablecloths, booths, curtains
+and acoustic panels point to quiet; hard floors, high bare ceilings, a big bar
+and TVs point to noise. These labels appear as **"Likely quiet"** with a
+dashed outline, with the reasons listed underneath. They also fill in prices
+and warn about live music or sport on TV.
+
+To switch this on, set up the server (see its README) and put its address in
+`config.js`. The demo (`?demo`) shows two examples.
+
 ## Try it
 
 - **Demo with sample ratings:** open `index.html?demo`. The restaurants and ratings in it are made up.

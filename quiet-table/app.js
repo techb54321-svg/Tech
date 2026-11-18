@@ -20,6 +20,7 @@
   ];
   const NOMINATIM = "https://nominatim.openstreetmap.org/search";
   const MAX_RESULTS = 600; // cap on what we ask Overpass for
+  const CFG = window.QT_CONFIG || {};
   const PAGE = 20;
 
   // ------------------------------------------------------------------ storage
@@ -57,6 +58,8 @@
     shown: PAGE,
     ratingFor: null,
     measuredDb: null,
+    predictions: loadPredictionCache(), // id -> verdict from photos & reviews (or null)
+    pending: new Set(),
   };
 
   function guessCurrency() {
@@ -68,6 +71,21 @@
 
   function persistSearch() {
     save("qt.search", { radius: state.radius, cuisine: state.cuisine, prices: [...state.prices], quiet: state.quiet });
+  }
+
+  // Verdicts worked out from photos & reviews, remembered on this phone for a week.
+  function loadPredictionCache() {
+    if (DEMO) return {};
+    const c = load("qt.predictions", {}), out = {}, now = Date.now();
+    for (const [id, v] of Object.entries(c)) if (now - v.t < 7 * 86400000) out[id] = v.r;
+    return out;
+  }
+  function savePredictionCache() {
+    if (DEMO) return;
+    const c = load("qt.predictions", {}), now = Date.now();
+    for (const [id, r] of Object.entries(state.predictions)) if (r && !c[id]) c[id] = { r, t: now };
+    const entries = Object.entries(c).sort((a, b) => b[1].t - a[1].t).slice(0, 500);
+    save("qt.predictions", Object.fromEntries(entries));
   }
 
   // ------------------------------------------------------------------ helpers
@@ -154,6 +172,30 @@
     const topFeatures = Object.entries(feats).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([id]) => D.features.find((f) => f.id === id)).filter(Boolean);
     const latest = Math.max(...ratings.map((r) => r.t || 0));
     return { level, score, count: ratings.length, price, db, loudMusic, topFeatures, latest };
+  }
+
+  const PRED_LEVEL = { quiet: 4, fairly_quiet: 3, noisy: 2, very_noisy: 1 };
+  const PRED_SCORE = { 4: 3.55, 3: 2.85, 2: 2.0, 1: 1.2 };
+
+  /** Diner ratings win; otherwise fall back to the verdict from photos & reviews. */
+  function quietInfo(p) {
+    const q = summarise(Store.get(p.id));
+    const pr = state.predictions[p.id];
+    if (pr) {
+      if (!q.price && pr.price) q.price = pr.price;
+      if (pr.quieter_times) q.quieterTimes = pr.quieter_times;
+      q.liveMusic = !!pr.liveMusic;
+      q.sportsTv = !!pr.sportsTv;
+    }
+    if (!q.count && pr && PRED_LEVEL[pr.level]) {
+      q.level = PRED_LEVEL[pr.level];
+      q.score = PRED_SCORE[q.level] - (pr.confidence === "low" ? 0.3 : 0);
+      q.predicted = true;
+      q.confidence = pr.confidence;
+      q.reasons = pr.reasons || [];
+    }
+    q.pending = !q.count && !q.predicted && state.pending.has(p.id);
+    return q;
   }
 
   const LEVELS = {
@@ -246,8 +288,8 @@
 
     pillRadio($("#quiet-buttons"), [
       { value: "all", label: "Show everything, quietest at the top" },
-      { value: "notnoisy", label: "Hide places rated noisy" },
-      { value: "quiet", label: "Only places rated quiet" },
+      { value: "notnoisy", label: "Hide noisy places" },
+      { value: "quiet", label: "Only quiet places" },
     ], state.quiet, (v) => { state.quiet = v; persistSearch(); });
   }
 
@@ -387,7 +429,7 @@
         const lat = loc.lat + d.dy * kmLat, lon = loc.lon + d.dx * kmLon;
         return { id: `demo/${i}`, name: d.name, amenity: d.amenity || "restaurant", cuisine: d.cuisine, lat, lon,
           dist: distanceM(loc, { lat, lon }), addr: d.addr, phone: d.phone || "", website: "", hours: d.hours || "",
-          wheelchair: d.wheelchair || "", liveMusic: !!d.liveMusic };
+          wheelchair: d.wheelchair || "", liveMusic: !!d.liveMusic, demoPredict: d.predict || null };
       }).filter((p) => p.dist <= radius
         && (c.id === "any" || (c.amenity ? p.amenity === c.amenity : re.test(p.cuisine))))
     ), 500));
@@ -419,8 +461,8 @@
   }
 
   function filteredSorted() {
-    const list = state.places.map((p) => ({ ...p, q: summarise(Store.get(p.id)) })).filter((p) => {
-      if (state.quiet === "quiet" && p.q.level !== 4) return false;
+    const list = state.places.map((p) => ({ ...p, q: quietInfo(p) })).filter((p) => {
+      if (state.quiet === "quiet" && (p.q.level !== 4 || p.q.confidence === "low")) return false;
       if (state.quiet === "notnoisy" && (p.q.level === 1 || p.q.level === 2)) return false;
       if (state.prices.size && p.q.price && !state.prices.has(p.q.price)) return false;
       return true;
@@ -438,11 +480,16 @@
     const list = filteredSorted();
     const ul = $("#results-list");
     const rated = list.filter((p) => p.q.count).length;
+    const likely = list.filter((p) => p.q.predicted).length;
+    const checking = list.slice(0, state.shown).some((p) => p.q.pending);
     const area = `within ${fmtDistance(state.radius).replace(/^less than /, "")}`;
     const cuisine = D.cuisines.find((c) => c.id === state.cuisine);
     $("#results-title").textContent = state.cuisine === "any" ? "Restaurants near you" : `${cuisine.label} near you`;
     $("#results-summary").textContent = list.length
-      ? `${list.length} place${list.length > 1 ? "s" : ""} ${area}. ${rated ? `${rated} ha${rated > 1 ? "ve" : "s"} quiet ratings.` : "None have been rated for noise yet – you could be the first!"}`
+      ? `${list.length} place${list.length > 1 ? "s" : ""} ${area}. `
+        + (rated ? `${rated} rated by diners. ` : "")
+        + (likely ? `${likely} judged from photos and reviews. ` : "")
+        + (checking ? "Checking photos and reviews for the rest…" : (!rated && !likely ? "None have been rated for noise yet – you could be the first!" : ""))
       : "";
 
     if (!list.length) {
@@ -457,6 +504,43 @@
     ul.innerHTML = list.slice(0, state.shown).map(cardHtml).join("");
     $("#btn-more").hidden = list.length <= state.shown;
     $("#btn-more").textContent = `Show more (${list.length - state.shown} left)`;
+    loadPredictions(list.slice(0, state.shown));
+  }
+
+  // Ask the analysis server about places that have no diner ratings yet.
+  async function loadPredictions(shown) {
+    const todo = shown.filter((p) => !p.q.count && !(p.id in state.predictions) && !state.pending.has(p.id));
+    if (!todo.length) return;
+    if (DEMO) {
+      todo.forEach((p) => state.pending.add(p.id));
+      renderResults();
+      await new Promise((r) => setTimeout(r, 1200));
+      todo.forEach((p) => { state.pending.delete(p.id); state.predictions[p.id] = p.demoPredict; });
+      renderResults();
+      return;
+    }
+    if (!CFG.analysisUrl) return;
+    todo.forEach((p) => state.pending.add(p.id));
+    renderResults();
+    const batches = [];
+    for (let i = 0; i < todo.length; i += 10) batches.push(todo.slice(i, i + 10));
+    await Promise.all(batches.map(async (batch) => {
+      try {
+        const res = await fetchWithTimeout(CFG.analysisUrl.replace(/\/$/, "") + "/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ places: batch.map((p) => ({ id: p.id, name: p.name, lat: p.lat, lon: p.lon })) }),
+        }, 90000);
+        const data = res.ok ? await res.json() : { results: {} };
+        for (const p of batch) state.predictions[p.id] = data.results?.[p.id] ?? null;
+      } catch {
+        for (const p of batch) state.predictions[p.id] = null;
+      } finally {
+        batch.forEach((p) => state.pending.delete(p.id));
+      }
+    }));
+    savePredictionCache();
+    if (!$("#screen-results").hidden) renderResults();
   }
 
   function cardHtml(p) {
@@ -468,20 +552,32 @@
     else if (p.wheelchair === "limited") facts.push("<li>♿ Limited wheelchair access</li>");
     if (p.q.db) facts.push(`<li>🎤 Measured about ${p.q.db} dB on average</li>`);
     if (p.q.loudMusic) facts.push(`<li class="warn">🔊 Diners say the music is loud</li>`);
-    if (p.liveMusic) facts.push(`<li class="warn">🎸 Has live music at times</li>`);
-    if (p.sportsTv) facts.push(`<li class="warn">📺 May show sport on TV</li>`);
+    if (p.liveMusic || p.q.liveMusic) facts.push(`<li class="warn">🎸 Has live music at times</li>`);
+    if (p.sportsTv || p.q.sportsTv) facts.push(`<li class="warn">📺 May show sport on TV</li>`);
+    if (p.q.quieterTimes) facts.push(`<li>🕰️ Quieter times: ${esc(p.q.quieterTimes)}</li>`);
     if (p.q.topFeatures?.length) facts.push(`<li>💬 Diners mention: ${p.q.topFeatures.map((f) => esc(f.label.toLowerCase())).join("; ")}</li>`);
 
     const price = p.q.price ? `<strong>${priceLabel(p.q.price)}</strong> ${priceWords(p.q.price).toLowerCase()}` : "price not known yet";
     const dir = `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`;
-    const count = p.q.count
-      ? `<span class="count">${p.q.count} rating${p.q.count > 1 ? "s" : ""} · last rated ${timeAgo(p.q.latest)}</span>`
-      : "";
+    let badge, note = "", why = "";
+    if (p.q.count) {
+      badge = `<span class="badge ${L.cls}">${L.text}</span><span class="count">${p.q.count} diner rating${p.q.count > 1 ? "s" : ""} · last rated ${timeAgo(p.q.latest)}</span>`;
+      note = L.sub;
+    } else if (p.q.predicted) {
+      badge = `<span class="badge predicted ${L.cls}">Likely ${L.text.toLowerCase()}</span><span class="count">from photos & reviews${p.q.confidence === "low" ? " · rough guess" : ""}</span>`;
+      note = L.sub;
+      if (p.q.reasons?.length) why = `<ul class="why">${p.q.reasons.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>`;
+    } else if (p.q.pending) {
+      badge = `<span class="badge checking">Checking…</span><span class="count">looking at photos & reviews</span>`;
+    } else {
+      badge = `<span class="badge ${L.cls}">${L.text}</span>`;
+    }
     return `<li class="place">
-      <div class="badge-row"><span class="badge ${L.cls}">${L.text}</span>${count}</div>
+      <div class="badge-row">${badge}</div>
       <h3>${esc(p.name)}</h3>
       <p class="meta"><strong>${esc(fmtDistance(p.dist))} away</strong> · ${esc(cuisineText(p.cuisine, p.amenity))} · ${price}</p>
-      ${L.sub ? `<p class="meta">${L.sub}</p>` : ""}
+      ${note ? `<p class="meta">${note}</p>` : ""}
+      ${why}
       ${facts.length ? `<ul class="facts">${facts.join("")}</ul>` : ""}
       <div class="actions">
         <a class="btn btn-secondary" href="${dir}" target="_blank" rel="noopener">🧭 Directions</a>

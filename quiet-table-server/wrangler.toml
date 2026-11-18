@@ -1,0 +1,12 @@
+name = "quiet-table"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Web pages allowed to use this server (comma-separated). localhost is always allowed for testing.
+ALLOWED_ORIGINS = "https://techb54321-svg.github.io"
+# Most restaurants analysed in one request, to keep costs predictable.
+MAX_PLACES_PER_REQUEST = "10"
+# How long to remember a verdict before looking again.
+CACHE_DAYS = "30"

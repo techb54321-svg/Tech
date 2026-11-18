@@ -1,0 +1,80 @@
+name: Deploy Quiet Table server
+
+# Publishes quiet-table-server/ to Cloudflare Workers. Needs four repository
+# secrets (Settings → Secrets and variables → Actions):
+#   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, GOOGLE_MAPS_KEY, ANTHROPIC_API_KEY
+# Until they are added, this workflow just prints a reminder and stops.
+on:
+  push:
+    branches: [claude/wizardly-noether-ji4obu, ccr-6d9d710c-9v3uwl]
+    paths: ["quiet-table-server/**", ".github/workflows/quiet-table-server.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quiet-table-server
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: quiet-table-server
+    steps:
+      - name: Check the secrets are set
+        id: check
+        working-directory: .
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          G: ${{ secrets.GOOGLE_MAPS_KEY }}
+          A: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          missing=""
+          [ -z "$CF" ] && missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -z "$ACC" ] && missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -z "$G" ] && missing="$missing GOOGLE_MAPS_KEY"
+          [ -z "$A" ] && missing="$missing ANTHROPIC_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::notice::Quiet Table server not deployed yet. Missing repository secrets:$missing"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.check.outputs.ready == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - if: steps.check.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Deploy to Cloudflare
+        if: steps.check.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npx wrangler deploy | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          echo "### Quiet Table server address" >> "$GITHUB_STEP_SUMMARY"
+          echo "$url" >> "$GITHUB_STEP_SUMMARY"
+          echo "Server address: $url"
+
+      - name: Store the API keys on Cloudflare
+        if: steps.check.outputs.ready == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          GOOGLE_MAPS_KEY: ${{ secrets.GOOGLE_MAPS_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          printf '%s' "$GOOGLE_MAPS_KEY" | npx wrangler secret put GOOGLE_MAPS_KEY
+          printf '%s' "$ANTHROPIC_API_KEY" | npx wrangler secret put ANTHROPIC_API_KEY

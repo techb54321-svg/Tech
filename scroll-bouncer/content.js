@@ -3,10 +3,11 @@
 
   // ---- Settings ------------------------------------------------------------
   // His steps keep pace with the speed automatically, so his feet never slide.
-  const WALK_SPEED = 52;        // pixels per second
+  const WALK_SPEED = 68;        // pixels per second
   const SIZE = 96;              // his height in pixels
   const LINE = 'Nope not now';  // what he says, shaking his head
   const GLASSES = true;         // whether he wears round glasses
+  const ARMS = true;            // whether he has arms
 
   // His colours. The body runs from `light` (where the light hits) to `shade`.
   // His nose and feet are a paler tint of the same colour, and `ink` draws his
@@ -59,7 +60,7 @@
   const s = (tag, attrs, ...kids) => node(SVG_NS, tag, attrs, kids);
   const h = (cls, ...kids) => node(null, 'div', { class: cls }, kids);
 
-  // A smooth round guy with a button nose, a smile and two stubby legs, drawn twice on
+  // A smooth round guy with a button nose, a smile, stubby legs and little arms, drawn twice on
   // the same 100 x 100 grid: side on (facing right) for walking and booping,
   // and front on for looking at you and shaking his head.
   const HIP_A = 41.5, HIP_B = 51.5, HIP_Y = 66, ANKLE_Y = 92;
@@ -78,6 +79,12 @@
   ];
   const stroke = (cls, d, color, width) =>
     s('path', { class: cls, d, stroke: color, 'stroke-width': width, 'stroke-linecap': 'round', fill: 'none' });
+  // An arm hanging straight down from its shoulder: a short sleeve with a paler hand.
+  const SHOULDER = { side: { x: 41, y: 57 }, left: { x: 16.5, y: 55 }, right: { x: 75.5, y: 55 } };
+  const arm = (cls, at) =>
+    s('g', { class: cls },
+      s('rect', { x: at.x - 3.75, y: at.y - 3.75, width: 7.5, height: 19, rx: 3.75, fill: COLOR.leg }),
+      s('circle', { cx: at.x, cy: at.y + 15.5, r: 4.4, fill: COLOR.foot }));
   const lens = (cx, cy) =>
     s('circle', { cx, cy, r: 8.2, fill: '#fff', 'fill-opacity': 0.14, stroke: COLOR.frames, 'stroke-width': 1.7 });
 
@@ -93,6 +100,7 @@
       leg('leg-a', HIP_A, COLOR.leg, COLOR.foot),
       s('g', { class: 'torso' },
         ...body(),
+        ...(ARMS ? [arm('arm', SHOULDER.side)] : []),
         ...(GLASSES ? [stroke('', `M${x - 8} ${y - 1.2}L45 ${y - 3.6}`, COLOR.frames, 1.7)] : []),
         s('g', { class: 'eye' }, ...eye(x, y, 0.5)),
         // The same eye squeezed shut in delight, shown while he boops the button.
@@ -116,6 +124,7 @@
     return s('g', { class: 'front' },
       ...leg(BELLY.x - 8.5), ...leg(BELLY.x + 8.5),
       s('g', { class: 'front-torso' },
+        ...(ARMS ? [arm('arm-l', SHOULDER.left), arm('arm-r', SHOULDER.right)] : []),
         ...body(),
         s('g', { class: 'face' },
           s('g', { class: 'front-eyes' }, ...eye(left, y, 0), ...eye(right, y, 0)),
@@ -149,7 +158,7 @@
     const find = (cls) => svg.querySelector('.' + cls);
     return {
       rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
-      eye: find('eye'), happy: find('happy'),
+      eye: find('eye'), happy: find('happy'), arm: find('arm'), armL: find('arm-l'), armR: find('arm-r'),
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
       whites: svg.querySelectorAll('.white')
@@ -164,8 +173,8 @@
   const ease = (t) => t * t * (3 - 2 * t);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const SWING = 26;  // how far each leg swings, in degrees
-  const LIFT = 5;    // how high a foot lifts mid-step
+  const SWING = 30;  // how far each leg swings, in degrees
+  const LIFT = 5.5;  // how high a foot lifts mid-step
   const SHAKE = 7;   // how far his face turns each way when he shakes his head
   const LEG = ANKLE_Y - HIP_Y;
   // Ground covered by one full stride (two steps), in pixels.
@@ -188,8 +197,8 @@
   // Side on: pose.phase is where he is in the stride, pose.amp is 0 standing
   // still and 1 walking, pose.lean is degrees tipped forward, pose.boop is 0
   // standing and 1 nose pushed out.
-  // Front on (pose.front): pose.shake is how far his face has turned, and
-  // pose.shut closes his eyes.
+  // Front on (pose.front): pose.shake is how far his face has turned, pose.shut
+  // closes his eyes, and pose.raise is 0 arm down and 1 arm up to wag "no".
   function draw(part, pose, now, still) {
     const set = (el, value) => el.setAttribute('transform', value);
     const about = (p, inner) => `translate(${p.x} ${p.y}) ${inner} translate(${-p.x} ${-p.y})`;
@@ -213,6 +222,11 @@
       part.shut.style.display = pose.shut ? '' : 'none';
       part.smile.style.display = pose.shut ? 'none' : '';
       part.flat.style.display = pose.shut ? '' : 'none';
+      if (ARMS) {
+        // One arm hangs at his side; the other goes up and wags along with his head.
+        set(part.armL, `rotate(14 ${SHOULDER.left.x} ${SHOULDER.left.y})`);
+        set(part.armR, `rotate(${r3(-14 - pose.raise * (140 + 2.6 * pose.shake))} ${SHOULDER.right.x} ${SHOULDER.right.y})`);
+      }
       return;
     }
 
@@ -235,6 +249,12 @@
     const tall = (1 - 0.04 * beat + 0.012 * breath) * (1 - 0.06 * pose.boop);
     set(part.torso, `translate(${r3(BELLY.x + 5 * pose.boop)} ${BELLY.y}) rotate(${r3(pose.lean + sway)}) ` +
       `scale(${r3(wide)} ${r3(tall)}) translate(${-BELLY.x} ${-BELLY.y})`);
+
+    // His arm swings against his near leg, and trails behind him when he boops.
+    if (ARMS) {
+      const swing = k * Math.cos(TAU * pose.phase);
+      set(part.arm, `rotate(${r3(8 + 22 * swing + 50 * pose.boop)} ${SHOULDER.side.x} ${SHOULDER.side.y})`);
+    }
 
     // He squeezes his eye shut in delight while booping.
     const delighted = pose.boop > 0.5;
@@ -311,7 +331,7 @@
     const place = () => { guy.style.transform = `translate(${r3(px)}px, 0)`; };
 
     // One loop redraws him every frame; the steps below just change his pose.
-    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false };
+    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false, raise: 0 };
     let alive = true;
     requestAnimationFrame(function loop(now) {
       if (!alive) return;
@@ -384,15 +404,19 @@
     }
     await sleep(calm ? 200 : 320);
 
-    // And says it, shaking his head with his eyes shut.
+    // And says it, shaking his head with his eyes shut and wagging a hand.
     bubble.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
       { duration: 180, fill: 'forwards' });
     if (calm) {
       await sleep(1600);
     } else {
       pose.shut = true;
-      await tween(1400, (t) => { pose.shake = SHAKE * Math.sin(TAU * 3 * t) * Math.sqrt(Math.sin(Math.PI * t)); });
+      await tween(1400, (t) => {
+        pose.shake = SHAKE * Math.sin(TAU * 3 * t) * Math.sqrt(Math.sin(Math.PI * t));
+        pose.raise = ease(Math.min(1, 7 * t, 7 * (1 - t)));
+      });
       pose.shake = 0;
+      pose.raise = 0;
       pose.shut = false;
       await sleep(450);
     }

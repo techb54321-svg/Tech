@@ -3,7 +3,8 @@
 A browser extension that helps you stop scrolling. Open a social media site and a
 little round guy walks in from the left, toddles all the way across the top of
 the page to the close button and boops it with his nose. The page goes dark, he
-turns to face you, shakes his head and says "Nope not now", and the tab is gone.
+turns to face you, shakes his head, wags a hand and says "Nope not now", and the
+tab is gone.
 
 ## Install
 
@@ -31,7 +32,7 @@ Click the toolbar icon to:
 
 ## Changing how he looks, moves and what he says
 
-Five settings at the top of `content.js`:
+Six settings at the top of `content.js`:
 
 - `WALK_SPEED`: how fast he walks, in pixels per second. His steps keep pace on
   their own, so his feet never slide. He crosses the whole page, so this also
@@ -39,6 +40,7 @@ Five settings at the top of `content.js`:
 - `SIZE`: how tall he is, in pixels.
 - `LINE`: what he says while shaking his head.
 - `GLASSES`: whether he wears round glasses.
+- `ARMS`: whether he has arms.
 - `COLOR`: his colours.
 
 After a change, click the reload arrow on his card at `chrome://extensions`.

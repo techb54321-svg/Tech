@@ -4,7 +4,6 @@
   // ---- Settings ------------------------------------------------------------
   // His steps keep pace with the speed automatically, so his feet never slide.
   const WALK_SPEED = 52;        // pixels per second
-  const WALK_DISTANCE = 260;    // how far from the close button he drops in
   const SIZE = 96;              // his height in pixels
   const LINE = 'Nope not now';  // what he says, shaking his head
   const GLASSES = true;         // whether he wears round glasses
@@ -38,7 +37,7 @@
 .shadow { position: absolute; left: 14%; right: 22%; top: 92.5%; height: 7%; border-radius: 50%; background: rgba(0,0,0,.2); }
 .squash { position: absolute; inset: 0; transform-origin: 46% 96%; filter: drop-shadow(0 3px 4px rgba(0,0,0,.28)); }
 .squash svg { width: 100%; height: 100%; overflow: visible; display: block; }
-.bubble { position: absolute; top: 26px; box-sizing: border-box; padding: 9px 13px; border-radius: 14px 14px 4px 14px;
+.bubble { position: absolute; top: 26px; right: ${BTN.right + BTN.size + REACH + 2}px; box-sizing: border-box; padding: 9px 13px; border-radius: 14px 14px 4px 14px;
   background: #fff; color: #1c1917; opacity: 0; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 .card { position: absolute; inset: 0; display: none; place-items: center; text-align: center;
   background: #0c0a09; color: #fafaf9; font-size: 20px; padding: 24px; pointer-events: auto; }
@@ -302,12 +301,14 @@
     document.documentElement.append(host);
 
     const part = partsOf(svg);
-    const width = document.documentElement.clientWidth || window.innerWidth;
-    const stopX = Math.max(8, width - BTN.right - BTN.size - REACH);
-    const startX = calm ? stopX : Math.max(8, stopX - WALK_DISTANCE);
+    // He walks in from off the left edge and stops with his nose by the button,
+    // wherever that is if the window changes size on the way.
+    const pageWidth = () => document.documentElement.clientWidth || window.innerWidth;
+    let stopX = Math.max(8, pageWidth() - BTN.right - BTN.size - REACH);
+    window.addEventListener('resize', () => { stopX = Math.max(8, pageWidth() - BTN.right - BTN.size - REACH); });
+    const startX = calm ? stopX : -SIZE - 4;
     let px = startX;
     const place = () => { guy.style.transform = `translate(${r3(px)}px, 0)`; };
-    bubble.style.right = `${width - stopX + 2}px`;
 
     // One loop redraws him every frame; the steps below just change his pose.
     const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false };
@@ -325,19 +326,7 @@
     if (calm) {
       await guy.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }).finished;
     } else {
-      // Drop in from above and land with a squish.
-      await guy.animate(
-        [{ transform: `translate(${r3(px)}px, -${TOP + SIZE + 24}px)` }, { transform: `translate(${r3(px)}px, 0)` }],
-        { duration: 420, easing: 'cubic-bezier(.5,0,.9,.5)' }
-      ).finished;
-      await squash.animate(
-        [{ transform: 'scale(1.18,.78)' }, { transform: 'scale(.95,1.07)', offset: 0.5 },
-          { transform: 'scale(1.02,.98)', offset: 0.8 }, { transform: 'scale(1,1)' }],
-        { duration: 420, easing: 'ease-out' }
-      ).finished;
-      await sleep(250);
-
-      // Toddle over to the button.
+      // Toddle in from the left and all the way across the top of the page to the button.
       await new Promise((arrived) => {
         let last;
         requestAnimationFrame(function step(now) {

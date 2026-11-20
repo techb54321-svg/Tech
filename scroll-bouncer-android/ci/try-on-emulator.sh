@@ -40,10 +40,11 @@ echo "== Opening an app on his list and watching the screen"
 mkdir -p shots
 adb logcat -c
 adb shell am start -a android.settings.SETTINGS > /dev/null
-START=$(date +%s.%N)
+START=$(date +%s%N)
 for i in $(seq -w 1 16); do
   adb exec-out screencap -p > "shots/$i.png"
-  printf '%s %.1f\n' "$i" "$(echo "$(date +%s.%N) - $START" | bc)" >> shots/times.txt
+  MS=$(( ($(date +%s%N) - START) / 1000000 ))
+  printf '%s %d.%d\n' "$i" "$((MS / 1000))" "$((MS % 1000 / 100))" >> shots/times.txt
   sleep 0.6
 done
 sleep 4

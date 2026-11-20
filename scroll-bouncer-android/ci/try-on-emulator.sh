@@ -66,7 +66,7 @@ adb shell setprop log.tag.ScrollBouncer DEBUG
 adb logcat -c
 # Opening the app puts him on duty.
 adb shell am start -n "$APP/.MainActivity" > /dev/null
-sleep 8
+sleep 25      # a freshly started emulator takes a while to settle
 echo "Usage access: $(adb shell appops get "$APP" GET_USAGE_STATS | tr -d '\r' | head -n 1)"
 echo "Display over other apps: $(adb shell appops get "$APP" SYSTEM_ALERT_WINDOW | tr -d '\r' | head -n 1)"
 echo "Running: $(adb shell dumpsys activity services "$APP" | grep -c ServiceRecord || true) service(s)"
@@ -77,7 +77,7 @@ echo "== Opening an app on his list and watching the screen"
 mkdir -p shots
 adb shell am start -a android.settings.SETTINGS > /dev/null
 START=$(date +%s%N)
-for i in $(seq -w 1 16); do
+for i in $(seq -w 1 22); do
   adb exec-out screencap -p > "shots/$i.png"
   MS=$(( ($(date +%s%N) - START) / 1000000 ))
   printf '%s %d.%d\n' "$i" "$((MS / 1000))" "$((MS % 1000 / 100))" >> shots/times.txt

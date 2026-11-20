@@ -1,8 +1,8 @@
 # Scroll Bouncer
 
 A browser extension that helps you stop scrolling. Open a social media site and a
-little guy walks across the top of the page, pokes the close button, and the tab
-is gone.
+little tangerine guy drops in at the top of the page, toddles over to the close
+button, pokes it, and the tab is gone.
 
 ## Install
 
@@ -27,6 +27,17 @@ Click the toolbar icon to:
   covers only that section)
 - take a 5 minute break when you really do need to get in
 - see how many tabs he has closed
+
+## Changing how he moves
+
+Three numbers at the top of `content.js`:
+
+- `WALK_SPEED`: how fast he walks, in pixels per second. His steps keep pace on
+  their own, so his feet never slide.
+- `WALK_DISTANCE`: how far from the close button he drops in, in pixels.
+- `SIZE`: how tall he is, in pixels.
+
+After a change, click the reload arrow on his card at `chrome://extensions`.
 
 ## Files
 

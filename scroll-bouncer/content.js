@@ -1,11 +1,23 @@
 (() => {
   if (window.top !== window) return;
 
-  // Tuning. His steps keep pace with the speed automatically, so his feet never slide.
+  // ---- Settings ------------------------------------------------------------
+  // His steps keep pace with the speed automatically, so his feet never slide.
   const WALK_SPEED = 52;        // pixels per second
   const WALK_DISTANCE = 260;    // how far from the close button he drops in
   const SIZE = 96;              // his height in pixels
-  const LINE = 'Nope not now';  // what he says before closing the tab
+  const LINE = 'Nope not now';  // what he says, shaking his head
+  const GLASSES = false;        // true gives him round glasses
+
+  // His colours. The body runs from `light` (where the light hits) to `shade`.
+  // His nose and feet are a paler tint of the same colour, and `ink` draws his
+  // eyes and mouth.
+  const COLOR = {
+    light: '#ffcb45', body: '#ffa51f', shade: '#f27a08',
+    nose: '#ffd68a', foot: '#ffc766', farFoot: '#eeaa45',
+    leg: '#f58a12', farLeg: '#dc7408',
+    ink: '#3b1206', frames: '#3b1206'
+  };
 
   // The close button he boops, placed so his nose lands on it when he leans in.
   const TOP = 8;
@@ -48,38 +60,101 @@
   const s = (tag, attrs, ...kids) => node(SVG_NS, tag, attrs, kids);
   const h = (cls, ...kids) => node(null, 'div', { class: cls }, kids);
 
-  // A smooth round orange guy, facing right: body, one eye, a round nub of a nose, two short legs.
-  // Drawn on a 100 x 100 grid. Hips are at y = 66, ankles at y = 92.
-  const HIP_A = 42, HIP_B = 52, HIP_Y = 66, ANKLE_Y = 92;
-  const BELLY = { x: 46, y: 81 };  // bottom of his body, which he rocks and stretches around
+  // A smooth round guy with a button nose, a smile and two stubby legs, drawn twice on
+  // the same 100 x 100 grid: side on (facing right) for walking and booping,
+  // and front on for looking at you and shaking his head.
+  const HIP_A = 41.5, HIP_B = 51.5, HIP_Y = 66, ANKLE_Y = 92;
+  const BELLY = { x: 46, y: 81 };   // bottom of his body, which he rocks and stretches around
+  const SIDE_EYE = { x: 69.5, y: 52 };              // level with his nose
+  const FRONT_EYES = { left: 35.5, right: 56.5, y: 49 };
+
+  const body = () => [
+    s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: `url(#sb-body) ${COLOR.body}` }),
+    s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 })
+  ];
+  // An eye: a white with a dark pupil. `look` nudges the pupil sideways.
+  const eye = (cx, cy, look) => [
+    s('ellipse', { class: 'white', cx, cy, rx: 4.7, ry: 6.7, fill: '#fff' }),
+    s('ellipse', { cx: cx + look, cy, rx: 2.7, ry: 4.6, fill: COLOR.ink })
+  ];
+  const stroke = (cls, d, color, width) =>
+    s('path', { class: cls, d, stroke: color, 'stroke-width': width, 'stroke-linecap': 'round', fill: 'none' });
+  const lens = (cx, cy) =>
+    s('circle', { cx, cy, r: 8.2, fill: '#fff', 'fill-opacity': 0.14, stroke: COLOR.frames, 'stroke-width': 1.7 });
+
+  function sideView() {
+    const { x, y } = SIDE_EYE;
+    const leg = (name, hip, shade, shoe) =>
+      s('g', { class: name },
+        s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: shade }),
+        s('rect', { class: 'foot', x: hip - 6.5, y: 87, width: 17.5, height: 9.4, rx: 4.7, fill: shoe }));
+
+    return s('g', { class: 'rig' },
+      leg('leg-b', HIP_B, COLOR.farLeg, COLOR.farFoot),
+      leg('leg-a', HIP_A, COLOR.leg, COLOR.foot),
+      s('g', { class: 'torso' },
+        ...body(),
+        ...(GLASSES ? [stroke('', `M${x - 8} ${y - 1.2}L45 ${y - 3.6}`, COLOR.frames, 1.7)] : []),
+        s('g', { class: 'eye' }, ...eye(x, y, 0.5)),
+        // The same eye squeezed shut in delight, shown while he boops the button.
+        stroke('happy', `M${x - 3.1} ${y + 1.6}q3.1 -5.6 6.2 0`, COLOR.ink, 2.2),
+        ...(GLASSES ? [lens(x + 0.2, y)] : []),
+        // A little smile, tucked under his nose.
+        stroke('', 'M74 65.6Q69.6 70.2 64.4 66.4', COLOR.ink, 2),
+        // His nose: a round button on the front of his face, and what he closes tabs with.
+        s('ellipse', { cx: 81.5, cy: 57.5, rx: 7.5, ry: 6.3, fill: COLOR.nose }),
+        s('ellipse', { cx: 79.6, cy: 55.2, rx: 2.4, ry: 1.7, fill: '#fff', opacity: 0.45 })));
+  }
+
+  function frontView() {
+    const { left, right, y } = FRONT_EYES;
+    const gap = right - left - 16.4;
+    const leg = (hip) => [
+      s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg }),
+      s('rect', { x: hip - 7.5, y: 87, width: 15, height: 9.4, rx: 4.7, fill: COLOR.foot })
+    ];
+
+    return s('g', { class: 'front' },
+      ...leg(BELLY.x - 8.5), ...leg(BELLY.x + 8.5),
+      s('g', { class: 'front-torso' },
+        ...body(),
+        s('g', { class: 'face' },
+          s('g', { class: 'front-eyes' }, ...eye(left, y, 0), ...eye(right, y, 0)),
+          // Both eyes shut, for shaking his head.
+          stroke('shut', `M${left - 4.2} ${y + 0.4}q4.2 3.6 8.4 0M${right - 4.2} ${y + 0.4}q4.2 3.6 8.4 0`, COLOR.ink, 2.2),
+          ...(GLASSES ? [
+            lens(left, y), lens(right, y),
+            stroke('', `M${left + 8.2} ${y - 0.6}q${gap / 2} -1.8 ${gap} 0`, COLOR.frames, 1.7),
+            stroke('', `M${left - 8.2} ${y - 0.6}L14.5 ${y - 3}M${right + 8.2} ${y - 0.6}L77.5 ${y - 3}`, COLOR.frames, 1.7)
+          ] : []),
+          // His mouth: a little smile, or a firm flat line while he shakes his head.
+          stroke('smile', 'M40.6 66.2Q46 71.2 51.4 66.2', COLOR.ink, 2),
+          stroke('flat', 'M42 67.8H50', COLOR.ink, 2),
+          // His nose, seen end on.
+          s('circle', { cx: BELLY.x, cy: 58, r: 6.5, fill: COLOR.nose }),
+          s('ellipse', { cx: BELLY.x - 2, cy: 55.8, rx: 2.4, ry: 1.7, fill: '#fff', opacity: 0.45 }))));
+  }
 
   function buildGuy() {
-    const leg = (name, x, shade, shoe) =>
-      s('g', { class: name },
-        s('rect', { x: x - 4.5, y: 62, width: 9, height: 30, rx: 4.5, fill: shade }),
-        s('rect', { class: 'foot', x: x - 6, y: 87.2, width: 19, height: 9.2, rx: 4.6, fill: shoe }));
-
     return s('svg', { viewBox: '0 0 100 100' },
       s('defs', null,
         s('radialGradient', { id: 'sb-body', cx: 0.34, cy: 0.26, r: 0.85 },
-          s('stop', { offset: 0, 'stop-color': '#ffcb45' }),
-          s('stop', { offset: 0.42, 'stop-color': '#ffa51f' }),
-          s('stop', { offset: 1, 'stop-color': '#f27a08' }))),
-      s('g', { class: 'rig' },
-        leg('leg-b', HIP_B, '#d95a0c', '#c2440f'),
-        leg('leg-a', HIP_A, '#ee6c12', '#e2521a'),
-        s('g', { class: 'torso' },
-          // His nose: the bit that sticks out furthest, and what he closes tabs with.
-          s('rect', { x: 72, y: 51.5, width: 17, height: 12, rx: 6, fill: '#f26a0c' }),
-          s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: 'url(#sb-body) #ffa01c' }),
-          s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 }),
-          // One eye, level with his nose: a white with a dark pupil looking ahead.
-          s('g', { class: 'eye' },
-            s('ellipse', { class: 'white', cx: 69.5, cy: 52, rx: 4.7, ry: 6.7, fill: '#fff' }),
-            s('ellipse', { cx: 70, cy: 52, rx: 2.7, ry: 4.6, fill: '#3b1206' })),
-          // The same eye squeezed shut in delight, shown while he boops the button.
-          s('path', { class: 'happy', d: 'M66.4 53.6q3.1 -5.6 6.2 0', stroke: '#3b1206',
-            'stroke-width': 2.2, 'stroke-linecap': 'round', fill: 'none' }))));
+          s('stop', { offset: 0, 'stop-color': COLOR.light }),
+          s('stop', { offset: 0.42, 'stop-color': COLOR.body }),
+          s('stop', { offset: 1, 'stop-color': COLOR.shade }))),
+      sideView(), frontView());
+  }
+
+  // The pieces of him that move.
+  function partsOf(svg) {
+    const find = (cls) => svg.querySelector('.' + cls);
+    return {
+      rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
+      eye: find('eye'), happy: find('happy'),
+      front: find('front'), frontTorso: find('front-torso'), face: find('face'),
+      frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
+      whites: svg.querySelectorAll('.white')
+    };
   }
 
   // ---- Moving him ----------------------------------------------------------
@@ -92,6 +167,7 @@
 
   const SWING = 26;  // how far each leg swings, in degrees
   const LIFT = 5;    // how high a foot lifts mid-step
+  const SHAKE = 7;   // how far his face turns each way when he shakes his head
   const LEG = ANKLE_Y - HIP_Y;
   // Ground covered by one full stride (two steps), in pixels.
   const STRIDE = 4 * LEG * Math.sin(rad(SWING)) * (SIZE / 100);
@@ -110,10 +186,37 @@
     };
   }
 
-  // pose.phase: where he is in the stride. pose.amp: 0 standing still, 1 walking.
-  // pose.lean: degrees he tips forward. pose.boop: 0 standing, 1 nose pushed out.
+  // Side on: pose.phase is where he is in the stride, pose.amp is 0 standing
+  // still and 1 walking, pose.lean is degrees tipped forward, pose.boop is 0
+  // standing and 1 nose pushed out.
+  // Front on (pose.front): pose.shake is how far his face has turned, and
+  // pose.shut closes his eyes.
   function draw(part, pose, now, still) {
     const set = (el, value) => el.setAttribute('transform', value);
+    const about = (p, inner) => `translate(${p.x} ${p.y}) ${inner} translate(${-p.x} ${-p.y})`;
+
+    part.rig.style.display = pose.front ? 'none' : '';
+    part.front.style.display = pose.front ? '' : 'none';
+
+    // He blinks now and then, and breathes while standing.
+    const blink = !still && now % 2900 < 130;
+    const lid = blink ? 0.12 : 1;
+    for (const white of part.whites) white.style.display = blink ? 'none' : '';
+    const breath = still ? 0 : (1 - pose.amp) * (1 - pose.boop) * Math.sin(now / 420);
+
+    if (pose.front) {
+      // Shaking his head: his face slides from side to side and his body rocks with it.
+      set(part.frontTorso, about(BELLY, `rotate(${r3(0.35 * pose.shake)}) ` +
+        `scale(${r3(1 - 0.008 * breath)} ${r3(1 + 0.012 * breath)})`));
+      set(part.face, `translate(${r3(pose.shake)} 0)`);
+      set(part.frontEyes, about({ x: 0, y: FRONT_EYES.y }, `scale(1 ${lid})`));
+      part.frontEyes.style.display = pose.shut ? 'none' : '';
+      part.shut.style.display = pose.shut ? '' : 'none';
+      part.smile.style.display = pose.shut ? 'none' : '';
+      part.flat.style.display = pose.shut ? '' : 'none';
+      return;
+    }
+
     const k = pose.amp;
     const a = legAt(pose.phase), b = legAt(pose.phase + 0.5);
     const planted = a.planted ? a : b;
@@ -126,20 +229,17 @@
     }
 
     // Walking: he squishes as each foot lands and rocks from side to side.
-    // Standing: he breathes. Booping: he stretches forward, nose first.
+    // Booping: he stretches forward, nose first.
     const beat = k * Math.cos(2 * TAU * pose.phase);   // +1 as a foot lands, -1 mid-step
     const sway = 5 * k * Math.sin(TAU * pose.phase);
-    const breath = still ? 0 : (1 - k) * (1 - pose.boop) * Math.sin(now / 420);
     const wide = (1 + 0.035 * beat - 0.008 * breath) * (1 + 0.12 * pose.boop);
     const tall = (1 - 0.04 * beat + 0.012 * breath) * (1 - 0.06 * pose.boop);
     set(part.torso, `translate(${r3(BELLY.x + 5 * pose.boop)} ${BELLY.y}) rotate(${r3(pose.lean + sway)}) ` +
       `scale(${r3(wide)} ${r3(tall)}) translate(${-BELLY.x} ${-BELLY.y})`);
 
-    // He blinks now and then, and squeezes his eye shut while booping.
+    // He squeezes his eye shut in delight while booping.
     const delighted = pose.boop > 0.5;
-    const lid = !still && now % 2900 < 130 ? 0.12 : 1;
-    set(part.eye, `translate(0 52) scale(1 ${lid}) translate(0 -52)`);
-    part.white.style.display = lid < 1 ? 'none' : '';
+    set(part.eye, about({ x: 0, y: SIDE_EYE.y }, `scale(1 ${lid})`));
     part.eye.style.display = delighted ? 'none' : '';
     part.happy.style.display = delighted ? '' : 'none';
   }
@@ -201,12 +301,7 @@
     root.append(style, h('stage', veil, ring, x, guy, bubble, card));
     document.documentElement.append(host);
 
-    const find = (cls) => svg.querySelector('.' + cls);
-    const part = {
-      rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
-      eye: find('eye'), white: find('white'), happy: find('happy')
-    };
-
+    const part = partsOf(svg);
     const width = document.documentElement.clientWidth || window.innerWidth;
     const stopX = Math.max(8, width - BTN.right - BTN.size - REACH);
     const startX = calm ? stopX : Math.max(8, stopX - WALK_DISTANCE);
@@ -215,7 +310,7 @@
     bubble.style.right = `${width - stopX + 2}px`;
 
     // One loop redraws him every frame; the steps below just change his pose.
-    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0 };
+    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false };
     let alive = true;
     requestAnimationFrame(function loop(now) {
       if (!alive) return;
@@ -258,10 +353,7 @@
       const amp = pose.amp;
       await tween(260, (t) => { pose.amp = amp * (1 - ease(t)); });
     }
-
-    bubble.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 180, fill: 'forwards' });
-    await sleep(calm ? 1100 : 750);
+    await sleep(calm ? 600 : 250);
 
     // Wind up, then boop the button with his nose.
     if (calm) {
@@ -272,12 +364,49 @@
       x.animate(
         [{ transform: 'translateX(0) scale(1)' }, { transform: 'translateX(5px) scale(.72)' },
           { transform: 'translateX(0) scale(1.08)' }, { transform: 'translateX(0) scale(1)' }],
-        { duration: 320 });
+        { duration: 300 });
       ring.animate([{ opacity: 0.9, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.9)' }],
         { duration: 420, easing: 'ease-out' });
     }
-    await sleep(420);
-    await veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: calm ? 1 : 280, fill: 'forwards' }).finished;
+    await sleep(calm ? 400 : 300);
+
+    // The page goes dark, as if the tab had shut, and the button pops away.
+    const dark = veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: calm ? 1 : 280, fill: 'forwards' });
+    x.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0)', opacity: 0 }],
+      { duration: calm ? 1 : 180, easing: 'ease-in', fill: 'forwards' });
+    if (calm) {
+      pose.boop = 0;
+    } else {
+      await tween(220, (t) => { pose.boop = 1 - ease(t); pose.lean = 6 * (1 - ease(t)); });
+    }
+    await dark.finished;
+
+    // He turns to face you.
+    if (!calm) {
+      await squash.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(.1)' }],
+        { duration: 110, easing: 'ease-in' }).finished;
+    }
+    pose.front = true;
+    draw(part, pose, performance.now(), calm);
+    if (!calm) {
+      await squash.animate(
+        [{ transform: 'scaleX(.1)' }, { transform: 'scaleX(1.06)', offset: 0.7 }, { transform: 'scaleX(1)' }],
+        { duration: 170, easing: 'ease-out' }).finished;
+    }
+    await sleep(calm ? 200 : 320);
+
+    // And says it, shaking his head with his eyes shut.
+    bubble.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 180, fill: 'forwards' });
+    if (calm) {
+      await sleep(1600);
+    } else {
+      pose.shut = true;
+      await tween(1400, (t) => { pose.shake = SHAKE * Math.sin(TAU * 3 * t) * Math.sqrt(Math.sin(Math.PI * t)); });
+      pose.shake = 0;
+      pose.shut = false;
+      await sleep(450);
+    }
 
     let closed = false;
     try {

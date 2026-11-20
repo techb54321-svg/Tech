@@ -1,8 +1,9 @@
 # Scroll Bouncer
 
 A browser extension that helps you stop scrolling. Open a social media site and a
-little round orange guy drops in at the top of the page, toddles over to the
-close button, says "Nope not now", boops it with his nose, and the tab is gone.
+little round guy drops in at the top of the page, toddles over to the close
+button and boops it with his nose. The page goes dark, he turns to face you,
+shakes his head and says "Nope not now", and the tab is gone.
 
 ## Install
 
@@ -28,15 +29,17 @@ Click the toolbar icon to:
 - take a 5 minute break when you really do need to get in
 - see how many tabs he has closed
 
-## Changing how he moves and what he says
+## Changing how he looks, moves and what he says
 
-Four settings at the top of `content.js`:
+Six settings at the top of `content.js`:
 
 - `WALK_SPEED`: how fast he walks, in pixels per second. His steps keep pace on
   their own, so his feet never slide.
 - `WALK_DISTANCE`: how far from the close button he drops in, in pixels.
 - `SIZE`: how tall he is, in pixels.
-- `LINE`: what he says before closing the tab.
+- `LINE`: what he says while shaking his head.
+- `GLASSES`: set to `true` to give him round glasses.
+- `COLOR`: his colours.
 
 After a change, click the reload arrow on his card at `chrome://extensions`.
 

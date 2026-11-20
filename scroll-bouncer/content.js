@@ -1,6 +1,9 @@
 (() => {
   if (window.top !== window) return;
 
+  // Firefox and Safari call the extension API `browser`; Chrome calls it `chrome`.
+  const api = globalThis.browser ?? globalThis.chrome;
+
   // ---- Settings ------------------------------------------------------------
   // His steps keep pace with the speed automatically, so his feet never slide.
   const WALK_SPEED = 88;        // pixels per second
@@ -24,30 +27,36 @@
   const BTN = { size: 40, right: 16, top: Math.round(TOP + 0.641 * SIZE - 20) };
   const REACH = Math.round(0.987 * SIZE);
 
-  const CSS = `
-.stage { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; overflow: hidden;
-  font: 600 14px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; }
-.veil { position: absolute; inset: 0; background: #0c0a09; opacity: 0; }
-.x, .ring { position: absolute; top: ${BTN.top}px; right: ${BTN.right}px; width: ${BTN.size}px; height: ${BTN.size}px;
-  border-radius: 50%; box-sizing: border-box; }
-.x { background: #ef4444; border: 2.5px solid #fff; box-shadow: 0 3px 12px rgba(0,0,0,.35);
-  display: grid; place-items: center; }
-.x svg { width: 22px; height: 22px; display: block; }
-.ring { border: 3px solid #fca5a5; opacity: 0; }
-.guy { position: absolute; top: ${TOP}px; left: 0; width: ${SIZE}px; height: ${SIZE}px; opacity: 0; will-change: transform; }
-.shadow { position: absolute; left: 14%; right: 22%; top: 92.5%; height: 7%; border-radius: 50%; background: rgba(0,0,0,.2); }
-.squash { position: absolute; inset: 0; transform-origin: 46% 96%; filter: drop-shadow(0 3px 4px rgba(0,0,0,.28)); }
-.squash svg { width: 100%; height: 100%; overflow: visible; display: block; }
-.bubble { position: absolute; top: 26px; right: ${BTN.right + BTN.size + REACH + 2}px; box-sizing: border-box; padding: 9px 13px; border-radius: 14px 14px 4px 14px;
-  background: #fff; color: #1c1917; opacity: 0; white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.3); }
-.card { position: absolute; inset: 0; display: none; place-items: center; text-align: center;
-  background: #0c0a09; color: #fafaf9; font-size: 20px; padding: 24px; pointer-events: auto; }
-.card small { display: block; margin-top: 8px; font-weight: 400; font-size: 14px; opacity: .7; }
-`;
+  // How each piece is laid out. Styles are set on the elements one by one, not
+  // through a stylesheet, so no site's security policy can strip them.
+  const FILL = { position: 'absolute', top: '0', right: '0', bottom: '0', left: '0' };
+  const ON_BUTTON = { position: 'absolute', top: `${BTN.top}px`, right: `${BTN.right}px`,
+    width: `${BTN.size}px`, height: `${BTN.size}px`, borderRadius: '50%', boxSizing: 'border-box' };
+  const STYLE = {
+    stage: { ...FILL, position: 'fixed', zIndex: '2147483647', pointerEvents: 'none', overflow: 'hidden',
+      font: '600 14px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif' },
+    veil: { ...FILL, background: '#0c0a09', opacity: '0' },
+    x: { ...ON_BUTTON, background: '#ef4444', border: '2.5px solid #fff', boxShadow: '0 3px 12px rgba(0,0,0,.35)',
+      display: 'grid', placeItems: 'center' },
+    cross: { width: '22px', height: '22px', display: 'block' },
+    ring: { ...ON_BUTTON, border: '3px solid #fca5a5', opacity: '0' },
+    guy: { position: 'absolute', top: `${TOP}px`, left: '0', width: `${SIZE}px`, height: `${SIZE}px`,
+      opacity: '0', willChange: 'transform' },
+    shadow: { position: 'absolute', left: '14%', right: '22%', top: '92.5%', height: '7%', borderRadius: '50%',
+      background: 'rgba(0,0,0,.2)' },
+    squash: { ...FILL, transformOrigin: '46% 96%', filter: 'drop-shadow(0 3px 4px rgba(0,0,0,.28))' },
+    drawing: { width: '100%', height: '100%', overflow: 'visible', display: 'block' },
+    bubble: { position: 'absolute', top: '26px', right: `${BTN.right + BTN.size + REACH + 2}px`, boxSizing: 'border-box',
+      padding: '9px 13px', borderRadius: '14px 14px 4px 14px', background: '#fff', color: '#1c1917', opacity: '0',
+      whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
+    card: { ...FILL, display: 'none', placeItems: 'center', textAlign: 'center', background: '#0c0a09',
+      color: '#fafaf9', fontSize: '20px', padding: '24px', boxSizing: 'border-box', pointerEvents: 'auto' },
+    small: { display: 'block', marginTop: '8px', fontWeight: '400', fontSize: '14px', opacity: '.7' }
+  };
 
   // ---- Building him --------------------------------------------------------
-  // Everything is built node by node (no innerHTML) so strict site security
-  // policies cannot stop him from appearing.
+  // Everything is built node by node (no innerHTML, no stylesheet) so strict site
+  // security policies cannot stop him from appearing.
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -57,8 +66,10 @@
     n.append(...kids);
     return n;
   }
+  const css = (el, styles) => { Object.assign(el.style, styles); return el; };
   const s = (tag, attrs, ...kids) => node(SVG_NS, tag, attrs, kids);
-  const h = (cls, ...kids) => node(null, 'div', { class: cls }, kids);
+  // A div named `name`, laid out by STYLE[name].
+  const h = (name, ...kids) => css(node(null, 'div', { class: name }, kids), STYLE[name] || {});
 
   // A smooth round guy with a button nose, a smile, stubby legs and little arms, drawn twice on
   // the same 100 x 100 grid: side on (facing right) for walking and booping,
@@ -144,13 +155,13 @@
   }
 
   function buildGuy() {
-    return s('svg', { viewBox: '0 0 100 100' },
+    return css(s('svg', { viewBox: '0 0 100 100' },
       s('defs', null,
         s('radialGradient', { id: 'sb-body', cx: 0.34, cy: 0.26, r: 0.85 },
           s('stop', { offset: 0, 'stop-color': COLOR.light }),
           s('stop', { offset: 0.42, 'stop-color': COLOR.body }),
           s('stop', { offset: 1, 'stop-color': COLOR.shade }))),
-      sideView(), frontView());
+      sideView(), frontView()), STYLE.drawing);
   }
 
   // The pieces of him that move.
@@ -263,6 +274,18 @@
     part.happy.style.display = delighted ? '' : 'none';
   }
 
+  // The value at time t (0 to 1) along a list of [time, value] stops.
+  function along(stops, t) {
+    for (let i = 1; i < stops.length; i++) {
+      const [t0, v0] = stops[i - 1], [t1, v1] = stops[i];
+      if (t <= t1) return v0 + (v1 - v0) * ((t - t0) / (t1 - t0));
+    }
+    return stops[stops.length - 1][1];
+  }
+
+  // Calls step(t) every frame with t running from 0 to 1 over `ms` milliseconds.
+  // Every movement goes through this and plain element styles, which behave the
+  // same in Chrome, Firefox and Safari.
   function tween(ms, step) {
     return new Promise((done) => {
       let t0;
@@ -293,7 +316,7 @@
 
   async function shouldBounce() {
     let cfg;
-    try { cfg = await chrome.storage.sync.get(SB_DEFAULTS); } catch { return false; }
+    try { cfg = await api.storage.sync.get(SB_DEFAULTS); } catch { return false; }
     if (!cfg.enabled || Date.now() < cfg.snoozeUntil) return false;
     return sbMatches(location.href, cfg.sites);
   }
@@ -308,16 +331,15 @@
     const squash = h('squash', svg);
     const guy = h('guy', h('shadow'), squash);
     const veil = h('veil'), ring = h('ring'), bubble = h('bubble', LINE);
-    const x = h('x', s('svg', { viewBox: '0 0 24 24' },
-      s('path', { d: 'M7.5 7.5l9 9m0-9l-9 9', stroke: '#fff', 'stroke-width': 3.2, 'stroke-linecap': 'round' })));
-    const card = h('card', h('', 'Tab closed by the Scroll Bouncer.', node(null, 'small', null, ['You can close this page.'])));
-    const style = document.createElement('style');
-    style.textContent = CSS;
+    const x = h('x', css(s('svg', { viewBox: '0 0 24 24' },
+      s('path', { d: 'M7.5 7.5l9 9m0-9l-9 9', stroke: '#fff', 'stroke-width': 3.2, 'stroke-linecap': 'round' })), STYLE.cross));
+    const card = h('card', h('', 'Tab closed by the Scroll Bouncer.',
+      css(node(null, 'small', null, ['You can close this page.']), STYLE.small)));
 
     const host = document.createElement('div');
     host.style.setProperty('all', 'initial', 'important');
     const root = host.attachShadow({ mode: 'closed' });
-    root.append(style, h('stage', veil, ring, x, guy, bubble, card));
+    root.append(h('stage', veil, ring, x, guy, bubble, card));
     document.documentElement.append(host);
 
     const part = partsOf(svg);
@@ -341,11 +363,11 @@
     });
     draw(part, pose, 0, true);
     place();
-    guy.style.opacity = 1;
 
     if (calm) {
-      await guy.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }).finished;
+      await tween(200, (t) => { guy.style.opacity = t; });
     } else {
+      guy.style.opacity = 1;
       // Toddle in from the left and all the way across the top of the page to the button.
       await new Promise((arrived) => {
         let last;
@@ -364,49 +386,56 @@
     }
     await sleep(calm ? 600 : 250);
 
-    // Wind up, then boop the button with his nose.
+    // Wind up, then boop the button with his nose. It squishes under him and a
+    // ring pops out of it.
     if (calm) {
       pose.boop = 1;
+      await sleep(400);
     } else {
       await tween(190, (t) => { pose.lean = -9 * ease(t); });
       await tween(100, (t) => { pose.lean = -9 + 15 * t; pose.boop = t; });
-      x.animate(
-        [{ transform: 'translateX(0) scale(1)' }, { transform: 'translateX(5px) scale(.72)' },
-          { transform: 'translateX(0) scale(1.08)' }, { transform: 'translateX(0) scale(1)' }],
-        { duration: 300 });
-      ring.animate([{ opacity: 0.9, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.9)' }],
-        { duration: 420, easing: 'ease-out' });
+      tween(420, (t) => {
+        const out = 1 - (1 - t) * (1 - t);
+        ring.style.opacity = 0.9 * (1 - out);
+        ring.style.transform = `scale(${r3(1 + 0.9 * out)})`;
+      });
+      await tween(300, (t) => {
+        const push = along([[0, 0], [0.33, 5], [0.66, 0], [1, 0]], t);
+        const size = along([[0, 1], [0.33, 0.72], [0.66, 1.08], [1, 1]], t);
+        x.style.transform = `translateX(${r3(push)}px) scale(${r3(size)})`;
+      });
     }
-    await sleep(calm ? 400 : 300);
 
     // The page goes dark, as if the tab had shut, and the button pops away.
-    const dark = veil.animate([{ opacity: 0 }, { opacity: 1 }], { duration: calm ? 1 : 280, fill: 'forwards' });
-    x.animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(0)', opacity: 0 }],
-      { duration: calm ? 1 : 180, easing: 'ease-in', fill: 'forwards' });
+    const dark = tween(calm ? 1 : 280, (t) => { veil.style.opacity = t; });
+    tween(calm ? 1 : 180, (t) => {
+      x.style.transform = `scale(${r3(1 - t * t)})`;
+      x.style.opacity = 1 - t;
+    });
     if (calm) {
       pose.boop = 0;
     } else {
       await tween(220, (t) => { pose.boop = 1 - ease(t); pose.lean = 6 * (1 - ease(t)); });
     }
-    await dark.finished;
+    await dark;
 
-    // He turns to face you.
-    if (!calm) {
-      await squash.animate([{ transform: 'scaleX(1)' }, { transform: 'scaleX(.1)' }],
-        { duration: 110, easing: 'ease-in' }).finished;
-    }
+    // He turns to face you, flipping round like a card.
+    if (!calm) await tween(110, (t) => { squash.style.transform = `scaleX(${r3(1 - 0.9 * t * t)})`; });
     pose.front = true;
     draw(part, pose, performance.now(), calm);
     if (!calm) {
-      await squash.animate(
-        [{ transform: 'scaleX(.1)' }, { transform: 'scaleX(1.06)', offset: 0.7 }, { transform: 'scaleX(1)' }],
-        { duration: 170, easing: 'ease-out' }).finished;
+      await tween(170, (t) => {
+        squash.style.transform = `scaleX(${r3(along([[0, 0.1], [0.7, 1.06], [1, 1]], 1 - (1 - t) * (1 - t)))})`;
+      });
     }
+    squash.style.transform = '';
     await sleep(calm ? 200 : 320);
 
     // And says it, shaking his head with his eyes shut and wagging a hand.
-    bubble.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 180, fill: 'forwards' });
+    tween(180, (t) => {
+      bubble.style.opacity = t;
+      bubble.style.transform = `translateY(${r3(6 * (1 - t))}px)`;
+    });
     if (calm) {
       await sleep(1600);
     } else {
@@ -423,7 +452,7 @@
 
     let closed = false;
     try {
-      const res = await chrome.runtime.sendMessage({ type: 'sb-close' });
+      const res = await api.runtime.sendMessage({ type: 'sb-close' });
       closed = !!(res && res.ok);
     } catch { /* extension reloaded or tab already going away */ }
 
@@ -446,5 +475,5 @@
   setInterval(check, 1000);
   // Pages restored from the back/forward cache skip the initial run.
   window.addEventListener('pageshow', (e) => { if (e.persisted) { lastUrl = ''; running = false; check(); } });
-  chrome.storage.onChanged.addListener(() => { lastUrl = ''; check(); });
+  api.storage.onChanged.addListener(() => { lastUrl = ''; check(); });
 })();

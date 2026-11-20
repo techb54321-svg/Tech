@@ -16,42 +16,49 @@ tab is gone.
 **Firefox (desktop)**: open `about:debugging#/runtime/this-firefox`, click
 **Load Temporary Add-on**, and pick `manifest.json`.
 
-**Safari on a Mac, and Safari on an iPhone or iPad**
+**Safari on a Mac**
 
-Safari only runs extensions that are wrapped in an app, which is done with Xcode
-on a Mac. These steps have not been tested, and menu names can differ a little
-between versions.
+Safari only runs extensions that are wrapped in an app, which is done with Xcode.
+These steps have not been tested, and menu names can differ a little between
+versions.
 
-1. Install Xcode from the Mac App Store and open it once. In Xcode's Settings,
-   under Accounts, add your Apple ID.
-2. In Terminal, run this. Change the path if the folder is somewhere else, and
-   replace `YOURNAME` with anything unique:
+1. Install Xcode from the Mac App Store and open it once.
+2. In Terminal, run this. Change the path if the folder is somewhere else:
 
    ```bash
-   xcrun safari-web-extension-converter ~/scroll-bouncer --app-name "Scroll Bouncer" --bundle-identifier com.YOURNAME.scrollbouncer
+   xcrun safari-web-extension-packager ~/scroll-bouncer --macos-only --app-name "Scroll Bouncer"
    ```
 
-   It creates an Xcode project holding a Mac app and an iPhone app, and opens it.
-3. In Xcode, click the project, and for each target choose your Apple ID as the
-   Team under Signing & Capabilities.
-4. **Mac:** choose the `Scroll Bouncer (macOS)` scheme and press Run. Then in
-   Safari's Settings, under Extensions, turn on Scroll Bouncer and allow it on
-   every website. If it is not listed, turn on "Allow unsigned extensions" in
-   Safari's developer settings.
-5. **iPhone:** turn on Developer Mode on the phone (Settings, Privacy &
-   Security), plug it in, choose the `Scroll Bouncer (iOS)` scheme and your
-   phone, and press Run. Then on the phone open Settings, Safari, Extensions,
-   turn on Scroll Bouncer and allow it on all websites.
+   It creates an Xcode project and opens it. On older versions of Xcode the tool
+   is called `safari-web-extension-converter`.
+3. In Xcode, press Run. A small Scroll Bouncer app opens; it can be closed.
+4. In Safari's Settings, open Advanced and tick "Show features for web
+   developers". Then open the Developer tab and tick "Allow unsigned extensions".
+5. Still in Safari's Settings, open Extensions, tick Scroll Bouncer, and allow it
+   on every website.
 
-With a free Apple ID the iPhone app stops working after 7 days and has to be run
-from Xcode again; a paid Apple Developer membership removes that limit. After
-updating this folder, press Run again to rebuild.
+Safari forgets "Allow unsigned extensions" every time it quits, so step 4 has to
+be repeated after restarting Safari. Signing the app through a paid Apple
+Developer membership removes that. After updating this folder, press Run in
+Xcode again.
 
-**Android**: Firefox for Android can run it, but only once it is published on
-addons.mozilla.org.
+**Android**
 
-On any phone this covers social media opened in the browser, not the Instagram
-or TikTok apps themselves.
+Chrome on Android does not run extensions. Firefox for Android does, but only
+ones Mozilla has signed, so it has to be published on addons.mozilla.org first:
+
+1. Zip the files inside this folder (not the folder itself), so that
+   `manifest.json` is at the top level of the zip.
+2. Create a free account at addons.mozilla.org, open the Developer Hub and
+   submit a new add-on. Choose to list it on the site, upload the zip, and tick
+   Firefox for Android as a compatible platform.
+3. Once it is approved, open Firefox on the phone, go to Extensions, and install
+   Scroll Bouncer from addons.mozilla.org.
+
+It passes Mozilla's add-on validator, but has not been run in Firefox.
+
+On a phone this covers social media opened in the browser, not the Instagram or
+TikTok apps themselves.
 
 ## Using it
 

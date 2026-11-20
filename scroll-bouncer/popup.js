@@ -1,3 +1,5 @@
+// Firefox and Safari call the extension API `browser`; Chrome calls it `chrome`.
+const api = globalThis.browser ?? globalThis.chrome;
 const $ = (id) => document.getElementById(id);
 let cfg;
 
@@ -23,7 +25,7 @@ function render() {
 
 async function save(patch) {
   cfg = { ...cfg, ...patch };
-  await chrome.storage.sync.set(patch);
+  await api.storage.sync.set(patch);
   render();
 }
 
@@ -41,8 +43,8 @@ $('snooze').onclick = () =>
   save({ snoozeUntil: cfg.snoozeUntil > Date.now() ? 0 : Date.now() + 5 * 60 * 1000 });
 
 (async () => {
-  cfg = await chrome.storage.sync.get(SB_DEFAULTS);
-  const { stats = {} } = await chrome.storage.local.get('stats');
+  cfg = await api.storage.sync.get(SB_DEFAULTS);
+  const { stats = {} } = await api.storage.local.get('stats');
   const d = new Date();
   const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   $('today').textContent = stats.day === day ? stats.today || 0 : 0;

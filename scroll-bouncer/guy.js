@@ -366,7 +366,8 @@ const ScrollBouncerGuy = (() => {
       await new Promise((arrived) => {
         let last;
         requestAnimationFrame(function step(now) {
-          const dt = Math.min(50, now - (last ?? now));
+          // Capped so he does not leap forward after the page has been out of sight.
+          const dt = Math.min(250, now - (last ?? now));
           last = now;
           px = Math.min(stopX, px + (WALK_SPEED * dt) / 1000);
           pose.phase = 0.25 + (px - startX) / STRIDE;

@@ -75,7 +75,8 @@ done
 sleep 4
 
 FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
-adb logcat -d -s ScrollBouncer:V AndroidRuntime:E chromium:E > log.txt || true
+adb logcat -d -s ScrollBouncer:V AndroidRuntime:E chromium:I ActivityTaskManager:I > all.txt || true
+grep -E "ScrollBouncer|AndroidRuntime|Scroll Bouncer: page ready|START u0 .*SETTINGS" all.txt > log.txt || true
 adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
 
 echo "== What the app logged"

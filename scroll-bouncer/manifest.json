@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Scroll Bouncer",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "description": "A little guy walks out and closes the tab whenever you open social media.",
   "permissions": ["storage"],
   "host_permissions": ["http://*/*", "https://*/*"],

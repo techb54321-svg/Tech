@@ -13,6 +13,7 @@
   // The number after # is where the status bar ends, so he walks just underneath it.
   (async () => {
     try {
+      console.log('Scroll Bouncer: page ready');
       const top = Number(location.hash.slice(1)) || 0;
       const show = await ScrollBouncerGuy.perform({ top: top + 8, onDark: () => Android.dark() });
       await show.fadeOut();

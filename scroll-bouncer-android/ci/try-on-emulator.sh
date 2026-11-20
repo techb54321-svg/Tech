@@ -16,12 +16,32 @@ SDK="${ANDROID_HOME:?ANDROID_HOME is not set}"
 export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$SDK/emulator:$PATH"
 
 echo "== Starting an emulated phone"
+ls -l /dev/kvm || echo "no /dev/kvm: the emulator will have no hardware acceleration"
 # "yes" is cut off when sdkmanager finishes; that is not a failure.
 (yes 2> /dev/null || true) | sdkmanager --install "$IMAGE" emulator platform-tools > /dev/null
 echo no | avdmanager create avd --force -n phone -k "$IMAGE" -d pixel_6 > /dev/null
+emulator -accel-check || true
 emulator -avd phone -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
-adb wait-for-device
-timeout 900 bash -c 'until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" = "1" ]; do sleep 3; done'
+EMULATOR=$!
+
+booted() { [ "$(adb shell getprop sys.boot_completed 2> /dev/null | tr -d '\r')" = "1" ]; }
+for i in $(seq 1 240); do            # up to twelve minutes
+  if booted; then break; fi
+  if ! kill -0 "$EMULATOR" 2> /dev/null; then
+    echo "The emulator stopped before the phone started:"
+    tail -n 40 emulator.log
+    exit 1
+  fi
+  if [ $((i % 20)) = 0 ]; then echo "  still starting after $((i * 3)) s"; fi
+  sleep 3
+done
+if ! booted; then
+  echo "The phone did not finish starting:"
+  tail -n 40 emulator.log
+  exit 1
+fi
+echo "  the phone is on"
+adb shell wm dismiss-keyguard || true
 adb shell input keyevent 82 || true
 sleep 5
 

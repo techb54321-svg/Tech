@@ -7,16 +7,16 @@
   const WALK_DISTANCE = 260;    // how far from the close button he drops in
   const SIZE = 96;              // his height in pixels
   const LINE = 'Nope not now';  // what he says, shaking his head
-  const GLASSES = false;        // true gives him round glasses
+  const GLASSES = true;         // whether he wears round glasses
 
   // His colours. The body runs from `light` (where the light hits) to `shade`.
   // His nose and feet are a paler tint of the same colour, and `ink` draws his
   // eyes and mouth.
   const COLOR = {
-    light: '#ffcb45', body: '#ffa51f', shade: '#f27a08',
-    nose: '#ffd68a', foot: '#ffc766', farFoot: '#eeaa45',
-    leg: '#f58a12', farLeg: '#dc7408',
-    ink: '#3b1206', frames: '#3b1206'
+    light: '#b9f8e6', body: '#3fd9b8', shade: '#14a88e',
+    nose: '#bff6e7', foot: '#9aeed9', farFoot: '#77d6c0',
+    leg: '#22b99b', farLeg: '#149a80',
+    ink: '#123a33', frames: '#123a33'
   };
 
   // The close button he boops, placed so his nose lands on it when he leans in.

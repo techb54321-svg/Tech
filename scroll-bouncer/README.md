@@ -38,7 +38,7 @@ Six settings at the top of `content.js`:
 - `WALK_DISTANCE`: how far from the close button he drops in, in pixels.
 - `SIZE`: how tall he is, in pixels.
 - `LINE`: what he says while shaking his head.
-- `GLASSES`: set to `true` to give him round glasses.
+- `GLASSES`: whether he wears round glasses.
 - `COLOR`: his colours.
 
 After a change, click the reload arrow on his card at `chrome://extensions`.

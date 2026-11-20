@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scroll Bouncer</title>
 <style>
-  :root { --bg:#fffaf5; --fg:#1c1917; --muted:#78716c; --line:#e7e5e4; --accent:#ea580c; --chip:#fff; }
+  :root { --bg:#f6fbfa; --fg:#12211f; --muted:#5b706c; --line:#dce8e5; --accent:#0f766e; --on-accent:#fff; --chip:#fff; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#1c1917; --fg:#fafaf9; --muted:#a8a29e; --line:#44403c; --accent:#fb923c; --chip:#292524; }
+    :root { --bg:#131f1d; --fg:#f1f7f5; --muted:#9bb0ab; --line:#2c3d3a; --accent:#2dd4bf; --on-accent:#06302c; --chip:#1b2b28; }
   }
   * { box-sizing: border-box; }
   body { margin: 0; width: 320px; max-width: 100%; padding: 16px; background: var(--bg); color: var(--fg);
@@ -35,7 +35,7 @@
   form { display: flex; gap: 6px; }
   input[type=text] { flex: 1; min-width: 0; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px;
     background: var(--chip); color: var(--fg); font: inherit; }
-  button.btn { padding: 7px 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit;
+  button.btn { padding: 7px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: inherit;
     font-weight: 600; cursor: pointer; }
   button.ghost { width: 100%; margin-top: 14px; background: none; color: var(--fg); border: 1px solid var(--line); }
   #snoozeNote { color: var(--muted); font-size: 12px; margin: 6px 0 0; text-align: center; min-height: 1.4em; }

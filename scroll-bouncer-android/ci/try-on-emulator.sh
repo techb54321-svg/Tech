@@ -16,7 +16,8 @@ SDK="${ANDROID_HOME:?ANDROID_HOME is not set}"
 export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$SDK/emulator:$PATH"
 
 echo "== Starting an emulated phone"
-yes | sdkmanager --install "$IMAGE" emulator platform-tools > /dev/null
+# "yes" is cut off when sdkmanager finishes; that is not a failure.
+(yes 2> /dev/null || true) | sdkmanager --install "$IMAGE" emulator platform-tools > /dev/null
 echo no | avdmanager create avd --force -n phone -k "$IMAGE" -d pixel_6 > /dev/null
 emulator -avd phone -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect > emulator.log 2>&1 &
 adb wait-for-device

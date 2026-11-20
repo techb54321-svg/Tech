@@ -5,12 +5,13 @@ taps Instagram on their phone and starts scrolling. Mr Blocky walks across the
 top, boops the close button and says "Nope not now", and the phone is back on
 its home screen.
 
-The music is an original cartoon score, made from scratch by `make-music.js`, so
-there is nothing to license. A bouncy oom-pah tune plays while the feed scrolls
-and grinds to a halt when he turns up. He tiptoes in to a pizzicato on every
-footstep, a slide whistle rises as he winds up, there is a boop and a boing as
-he hits the button, a kazoo goes "nuh-uh" with each shake of his head, and the
-tune comes back, sunny, for the ending.
+The music is an original, happy ukulele song with a whistled tune, made from
+scratch by `make-music.js`, so there is nothing to license. Its beat is set by
+his footsteps, so he walks in time with it. The band drops back to a quiet,
+sneaky little tune while he tiptoes across, a slide whistle rises as he winds
+up, there is a boop and a boing as he hits the button, and in the dark the
+whistle sings "Nope not now" to the song's first three notes. The song comes
+back for the ending, with a ta-da on the closing card.
 
 Mr Blocky is drawn by `../mr-blocky/guy.js`, the same file the browser extension
 and the Android app use, so he looks and moves exactly as he does for real.

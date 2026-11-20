@@ -47,6 +47,15 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
     protected void onServiceConnected() {
         prefs = new Prefs(this);
         windows = getSystemService(WindowManager.class);
+        // Loading the phone's web view for the first time is slow, so do it now
+        // rather than when he is first needed.
+        main.post(() -> {
+            try {
+                new WebView(this).destroy();
+            } catch (RuntimeException e) {
+                Log.w(TAG, "could not warm up the web view", e);
+            }
+        });
     }
 
     @Override

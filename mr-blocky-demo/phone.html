@@ -5,13 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The phone in the Mr Blocky demo</title>
 <style>
-  /* A made-up phone: a home screen, and a made-up social app that is nobody's real one.
-     Nothing here moves by itself. make-demo.js calls tick() once for each frame of the
-     video, and tick() puts everything where it should be at that moment. */
-  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Inter, system-ui, sans-serif; }
+  /* A made-up phone with an Instagram-style feed on it. The photos are drawn here, and
+     the people and accounts are made up. Nothing moves by itself: make-demo.js calls
+     tick() once for each frame of the video, and tick() puts everything where it
+     should be at that moment. */
+  @font-face { font-family: 'Grand Hotel'; src: url('fonts/GrandHotel-Regular.woff2') format('woff2'); }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Inter, Roboto, system-ui, sans-serif; }
   body { position: relative; background: #111827; }
   .screen { position: absolute; inset: 0; overflow: hidden; }
+  svg { display: block; }
 
+  /* ---- The home screen ---- */
   #home { background: linear-gradient(165deg, #1c2541 0%, #3a2a66 55%, #8a3f73 100%); color: #fff; }
   #home .glow { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .5; }
   #home .time { position: absolute; left: 28px; top: 84px; font-size: 76px; font-weight: 300; letter-spacing: -2px; }
@@ -20,38 +24,76 @@
   .app { display: grid; justify-items: center; gap: 7px; font-size: 12px; }
   .icon { width: 60px; height: 60px; border-radius: 17px; display: grid; place-items: center; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
   .icon svg { width: 34px; height: 34px; }
+  .icon.whole svg { width: 60px; height: 60px; }
   .dock { position: absolute; left: 16px; right: 16px; bottom: 26px; height: 84px; border-radius: 28px;
     background: rgba(255,255,255,.16); display: grid; grid-template-columns: repeat(4, 1fr); place-items: center; }
 
-  #feed { background: #fff; color: #1c1917; opacity: 0; }
-  /* The bar reaches up behind the status bar, so that nothing scrolling by shows above it. */
-  #feed .bar { position: absolute; left: 0; right: 0; top: 0; height: 90px; background: #fff; z-index: 2;
-    display: flex; align-items: center; padding: 36px 16px 0; gap: 10px; border-bottom: 1px solid #f0eeec; box-sizing: border-box; }
-  #feed .mark { width: 30px; height: 30px; border-radius: 9px; background: #f2545b; display: grid; place-items: center; }
-  #feed .mark svg { width: 18px; height: 18px; }
-  #feed .name { font-size: 21px; font-weight: 800; letter-spacing: -.4px; flex: 1; }
-  #feed .bar .dot { width: 34px; height: 34px; border-radius: 50%; background: #f5f3f1; display: grid; place-items: center; }
-  #feed .bar .dot svg { width: 19px; height: 19px; }
-  #posts { position: absolute; left: 0; right: 0; top: 90px; }
-  .stories { display: flex; gap: 14px; padding: 12px 16px 10px; border-bottom: 1px solid #f0eeec; }
-  .story { display: grid; justify-items: center; gap: 5px; font-size: 11px; color: #57534e; }
-  .ring { width: 58px; height: 58px; border-radius: 50%; padding: 3px; box-sizing: border-box; }
-  .ring i { display: block; width: 100%; height: 100%; border-radius: 50%; border: 2px solid #fff; box-sizing: border-box; }
-  .post .who { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
-  .post .who i { width: 34px; height: 34px; border-radius: 50%; display: block; }
-  .post .who span { font-weight: 400; color: #a8a29e; }
-  .post svg.pic { display: block; width: 390px; height: 390px; }
-  .post .acts { display: flex; gap: 16px; padding: 10px 14px 4px; }
-  .post .acts svg { width: 25px; height: 25px; }
-  .post .likes { padding: 2px 14px; font-size: 14px; font-weight: 700; }
-  .post .words { padding: 2px 14px 14px; font-size: 14px; line-height: 1.35; }
-  .post .words b { font-weight: 700; }
+  /* ---- The app ---- */
+  #app { background: #fff; color: #000; opacity: 0; }
+  #feed { position: absolute; left: 0; right: 0; top: 88px; }
+  #top { position: absolute; left: 0; right: 0; top: 0; height: 88px; padding: 36px 6px 0 14px; box-sizing: border-box;
+    background: #fff; z-index: 3; display: flex; align-items: center; }
+  #top .word { font-family: 'Grand Hotel', cursive; font-size: 32px; line-height: 1; margin-top: 3px; }
+  #top .caret { width: 13px; height: 13px; margin: 6px 0 0 5px; }
+  .grow { flex: 1; }
+  #top .btn { position: relative; width: 44px; height: 44px; display: grid; place-items: center; }
+  #top .btn svg { width: 25px; height: 25px; }
+  .dot { position: absolute; top: 8px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: #ff3040; border: 2px solid #fff; }
+  .badge { position: absolute; top: 3px; right: 1px; min-width: 19px; height: 19px; padding: 0 4px; box-sizing: border-box; border-radius: 10px;
+    background: #ff3040; color: #fff; border: 2px solid #fff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; }
 
+  .stories { display: flex; gap: 10px; padding: 6px 10px 10px; border-bottom: .5px solid #dbdbdb; overflow: hidden; }
+  .story { flex: none; width: 70px; display: grid; justify-items: center; gap: 5px; font-size: 11.5px; color: #262626; }
+  .story .name { width: 72px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: center; }
+  .story .name.mine { color: #737373; }
+  .ring { position: relative; width: 68px; height: 68px; padding: 2.5px; box-sizing: border-box; border-radius: 50%;
+    background: linear-gradient(45deg, #feda75, #fa7e1e 25%, #d62976 55%, #962fbf 80%, #4f5bd5); }
+  .ring.none { background: none; }
+  .ring .gap { width: 100%; height: 100%; padding: 2.5px; box-sizing: border-box; border-radius: 50%; background: #fff; }
+  .ring .gap svg, .mini svg, #nav .me svg { width: 100%; height: 100%; border-radius: 50%; }
+  .ring.small { width: 38px; height: 38px; padding: 2px; }
+  .ring.small .gap { padding: 2px; }
+  .plus { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; border-radius: 50%; background: #0095f6;
+    border: 2.5px solid #fff; box-sizing: border-box; display: grid; place-items: center; }
+  .plus svg { width: 10px; height: 10px; }
+
+  .post { padding-bottom: 16px; }
+  .head { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 4px 0 12px; }
+  .head .who { flex: 1; line-height: 1.25; font-size: 13.5px; }
+  .head .who b { font-weight: 600; }
+  .head .who small { display: block; font-size: 11.5px; color: #262626; }
+  .head .more { width: 40px; height: 40px; display: grid; place-items: center; }
+  .head .more svg { width: 22px; height: 22px; }
+  .pic { position: relative; }
+  .count { position: absolute; top: 12px; right: 12px; padding: 4px 9px; border-radius: 13px; background: rgba(18,18,18,.7);
+    color: #fff; font-size: 12px; font-weight: 600; }
+  .acts { position: relative; display: flex; align-items: center; height: 46px; padding: 0 6px 0 8px; }
+  .acts svg { width: 25px; height: 25px; padding: 0 6px; }
+  .acts .dots { position: absolute; left: 50%; top: 20px; display: flex; gap: 4px; transform: translateX(-50%); }
+  .acts .dots i { width: 6px; height: 6px; border-radius: 50%; background: #c7c7c7; }
+  .acts .dots i.on { background: #0095f6; }
+  .likes, .cap, .comments, .when { padding: 0 14px; font-size: 13.5px; line-height: 1.38; }
+  .likes { display: flex; align-items: center; gap: 7px; }
+  .likes b, .cap b { font-weight: 600; }
+  .mini { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 1.5px solid #fff; box-shadow: 0 0 0 .5px #dbdbdb; overflow: hidden; }
+  .cap { margin-top: 3px; }
+  .cap .more-link { color: #737373; }
+  .comments { margin-top: 4px; color: #737373; }
+  .when { margin-top: 5px; color: #737373; font-size: 11px; }
+
+  #nav { position: absolute; left: 0; right: 0; bottom: 0; height: 76px; padding-top: 12px; box-sizing: border-box; background: #fff;
+    border-top: .5px solid #dbdbdb; z-index: 3; display: flex; justify-content: space-around; align-items: flex-start; }
+  #nav svg { width: 26px; height: 26px; }
+  #nav .me { width: 27px; height: 27px; border-radius: 50%; overflow: hidden; }
+
+  /* ---- Above everything: the status bar, the finger, the gesture bar ---- */
   #status { position: fixed; left: 0; right: 0; top: 0; height: 36px; z-index: 2147483647; pointer-events: none;
     display: flex; align-items: center; justify-content: space-between; padding: 0 22px 0 24px; box-sizing: border-box;
     font-size: 15px; font-weight: 600; color: #fff; }
   #status svg { height: 13px; display: block; }
   #status .right { display: flex; gap: 6px; align-items: center; }
+  #pill { position: fixed; left: 50%; bottom: 8px; width: 110px; height: 4.5px; margin-left: -55px; border-radius: 3px;
+    background: #fff; z-index: 2147483647; pointer-events: none; }
   #tap { position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
     background: rgba(255,255,255,.5); border: 2px solid rgba(255,255,255,.9); box-sizing: border-box; opacity: 0; z-index: 5; }
 </style>
@@ -67,14 +109,16 @@
   <div class="dock" id="dock"></div>
 </div>
 
-<div id="feed" class="screen">
-  <div class="bar">
-    <div class="mark"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.7l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z"/></svg></div>
-    <div class="name">Social</div>
-    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8a4.7 4.7 0 0 1 6.6 6.700Z"/></svg></div>
-    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4Z"/></svg></div>
+<div id="app" class="screen">
+  <div id="feed"></div>
+  <div id="top">
+    <span class="word">Instagram</span>
+    <svg class="caret" viewBox="0 0 12 12"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="grow"></span>
+    <span class="btn" id="bell"><i class="dot"></i></span>
+    <span class="btn" id="inbox"><i class="badge">3</i></span>
   </div>
-  <div id="posts"></div>
+  <div id="nav"></div>
 </div>
 
 <div id="tap"></div>
@@ -83,10 +127,11 @@
   <div>9:41</div>
   <div class="right">
     <svg viewBox="0 0 18 13" width="18"><g fill="currentColor"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="6" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="13" rx="1"/></g></svg>
-    <svg viewBox="0 0 17 13" width="17"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M1.5 4.500a10 10 0 0 1 14 0M4 7.500a6.3 6.3 0 0 1 9 0M6.7 10.300a2.5 2.5 0 0 1 3.6 0"/></svg>
+    <svg viewBox="0 0 17 13" width="17"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M1.5 4.5a10 10 0 0 1 14 0M4 7.5a6.3 6.3 0 0 1 9 0M6.7 10.3a2.5 2.5 0 0 1 3.6 0"/></svg>
     <svg viewBox="0 0 27 13" width="27"><rect x=".7" y=".7" width="22.6" height="11.6" rx="3.3" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/><rect x="2.5" y="2.5" width="16" height="8" rx="1.8" fill="currentColor"/><rect x="24.6" y="4.2" width="2" height="4.6" rx="1" fill="currentColor" opacity=".55"/></svg>
   </div>
 </div>
+<div id="pill"></div>
 
 <script>
   // ---- A clock that only moves when tick() says so ---------------------------
@@ -113,85 +158,529 @@
 </script>
 <script src="../mr-blocky/guy.js"></script>
 <script>
-  // ---- What is on the phone --------------------------------------------------
+  // ---- Helpers ---------------------------------------------------------------
+  // Random numbers from a fixed starting point, so the pictures come out the same every time.
+  function rng(seed) {
+    return () => {
+      seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const f1 = (n) => Math.round(n * 10) / 10;   // one decimal place keeps the drawings short
+
+  // Fine film grain laid over a drawing, which makes it read more like a photo.
+  const grain = (u, w, h, seed, strength = 0.3) => `
+    <filter id="${u}grain" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="${seed}" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values=".33 .33 .33 0 0 .33 .33 .33 0 0 .33 .33 .33 0 0 0 0 0 0 1"/>
+    </filter>
+    <rect width="${w}" height="${h}" filter="url(#${u}grain)" opacity="${strength}" style="mix-blend-mode:overlay"/>`;
+
+  // ---- The photos in the feed, drawn from scratch ------------------------------
+
+  // A mountain lake at sunset, 4:5.
+  function lake(u) {
+    const W = 390, H = 488, Y = 300, r = rng(3);
+    const far = 'M0 300V246C24 236 44 226 64 228C88 230 104 244 124 240C144 236 156 230 174 238C200 250 222 272 252 276C280 278 300 248 324 236C344 226 366 232 390 240V300Z';
+    const mid = 'M0 300V266C30 258 56 250 84 256C112 262 132 276 160 274C186 272 206 262 226 270C240 276 248 286 262 287C278 288 296 270 320 262C346 254 370 262 390 266V300Z';
+    const near = 'M0 300V214C16 218 30 228 46 240C66 254 88 268 112 278C136 288 164 294 196 300ZM390 300V232C374 240 356 252 336 264C314 277 290 290 262 300Z';
+    const along = (pts, x) => {
+      for (let i = 1; i < pts.length; i++) {
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+        if ((x - x0) * (x - x1) <= 0) return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+      }
+      return pts[pts.length - 1][1];
+    };
+    const pine = (x, base, h) => {
+      const w = h * 0.34;
+      return `M${f1(x)} ${f1(base - h)}L${f1(x - w * .7)} ${f1(base - h * .5)}H${f1(x - w * .45)}L${f1(x - w)} ${f1(base)}` +
+        `H${f1(x + w)}L${f1(x + w * .45)} ${f1(base - h * .5)}H${f1(x + w * .7)}Z`;
+    };
+    let pines = '';
+    const left = [[0, 214], [46, 240], [112, 278], [196, 300]];
+    const right = [[262, 300], [336, 264], [390, 232]];
+    for (let x = 2; x < 150; x += 7 + r() * 6) pines += pine(x, along(left, x) + 8, 20 + r() * 24 * (1 - x / 220));
+    for (let x = 388; x > 280; x -= 7 + r() * 6) pines += pine(x, along(right, x) + 8, 18 + r() * 22 * ((x - 230) / 160));
+    let streak = '';
+    for (let y = 302; y < 440; y += 3.5) {
+      const k = (y - 300) / 140, w = (54 - 30 * k) * (0.45 + r() * 0.7);
+      streak += `<rect x="${f1(252 - w / 2 + (r() - .5) * 8)}" y="${f1(y)}" width="${f1(w)}" height="1.6" opacity="${f1(.85 - .6 * k)}"/>`;
+    }
+    let shimmer = '';
+    for (let i = 0; i < 34; i++) {
+      shimmer += `<rect x="${f1(r() * 380)}" y="${f1(304 + r() * 180)}" width="${f1(14 + r() * 70)}" height="1" opacity="${f1(.06 + r() * .14)}"/>`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+      <defs>
+        <linearGradient id="${u}sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${Y}">
+          <stop offset="0" stop-color="#18235e"/><stop offset=".42" stop-color="#674a9b"/><stop offset=".72" stop-color="#e0778e"/>
+          <stop offset=".9" stop-color="#ffab6c"/><stop offset="1" stop-color="#ffd59b"/>
+        </linearGradient>
+        <radialGradient id="${u}glow" gradientUnits="userSpaceOnUse" cx="252" cy="268" r="200">
+          <stop offset="0" stop-color="#fff2cc"/><stop offset=".1" stop-color="#ffd79c" stop-opacity=".9"/>
+          <stop offset=".42" stop-color="#ff9f7c" stop-opacity=".32"/><stop offset="1" stop-color="#ff9f7c" stop-opacity="0"/>
+        </radialGradient>
+        <linearGradient id="${u}water" gradientUnits="userSpaceOnUse" x1="0" y1="${Y}" x2="0" y2="${H}">
+          <stop offset="0" stop-color="#f4b083"/><stop offset=".22" stop-color="#c47394"/><stop offset=".6" stop-color="#55397a"/><stop offset="1" stop-color="#1c1842"/>
+        </linearGradient>
+        <filter id="${u}cloud" x="-20%" y="-200%" width="140%" height="500%"><feGaussianBlur stdDeviation="3"/></filter>
+        <filter id="${u}soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.1"/></filter>
+        <filter id="${u}haze" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".7"/></filter>
+        <filter id="${u}ripple" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="turbulence" baseFrequency=".004 .09" numOctaves="2" seed="7" result="t"/>
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="12" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <clipPath id="${u}lake"><rect y="${Y}" width="${W}" height="${H - Y}"/></clipPath>
+      </defs>
+      <rect width="${W}" height="${Y}" fill="url(#${u}sky)"/>
+      <rect width="${W}" height="${Y}" fill="url(#${u}glow)"/>
+      <g filter="url(#${u}cloud)" opacity=".7">
+        <ellipse cx="96" cy="118" rx="78" ry="7" fill="#f2a0b5"/><ellipse cx="300" cy="84" rx="96" ry="6" fill="#d38db6"/>
+        <ellipse cx="170" cy="178" rx="120" ry="8" fill="#ffbf9f"/><ellipse cx="336" cy="200" rx="60" ry="5" fill="#ffd3aa"/>
+      </g>
+      <circle cx="252" cy="268" r="22" fill="#fff5da"/>
+      <path d="${far}" fill="#b5729b" filter="url(#${u}haze)"/>
+      <path d="${mid}" fill="#6a4383"/>
+      <rect y="${Y}" width="${W}" height="${H - Y}" fill="url(#${u}water)"/>
+      <g clip-path="url(#${u}lake)"><g opacity=".5" filter="url(#${u}ripple)">
+        <g transform="translate(0 ${2 * Y}) scale(1 -1)"><path d="${far}" fill="#b5729b"/><path d="${mid}" fill="#563874"/><path d="${near}" fill="#281c48"/></g>
+      </g></g>
+      <g fill="#ffe3ad" filter="url(#${u}soft)">${streak}</g>
+      <g fill="#fff">${shimmer}</g>
+      <path d="${near}" fill="#2f2350"/>
+      <path d="${pines}" fill="#120d25"/>
+      ${grain(u, W, H, 3)}
+    </svg>`;
+  }
+
+  // A flat white, seen from above, on a wooden table.
+  function latte(u) {
+    const cx = 186, cy = 196;
+    const bean = (x, y, a) => `<g transform="translate(${x} ${y}) rotate(${a})"><ellipse rx="8.5" ry="11.5" fill="#4b2817"/>` +
+      `<ellipse rx="8.5" ry="11.5" fill="url(#${u}bean)"/><path d="M0-9C3-4-3 4 0 9" stroke="#24110a" stroke-width="1.6" fill="none"/></g>`;
+    const handle = `M${cx + 96} ${cy - 20}H${cx + 124}A20 20 0 0 1 ${cx + 124} ${cy + 20}H${cx + 96}`;
+    return `<svg viewBox="0 0 390 390" width="390" height="390">
+      <defs>
+        <filter id="${u}wood" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".006 .14" numOctaves="3" seed="11"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 .2 0 0 0 0 .1 0 0 0 0 .05 1.5 0 0 0 -.5"/>
+        </filter>
+        <radialGradient id="${u}light" cx=".38" cy=".32" r=".85">
+          <stop offset="0" stop-color="#fff4e0" stop-opacity=".22"/><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/>
+        </radialGradient>
+        <radialGradient id="${u}saucer" cx=".44" cy=".4" r=".6"><stop offset="0" stop-color="#fff"/><stop offset=".78" stop-color="#f2ede7"/><stop offset="1" stop-color="#d6cdc3"/></radialGradient>
+        <radialGradient id="${u}cup" cx=".42" cy=".38" r=".62"><stop offset="0" stop-color="#fff"/><stop offset=".86" stop-color="#f4f0ea"/><stop offset="1" stop-color="#d8cfc5"/></radialGradient>
+        <radialGradient id="${u}coffee" cx=".5" cy=".5" r=".5">
+          <stop offset="0" stop-color="#d7a06a"/><stop offset=".5" stop-color="#bd7d45"/><stop offset=".84" stop-color="#874a23"/><stop offset="1" stop-color="#4b2411"/>
+        </radialGradient>
+        <linearGradient id="${u}steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f5f7"/><stop offset=".5" stop-color="#b3b6bc"/><stop offset="1" stop-color="#e3e5e8"/></linearGradient>
+        <radialGradient id="${u}bean" cx=".35" cy=".3" r=".7"><stop offset="0" stop-color="#8a5532" stop-opacity=".8"/><stop offset="1" stop-color="#2a140a" stop-opacity="0"/></radialGradient>
+        <filter id="${u}shadow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
+        <filter id="${u}soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="1.3"/></filter>
+        <filter id="${u}leaves" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+        <filter id="${u}crema" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".11" numOctaves="2" seed="5"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 .32 0 0 0 0 .16 0 0 0 0 .06 1.3 0 0 0 -.55"/>
+        </filter>
+        <clipPath id="${u}in"><circle cx="${cx}" cy="${cy}" r="88"/></clipPath>
+      </defs>
+      <rect width="390" height="390" fill="#7a4828"/>
+      <rect width="390" height="390" filter="url(#${u}wood)"/>
+      <path d="M0 92H390M0 208H390M0 326H390" stroke="#2c170b" stroke-width="2.2" opacity=".55"/>
+      <g filter="url(#${u}leaves)" fill="#000" opacity=".28">
+        <ellipse cx="34" cy="40" rx="52" ry="20" transform="rotate(35 34 40)"/>
+        <ellipse cx="96" cy="16" rx="44" ry="16" transform="rotate(-20 96 16)"/>
+        <ellipse cx="20" cy="120" rx="40" ry="14" transform="rotate(70 20 120)"/>
+      </g>
+      <ellipse cx="${cx + 16}" cy="${cy + 18}" rx="156" ry="152" fill="#000" opacity=".5" filter="url(#${u}shadow)"/>
+      <circle cx="${cx}" cy="${cy}" r="150" fill="url(#${u}saucer)"/>
+      <circle cx="${cx}" cy="${cy}" r="117" fill="none" stroke="#e2dad1" stroke-width="4"/>
+      <g transform="rotate(-8 ${cx} ${cy})">
+        <ellipse cx="${cx - 52}" cy="${cy + 128}" rx="17" ry="10" fill="url(#${u}steel)"/>
+        <path d="M${cx - 36} ${cy + 127}C${cx} ${cy + 124} ${cx + 40} ${cy + 126} ${cx + 82} ${cy + 124}" stroke="url(#${u}steel)" stroke-width="7" stroke-linecap="round" fill="none"/>
+      </g>
+      <path d="${handle}" fill="none" stroke="#000" stroke-width="15" stroke-linecap="round" opacity=".22" filter="url(#${u}soft)" transform="translate(6 7)"/>
+      <path d="${handle}" fill="none" stroke="#f1ece6" stroke-width="15" stroke-linecap="round"/>
+      <ellipse cx="${cx + 10}" cy="${cy + 12}" rx="110" ry="108" fill="#000" opacity=".32" filter="url(#${u}shadow)"/>
+      <circle cx="${cx}" cy="${cy}" r="106" fill="url(#${u}cup)"/>
+      <circle cx="${cx}" cy="${cy}" r="94" fill="#e7e0d8"/>
+      <circle cx="${cx}" cy="${cy}" r="88" fill="url(#${u}coffee)"/>
+      <rect x="${cx - 88}" y="${cy - 88}" width="176" height="176" filter="url(#${u}crema)" clip-path="url(#${u}in)" opacity=".7"/>
+      <g clip-path="url(#${u}in)"><g filter="url(#${u}soft)"><g transform="translate(${cx} ${cy + 6})">
+        <path d="M0 50C-42 26-66-2-58-28C-50-52-14-56 0-29C14-56 50-52 58-28C66-2 42 26 0 50Z" fill="#f4e4cc"/>
+        <path d="M0 33C-28 17-44-1-39-18C-33-34-10-37 0-19C10-37 33-34 39-18C44-1 28 17 0 33Z" fill="#faf1e3" opacity=".7"/>
+        <path d="M0-44V54" stroke="#b97c48" stroke-width="3" opacity=".55"/>
+      </g></g></g>
+      <circle cx="${cx}" cy="${cy}" r="86" fill="none" stroke="#e4c49d" stroke-width="3" opacity=".45" filter="url(#${u}soft)"/>
+      ${bean(350, 44, 20)}${bean(368, 70, -30)}${bean(336, 76, 65)}${bean(34, 352, -15)}${bean(58, 370, 40)}
+      <rect width="390" height="390" fill="url(#${u}light)"/>
+      ${grain(u, 390, 390, 9)}
+    </svg>`;
+  }
+
+  // A beach from above, 4:5: sea, foam, an umbrella and towels.
+  function beach(u) {
+    const W = 390, H = 488;
+    const sea = 'M0 0H390V352C340 338 300 315 256 292C214 270 172 258 128 236C84 214 46 184 0 168Z';
+    const shore = 'M0 168C46 184 84 214 128 236C172 258 214 270 256 292C300 315 340 338 390 352';
+    const ux = 120, uy = 378, ur = 44;
+    let wedges = '';
+    for (let i = 0; i < 8; i++) {
+      const a0 = (i * 45 - 90) * Math.PI / 180, a1 = ((i + 1) * 45 - 90) * Math.PI / 180;
+      wedges += `<path d="M${ux} ${uy}L${f1(ux + ur * Math.cos(a0))} ${f1(uy + ur * Math.sin(a0))}A${ur} ${ur} 0 0 1 ` +
+        `${f1(ux + ur * Math.cos(a1))} ${f1(uy + ur * Math.sin(a1))}Z" fill="${i % 2 ? '#fff4e6' : '#f2605a'}"/>`;
+    }
+    let steps = '';
+    for (let i = 0; i < 9; i++) {
+      const t = i / 9, x = 30 + 150 * t + (i % 2 ? 5 : -5), y = 476 - 190 * t;
+      steps += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3" ry="5" transform="rotate(38 ${f1(x)} ${f1(y)})"/>`;
+    }
+    let stripes = '';
+    for (let y = -46; y < 46; y += 12) stripes += `<rect x="-24" y="${y}" width="48" height="6"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+      <defs>
+        <linearGradient id="${u}sand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ddb2"/><stop offset="1" stop-color="#e6c992"/></linearGradient>
+        <linearGradient id="${u}sea" x1=".2" y1=".85" x2=".85" y2="0">
+          <stop offset="0" stop-color="#9beadb"/><stop offset=".18" stop-color="#43c8cf"/><stop offset=".55" stop-color="#1598b8"/><stop offset="1" stop-color="#0a5a88"/>
+        </linearGradient>
+        <radialGradient id="${u}shade" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset="1" stop-color="#000" stop-opacity=".18"/></radialGradient>
+        <clipPath id="${u}water"><path d="${sea}"/></clipPath>
+        <filter id="${u}waves" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".05 .012" numOctaves="3" seed="21"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1.5 0 0 0 -.66"/>
+        </filter>
+        <filter id="${u}foam" x="-10%" y="-30%" width="120%" height="160%">
+          <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="3" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+          <feGaussianBlur stdDeviation=".7"/>
+        </filter>
+        <filter id="${u}blur4" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+        <filter id="${u}blur2" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter>
+      </defs>
+      <rect width="${W}" height="${H}" fill="url(#${u}sand)"/>
+      <path d="${shore}" stroke="#cfae78" stroke-width="40" fill="none" opacity=".6" filter="url(#${u}blur4)"/>
+      <path d="${sea}" fill="url(#${u}sea)"/>
+      <g clip-path="url(#${u}water)"><rect x="-120" y="-120" width="640" height="720" filter="url(#${u}waves)" opacity=".45" transform="rotate(26 195 244)"/></g>
+      <g fill="none" stroke="#fff" filter="url(#${u}foam)">
+        <path d="${shore}" stroke-width="10" opacity=".95"/>
+        <path d="${shore}" stroke-width="4" opacity=".55" transform="translate(12 -26)"/>
+        <path d="${shore}" stroke-width="3" opacity=".3" transform="translate(26 -58)"/>
+      </g>
+      <g fill="#a98455" opacity=".4">${steps}</g>
+      <circle cx="${ux + 20}" cy="${uy + 16}" r="${ur}" fill="#5c4322" opacity=".35" filter="url(#${u}blur2)"/>
+      <g transform="translate(214 360) rotate(14)">
+        <rect x="-20" y="-42" width="48" height="92" rx="3" fill="#5c4322" opacity=".3" filter="url(#${u}blur2)"/>
+        <rect x="-24" y="-46" width="48" height="92" rx="3" fill="#fff"/>
+        <g fill="#2f80c4">${stripes}</g>
+      </g>
+      <g transform="translate(286 396) rotate(-9)">
+        <rect x="-20" y="-42" width="48" height="92" rx="3" fill="#5c4322" opacity=".3" filter="url(#${u}blur2)"/>
+        <rect x="-24" y="-46" width="48" height="92" rx="3" fill="#ffcc4d"/>
+        <rect x="-24" y="-38" width="48" height="5" fill="#fff"/><rect x="-24" y="33" width="48" height="5" fill="#fff"/>
+      </g>
+      <g transform="translate(250 446) rotate(20)">
+        <rect x="-9" y="-6" width="26" height="20" rx="6" fill="#5c4322" opacity=".3" filter="url(#${u}blur2)"/>
+        <rect x="-13" y="-10" width="26" height="20" rx="6" fill="#d7b07a"/>
+        <path d="M-13-2H13" stroke="#b98d55" stroke-width="2"/>
+      </g>
+      ${wedges}
+      <circle cx="${ux}" cy="${uy}" r="${ur}" fill="url(#${u}shade)"/>
+      <circle cx="${ux}" cy="${uy}" r="4" fill="#b8403b"/>
+      ${grain(u, W, H, 21, .35)}
+    </svg>`;
+  }
+
+  // A city skyline at night, by the water.
+  function city(u) {
+    const W = 390, H = 390, G = 292, r = rng(42);   // G: where the buildings meet the water
+    let stars = '';
+    for (let i = 0; i < 70; i++) stars += `<circle cx="${f1(r() * W)}" cy="${f1(r() * 180)}" r="${f1(.3 + r() * .9)}" opacity="${f1(.25 + r() * .7)}"/>`;
+    let far = '', dim = '';
+    for (let x = -6; x < W;) {
+      const w = 14 + r() * 24, h = 60 + r() * 90;
+      far += `<rect x="${f1(x)}" y="${f1(G - h)}" width="${f1(w)}" height="${f1(h)}"/>`;
+      for (let wy = G - h + 6; wy < G - 6; wy += 9) {
+        for (let wx = x + 3; wx < x + w - 4; wx += 6) if (r() < .12) dim += `<rect x="${f1(wx)}" y="${f1(wy)}" width="2.4" height="3.4"/>`;
+      }
+      x += w + 1;
+    }
+    const colours = ['#ffd27a', '#ffe6ad', '#f9b856', '#a9d6ff'];
+    let near = '', lit = '';
+    for (let x = -10; x < W;) {
+      const tall = r() < .22, w = 24 + r() * 40, h = (tall ? 170 : 90) + r() * (tall ? 70 : 90), busy = .08 + r() * .42;
+      near += `<rect x="${f1(x)}" y="${f1(G - h)}" width="${f1(w)}" height="${f1(h + 2)}"/>`;
+      for (let wy = G - h + 8; wy < G - 8; wy += 9) {
+        for (let wx = x + 4; wx < x + w - 5; wx += 7) {
+          if (r() < busy) lit += `<rect x="${f1(wx)}" y="${f1(wy)}" width="3.4" height="4.4" fill="${colours[Math.floor(r() * r() * 4)]}"/>`;
+        }
+      }
+      x += w + 2;
+    }
+    let tower = '';
+    for (let wy = 104; wy < G - 8; wy += 10) if (r() < .5) tower += `<rect x="243" y="${wy}" width="6" height="3" fill="#ffe6ad"/>`;
+    return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+      <defs>
+        <linearGradient id="${u}sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${G}">
+          <stop offset="0" stop-color="#070b24"/><stop offset=".55" stop-color="#1f1a4d"/><stop offset=".85" stop-color="#55306a"/><stop offset="1" stop-color="#a24c6c"/>
+        </linearGradient>
+        <linearGradient id="${u}water" gradientUnits="userSpaceOnUse" x1="0" y1="${G}" x2="0" y2="${H}"><stop offset="0" stop-color="#2a1d4a"/><stop offset="1" stop-color="#05040f"/></linearGradient>
+        <radialGradient id="${u}moon"><stop offset="0" stop-color="#fff4d2" stop-opacity=".55"/><stop offset="1" stop-color="#fff4d2" stop-opacity="0"/></radialGradient>
+        <filter id="${u}glow" x="-300%" y="-300%" width="700%" height="700%"><feGaussianBlur stdDeviation="2.5"/></filter>
+        <filter id="${u}bokeh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+        <filter id="${u}bloom" x="-5%" y="-5%" width="110%" height="110%">
+          <feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="${u}far" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur stdDeviation=".6"/></filter>
+        <linearGradient id="${u}haze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a24c6c" stop-opacity="0"/><stop offset="1" stop-color="#c25f78" stop-opacity=".45"/></linearGradient>
+        <filter id="${u}ripple" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="turbulence" baseFrequency=".02 .25" numOctaves="1" seed="2" result="t"/>
+          <feDisplacementMap in="SourceGraphic" in2="t" scale="9" xChannelSelector="R" yChannelSelector="G"/>
+          <feGaussianBlur stdDeviation=".3 2"/>
+        </filter>
+        <clipPath id="${u}river"><rect y="${G}" width="${W}" height="${H - G}"/></clipPath>
+      </defs>
+      <rect width="${W}" height="${G}" fill="url(#${u}sky)"/>
+      <g fill="#fff">${stars}</g>
+      <circle cx="318" cy="64" r="52" fill="url(#${u}moon)"/><circle cx="318" cy="64" r="14" fill="#fff6dc"/>
+      <g filter="url(#${u}far)"><g fill="#2a2452">${far}</g><g fill="#f3c46c" opacity=".55">${dim}</g></g>
+      <rect y="${G - 130}" width="${W}" height="130" fill="url(#${u}haze)"/>
+      <g id="${u}front">
+        <rect x="236" y="96" width="20" height="${G - 96}" fill="#0d0b1f"/><path d="M246 96V60" stroke="#0d0b1f" stroke-width="2.5"/>${tower}
+        <g fill="#100d24">${near}</g><g filter="url(#${u}bloom)">${lit}</g>
+      </g>
+      <circle cx="246" cy="60" r="7" fill="#ff5a5a" opacity=".55" filter="url(#${u}glow)"/><circle cx="246" cy="60" r="2.4" fill="#ff5a5a"/>
+      <rect y="${G}" width="${W}" height="${H - G}" fill="url(#${u}water)"/>
+      <g clip-path="url(#${u}river)"><g filter="url(#${u}ripple)" opacity=".45"><use href="#${u}front" transform="translate(0 ${2 * G}) scale(1 -1)"/></g></g>
+      <g filter="url(#${u}bokeh)" opacity=".3">
+        <circle cx="34" cy="366" r="24" fill="#ffb35c"/><circle cx="78" cy="384" r="14" fill="#ff7aa8"/>
+        <circle cx="352" cy="372" r="28" fill="#7fc6ff"/><circle cx="306" cy="388" r="13" fill="#ffd27a"/>
+      </g>
+      ${grain(u, W, H, 42)}
+    </svg>`;
+  }
+
+  // A pizza from above, on a slate.
+  function pizza(u) {
+    const cx = 195, cy = 194, r = rng(77);
+    let spots = '';
+    for (let i = 0; i < 34; i++) {
+      const a = r() * Math.PI * 2, d = 136 + r() * 16, x = f1(cx + d * Math.cos(a)), y = f1(cy + d * Math.sin(a));
+      spots += `<ellipse cx="${x}" cy="${y}" rx="${f1(3 + r() * 6)}" ry="${f1(2.5 + r() * 4)}" transform="rotate(${f1(a * 180 / Math.PI)} ${x} ${y})" opacity="${f1(.35 + r() * .45)}"/>`;
+    }
+    const blobs = [[-50, -40, 30], [20, -62, 26], [62, -8, 28], [30, 50, 30], [-40, 46, 26], [-78, 8, 20], [0, 0, 22], [86, 52, 18], [-10, 92, 18], [-92, -52, 16], [58, -86, 16]];
+    let cheese = '', brown = '';
+    for (const [x, y, s] of blobs) {
+      cheese += `<circle cx="${cx + x}" cy="${cy + y}" r="${s}"/>`;
+      for (let k = 0; k < 2; k++) {
+        brown += `<ellipse cx="${f1(cx + x + (r() - .5) * s)}" cy="${f1(cy + y + (r() - .5) * s)}" rx="${f1(2 + r() * 5)}" ry="${f1(2 + r() * 4)}" opacity="${f1(.3 + r() * .4)}"/>`;
+      }
+    }
+    const leaf = (x, y, a, s) => `<g transform="translate(${cx + x} ${cy + y}) rotate(${a}) scale(${s})">` +
+      `<path d="M0-18C11-9 11 9 0 18C-11 9-11-9 0-18Z" fill="#2f7d32"/><path d="M0-18C11-9 11 9 0 18C-11 9-11-9 0-18Z" fill="url(#${u}leaf)"/>` +
+      `<path d="M0-15V15" stroke="#6fbf6a" stroke-width="1.4" opacity=".8"/></g>`;
+    let cuts = '';
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60 + 15) * Math.PI / 180;
+      cuts += `<path d="M${cx} ${cy}L${f1(cx + 152 * Math.cos(a))} ${f1(cy + 152 * Math.sin(a))}"/>`;
+    }
+    let flour = '';
+    for (let i = 0; i < 90; i++) {
+      const x = r() * 390, y = r() * 390;
+      if (Math.hypot(x - cx, y - cy) > 160) flour += `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(.5 + r() * 1.2)}" opacity="${f1(.15 + r() * .35)}"/>`;
+    }
+    return `<svg viewBox="0 0 390 390" width="390" height="390">
+      <defs>
+        <radialGradient id="${u}crust" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="154"><stop offset=".8" stop-color="#e9b46a"/><stop offset=".93" stop-color="#d79447"/><stop offset="1" stop-color="#a8642a"/></radialGradient>
+        <radialGradient id="${u}sauce" gradientUnits="userSpaceOnUse" cx="${cx}" cy="${cy}" r="130"><stop offset="0" stop-color="#d4452a"/><stop offset=".9" stop-color="#b9321f"/><stop offset="1" stop-color="#9d2a19"/></radialGradient>
+        <radialGradient id="${u}leaf" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#7cc576" stop-opacity=".5"/><stop offset="1" stop-color="#1b4d1e" stop-opacity=".3"/></radialGradient>
+        <radialGradient id="${u}light" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></radialGradient>
+        <filter id="${u}slate" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".02" numOctaves="4" seed="8"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 .25 0 0 0 0 .24 0 0 0 0 .24 1 0 0 0 -.3"/>
+        </filter>
+        <filter id="${u}goo" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/><feColorMatrix type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 22 -9"/></filter>
+        <filter id="${u}soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.4"/></filter>
+        <filter id="${u}shadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="10"/></filter>
+        <filter id="${u}texture" x="0" y="0" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="3" seed="12"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 .5 0 0 0 0 .1 0 0 0 0 .05 1.2 0 0 0 -.5"/>
+        </filter>
+        <clipPath id="${u}base"><circle cx="${cx}" cy="${cy}" r="128"/></clipPath>
+      </defs>
+      <rect width="390" height="390" fill="#2b2826"/>
+      <rect width="390" height="390" filter="url(#${u}slate)"/>
+      <g fill="#fff">${flour}</g>
+      <circle cx="${cx + 10}" cy="${cy + 14}" r="158" fill="#000" opacity=".55" filter="url(#${u}shadow)"/>
+      <circle cx="${cx}" cy="${cy}" r="154" fill="url(#${u}crust)"/>
+      <g fill="#3e2210" filter="url(#${u}soft)">${spots}</g>
+      <circle cx="${cx}" cy="${cy}" r="128" fill="url(#${u}sauce)"/>
+      <rect x="${cx - 130}" y="${cy - 130}" width="260" height="260" filter="url(#${u}texture)" clip-path="url(#${u}base)" opacity=".6"/>
+      <g fill="#fff2d4" filter="url(#${u}goo)">${cheese}</g>
+      <g fill="#c98a3c" filter="url(#${u}soft)">${brown}</g>
+      ${leaf(-20, -10, 30, 1.2)}${leaf(48, 20, -40, 1)}${leaf(-56, -64, 80, .9)}${leaf(10, 70, 10, 1.1)}${leaf(76, -54, -15, .95)}
+      <g stroke="#000" stroke-width="1.6" opacity=".22">${cuts}</g>
+      <rect width="390" height="390" fill="url(#${u}light)"/>
+      ${grain(u, 390, 390, 77)}
+    </svg>`;
+  }
+
+  // ---- The people, all made up -------------------------------------------------
+  const PEOPLE = {
+    me: { bg: ['#c7d2fe', '#a5b4fc'], skin: '#f1c9a8', hair: '#3a281e', shirt: '#334155', style: 'short' },
+    'maya.travels': { bg: ['#fde68a', '#fdba74'], skin: '#e3ad86', hair: '#2a1a12', shirt: '#0ea5e9', style: 'long' },
+    'jordan_eats': { bg: ['#bbf7d0', '#5eead4'], skin: '#8b5a3c', hair: '#18110d', shirt: '#f97316', style: 'curly' },
+    'alex.moves': { bg: ['#bae6fd', '#93c5fd'], skin: '#f2d0b5', hair: '#b7793f', shirt: '#16a34a', style: 'short' },
+    'sunset.chaser': { bg: ['#fbcfe8', '#f9a8d4'], skin: '#c58a64', hair: '#4a2d1d', shirt: '#be123c', style: 'bun' },
+    'nina.bakes': { bg: ['#fef3c7', '#fde68a'], skin: '#f0c6a3', hair: '#7c3f1d', shirt: '#7c3aed', style: 'long' },
+    'slowcafe.co': { logo: true },
+  };
+  let avatars = 0;
+  function avatar(name) {
+    const p = PEOPLE[name], u = 'av' + avatars++;
+    if (p.logo) {
+      return `<svg viewBox="0 0 64 64"><rect width="64" height="64" fill="#f3e9db"/>
+        <path d="M19 28h22v7a11 11 0 0 1-22 0Z" fill="#5b3420"/><path d="M41 30h3a5 5 0 0 1 0 10h-3" fill="none" stroke="#5b3420" stroke-width="3"/>
+        <path d="M25 22c-2-3 2-5 0-8M31 22c-2-3 2-5 0-8M37 22c-2-3 2-5 0-8" fill="none" stroke="#b08968" stroke-width="2" stroke-linecap="round"/>
+        <path d="M17 51h28" stroke="#5b3420" stroke-width="3" stroke-linecap="round"/></svg>`;
+    }
+    const cap = 'M20 28c-1-9 5-15 12-15s13 6 12 15c-3-4-7-6-12-6s-9 2-12 6Z';
+    const back = p.style === 'long' ? `<path d="M17 31c0-11 7-18 15-18s15 7 15 18v19H17Z" fill="${p.hair}"/>` : '';
+    const front = {
+      short: `<path d="${cap}" fill="${p.hair}"/>`,
+      long: `<path d="M20 27c0-8 5-14 12-14s12 6 12 14c-4-3-8-5-12-5s-8 2-12 5Z" fill="${p.hair}"/>`,
+      curly: `<g fill="${p.hair}"><circle cx="22" cy="24" r="6"/><circle cx="27" cy="18" r="6.5"/><circle cx="33" cy="16" r="6.5"/>` +
+        `<circle cx="39" cy="18" r="6.5"/><circle cx="43" cy="24" r="6"/><circle cx="21" cy="30" r="4"/><circle cx="43" cy="30" r="4"/></g>`,
+      bun: `<g fill="${p.hair}"><circle cx="32" cy="11" r="6"/><path d="${cap}"/></g>`,
+    }[p.style];
+    return `<svg viewBox="0 0 64 64"><defs><linearGradient id="${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${p.bg[0]}"/><stop offset="1" stop-color="${p.bg[1]}"/></linearGradient></defs>
+      <rect width="64" height="64" fill="url(#${u})"/>${back}
+      <path d="M10 64c1-12 9-18 22-18s21 6 22 18Z" fill="${p.shirt}"/>
+      <rect x="28" y="37" width="8" height="10" rx="3" fill="${p.skin}"/><circle cx="32" cy="29" r="11.5" fill="${p.skin}"/>${front}</svg>`;
+  }
+
+  // ---- Icons ------------------------------------------------------------------
+  const ICON = {
+    heart: '<path d="M16.8 3.9c-2 0-3.6 1.1-4.8 2.8-1.2-1.7-2.8-2.8-4.8-2.8C4.3 3.9 2 6.3 2 9.3c0 5.4 7.4 10 10 11.4 2.6-1.4 10-6 10-11.4 0-3-2.3-5.4-5.2-5.4Z"/>',
+    comment: '<path d="M3.7 16.4A9.4 9.4 0 1 1 7.6 20.3L2.2 21.8Z"/>',
+    share: '<path d="M21.5 2.5 2.5 9.6l7.4 3.3 3.3 7.4ZM21.5 2.5 9.9 12.9"/>',
+    save: '<path d="M18.5 21 12 14.7 5.5 21V3.5h13Z"/>',
+    more: '<circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/>',
+    home: '<path d="M3 10.2 12 3l9 7.2V21h-6.4v-6.3H9.4V21H3Z"/>',
+    search: '<circle cx="10.6" cy="10.6" r="7.1"/><path d="M15.8 15.8 21 21"/>',
+    create: '<rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M12 7.8v8.4M7.8 12h8.4"/>',
+    reels: '<rect x="3" y="3" width="18" height="18" rx="5.5"/><path d="M3 8.2h18M8.7 3.2l2.6 5M14.4 3.2l2.6 5"/><path d="M10.2 11.4v5.4l4.5-2.7Z" fill="currentColor" stroke="none"/>',
+  };
+  const icon = (name, solid = false) => `<svg viewBox="0 0 24 24" fill="${solid ? 'currentColor' : 'none'}" stroke="${solid ? 'none' : 'currentColor'}" ` +
+    `stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
+
+  // ---- The home screen ----------------------------------------------------------
   const glyph = {
     mail: '<path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M4 7h16v11H4Zm0 0 8 6 8-6"/>',
-    maps: '<path fill="#fff" d="M12 3a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6Zm0 8.200A2.2 2.2 0 1 1 12 6.800a2.2 2.2 0 0 1 0 4.400Z"/>',
-    photos: '<circle cx="12" cy="12" r="4.2" fill="#fff"/><g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.400M18.4 5.6 17 7M7 17l-1.4 1.4"/></g>',
-    music: '<path fill="#fff" d="M9 5.5 19 4v11.300a2.7 2.7 0 1 1-2-2.600V7.300l-6 .9v8.600a2.7 2.7 0 1 1-2-2.600Z"/>',
+    maps: '<path fill="#fff" d="M12 3a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6Zm0 8.2A2.2 2.2 0 1 1 12 6.8a2.2 2.2 0 0 1 0 4.4Z"/>',
+    photos: '<circle cx="12" cy="12" r="4.2" fill="#fff"/><g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></g>',
+    music: '<path fill="#fff" d="M9 5.5 19 4v11.3a2.7 2.7 0 1 1-2-2.6V7.3l-6 .9v8.6a2.7 2.7 0 1 1-2-2.6Z"/>',
     notes: '<g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 7h12M6 12h12M6 17h7"/></g>',
-    weather: '<path fill="#fff" d="M7.5 18a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6 1.600A3.3 3.3 0 0 1 17.2 18Z"/>',
-    camera: '<path fill="#fff" d="M9 5h6l1.3 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.700Zm3 4.500a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>',
-    social: '<path fill="#fff" d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z"/>',
-    phone: '<path fill="#fff" d="M7.2 3.5 9.8 4l1 4-1.9 1.500a11 11 0 0 0 5.6 5.600L16 13.200l4 1 .5 2.600a2 2 0 0 1-2 2.400A15.2 15.2 0 0 1 4.8 5.500a2 2 0 0 1 2.4-2Z"/>',
+    weather: '<path fill="#fff" d="M7.5 18a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6 1.6A3.3 3.3 0 0 1 17.2 18Z"/>',
+    camera: '<path fill="#fff" d="M9 5h6l1.3 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.7Zm3 4.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>',
+    phone: '<path fill="#fff" d="M7.2 3.5 9.8 4l1 4-1.9 1.5a11 11 0 0 0 5.6 5.6L16 13.2l4 1 .5 2.6a2 2 0 0 1-2 2.4A15.2 15.2 0 0 1 4.8 5.5a2 2 0 0 1 2.4-2Z"/>',
     chat: '<path fill="#fff" d="M4 5h16v11H9l-5 4Z"/>',
-    web: '<circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="2"/><path fill="none" stroke="#fff" stroke-width="2" d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16"/>'
+    web: '<circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="2"/><path fill="none" stroke="#fff" stroke-width="2" d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16"/>',
   };
-  const icon = (name, colour) => `<div class="icon" style="background:${colour}"><svg viewBox="0 0 24 24">${glyph[name]}</svg></div>`;
+  const plain = (name, colour) => `<div class="icon" style="background:${colour}"><svg viewBox="0 0 24 24">${glyph[name]}</svg></div>`;
+  const instagramIcon = `<div class="icon whole"><svg viewBox="0 0 60 60">
+    <defs><radialGradient id="igIcon" cx=".3" cy="1.07" r="1.15">
+      <stop offset="0" stop-color="#fdf497"/><stop offset=".05" stop-color="#fdf497"/><stop offset=".45" stop-color="#fd5949"/>
+      <stop offset=".6" stop-color="#d6249f"/><stop offset=".9" stop-color="#285aeb"/></radialGradient></defs>
+    <rect width="60" height="60" rx="17" fill="url(#igIcon)"/>
+    <rect x="15" y="15" width="30" height="30" rx="9" fill="none" stroke="#fff" stroke-width="3.4"/>
+    <circle cx="30" cy="30" r="7.2" fill="none" stroke="#fff" stroke-width="3.4"/><circle cx="38.6" cy="21.4" r="2.1" fill="#fff"/></svg></div>`;
   const apps = [
     ['mail', 'Mail', '#3b82f6'], ['maps', 'Maps', '#22a06b'], ['photos', 'Photos', '#f59e0b'], ['music', 'Music', '#ec4899'],
-    ['notes', 'Notes', '#eab308'], ['weather', 'Weather', '#38bdf8'], ['camera', 'Camera', '#64748b'], ['social', 'Social', '#f2545b']
+    ['notes', 'Notes', '#eab308'], ['weather', 'Weather', '#38bdf8'], ['camera', 'Camera', '#64748b'], ['instagram', 'Instagram']
   ];
-  document.getElementById('grid').innerHTML = apps.map(([g, label, c]) => `<div class="app" data-app="${g}">${icon(g, c)}<span>${label}</span></div>`).join('');
-  document.getElementById('dock').innerHTML = [['phone', '#22c55e'], ['chat', '#3b82f6'], ['web', '#14b8a6'], ['camera', '#64748b']].map(([g, c]) => icon(g, c)).join('');
+  document.getElementById('grid').innerHTML = apps.map(([g, label, c]) =>
+    `<div class="app" data-app="${g}">${g === 'instagram' ? instagramIcon : plain(g, c)}<span>${label}</span></div>`).join('');
+  document.getElementById('dock').innerHTML = [['phone', '#22c55e'], ['chat', '#3b82f6'], ['web', '#14b8a6'], ['camera', '#64748b']]
+    .map(([g, c]) => plain(g, c)).join('');
 
-  // Pictures for the made-up feed, drawn here so that nothing is borrowed from anyone.
-  const pics = [
-    `<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc071"/><stop offset=".6" stop-color="#ff6f91"/><stop offset="1" stop-color="#6a3d9a"/></linearGradient></defs>
-     <rect width="390" height="390" fill="url(#a)"/><circle cx="270" cy="150" r="46" fill="#fff3c4"/>
-     <path d="M0 290 90 220l70 50 80-70 150 110v80H0Z" fill="#3d2466"/><path d="M0 330 120 270l110 60 160-50v110H0Z" fill="#2a1848"/>`,
-    `<rect width="390" height="390" fill="#efe3d2"/><circle cx="195" cy="200" r="118" fill="#fff"/><circle cx="195" cy="200" r="96" fill="#8a5a3c"/>
-     <path d="M150 205c20-50 70-50 90 0-20 40-70 40-90 0Z" fill="#e9cfae"/><path d="M178 205c8-20 26-20 34 0-8 16-26 16-34 0Z" fill="#8a5a3c"/>
-     <rect x="302" y="188" width="52" height="24" rx="12" fill="#fff"/>`,
-    `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc7ff"/><stop offset="1" stop-color="#d9f1ff"/></linearGradient></defs>
-     <rect width="390" height="390" fill="url(#b)"/><path d="M40 330 170 120l70 110 40-50 90 150Z" fill="#4b6b8a"/><path d="M170 120l32 50-26 14-22-12-14 10Z" fill="#fff"/>
-     <rect y="320" width="390" height="70" fill="#3f7d5a"/><circle cx="80" cy="80" r="26" fill="#fff" opacity=".8"/><circle cx="110" cy="86" r="20" fill="#fff" opacity=".8"/>`,
-    `<rect width="390" height="390" fill="#d9f2e3"/><rect x="150" y="250" width="90" height="100" rx="12" fill="#c8704a"/>
-     <path d="M195 250c-70-30-80-110-40-150 30 40 50 90 40 150Z" fill="#2f9e66"/><path d="M195 250c60-20 90-90 60-150-40 30-60 90-60 150Z" fill="#43b97c"/><path d="M195 250c-10-60 0-120 20-170 20 60 10 120-20 170Z" fill="#237a4e"/>`
+  // ---- The feed -------------------------------------------------------------------
+  const POSTS = [
+    { who: 'maya.travels', where: 'Banff National Park', story: true, pic: lake, liker: 'alex.moves', likes: '2,481',
+      text: 'golden hour hits different up here 🏔️✨', comments: 86, when: '2 hours ago' },
+    { who: 'slowcafe.co', where: 'Melbourne, Australia', pic: latte, liker: 'jordan_eats', likes: '934',
+      text: 'monday fuel ☕ open till 4, come say hi', comments: 41, when: '4 hours ago' },
+    { who: 'alex.moves', where: 'Uluwatu, Bali', story: true, pic: beach, photos: 3, liker: 'maya.travels', likes: '5,102',
+      text: 'would you take this view or nah? 🌊🌴', comments: 210, when: '6 hours ago' },
+    { who: 'sunset.chaser', where: 'Tokyo, Japan', pic: city, liker: 'nina.bakes', likes: '3,377',
+      text: 'this city never sleeps and neither do i 🌃', comments: 152, when: '8 hours ago' },
+    { who: 'jordan_eats', where: 'Naples, Italy', story: true, pic: pizza, liker: 'sunset.chaser', likes: '1,876',
+      text: 'best pizza of my life, no contest 🍕', comments: 97, when: '10 hours ago' },
   ];
-  const people = [['maya.k', '#f59e0b'], ['trail.mix', '#38bdf8'], ['slow.coffee', '#a16207'], ['plantdad', '#22a06b'], ['juno', '#ec4899']];
-  const heart = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8a4.7 4.7 0 0 1 6.6 6.700Z"/></svg>';
-  const bubble = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4Z"/></svg>';
-  const send = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M21 3 3 10.500l7 2.5 2.5 7Z"/></svg>';
-  const words = ['golden hour did not disappoint', 'third one today, no regrets', 'made it to the top before lunch', 'new leaf! finally'];
-  const likes = ['1,204', '867', '3,512', '429'];
-  document.getElementById('posts').innerHTML =
-    `<div class="stories">${people.map(([n, c]) => `<div class="story"><div class="ring" style="background:linear-gradient(45deg,#f2545b,#f59e0b)"><i style="background:${c}"></i></div>${n}</div>`).join('')}</div>` +
-    [0, 1, 2, 3, 0, 1].map((n, i) => `<div class="post">
-      <div class="who"><i style="background:${people[(n + 1) % 5][1]}"></i>${people[(n + 1) % 5][0]} <span>· ${i + 1}h</span></div>
-      <svg class="pic" viewBox="0 0 390 390">${pics[n].replace(/id="([ab])"/g, `id="$1${i}"`).replace(/url\(#([ab])\)/g, `url(#$1${i})`)}</svg>
-      <div class="acts">${heart}${bubble}${send}</div>
-      <div class="likes">${likes[n]} likes</div>
-      <div class="words"><b>${people[(n + 1) % 5][0]}</b> ${words[n]}</div></div>`).join('');
+  const STORIES = ['me', 'maya.travels', 'jordan_eats', 'alex.moves', 'sunset.chaser', 'nina.bakes'];
+  const plus = '<svg viewBox="0 0 10 10"><path d="M5 1v8M1 5h8" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  document.getElementById('feed').innerHTML =
+    `<div class="stories">${STORIES.map((n) => `<div class="story">
+      <div class="ring${n === 'me' ? ' none' : ''}"><div class="gap">${avatar(n)}</div>${n === 'me' ? `<div class="plus">${plus}</div>` : ''}</div>
+      <div class="name${n === 'me' ? ' mine' : ''}">${n === 'me' ? 'Your story' : n}</div></div>`).join('')}</div>` +
+    POSTS.map((p, i) => `<div class="post">
+      <div class="head">
+        <div class="ring small${p.story ? '' : ' none'}"><div class="gap">${avatar(p.who)}</div></div>
+        <div class="who"><b>${p.who}</b><small>${p.where}</small></div>
+        <div class="more">${icon('more', true)}</div>
+      </div>
+      <div class="pic">${p.pic('p' + i)}${p.photos ? `<div class="count">1/${p.photos}</div>` : ''}</div>
+      <div class="acts">${icon('heart')}${icon('comment')}${icon('share')}<span class="grow"></span>${icon('save')}
+        ${p.photos ? `<div class="dots"><i class="on"></i>${'<i></i>'.repeat(p.photos - 1)}</div>` : ''}</div>
+      <div class="likes"><span class="mini">${avatar(p.liker)}</span><span>Liked by <b>${p.liker}</b> and <b>${p.likes} others</b></span></div>
+      <div class="cap"><b>${p.who}</b> ${p.text}</div>
+      <div class="comments">View all ${p.comments} comments</div>
+      <div class="when">${p.when}</div>
+    </div>`).join('');
+  document.getElementById('bell').insertAdjacentHTML('afterbegin', icon('heart'));
+  document.getElementById('inbox').insertAdjacentHTML('afterbegin', icon('share'));
+  document.getElementById('nav').innerHTML =
+    `${icon('home', true)}${icon('search')}${icon('create')}${icon('reels')}<span class="me">${avatar('me')}</span>`;
 
   // ---- The story, moment by moment (times in thousandths of a second) --------
-  const TAP_AT = 4300;       // a finger taps the Social app
+  const TAP_AT = 4300;       // a finger taps Instagram
   const OPEN_AT = 4650;      // the app opens out from its icon
   const OPEN_MS = 420;
-  const FLICKS = [[5350, 0, 470], [6900, 470, 940], [8500, 940, 1410], [10000, 1410, 1790]];   // when, from, to
+  const FLICK_AT = [5350, 6900, 8500, 10000];   // when each flick of the feed starts
   const FLICK_MS = 750;
   const WALK_AT = 6150;      // Mr Blocky sets off
   const STATUS_BAR = 36;
 
   const home = document.getElementById('home');
+  const app = document.getElementById('app');
   const feed = document.getElementById('feed');
-  const posts = document.getElementById('posts');
   const tap = document.getElementById('tap');
   const status = document.getElementById('status');
-  const social = document.querySelector('[data-app="social"] .icon').getBoundingClientRect();
-  const centre = { x: social.left + social.width / 2, y: social.top + social.height / 2 };
+  const pill = document.getElementById('pill');
+  const target = document.querySelector('[data-app="instagram"] .icon').getBoundingClientRect();
+  const centre = { x: target.left + target.width / 2, y: target.top + target.height / 2 };
   tap.style.left = centre.x + 'px';
   tap.style.top = centre.y + 'px';
-  feed.style.transformOrigin = `${centre.x}px ${centre.y}px`;
+  app.style.transformOrigin = `${centre.x}px ${centre.y}px`;
 
   const clamp = (v) => Math.max(0, Math.min(1, v));
   const easeOut = (v) => 1 - Math.pow(1 - clamp(v), 3);
   const state = { phase: 'home', darkAt: null, doneAt: null };
   let sent = false;
+  let flicks = null;
+
+  // Each flick brings the next post up under the top bar, the last one only part of the way.
+  function plan() {
+    const tops = [...feed.querySelectorAll('.post')].map((post) => post.offsetTop);
+    const stops = [0, tops[1], tops[2], tops[3], tops[3] + 430];
+    return FLICK_AT.map((at, i) => [at, stops[i], stops[i + 1]]);
+  }
 
   // Puts everything where it belongs at time t, and says how the story is going.
   window.tick = (t) => {
     advanceTo(t);
+    if (!flicks) flicks = plan();
 
     // The finger.
     const press = clamp((t - TAP_AT) / 180) * (1 - clamp((t - TAP_AT - 260) / 240));
@@ -201,19 +690,20 @@
     // The app opening, then being scrolled.
     if (!state.darkAt) {
       const open = easeOut((t - OPEN_AT) / OPEN_MS);
-      feed.style.opacity = String(clamp((t - OPEN_AT) / 160));
-      feed.style.transform = `scale(${0.15 + 0.85 * open})`;
-      feed.style.borderRadius = `${Math.round(60 * (1 - open))}px`;
+      app.style.opacity = String(clamp((t - OPEN_AT) / 160));
+      app.style.transform = `scale(${0.15 + 0.85 * open})`;
+      app.style.borderRadius = `${Math.round(60 * (1 - open))}px`;
       if (t >= OPEN_AT && state.phase === 'home') state.phase = 'feed';
       let y = 0;
-      for (const [at, from, to] of FLICKS) if (t >= at) y = from + (to - from) * easeOut((t - at) / FLICK_MS);
-      posts.style.transform = `translateY(${-y}px)`;
+      for (const [at, from, to] of flicks) if (t >= at) y = from + (to - from) * easeOut((t - at) / FLICK_MS);
+      feed.style.transform = `translateY(${-y}px)`;
     }
-    // The status bar is white on the home screen and on the dark screen, and dark on the app.
-    const onFeed = t >= OPEN_AT + OPEN_MS * 0.55 && !state.darkAt;
-    status.style.color = onFeed ? '#1c1917' : '#fff';
+    // The status bar and gesture bar are white over the home screen and the dark screen, and black over the app.
+    const onApp = t >= OPEN_AT + OPEN_MS * 0.55 && !state.darkAt;
+    status.style.color = onApp ? '#000' : '#fff';
+    pill.style.background = onApp ? '#000' : '#fff';
     // On a phone the status bar stays in view over him, so keep it above his layer once that exists.
-    if (sent && document.documentElement.lastElementChild !== status) document.documentElement.append(status);
+    if (sent && document.documentElement.lastElementChild !== pill) document.documentElement.append(status, pill);
 
     if (t >= WALK_AT && !sent) {
       sent = true;
@@ -224,7 +714,7 @@
           // Behind the dark screen, the app is swapped for the home screen, as on a real phone.
           state.phase = 'dark';
           state.darkAt = clock;
-          feed.style.display = 'none';
+          app.style.display = 'none';
         }
       }).then((show) => show.fadeOut()).then(() => {
         state.phase = 'done';

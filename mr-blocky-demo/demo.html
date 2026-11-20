@@ -93,7 +93,7 @@
     if (story.doneAt != null) say('And you get your day back.', story.doneAt + 150, t);
     else if (story.darkAt != null) say('…and closes it for you.', story.darkAt + 250, t);
     else if (story.phase === 'walking') say('Mr Blocky walks in…', 6500, t);
-    else if (story.phase === 'feed') say('…and open that app again.', 4900, t);
+    else if (story.phase === 'feed') say('…and open Instagram again.', 4900, t);
     else say('You pick up your phone…', TITLE_MS + 250, t);
 
     const endAt = story.doneAt == null ? Infinity : story.doneAt + AFTER_MS;

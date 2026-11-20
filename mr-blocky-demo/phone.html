@@ -1,0 +1,238 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The phone in the Mr Blocky demo</title>
+<style>
+  /* A made-up phone: a home screen, and a made-up social app that is nobody's real one.
+     Nothing here moves by itself. make-demo.js calls tick() once for each frame of the
+     video, and tick() puts everything where it should be at that moment. */
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: Inter, system-ui, sans-serif; }
+  body { position: relative; background: #111827; }
+  .screen { position: absolute; inset: 0; overflow: hidden; }
+
+  #home { background: linear-gradient(165deg, #1c2541 0%, #3a2a66 55%, #8a3f73 100%); color: #fff; }
+  #home .glow { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .5; }
+  #home .time { position: absolute; left: 28px; top: 84px; font-size: 76px; font-weight: 300; letter-spacing: -2px; }
+  #home .date { position: absolute; left: 32px; top: 176px; font-size: 16px; opacity: .85; }
+  .grid { position: absolute; left: 22px; right: 22px; top: 436px; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: 22px; }
+  .app { display: grid; justify-items: center; gap: 7px; font-size: 12px; }
+  .icon { width: 60px; height: 60px; border-radius: 17px; display: grid; place-items: center; box-shadow: 0 4px 10px rgba(0,0,0,.25); }
+  .icon svg { width: 34px; height: 34px; }
+  .dock { position: absolute; left: 16px; right: 16px; bottom: 26px; height: 84px; border-radius: 28px;
+    background: rgba(255,255,255,.16); display: grid; grid-template-columns: repeat(4, 1fr); place-items: center; }
+
+  #feed { background: #fff; color: #1c1917; opacity: 0; }
+  /* The bar reaches up behind the status bar, so that nothing scrolling by shows above it. */
+  #feed .bar { position: absolute; left: 0; right: 0; top: 0; height: 90px; background: #fff; z-index: 2;
+    display: flex; align-items: center; padding: 36px 16px 0; gap: 10px; border-bottom: 1px solid #f0eeec; box-sizing: border-box; }
+  #feed .mark { width: 30px; height: 30px; border-radius: 9px; background: #f2545b; display: grid; place-items: center; }
+  #feed .mark svg { width: 18px; height: 18px; }
+  #feed .name { font-size: 21px; font-weight: 800; letter-spacing: -.4px; flex: 1; }
+  #feed .bar .dot { width: 34px; height: 34px; border-radius: 50%; background: #f5f3f1; display: grid; place-items: center; }
+  #feed .bar .dot svg { width: 19px; height: 19px; }
+  #posts { position: absolute; left: 0; right: 0; top: 90px; }
+  .stories { display: flex; gap: 14px; padding: 12px 16px 10px; border-bottom: 1px solid #f0eeec; }
+  .story { display: grid; justify-items: center; gap: 5px; font-size: 11px; color: #57534e; }
+  .ring { width: 58px; height: 58px; border-radius: 50%; padding: 3px; box-sizing: border-box; }
+  .ring i { display: block; width: 100%; height: 100%; border-radius: 50%; border: 2px solid #fff; box-sizing: border-box; }
+  .post .who { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 14px; font-weight: 600; }
+  .post .who i { width: 34px; height: 34px; border-radius: 50%; display: block; }
+  .post .who span { font-weight: 400; color: #a8a29e; }
+  .post svg.pic { display: block; width: 390px; height: 390px; }
+  .post .acts { display: flex; gap: 16px; padding: 10px 14px 4px; }
+  .post .acts svg { width: 25px; height: 25px; }
+  .post .likes { padding: 2px 14px; font-size: 14px; font-weight: 700; }
+  .post .words { padding: 2px 14px 14px; font-size: 14px; line-height: 1.35; }
+  .post .words b { font-weight: 700; }
+
+  #status { position: fixed; left: 0; right: 0; top: 0; height: 36px; z-index: 2147483647; pointer-events: none;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 22px 0 24px; box-sizing: border-box;
+    font-size: 15px; font-weight: 600; color: #fff; }
+  #status svg { height: 13px; display: block; }
+  #status .right { display: flex; gap: 6px; align-items: center; }
+  #tap { position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%;
+    background: rgba(255,255,255,.5); border: 2px solid rgba(255,255,255,.9); box-sizing: border-box; opacity: 0; z-index: 5; }
+</style>
+</head>
+<body>
+
+<div id="home" class="screen">
+  <div class="glow" style="width:260px;height:260px;left:-60px;top:240px;background:#5b8def"></div>
+  <div class="glow" style="width:300px;height:300px;right:-90px;top:40px;background:#f472b6"></div>
+  <div class="time">9:41</div>
+  <div class="date">Friday 20 November</div>
+  <div class="grid" id="grid"></div>
+  <div class="dock" id="dock"></div>
+</div>
+
+<div id="feed" class="screen">
+  <div class="bar">
+    <div class="mark"><svg viewBox="0 0 24 24"><path fill="#fff" d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.7l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z"/></svg></div>
+    <div class="name">Social</div>
+    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8a4.7 4.7 0 0 1 6.6 6.700Z"/></svg></div>
+    <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4Z"/></svg></div>
+  </div>
+  <div id="posts"></div>
+</div>
+
+<div id="tap"></div>
+
+<div id="status">
+  <div>9:41</div>
+  <div class="right">
+    <svg viewBox="0 0 18 13" width="18"><g fill="currentColor"><rect x="0" y="9" width="3" height="4" rx="1"/><rect x="5" y="6" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="10" rx="1"/><rect x="15" y="0" width="3" height="13" rx="1"/></g></svg>
+    <svg viewBox="0 0 17 13" width="17"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M1.5 4.500a10 10 0 0 1 14 0M4 7.500a6.3 6.3 0 0 1 9 0M6.7 10.300a2.5 2.5 0 0 1 3.6 0"/></svg>
+    <svg viewBox="0 0 27 13" width="27"><rect x=".7" y=".7" width="22.6" height="11.6" rx="3.3" fill="none" stroke="currentColor" stroke-width="1.4" opacity=".55"/><rect x="2.5" y="2.5" width="16" height="8" rx="1.8" fill="currentColor"/><rect x="24.6" y="4.2" width="2" height="4.6" rx="1" fill="currentColor" opacity=".55"/></svg>
+  </div>
+</div>
+
+<script>
+  // ---- A clock that only moves when tick() says so ---------------------------
+  // The page's own clock is swapped for this one before guy.js loads, so that his
+  // animation advances by exactly one frame of video at a time.
+  let clock = 0;
+  let nextId = 1;
+  let frames = [];
+  let timers = [];
+  performance.now = () => clock;
+  window.requestAnimationFrame = (run) => { frames.push({ id: nextId, run }); return nextId++; };
+  window.cancelAnimationFrame = (id) => { frames = frames.filter((f) => f.id !== id); };
+  window.setTimeout = (run, ms = 0, ...args) => { timers.push({ id: nextId, at: clock + ms, run, args }); return nextId++; };
+  window.clearTimeout = (id) => { timers = timers.filter((t) => t.id !== id); };
+  function advanceTo(ms) {
+    clock = ms;
+    const due = timers.filter((t) => t.at <= clock).sort((a, b) => a.at - b.at);
+    timers = timers.filter((t) => t.at > clock);
+    for (const t of due) t.run(...t.args);
+    const now = frames;
+    frames = [];
+    for (const f of now) f.run(clock);
+  }
+</script>
+<script src="../mr-blocky/guy.js"></script>
+<script>
+  // ---- What is on the phone --------------------------------------------------
+  const glyph = {
+    mail: '<path fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" d="M4 7h16v11H4Zm0 0 8 6 8-6"/>',
+    maps: '<path fill="#fff" d="M12 3a6 6 0 0 0-6 6c0 4.5 6 12 6 12s6-7.5 6-12a6 6 0 0 0-6-6Zm0 8.200A2.2 2.2 0 1 1 12 6.800a2.2 2.2 0 0 1 0 4.400Z"/>',
+    photos: '<circle cx="12" cy="12" r="4.2" fill="#fff"/><g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.400M18.4 5.6 17 7M7 17l-1.4 1.4"/></g>',
+    music: '<path fill="#fff" d="M9 5.5 19 4v11.300a2.7 2.7 0 1 1-2-2.600V7.300l-6 .9v8.600a2.7 2.7 0 1 1-2-2.600Z"/>',
+    notes: '<g stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M6 7h12M6 12h12M6 17h7"/></g>',
+    weather: '<path fill="#fff" d="M7.5 18a4 4 0 0 1-.4-8 5.5 5.5 0 0 1 10.6 1.600A3.3 3.3 0 0 1 17.2 18Z"/>',
+    camera: '<path fill="#fff" d="M9 5h6l1.3 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h2.700Zm3 4.500a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/>',
+    social: '<path fill="#fff" d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8A4.7 4.7 0 0 1 19.4 13Z"/>',
+    phone: '<path fill="#fff" d="M7.2 3.5 9.8 4l1 4-1.9 1.500a11 11 0 0 0 5.6 5.600L16 13.200l4 1 .5 2.600a2 2 0 0 1-2 2.400A15.2 15.2 0 0 1 4.8 5.500a2 2 0 0 1 2.4-2Z"/>',
+    chat: '<path fill="#fff" d="M4 5h16v11H9l-5 4Z"/>',
+    web: '<circle cx="12" cy="12" r="8" fill="none" stroke="#fff" stroke-width="2"/><path fill="none" stroke="#fff" stroke-width="2" d="M4 12h16M12 4c3 3 3 13 0 16M12 4c-3 3-3 13 0 16"/>'
+  };
+  const icon = (name, colour) => `<div class="icon" style="background:${colour}"><svg viewBox="0 0 24 24">${glyph[name]}</svg></div>`;
+  const apps = [
+    ['mail', 'Mail', '#3b82f6'], ['maps', 'Maps', '#22a06b'], ['photos', 'Photos', '#f59e0b'], ['music', 'Music', '#ec4899'],
+    ['notes', 'Notes', '#eab308'], ['weather', 'Weather', '#38bdf8'], ['camera', 'Camera', '#64748b'], ['social', 'Social', '#f2545b']
+  ];
+  document.getElementById('grid').innerHTML = apps.map(([g, label, c]) => `<div class="app" data-app="${g}">${icon(g, c)}<span>${label}</span></div>`).join('');
+  document.getElementById('dock').innerHTML = [['phone', '#22c55e'], ['chat', '#3b82f6'], ['web', '#14b8a6'], ['camera', '#64748b']].map(([g, c]) => icon(g, c)).join('');
+
+  // Pictures for the made-up feed, drawn here so that nothing is borrowed from anyone.
+  const pics = [
+    `<defs><linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc071"/><stop offset=".6" stop-color="#ff6f91"/><stop offset="1" stop-color="#6a3d9a"/></linearGradient></defs>
+     <rect width="390" height="390" fill="url(#a)"/><circle cx="270" cy="150" r="46" fill="#fff3c4"/>
+     <path d="M0 290 90 220l70 50 80-70 150 110v80H0Z" fill="#3d2466"/><path d="M0 330 120 270l110 60 160-50v110H0Z" fill="#2a1848"/>`,
+    `<rect width="390" height="390" fill="#efe3d2"/><circle cx="195" cy="200" r="118" fill="#fff"/><circle cx="195" cy="200" r="96" fill="#8a5a3c"/>
+     <path d="M150 205c20-50 70-50 90 0-20 40-70 40-90 0Z" fill="#e9cfae"/><path d="M178 205c8-20 26-20 34 0-8 16-26 16-34 0Z" fill="#8a5a3c"/>
+     <rect x="302" y="188" width="52" height="24" rx="12" fill="#fff"/>`,
+    `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc7ff"/><stop offset="1" stop-color="#d9f1ff"/></linearGradient></defs>
+     <rect width="390" height="390" fill="url(#b)"/><path d="M40 330 170 120l70 110 40-50 90 150Z" fill="#4b6b8a"/><path d="M170 120l32 50-26 14-22-12-14 10Z" fill="#fff"/>
+     <rect y="320" width="390" height="70" fill="#3f7d5a"/><circle cx="80" cy="80" r="26" fill="#fff" opacity=".8"/><circle cx="110" cy="86" r="20" fill="#fff" opacity=".8"/>`,
+    `<rect width="390" height="390" fill="#d9f2e3"/><rect x="150" y="250" width="90" height="100" rx="12" fill="#c8704a"/>
+     <path d="M195 250c-70-30-80-110-40-150 30 40 50 90 40 150Z" fill="#2f9e66"/><path d="M195 250c60-20 90-90 60-150-40 30-60 90-60 150Z" fill="#43b97c"/><path d="M195 250c-10-60 0-120 20-170 20 60 10 120-20 170Z" fill="#237a4e"/>`
+  ];
+  const people = [['maya.k', '#f59e0b'], ['trail.mix', '#38bdf8'], ['slow.coffee', '#a16207'], ['plantdad', '#22a06b'], ['juno', '#ec4899']];
+  const heart = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M12 20.5 4.6 13a4.7 4.7 0 0 1 6.6-6.700l.8.8.8-.8a4.7 4.7 0 0 1 6.6 6.700Z"/></svg>';
+  const bubble = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4Z"/></svg>';
+  const send = '<svg viewBox="0 0 24 24" fill="none" stroke="#1c1917" stroke-width="2" stroke-linejoin="round"><path d="M21 3 3 10.500l7 2.5 2.5 7Z"/></svg>';
+  const words = ['golden hour did not disappoint', 'third one today, no regrets', 'made it to the top before lunch', 'new leaf! finally'];
+  const likes = ['1,204', '867', '3,512', '429'];
+  document.getElementById('posts').innerHTML =
+    `<div class="stories">${people.map(([n, c]) => `<div class="story"><div class="ring" style="background:linear-gradient(45deg,#f2545b,#f59e0b)"><i style="background:${c}"></i></div>${n}</div>`).join('')}</div>` +
+    [0, 1, 2, 3, 0, 1].map((n, i) => `<div class="post">
+      <div class="who"><i style="background:${people[(n + 1) % 5][1]}"></i>${people[(n + 1) % 5][0]} <span>· ${i + 1}h</span></div>
+      <svg class="pic" viewBox="0 0 390 390">${pics[n].replace(/id="([ab])"/g, `id="$1${i}"`).replace(/url\(#([ab])\)/g, `url(#$1${i})`)}</svg>
+      <div class="acts">${heart}${bubble}${send}</div>
+      <div class="likes">${likes[n]} likes</div>
+      <div class="words"><b>${people[(n + 1) % 5][0]}</b> ${words[n]}</div></div>`).join('');
+
+  // ---- The story, moment by moment (times in thousandths of a second) --------
+  const TAP_AT = 4300;       // a finger taps the Social app
+  const OPEN_AT = 4650;      // the app opens out from its icon
+  const OPEN_MS = 420;
+  const FLICKS = [[5350, 0, 470], [6900, 470, 940], [8500, 940, 1410], [10000, 1410, 1790]];   // when, from, to
+  const FLICK_MS = 750;
+  const WALK_AT = 6150;      // Mr Blocky sets off
+  const STATUS_BAR = 36;
+
+  const home = document.getElementById('home');
+  const feed = document.getElementById('feed');
+  const posts = document.getElementById('posts');
+  const tap = document.getElementById('tap');
+  const status = document.getElementById('status');
+  const social = document.querySelector('[data-app="social"] .icon').getBoundingClientRect();
+  const centre = { x: social.left + social.width / 2, y: social.top + social.height / 2 };
+  tap.style.left = centre.x + 'px';
+  tap.style.top = centre.y + 'px';
+  feed.style.transformOrigin = `${centre.x}px ${centre.y}px`;
+
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  const easeOut = (v) => 1 - Math.pow(1 - clamp(v), 3);
+  const state = { phase: 'home', darkAt: null, doneAt: null };
+  let sent = false;
+
+  // Puts everything where it belongs at time t, and says how the story is going.
+  window.tick = (t) => {
+    advanceTo(t);
+
+    // The finger.
+    const press = clamp((t - TAP_AT) / 180) * (1 - clamp((t - TAP_AT - 260) / 240));
+    tap.style.opacity = String(press);
+    tap.style.transform = `scale(${0.6 + 0.5 * clamp((t - TAP_AT) / 420)})`;
+
+    // The app opening, then being scrolled.
+    if (!state.darkAt) {
+      const open = easeOut((t - OPEN_AT) / OPEN_MS);
+      feed.style.opacity = String(clamp((t - OPEN_AT) / 160));
+      feed.style.transform = `scale(${0.15 + 0.85 * open})`;
+      feed.style.borderRadius = `${Math.round(60 * (1 - open))}px`;
+      if (t >= OPEN_AT && state.phase === 'home') state.phase = 'feed';
+      let y = 0;
+      for (const [at, from, to] of FLICKS) if (t >= at) y = from + (to - from) * easeOut((t - at) / FLICK_MS);
+      posts.style.transform = `translateY(${-y}px)`;
+    }
+    // The status bar is white on the home screen and on the dark screen, and dark on the app.
+    const onFeed = t >= OPEN_AT + OPEN_MS * 0.55 && !state.darkAt;
+    status.style.color = onFeed ? '#1c1917' : '#fff';
+    // On a phone the status bar stays in view over him, so keep it above his layer once that exists.
+    if (sent && document.documentElement.lastElementChild !== status) document.documentElement.append(status);
+
+    if (t >= WALK_AT && !sent) {
+      sent = true;
+      state.phase = 'walking';
+      ScrollBouncerGuy.perform({
+        top: STATUS_BAR + 8,
+        onDark: () => {
+          // Behind the dark screen, the app is swapped for the home screen, as on a real phone.
+          state.phase = 'dark';
+          state.darkAt = clock;
+          feed.style.display = 'none';
+        }
+      }).then((show) => show.fadeOut()).then(() => {
+        state.phase = 'done';
+        state.doneAt = clock;
+      });
+    }
+    return state;
+  };
+</script>
+</body>
+</html>

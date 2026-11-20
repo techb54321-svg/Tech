@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Mr Blocky demo</title>
+<style>
+  /* One frame of the demo video, 1080 by 1920. Nothing moves by itself: make-demo.js
+     calls render() for each frame, and render() sets everything for that moment. */
+  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; font-family: Inter, system-ui, sans-serif; }
+  body { position: relative; background: linear-gradient(170deg, #eafbf6 0%, #c9f4e8 100%); color: #0b3b33; }
+  .blob { position: absolute; border-radius: 50%; background: #fff; opacity: .45; }
+
+  #caption { position: absolute; left: 70px; right: 70px; top: 96px; height: 200px; display: grid; place-items: center;
+    text-align: center; font-size: 58px; line-height: 1.14; font-weight: 800; letter-spacing: -1.2px; text-wrap: balance; }
+  #phone { position: absolute; left: 165px; top: 344px; width: 722px; height: 1480px; padding: 14px; border-radius: 66px;
+    background: #101827; box-shadow: 0 40px 90px rgba(11, 59, 51, .28), 0 0 0 3px #26324a inset; }
+  #glass { width: 722px; height: 1480px; border-radius: 53px; overflow: hidden; background: #000; }
+  #screen { width: 390px; height: 800px; border: 0; display: block; transform: scale(1.8513); transform-origin: 0 0; }
+
+  .card { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; text-align: center;
+    background: linear-gradient(170deg, #e2faf3 0%, #b9f2e2 100%); opacity: 0; }
+  .card .him { width: 470px; height: 470px; border-radius: 50%; background: #fff; display: grid; place-items: center;
+    box-shadow: 0 30px 70px rgba(11, 59, 51, .2); overflow: hidden; }
+  .card .him img { width: 560px; height: 560px; display: block; }
+  .card h1 { margin: 64px 0 0; font-size: 148px; line-height: 1; font-weight: 900; letter-spacing: -5px; }
+  .card p { margin: 34px 90px 0; font-size: 50px; line-height: 1.22; font-weight: 600; color: #1d6b5c; text-wrap: balance; }
+  .card .says { margin-top: 70px; padding: 22px 40px; border-radius: 36px 36px 36px 10px; background: #0b3b33; color: #fff;
+    font-size: 46px; font-weight: 700; }
+</style>
+</head>
+<body>
+  <div class="blob" style="width:520px;height:520px;left:-200px;top:1180px"></div>
+  <div class="blob" style="width:420px;height:420px;right:-160px;top:120px"></div>
+
+  <div id="caption"></div>
+  <div id="phone"><div id="glass"><iframe id="screen" src="phone.html"></iframe></div></div>
+
+  <div id="title" class="card">
+    <div class="him"><img src="../mr-blocky-android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" alt=""></div>
+    <h1>Mr Blocky</h1>
+    <p>He closes the apps you can't stop scrolling.</p>
+  </div>
+
+  <div id="end" class="card">
+    <div class="him"><img src="../mr-blocky-android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" alt=""></div>
+    <h1>Mr Blocky</h1>
+    <p>Less scrolling. More of your day.</p>
+    <div class="says">Nope not now</div>
+  </div>
+
+<script>
+  const TITLE_MS = 2700;       // how long the opening card stays
+  const AFTER_MS = 1900;       // from his exit to the closing card
+  const END_MS = 3300;         // how long the closing card stays
+
+  const clamp = (v) => Math.max(0, Math.min(1, v));
+  const easeOut = (v) => 1 - Math.pow(1 - clamp(v), 3);
+  // Eases past the end and settles back, for things that pop in.
+  const pop = (v) => { v = clamp(v); return 1 + 2.2 * Math.pow(v - 1, 3) + 1.2 * Math.pow(v - 1, 2); };
+
+  const caption = document.getElementById('caption');
+  const phone = document.getElementById('phone');
+  let words = null;
+
+  function say(text, since, t) {
+    if (text !== words) { words = text; caption.textContent = text; }
+    caption.style.opacity = String(clamp((t - since) / 260));
+    caption.style.transform = `translateY(${Math.round(14 * (1 - easeOut((t - since) / 320)))}px)`;
+  }
+
+  // A card's badge pops in, then its lines rise into place one after another.
+  function card(el, t, from, until) {
+    const [him, ...lines] = el.children;
+    const into = t - from;
+    el.style.opacity = String(Math.min(clamp(into / 300), until == null ? 1 : 1 - clamp((t - until) / 380)));
+    him.style.transform = `scale(${0.6 + 0.4 * pop(into / 620)})`;
+    lines.forEach((line, i) => {
+      const at = into - 260 - i * 220;
+      line.style.opacity = String(clamp(at / 300));
+      line.style.transform = `translateY(${Math.round(30 * (1 - easeOut(at / 420)))}px)`;
+    });
+  }
+
+  // Sets the frame for time t. `story` is how things stand on the phone, from tick() in phone.html.
+  // Returns true once the video has reached its end.
+  window.render = (t, story) => {
+    card(document.getElementById('title'), t, 0, TITLE_MS);
+
+    // The phone rises into place as the opening card clears.
+    const arrive = easeOut((t - TITLE_MS + 200) / 700);
+    phone.style.transform = `translateY(${Math.round(90 * (1 - arrive))}px)`;
+
+    if (story.doneAt != null) say('And you get your day back.', story.doneAt + 150, t);
+    else if (story.darkAt != null) say('…and closes it for you.', story.darkAt + 250, t);
+    else if (story.phase === 'walking') say('Mr Blocky walks in…', 6500, t);
+    else if (story.phase === 'feed') say('…and open that app again.', 4900, t);
+    else say('You pick up your phone…', TITLE_MS + 250, t);
+
+    const endAt = story.doneAt == null ? Infinity : story.doneAt + AFTER_MS;
+    card(document.getElementById('end'), t, endAt, null);
+    return t >= endAt + END_MS;
+  };
+</script>
+</body>
+</html>

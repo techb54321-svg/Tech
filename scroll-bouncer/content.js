@@ -2,7 +2,7 @@
   if (window.top !== window) return;
 
   // Tuning. His steps keep pace with the speed automatically, so his feet never slide.
-  const WALK_SPEED = 40;        // pixels per second
+  const WALK_SPEED = 52;        // pixels per second
   const WALK_DISTANCE = 260;    // how far from the close button he drops in
   const SIZE = 96;              // his height in pixels
   const LINE = 'Nope not now';  // what he says before closing the tab
@@ -48,7 +48,7 @@
   const s = (tag, attrs, ...kids) => node(SVG_NS, tag, attrs, kids);
   const h = (cls, ...kids) => node(null, 'div', { class: cls }, kids);
 
-  // A smooth round orange guy, facing right: body, a stubby nose, two short legs.
+  // A smooth round orange guy, facing right: body, eyes, a stubby nose, two short legs.
   // Drawn on a 100 x 100 grid. Hips are at y = 66, ankles at y = 92.
   const HIP_A = 42, HIP_B = 52, HIP_Y = 66, ANKLE_Y = 92;
   const BELLY = { x: 46, y: 81 };  // bottom of his body, which he rocks and stretches around
@@ -72,7 +72,16 @@
           // His nose: the bit that sticks out furthest, and what he closes tabs with.
           s('path', { d: 'M70 43.5C78 44.5 86 47.5 88.6 50.6Q90.4 52.6 88.2 54.4C85 57.2 78 60 70 61Z', fill: '#f26a0c' }),
           s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: 'url(#sb-body) #ffa01c' }),
-          s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 }))));
+          s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 }),
+          s('g', { class: 'eyes' },
+            s('ellipse', { cx: 60.5, cy: 43.5, rx: 4.4, ry: 5.6, fill: '#2a1505' }),
+            s('ellipse', { cx: 73, cy: 43.5, rx: 3.1, ry: 5, fill: '#2a1505' }),
+            s('g', { class: 'shine' },
+              s('circle', { cx: 59, cy: 41.2, r: 1.7, fill: '#fff' }),
+              s('circle', { cx: 72.1, cy: 41.4, r: 1.3, fill: '#fff' }))),
+          // Eyes squeezed shut in delight, shown while he boops the button.
+          s('path', { class: 'happy', d: 'M56.4 44.6q4.1 -5.6 8.2 0M70.2 44.6q2.8 -4.8 5.6 0', stroke: '#2a1505',
+            'stroke-width': 2.2, 'stroke-linecap': 'round', fill: 'none' }))));
   }
 
   // ---- Moving him ----------------------------------------------------------
@@ -127,6 +136,14 @@
     const tall = (1 - 0.04 * beat + 0.012 * breath) * (1 - 0.06 * pose.boop);
     set(part.torso, `translate(${r3(BELLY.x + 5 * pose.boop)} ${BELLY.y}) rotate(${r3(pose.lean + sway)}) ` +
       `scale(${r3(wide)} ${r3(tall)}) translate(${-BELLY.x} ${-BELLY.y})`);
+
+    // He blinks now and then, and squeezes his eyes shut while booping.
+    const delighted = pose.boop > 0.5;
+    const lid = !still && now % 2900 < 130 ? 0.12 : 1;
+    set(part.eyes, `translate(0 43.5) scale(1 ${lid}) translate(0 -43.5)`);
+    part.shine.style.display = lid < 1 ? 'none' : '';
+    part.eyes.style.display = delighted ? 'none' : '';
+    part.happy.style.display = delighted ? '' : 'none';
   }
 
   function tween(ms, step) {
@@ -187,7 +204,10 @@
     document.documentElement.append(host);
 
     const find = (cls) => svg.querySelector('.' + cls);
-    const part = { rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b') };
+    const part = {
+      rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
+      eyes: find('eyes'), shine: find('shine'), happy: find('happy')
+    };
 
     const width = document.documentElement.clientWidth || window.innerWidth;
     const stopX = Math.max(8, width - BTN.right - BTN.size - REACH);

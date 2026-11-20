@@ -73,8 +73,10 @@
           s('rect', { x: 72, y: 51.5, width: 17, height: 12, rx: 6, fill: '#f26a0c' }),
           s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: 'url(#sb-body) #ffa01c' }),
           s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 }),
-          // One eye, level with his nose.
-          s('ellipse', { class: 'eye', cx: 69.5, cy: 52, rx: 2.7, ry: 4.6, fill: '#3b1206' }),
+          // One eye, level with his nose: a white with a dark pupil looking ahead.
+          s('g', { class: 'eye' },
+            s('ellipse', { class: 'white', cx: 69.5, cy: 52, rx: 4.7, ry: 6.7, fill: '#fff' }),
+            s('ellipse', { cx: 70, cy: 52, rx: 2.7, ry: 4.6, fill: '#3b1206' })),
           // The same eye squeezed shut in delight, shown while he boops the button.
           s('path', { class: 'happy', d: 'M66.4 53.6q3.1 -5.6 6.2 0', stroke: '#3b1206',
             'stroke-width': 2.2, 'stroke-linecap': 'round', fill: 'none' }))));
@@ -137,6 +139,7 @@
     const delighted = pose.boop > 0.5;
     const lid = !still && now % 2900 < 130 ? 0.12 : 1;
     set(part.eye, `translate(0 52) scale(1 ${lid}) translate(0 -52)`);
+    part.white.style.display = lid < 1 ? 'none' : '';
     part.eye.style.display = delighted ? 'none' : '';
     part.happy.style.display = delighted ? '' : 'none';
   }
@@ -201,7 +204,7 @@
     const find = (cls) => svg.querySelector('.' + cls);
     const part = {
       rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
-      eye: find('eye'), happy: find('happy')
+      eye: find('eye'), white: find('white'), happy: find('happy')
     };
 
     const width = document.documentElement.clientWidth || window.innerWidth;

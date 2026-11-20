@@ -74,12 +74,16 @@ collect() {
   cat log.txt
   echo "== In front afterwards: $FOCUS"
   echo "== His count: $(grep -o 'name="total" value="[0-9]*"' prefs.xml || echo none)"
-  # A process that is stopped or crashes takes him off duty, so say how each one ended.
+  # The app has two processes: one keeps watch, and ":stage" draws him. Say how each
+  # has ended, because a watcher that is stopped or crashes takes him off duty.
   echo "== How the app's own processes have ended"
-  adb shell dumpsys activity exit-info "$APP" | tr -d '\r' | grep -A2 "process=$APP " \
-    | sed 's/^ *//' | cut -c1-200 | head -n 12 || true
-  grep -iE "scrollbouncer" everything.txt | grep -vE " ScrollBouncer *: " \
-    | grep -iE "has died|killing|crash|not allowed|denied|exception|blocked|fatal" | cut -c1-260 | tail -n 12 || true
+  adb shell dumpsys activity exit-info "$APP" | tr -d '\r' | grep -A1 -E "process=$APP(:stage)? " \
+    | sed 's/^ *//' | cut -c1-220 | head -n 12 || true
+  grep -E "$APP" everything.txt | grep -vE " (ScrollBouncer|AppsFilter) *: " \
+    | grep -iE "has died|killing|crash|not allowed|denied|exception|fatal" | cut -c1-240 | tail -n 8 || true
+  # A crash in native code, such as inside the web view: which process, the signal, and the reason given.
+  grep -E " F (DEBUG|libc) *: " everything.txt \
+    | grep -iE "Cmdline|signal [0-9]|Abort message|Fatal signal|#0[0-5] pc" | cut -c1-240 | head -n 16 || true
 }
 
 echo "== Starting an emulated phone (Android API $API)"
@@ -162,6 +166,7 @@ python3 "$HERE/read-screens.py" shots --must-walk || fail "he was not seen walki
 grep -q "on stage" log.txt || fail "he never went on"
 grep -q "dark, sent home" log.txt || fail "the screen never went dark"
 grep -q "off stage" log.txt || fail "he never left"
+grep -q "closed without him" log.txt && fail "the app was closed without him"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
@@ -184,6 +189,7 @@ python3 "$HERE/read-screens.py" again --must-walk --brief || fail "he was not se
 grep -q "on duty" log.txt || fail "he did not go back on duty after the app was stopped"
 grep -q "on stage" log.txt || fail "he went back on duty, but did not come for the app that was already open"
 grep -q "dark, sent home" log.txt || fail "the screen never went dark the second time"
+grep -q "closed without him" log.txt && fail "the app was closed without him the second time"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
 grep -q 'name="total" value="2"' prefs.xml || fail "the second close was not counted"
@@ -213,6 +219,6 @@ sleep 15
 collect
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
-[ -n "$(adb shell pidof "$APP" | tr -d '\r' || true)" ] || fail "the app was no longer running after the preview"
+[ -n "$(adb shell pidof "$APP" | tr -d '\r' || true)" ] || fail "the part of the app that keeps watch was no longer running after the preview"
 pass "the app opens and its preview plays"
 finish

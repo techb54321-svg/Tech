@@ -5,4 +5,5 @@
     <color name="card">#1B2B28</color>
     <color name="line">#2C3D3A</color>
     <color name="muted">#9BB0AB</color>
+    <color name="warning">#FBBF24</color>
 </resources>

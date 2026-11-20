@@ -47,12 +47,25 @@
     <string name="stopped_by_phone">the phone shut the app down</string>
     <string name="stopped_crash">the app crashed</string>
     <string name="stopped_frozen">the app stopped responding</string>
+    <string name="stopped_updated">the app was updated</string>
+    <string name="stopped_itself">the app closed itself</string>
+    <string name="stopped_permission">one of its permissions was changed</string>
+    <string name="stopped_other">some other everyday reason</string>
+    <string name="stopped_stage">in the part that draws him, %1$s</string>
+
+    <!-- The small print under the buttons, for working out what is happening on a phone. -->
+    <string name="trouble_settings">Usage access %1$s, display over other apps %2$s, notifications %3$s, battery limits %4$s.</string>
+    <string name="trouble_restricted">The phone is set to restrict this app in the background. He cannot stay on duty until that is changed, under Battery in the app\'s settings.</string>
+    <string name="on">on</string>
+    <string name="off">off</string>
+    <string name="trouble_stops">Last times the app closed:</string>
+    <string name="trouble_stop">• %1$s, %2$s</string>
 
     <!-- Things that can go wrong. Details are Android's own description, for working out the cause. -->
     <string name="problem_no_duty">Android would not let him go on duty by himself. Opening this app puts him back on. Details: %1$s</string>
     <string name="problem_no_overlay">An app on his list was opened, but Display over other apps is switched off.</string>
-    <string name="problem_no_web_view">The part of the phone that draws him would not start. Details: %1$s</string>
     <string name="problem_no_stage">He could not be put on screen, so the app was closed without him. Details: %1$s</string>
+    <string name="problem_no_show">He was sent for but did not appear in time, so the app was closed without him.</string>
     <string name="problem_too_slow">He went on but did not reach the button in time, so the app was closed without him.</string>
     <string name="problem_no_end">He closed the app but did not finish afterwards, so he was taken off the screen.</string>
     <string name="problem_no_home">The phone would not go to its home screen. Details: %1$s</string>

@@ -46,10 +46,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
+            android:textColor="@color/accent"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/details"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:lineSpacingExtra="3dp"
             android:textColor="@color/muted"
-            android:textIsSelectable="true"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
 
         <LinearLayout
             android:id="@+id/setup"
@@ -237,6 +245,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/preview" />
+
+        <TextView
+            android:id="@+id/trouble"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/muted"
+            android:textSize="12sp" />
 
         <TextView
             android:layout_width="match_parent"

@@ -3,6 +3,8 @@ package com.scrollbouncer.app;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.NotificationManager;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -44,6 +46,7 @@ public class MainActivity extends Activity {
     };
     private Prefs prefs;
     private Boolean onDuty;   // whether the watching service was last told to run; null before the first check
+    private List<Status.Note> recentStops = new ArrayList<>();   // read each time the screen is opened
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -105,20 +108,9 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
-        Stage.screenOpened();
-    }
-
-    @Override
-    protected void onStop() {
-        Stage.screenClosed();
-        super.onStop();
-    }
-
-    @Override
     protected void onResume() {
         super.onResume();
+        recentStops = Status.recentStops(this);
         main.post(everySecond);
     }
 
@@ -150,7 +142,7 @@ public class MainActivity extends Activity {
             onDuty = should;
             if (should) BouncerService.start(this); else BouncerService.stop(this);
         }
-        ((TextView) findViewById(R.id.status)).setText(status(seesApps && drawsOver, checking));
+        showStatus(seesApps && drawsOver, checking);
         ((TextView) findViewById(R.id.closed_today)).setText(String.valueOf(prefs.closedToday()));
         ((TextView) findViewById(R.id.closed_total)).setText(String.valueOf(prefs.closedTotal()));
 
@@ -168,49 +160,82 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** A few lines saying whether he is working, what he has seen, and anything that has gone wrong. */
-    private String status(boolean allowed, boolean checking) {
-        StringBuilder lines = new StringBuilder();
+    /** Says whether he is working and, underneath, what he has seen and anything that has gone wrong. */
+    private void showStatus(boolean allowed, boolean checking) {
+        int headline;
         boolean onDuty = false;
+        boolean working = false;
         if (!prefs.enabled()) {
-            lines.append(getString(R.string.status_off));
+            headline = R.string.status_off;
         } else if (!allowed) {
-            lines.append(getString(R.string.status_needs));
+            headline = R.string.status_needs;
         } else if (prefs.breakLeftMs() > 0) {
-            lines.append(getString(R.string.status_break));
+            headline = R.string.status_break;
             onDuty = true;
         } else {
-            lines.append(getString(checking ? R.string.status_on : R.string.status_starting));
+            headline = checking ? R.string.status_on : R.string.status_starting;
             onDuty = true;
+            working = true;
         }
+        TextView status = findViewById(R.id.status);
+        status.setText(headline);
+        status.setTextColor(getColor(working ? R.color.accent : R.color.warning));
+
+        StringBuilder lines = new StringBuilder();
         if (onDuty) {
             List<Status.Sighting> seen = Status.sightings();
-            lines.append('\n').append(getString(seen.isEmpty() ? R.string.status_none : R.string.status_noticed));
+            lines.append(getString(seen.isEmpty() ? R.string.status_none : R.string.status_noticed)).append('\n');
             for (Status.Sighting sighting : seen) {
-                lines.append('\n').append(getString(
+                lines.append(getString(
                         sighting.onList ? R.string.status_app_listed : R.string.status_app,
-                        label(sighting.app), ago(sighting.at)));
+                        label(sighting.app), ago(sighting.at))).append('\n');
             }
         }
         if (Status.wentOnAt > 0) {
-            lines.append('\n').append(getString(R.string.status_went_on, ago(Status.wentOnAt)));
+            lines.append(getString(R.string.status_went_on, ago(Status.wentOnAt))).append('\n');
         }
         Status.Note stopped = Status.stopped(this);
         if (stopped != null) {
-            lines.append('\n').append(getString(R.string.status_stopped, ago(stopped.at), stopped.what));
+            lines.append(getString(R.string.status_stopped, ago(stopped.at), stopped.what)).append('\n');
         }
         Status.Note crash = Status.crash(this);
         if (crash != null) {
-            lines.append('\n').append(getString(R.string.status_crashed, ago(crash.at), crash.what));
+            lines.append(getString(R.string.status_crashed, ago(crash.at), crash.what)).append('\n');
         }
         Status.Note problem = Status.problem(this);
         if (problem != null) {
-            lines.append('\n').append(getString(R.string.status_problem, ago(problem.at), problem.what));
+            lines.append(getString(R.string.status_problem, ago(problem.at), problem.what)).append('\n');
         }
-        // Which version this is and what it is running on, for anyone helping to work out a problem.
-        lines.append('\n').append(getString(R.string.status_phone,
+        show(R.id.details, lines.toString().trim());
+
+        // The small print: what would help someone work out why he is not turning up.
+        StringBuilder trouble = new StringBuilder();
+        trouble.append(getString(R.string.trouble_settings,
+                onOrOff(Access.seesApps(this)), onOrOff(Access.drawsOver(this)),
+                onOrOff(getSystemService(NotificationManager.class).areNotificationsEnabled()),
+                onOrOff(!getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName()))));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+                && getSystemService(ActivityManager.class).isBackgroundRestricted()) {
+            trouble.append('\n').append(getString(R.string.trouble_restricted));
+        }
+        if (!recentStops.isEmpty()) trouble.append('\n').append(getString(R.string.trouble_stops));
+        for (Status.Note stop : recentStops) {
+            trouble.append('\n').append(getString(R.string.trouble_stop, stop.what, ago(stop.at)));
+        }
+        trouble.append('\n').append(getString(R.string.status_phone,
                 version(), Build.VERSION.RELEASE, Build.MANUFACTURER, Build.MODEL));
-        return lines.toString();
+        show(R.id.trouble, trouble.toString());
+    }
+
+    /** Puts words in a piece of text on the screen, leaving it alone if they are already there. */
+    private void show(int id, String words) {
+        TextView view = findViewById(id);
+        if (!words.contentEquals(view.getText())) view.setText(words);
+        view.setVisibility(words.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    private String onOrOff(boolean on) {
+        return getString(on ? R.string.on : R.string.off);
     }
 
     private CharSequence ago(long when) {

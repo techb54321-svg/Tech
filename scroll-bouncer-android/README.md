@@ -41,6 +41,10 @@ Bouncer, and read them.
 If he cannot be drawn for any reason, the app is still closed, with a short
 "Nope not now" message in his place.
 
+The small print under the buttons is there to help work out a problem: which
+settings are on, the last few times Android closed the app and why, and which
+version of the app and of Android this is.
+
 ## Using it
 
 - The switch at the top turns him on and off.
@@ -82,14 +86,23 @@ store.
 
 ## How it fits together
 
-- `app/src/main/java/.../BouncerService.java`: checks which app is in front,
-  puts him on screen, and sends the phone to its home screen
+The app runs as two processes. One keeps watch and is kept small, so that
+Android leaves it alone. The other draws him, using the phone's web view, which
+is large, occasionally crashes, and is stopped by Android whenever the Google
+service it borrows fonts from restarts. Kept apart, none of that interrupts the
+watching.
+
+- `app/src/main/java/.../BouncerService.java`: keeps watch. Checks which app is
+  in front and sends for him when it is one on the list
+- `StageService.java`: draws him over the app, and sends the phone to its home
+  screen
 - `Access.java`: whether the two settings above are switched on
 - `BootReceiver.java`: puts him back on duty after the phone restarts or the
   app is updated
 - `Status.java`: the notes behind the lines under the app's name
 - `App.java`: writes down a crash, so the next visit to the app can say so
-- `Stage.java`: the see-through web view he is drawn in
+- `Stage.java`: the see-through web view he is drawn in, used by `StageService`
+  and by the preview
 - `MainActivity.java`: the settings screen
 - `PreviewActivity.java`: plays his routine inside the app
 - `Prefs.java`: the chosen apps, the break, and the counts

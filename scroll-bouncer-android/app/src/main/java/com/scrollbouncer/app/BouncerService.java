@@ -17,32 +17,36 @@ import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.ResultReceiver;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.View;
-import android.view.WindowInsets;
 import android.view.WindowManager;
-import android.webkit.WebView;
 import android.widget.Toast;
 
 import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Keeps an eye on which app is in front. When it is one on the list, the little
- * guy walks across the top of the screen, boops the close button, and the
- * person is sent back to the home screen.
+ * Keeps an eye on which app is in front. When it is one on the list, it sends
+ * for the little guy, who walks across the top of the screen, boops the close
+ * button, and sends the person back to the home screen.
  *
  * It learns which app is in front from Android's record of app use, which says
  * only which app was opened and when. It cannot read what is on the screen.
+ *
+ * He is drawn by StageService, in a process of its own, so that nothing that
+ * goes wrong with the drawing can stop the watching. If he cannot be drawn, the
+ * app is closed all the same.
  */
-public class BouncerService extends Service implements Stage.Cues {
+public class BouncerService extends Service {
     private static final String TAG = "ScrollBouncer";
     private static final String DUTY_CHANNEL = "on-duty";
     private static final String HELP_CHANNEL = "needs-you";
@@ -59,8 +63,13 @@ public class BouncerService extends Service implements Stage.Cues {
     private static final long ALREADY_OPEN_MS = 30 * 60_000;
     /** After a performance, how long before the same app can set him off again. */
     private static final long REST_MS = 1_500;
-    /** How long he may take to reach the button: this much for each dp he has to walk, plus some to get going. */
-    private static final long WALK_MS_PER_DP = 16;
+    /** How long he may take to appear once sent for. Most of it is for a slow phone starting its web view. */
+    private static final long SHOW_UP_MS = 15_000;
+    /**
+     * How long he may then take to reach the button: this much for each dp he has to
+     * walk, plus some to get going. It is well over twice what he needs on a slow phone.
+     */
+    private static final long WALK_MS_PER_DP = 30;
     private static final long GET_GOING_MS = 15_000;
     /** Once the screen is dark, how long he may take to say his piece and leave. */
     private static final long ENDING_MS = 20_000;
@@ -76,10 +85,10 @@ public class BouncerService extends Service implements Stage.Cues {
         public void onReceive(Context context, Intent intent) {
             if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
                 lookNow();
-            } else if (stage != null && !dark) {
+            } else if (performing && !dark) {
                 // They have put the phone down before he reached the button. Whatever was
                 // open comes to the front again when the screen is back on, and so will he.
-                leave();
+                callOff();
             }
         }
     };
@@ -97,9 +106,10 @@ public class BouncerService extends Service implements Stage.Cues {
     private String letIn;                            // an app on his list that was opened during a break
 
     private View dot;                                // see goOnDuty
-    private WebView stage;                           // null unless he is on screen
-    private WindowManager.LayoutParams stageParams;
+    private boolean performing;                      // whether he has been sent for and has not finished
+    private int turn;                                // goes up by one each time he is sent for
     private String target;                           // the app he has come to close
+    private boolean onStage;                         // whether he has appeared yet
     private boolean dark;
     private boolean wentElsewhere;                   // whether something else has come to the front since the screen went dark
     private String lastTarget;
@@ -155,7 +165,7 @@ public class BouncerService extends Service implements Stage.Cues {
         main.removeCallbacksAndMessages(null);
         unregisterReceiver(screen);
         hideDot();
-        leave();
+        callOff();
         if (looking) Status.offDuty(this);
         super.onDestroy();
     }
@@ -192,7 +202,12 @@ public class BouncerService extends Service implements Stage.Cues {
         main.post(look);
         Log.i(TAG, "on duty");
 
-        Stage.prepare(this);
+        try {
+            StageService.ask(this, StageService.WARM_UP, null);
+        } catch (RuntimeException e) {
+            // Not needed: it only saves a moment the first time he is sent for.
+            Log.w(TAG, "could not warm up the stage", e);
+        }
     }
 
     private void showOnDuty() {
@@ -338,7 +353,7 @@ public class BouncerService extends Service implements Stage.Cues {
         if (!app.equals(getPackageName())) Status.noticed(app, listed, at);
         inFront = app;
         letIn = null;
-        if (stage != null) {
+        if (performing) {
             if (dark) {
                 if (!app.equals(target)) wentElsewhere = true;
                 return;
@@ -346,7 +361,7 @@ public class BouncerService extends Service implements Stage.Cues {
             if (app.equals(target)) return;
             // They have gone somewhere else themselves before he got there, so he has
             // nothing left to close. Where they have gone may be on his list too, though.
-            leave();
+            callOff();
         }
         if (!listed || !prefs.enabled()) return;
         if (prefs.breakLeftMs() > 0) {
@@ -359,7 +374,7 @@ public class BouncerService extends Service implements Stage.Cues {
             return;
         }
         Log.i(TAG, "an app on his list has been opened");
-        enter(app);
+        sendFor(app);
     }
 
     /**
@@ -382,82 +397,77 @@ public class BouncerService extends Service implements Stage.Cues {
         return place;
     }
 
-    /** Puts him on screen, over the top of the app. */
-    private void enter(String app) {
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-                        | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-                PixelFormat.TRANSLUCENT);
-        params.gravity = Gravity.TOP | Gravity.START;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        }
-
-        WebView web = null;
+    /** Sends for him to come and close this app, and listens for how it goes. */
+    private void sendFor(String app) {
+        int mine = ++turn;
+        ResultReceiver cues = new ResultReceiver(main) {
+            @Override
+            protected void onReceiveResult(int what, Bundle more) {
+                // A cue can arrive a moment after its performance has been called off.
+                if (mine == turn && performing) cue(what, more == null ? null : more.getString(StageService.WHY));
+            }
+        };
         try {
-            web = Stage.open(windowContext, statusBarDp(), this);
-            windows.addView(web, params);
+            StageService.ask(this, StageService.ENTER, cues);
         } catch (RuntimeException e) {
-            // The phone's web view is missing or being updated, so he cannot be drawn just now.
-            Log.w(TAG, "could not go on stage", e);
-            if (web != null) web.destroy();
+            Log.w(TAG, "could not send for him", e);
             Status.problem(this, getString(R.string.problem_no_stage, e));
             closeWithoutHim(app);
             return;
         }
-        stage = web;
-        stageParams = params;
+        performing = true;
         target = app;
+        onStage = false;
         dark = false;
         wentElsewhere = false;
-        main.postDelayed(giveUp, widthDp() * WALK_MS_PER_DP + GET_GOING_MS);
-        Status.wentOnAt = System.currentTimeMillis();
-        Log.i(TAG, "on stage");
+        main.postDelayed(giveUp, SHOW_UP_MS);
     }
 
-    /** The screen is dark: send them home, unseen, while he says his piece. */
-    @Override
-    public void dark() {
-        if (stage == null || dark) return;
-        dark = true;
-        prefs.countClose();
-        // From here on, taps should not reach whatever is underneath.
-        stageParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-        try {
-            windows.updateViewLayout(stage, stageParams);
-        } catch (RuntimeException e) {
-            Log.w(TAG, "could not take over the screen's taps", e);
+    /** How his performance is going, as told by the service that draws him. */
+    private void cue(int what, String why) {
+        switch (what) {
+            case StageService.ON:
+                onStage = true;
+                Status.wentOnAt = System.currentTimeMillis();
+                main.removeCallbacks(giveUp);
+                main.postDelayed(giveUp, widthDp() * WALK_MS_PER_DP + GET_GOING_MS);
+                break;
+            case StageService.DARK:
+                dark = true;
+                prefs.countClose();
+                if (why != null) Status.problem(this, getString(R.string.problem_no_home, why));
+                main.removeCallbacks(giveUp);
+                main.postDelayed(giveUp, ENDING_MS);
+                break;
+            case StageService.DONE:
+                if (dark && !wentElsewhere) {
+                    // Nothing else has come to the front, so the app he came to close is still there.
+                    Status.problem(this, getString(R.string.problem_still_open));
+                }
+                rest();
+                break;
+            case StageService.FAILED: {
+                String app = target;
+                Status.problem(this, getString(R.string.problem_no_stage, why));
+                rest();
+                closeWithoutHim(app);
+                break;
+            }
+            default:
+                break;
         }
-        if (goHome()) Log.i(TAG, "dark, sent home");
-        main.removeCallbacks(giveUp);
-        main.postDelayed(giveUp, ENDING_MS);
     }
 
-    @Override
-    public void done() {
-        if (stage != null && dark && !wentElsewhere) {
-            // Nothing else has come to the front, so the app he came to close is still there.
-            Status.problem(this, getString(R.string.problem_still_open));
-        }
-        leave();
-    }
-
-    /** He has been on for far longer than his routine takes, so something has gone wrong with it. */
+    /** It has taken far longer than his routine does, so something has gone wrong with it. */
     private void giveUp() {
-        if (stage == null) return;
+        if (!performing) return;
         if (dark) {
             Status.problem(this, getString(R.string.problem_no_end));
-            leave();
+            callOff();
         } else {
             String app = target;
-            Status.problem(this, getString(R.string.problem_too_slow));
-            leave();
+            Status.problem(this, getString(onStage ? R.string.problem_too_slow : R.string.problem_no_show));
+            callOff();
             closeWithoutHim(app);
         }
     }
@@ -465,41 +475,39 @@ public class BouncerService extends Service implements Stage.Cues {
     /** For when he cannot be shown: the app is closed all the same, with a word to say why. */
     private void closeWithoutHim(String app) {
         prefs.countClose();
-        goHome();
+        Intent home = new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(home);
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not go to the home screen", e);
+            Status.problem(this, getString(R.string.problem_no_home, e));
+        }
         Toast.makeText(this, R.string.nope, Toast.LENGTH_SHORT).show();
         lastTarget = app;
         restUntil = SystemClock.uptimeMillis() + REST_MS;
         Log.i(TAG, "closed without him");
     }
 
-    private boolean goHome() {
-        Intent home = new Intent(Intent.ACTION_MAIN)
-                .addCategory(Intent.CATEGORY_HOME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+    /** Takes him off screen, if he has been sent for. */
+    private void callOff() {
+        if (!performing) return;
         try {
-            startActivity(home);
-            return true;
+            StageService.ask(this, StageService.LEAVE, null);
         } catch (RuntimeException e) {
-            Log.w(TAG, "could not go to the home screen", e);
-            Status.problem(this, getString(R.string.problem_no_home, e));
-            return false;
+            // Then the service that draws him is not running, and nor is he.
+            Log.w(TAG, "could not call him off", e);
         }
+        rest();
     }
 
-    /** Takes him off screen. Safe to call when he is not on. */
-    private void leave() {
+    /** His performance is over, one way or another. */
+    private void rest() {
         main.removeCallbacks(giveUp);
-        if (stage == null) return;
-        try {
-            windows.removeView(stage);
-        } catch (RuntimeException ignored) {
-            // Already gone.
-        }
-        stage.destroy();
-        stage = null;
+        performing = false;
         lastTarget = target;
         restUntil = SystemClock.uptimeMillis() + REST_MS;
-        Log.i(TAG, "off stage");
     }
 
     /** A context that is allowed to put a window over other apps. */
@@ -508,20 +516,6 @@ public class BouncerService extends Service implements Stage.Cues {
         Display display = getSystemService(DisplayManager.class).getDisplay(Display.DEFAULT_DISPLAY);
         return createDisplayContext(display)
                 .createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null);
-    }
-
-    /** Height of the status bar and any camera cut-out, so he walks below them. */
-    private int statusBarDp() {
-        float density = getResources().getDisplayMetrics().density;
-        int px;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            px = windows.getCurrentWindowMetrics().getWindowInsets()
-                    .getInsetsIgnoringVisibility(WindowInsets.Type.statusBars() | WindowInsets.Type.displayCutout())
-                    .top;
-        } else {
-            px = Math.round(24 * density);
-        }
-        return Math.round(px / density);
     }
 
     private int widthDp() {

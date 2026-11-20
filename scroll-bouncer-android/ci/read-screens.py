@@ -4,7 +4,8 @@
 
 He walks along the top of the screen, so each screenshot is checked for his
 mint colour in its top quarter. He should move from left to right there, then
-the screen should go dark with him still on it.
+the screen should go dark with him still on it. The app underneath may be a
+dark one itself, so "dark" here means darker than it was while he walked.
 
 Unless --brief is given, every screenshot gets a line, and two of them are also
 drawn as text so the layout can be checked without opening an image: m is him,
@@ -17,7 +18,7 @@ import sys
 from PIL import Image
 
 folder = pathlib.Path(sys.argv[1])
-must_walk = "--must-walk" in sys.argv  # fail unless he is seen walking across a lit screen
+must_walk = "--must-walk" in sys.argv  # fail unless he is seen moving most of the way across
 brief = "--brief" in sys.argv
 times = dict(line.split() for line in (folder / "times.txt").read_text().splitlines())
 ENOUGH = 200  # this many mint pixels in the top quarter (at a quarter size) is him, not an icon
@@ -76,17 +77,19 @@ if not rows:
     sys.exit("no screenshots could be read")
 
 him = [row for row in rows if row[2] >= ENOUGH]
-walking = [row for row in him if row[3] >= 60]   # on a screen that has not gone dark
-dark = [row for row in him if row[3] < 60]
-across = [row[4] for row in walking]
-print(f"He is in {len(him)} of {len(rows)} screenshots: walking in {len(walking)}"
+across = [row[4] for row in him]
+# The screen as it was when he first appeared, and the screenshots where it is clearly darker than that.
+lit = him[0][3] if him else 0
+dark = [row for row in him if row[3] < lit * 0.7]
+walking = [row for row in him if row not in dark]
+print(f"He is in {len(him)} of {len(rows)} screenshots"
       + (f", from {min(across):.0%} to {max(across):.0%} of the way across" if across else "")
-      + f", and on a dark screen in {len(dark)}.")
+      + f". The screen has gone dark in {len(dark)} of them.")
 if not him:
     sys.exit("FAILED: he never appeared on the screen")
 if must_walk:
     if len(across) < 2 or max(across) - min(across) < 0.15:
-        sys.exit("FAILED: he was not seen walking across the screen before it went dark")
+        sys.exit("FAILED: he was not seen walking across the screen")
     if max(across) < 0.6:
         sys.exit("FAILED: he never got past the middle of the screen")
 if not brief:

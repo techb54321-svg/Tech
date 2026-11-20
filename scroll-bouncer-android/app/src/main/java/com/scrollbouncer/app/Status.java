@@ -1,6 +1,5 @@
 package com.scrollbouncer.app;
 
-import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.ApplicationExitInfo;
 import android.content.Context;
@@ -9,6 +8,12 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.SystemClock;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,8 +84,10 @@ final class Status {
         notes(context).edit().putString("problem", what).putLong("problemAt", System.currentTimeMillis()).apply();
     }
 
-    /** Writes down a crash. The app is about to close, so this waits until it is saved. */
-    @SuppressLint("ApplySharedPref")
+    /**
+     * Writes down a crash. It goes in a file of its own, read afresh each time,
+     * because the crash may be in the other of the app's two processes.
+     */
     static void crashed(Context context, Throwable error) {
         Throwable cause = error;
         while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
@@ -92,7 +99,15 @@ final class Status {
             }
         }
         if (what.length() > 400) what.setLength(400);
-        notes(context).edit().putString("crash", what.toString()).putLong("crashAt", System.currentTimeMillis()).commit();
+        try (Writer file = new FileWriter(crashFile(context))) {
+            file.write(System.currentTimeMillis() + "\n" + what);
+        } catch (IOException ignored) {
+            // Then it goes unrecorded.
+        }
+    }
+
+    private static File crashFile(Context context) {
+        return new File(context.getFilesDir(), "last-crash.txt");
     }
 
     /** The last thing that went wrong, if it was in the last day. */
@@ -102,7 +117,14 @@ final class Status {
 
     /** The last crash, if it was in the last day. */
     static Note crash(Context context) {
-        return note(context, "crash");
+        try (BufferedReader file = new BufferedReader(new FileReader(crashFile(context)))) {
+            long at = Long.parseLong(file.readLine());
+            String what = file.readLine();
+            if (what == null || System.currentTimeMillis() - at > DAY_MS) return null;
+            return new Note(what, at);
+        } catch (IOException | NumberFormatException e) {
+            return null;   // there has not been one
+        }
     }
 
     /** The last time something stopped him while he was on duty, if it was in the last day. */
@@ -194,6 +216,51 @@ final class Status {
             return new Stop(why, exit.getTimestamp(), words != R.string.stopped_crash && words != R.string.stopped_frozen);
         }
         return null;
+    }
+
+    /**
+     * The last few times the app closed, newest first, as Android describes them,
+     * everyday reasons included. For working out what is happening on a phone.
+     */
+    static List<Note> recentStops(Context context) {
+        List<Note> stops = new ArrayList<>();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return stops;
+        try {
+            ActivityManager manager = context.getSystemService(ActivityManager.class);
+            String watcher = context.getPackageName();
+            for (ApplicationExitInfo exit : manager.getHistoricalProcessExitReasons(null, 0, 16)) {
+                int words = words(exit.getReason());
+                boolean crashed = words == R.string.stopped_crash || words == R.string.stopped_frozen;
+                String what;
+                if (watcher.equals(exit.getProcessName())) {
+                    what = context.getString(words != 0 ? words : everydayWords(exit.getReason()));
+                } else if (crashed && (watcher + ":stage").equals(exit.getProcessName())) {
+                    // Android closes the part that draws him whenever it likes, which does no harm. A crash is news.
+                    what = context.getString(R.string.stopped_stage, context.getString(words));
+                } else {
+                    continue;
+                }
+                if (exit.getDescription() != null) what += " (" + exit.getDescription() + ")";
+                stops.add(new Note(what, exit.getTimestamp()));
+                if (stops.size() == 4) break;
+            }
+        } catch (RuntimeException ignored) {
+            // Then there is nothing to show.
+        }
+        return stops;
+    }
+
+    private static int everydayWords(int reason) {
+        switch (reason) {
+            case ApplicationExitInfo.REASON_PACKAGE_UPDATED:
+                return R.string.stopped_updated;
+            case ApplicationExitInfo.REASON_EXIT_SELF:
+                return R.string.stopped_itself;
+            case ApplicationExitInfo.REASON_PERMISSION_CHANGE:
+                return R.string.stopped_permission;
+            default:
+                return R.string.stopped_other;
+        }
     }
 
     /** Android's reason for stopping an app, in plain words. 0 for the everyday reasons, such as an update. */

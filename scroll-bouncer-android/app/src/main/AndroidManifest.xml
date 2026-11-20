@@ -48,10 +48,17 @@
             </intent-filter>
         </activity>
 
+        <!-- This and StageService use the web view, and are kept in a process of their own: see StageService. -->
         <activity
             android:name=".PreviewActivity"
             android:exported="false"
+            android:process=":stage"
             android:theme="@style/PreviewTheme" />
+
+        <service
+            android:name=".StageService"
+            android:exported="false"
+            android:process=":stage" />
 
         <service
             android:name=".BouncerService"

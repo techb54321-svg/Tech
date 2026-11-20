@@ -57,8 +57,9 @@ ones Mozilla has signed, so it has to be published on addons.mozilla.org first:
 
 It passes Mozilla's add-on validator, but has not been run in Firefox.
 
-On a phone this covers social media opened in the browser, not the Instagram or
-TikTok apps themselves.
+On a phone the extension covers social media opened in the browser, not the
+Instagram or TikTok apps themselves. For those there is a separate Android app
+with the same little guy in `../scroll-bouncer-android`.
 
 ## Using it
 

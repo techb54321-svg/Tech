@@ -60,7 +60,7 @@ jobs:
       - name: Try it on an emulated phone
         run: |
           python3 -m pip install --quiet pillow
-          scroll-bouncer-android/ci/try-on-emulator.sh apk/debug/app-debug.apk
+          scroll-bouncer-android/ci/try-on-emulator.sh apk/debug/app-debug.apk apk/release/app-release.apk
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -68,6 +68,8 @@ jobs:
           name: emulator-screens
           path: |
             shots
+            preview
+            ui.xml
             log.txt
             emulator.log
           if-no-files-found: ignore

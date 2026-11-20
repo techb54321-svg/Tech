@@ -2,4 +2,6 @@
 build/
 local.properties
 *.apk
+# ...except the ready-built copy people download.
+!dist/*.apk
 __pycache__/

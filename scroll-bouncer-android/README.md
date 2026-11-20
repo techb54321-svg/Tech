@@ -7,8 +7,9 @@ and you are back on the home screen.
 
 ## Install
 
-1. Get `scroll-bouncer.apk` onto the phone and open it. Android asks whether to
-   allow installing from that source; allow it, then tap Install.
+1. On the phone, download `dist/scroll-bouncer.apk` from this folder (on GitHub,
+   open the file and tap the download button) and open it. Android asks whether
+   to allow installing from that source; allow it, then tap Install.
 2. Open Scroll Bouncer and tap **Open Accessibility settings**. Find Scroll
    Bouncer in the list (it may be under "Downloaded apps") and turn it on.
 3. If Android says it is a **restricted setting**, go back to Scroll Bouncer and
@@ -44,7 +45,8 @@ way to send anything anywhere.
 ```
 
 The app is written to `app/build/outputs/apk/release/app-release.apk`. Building
-needs the Android SDK; Android Studio installs it.
+needs the Android SDK; Android Studio installs it. `dist/scroll-bouncer.apk` is
+a copy of that file, kept here so it can be downloaded without building.
 
 Every build is signed with `dev.keystore`, a development key kept in this
 folder so that a new build installs over the last one. Anyone with this folder

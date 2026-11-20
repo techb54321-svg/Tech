@@ -2,12 +2,15 @@
 # Installs the app on an emulated phone, opens an app on his list, and checks
 # that the little guy turns up and the phone ends up back on the home screen.
 #
-#   ci/try-on-emulator.sh path/to/app-debug.apk
+#   ci/try-on-emulator.sh path/to/app-debug.apk [path/to/app-release.apk]
 #
-# It needs the debug build, because that is the one adb is allowed to configure.
+# The first part needs the debug build, because that is the one adb is allowed
+# to configure. If the release build is given too, it is installed over the top
+# and the app's own screen and its preview are tried with that.
 set -euo pipefail
 
 APK="$1"
+RELEASE="${2:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 APP=com.scrollbouncer.app
 TARGET=com.android.settings          # a stock app to stand in for Instagram
@@ -85,7 +88,7 @@ echo "== In front afterwards: $FOCUS"
 echo "== His count"
 cat prefs.xml
 echo "== What was on screen"
-python3 "$HERE/read-screens.py" shots
+python3 "$HERE/read-screens.py" shots --must-cross
 
 fail() { echo "FAILED: $1"; exit 1; }
 grep -q "on stage" log.txt || fail "he never went on"
@@ -94,4 +97,37 @@ grep -q "off stage" log.txt || fail "he never left"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
 grep -q 'name="total" value="1"' prefs.xml || fail "the close was not counted"
-echo "PASSED"
+echo "PASSED: he closed the app"
+
+echo "== Opening Scroll Bouncer itself"
+if [ -n "$RELEASE" ]; then adb install -r "$RELEASE"; fi
+adb logcat -c
+adb shell am start -n "$APP/.MainActivity" > /dev/null
+sleep 6
+FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
+echo "In front: $FOCUS"
+adb shell uiautomator dump /sdcard/ui.xml > /dev/null
+adb exec-out cat /sdcard/ui.xml > ui.xml
+python3 "$HERE/read-ui.py" ui.xml
+echo "$FOCUS" | grep -q "$APP/$APP.MainActivity" || fail "the app's own screen did not open"
+
+echo "== Tapping See him in action"
+TAP="$(python3 "$HERE/read-ui.py" ui.xml "See him in action")" || fail "the preview button is not on screen"
+# shellcheck disable=SC2086  # two numbers: x and y
+adb shell input tap $TAP
+mkdir -p preview
+START=$(date +%s%N)
+for i in $(seq -w 1 12); do
+  adb exec-out screencap -p > "preview/$i.png"
+  MS=$(( ($(date +%s%N) - START) / 1000000 ))
+  printf '%s %d.%d\n' "$i" "$((MS / 1000))" "$((MS % 1000 / 100))" >> preview/times.txt
+  sleep 0.6
+done
+sleep 6
+FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
+adb logcat -d -s AndroidRuntime:E > crashes.txt || true
+python3 "$HERE/read-screens.py" preview --must-cross || fail "he did not perform in the preview"
+echo "In front afterwards: $FOCUS"
+grep -q "FATAL EXCEPTION" crashes.txt && { cat crashes.txt; fail "the app crashed"; }
+echo "$FOCUS" | grep -q "$APP/$APP.MainActivity" || fail "the preview did not hand back to the app's screen"
+echo "PASSED: the app opens and its preview plays"

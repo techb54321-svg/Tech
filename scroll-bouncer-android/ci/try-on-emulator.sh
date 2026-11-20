@@ -14,6 +14,10 @@ TARGET=com.android.settings          # a stock app to stand in for Instagram
 IMAGE="system-images;android-34;google_apis;x86_64"
 SDK="${ANDROID_HOME:?ANDROID_HOME is not set}"
 export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$SDK/emulator:$PATH"
+# Left alone, the tool that creates the phone and the emulator that runs it can look in
+# different folders, so tell both where it lives.
+export ANDROID_AVD_HOME="$HOME/.android/avd"
+mkdir -p "$ANDROID_AVD_HOME"
 
 echo "== Starting an emulated phone"
 ls -l /dev/kvm || echo "no /dev/kvm: the emulator will have no hardware acceleration"

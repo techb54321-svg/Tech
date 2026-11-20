@@ -25,6 +25,18 @@ public class PreviewActivity extends Activity implements Stage.Cues {
         });
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Stage.screenOpened();
+    }
+
+    @Override
+    protected void onStop() {
+        Stage.screenClosed();
+        super.onStop();
+    }
+
     /** Nothing is really being closed here. */
     @Override
     public void dark() {

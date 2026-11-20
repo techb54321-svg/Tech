@@ -103,7 +103,7 @@ echo "Usage access: $(adb shell appops get "$APP" GET_USAGE_STATS | tr -d '\r' |
 echo "Display over other apps: $(adb shell appops get "$APP" SYSTEM_ALERT_WINDOW | tr -d '\r' | head -n 1)"
 echo "Running: $(adb shell dumpsys activity services "$APP" | grep -c ServiceRecord || true) service(s)"
 adb shell input keyevent KEYCODE_HOME
-sleep 3
+sleep 25      # the web view finishes loading once the app's own screen is out of the way
 
 echo "== Opening an app on his list and watching the screen"
 adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1

@@ -87,6 +87,18 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        Stage.screenOpened();
+    }
+
+    @Override
+    protected void onStop() {
+        Stage.screenClosed();
+        super.onStop();
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         main.post(everySecond);

@@ -24,7 +24,6 @@ import android.view.Display;
 import android.view.Gravity;
 import android.view.WindowInsets;
 import android.view.WindowManager;
-import android.webkit.WebSettings;
 import android.webkit.WebView;
 
 /**
@@ -98,15 +97,7 @@ public class BouncerService extends Service implements Stage.Cues {
         main.post(look);
         Log.i(TAG, "on duty");
 
-        // Loading the phone's web view for the first time is slow. Start on it now,
-        // away from the main thread so nothing freezes, rather than when he is first needed.
-        new Thread(() -> {
-            try {
-                WebSettings.getDefaultUserAgent(this);
-            } catch (RuntimeException e) {
-                Log.w(TAG, "could not warm up the web view", e);
-            }
-        }, "warm-up").start();
+        Stage.prepare(this);
     }
 
     @Override
@@ -180,6 +171,7 @@ public class BouncerService extends Service implements Stage.Cues {
         }
         if (!prefs.closes(app) || !Access.drawsOver(this)) return;
         if (app.equals(lastTarget) && SystemClock.uptimeMillis() < restUntil) return;
+        Log.i(TAG, "an app on his list has been opened");
         enter(app);
     }
 

@@ -17,11 +17,15 @@
     <!-- To go back on duty after the phone is restarted. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-    <!-- Lets the app list the apps on the phone that can be opened. -->
+    <!-- Lets the app list the apps on the phone that can be opened, and notice the home screen. -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
         </intent>
     </queries>
 

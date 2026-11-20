@@ -1,6 +1,6 @@
 """Describes a folder of phone screenshots in words and numbers.
 
-    read-screens.py folder [--must-cross]
+    read-screens.py folder [--must-walk]
 
 For each screenshot: how much of it is his mint colour and where, and how bright
 the screen is overall. He should show up as mint near the top, moving from left
@@ -16,7 +16,7 @@ import sys
 from PIL import Image
 
 folder = pathlib.Path(sys.argv[1])
-must_cross = "--must-cross" in sys.argv  # fail unless he gets past the middle of the screen
+must_walk = "--must-walk" in sys.argv  # fail unless he is seen walking across a lit screen
 times = dict(line.split() for line in (folder / "times.txt").read_text().splitlines())
 
 
@@ -75,8 +75,13 @@ mintiest = max(rows, key=lambda row: row[2])
 dark = [row for row in rows if row[2] > 20 and row[3] < 60]
 if mintiest[2] < 40:
     sys.exit("FAILED: he never appeared on the screen")
-if must_cross and max(row[4] for row in rows if row[2] >= 40) < 0.6:
-    sys.exit("FAILED: he never got past the middle of the screen")
+if must_walk:
+    # How far across he was each time he was seen on a screen that had not gone dark.
+    seen = [row[4] for row in rows if row[2] >= 40 and row[3] >= 60]
+    if len(seen) < 2 or max(seen) - min(seen) < 0.15:
+        sys.exit("FAILED: he was not seen walking across the screen before it went dark")
+    if max(seen) < 0.6:
+        sys.exit("FAILED: he never got past the middle of the screen")
 for label, row in (("walking", mintiest), ("dark", dark[-1] if dark else None)):
     if row is None:
         print(f"no {label} screenshot to draw")

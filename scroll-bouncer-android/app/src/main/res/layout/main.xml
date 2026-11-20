@@ -41,6 +41,16 @@
                 android:minHeight="48dp" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:lineSpacingExtra="3dp"
+            android:textColor="@color/muted"
+            android:textIsSelectable="true"
+            android:textSize="14sp" />
+
         <LinearLayout
             android:id="@+id/setup"
             android:layout_width="match_parent"
@@ -117,6 +127,40 @@
                 android:layout_height="wrap_content"
                 android:text="@string/open_app_info"
                 android:textColor="@color/accent" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/keep_running"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="@drawable/card"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/keep_title"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="17sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/keep_text"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="15sp" />
+
+            <Button
+                android:id="@+id/open_battery"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/keep_button" />
         </LinearLayout>
 
         <LinearLayout

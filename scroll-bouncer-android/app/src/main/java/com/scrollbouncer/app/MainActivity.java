@@ -1,6 +1,7 @@
 package com.scrollbouncer.app;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
@@ -12,7 +13,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
 import android.provider.Settings;
+import android.text.format.DateUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -62,6 +66,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.open_app_info).setOnClickListener(view ->
                 startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         Uri.fromParts("package", getPackageName(), null))));
+        findViewById(R.id.open_battery).setOnClickListener(view -> askToKeepRunning(me));
         findViewById(R.id.take_break).setOnClickListener(view -> {
             if (prefs.breakLeftMs() > 0) prefs.endBreak(); else prefs.startBreak();
             refresh();
@@ -74,6 +79,19 @@ public class MainActivity extends Activity {
         // Android wants a notification while he is on duty, and from Android 13 that needs asking for.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 0);
+        }
+    }
+
+    /**
+     * Asks Android not to stop the app to save battery. Only offered once the phone
+     * has stopped him, since he cannot do his job if he is not left running.
+     */
+    @SuppressLint("BatteryLife")
+    private void askToKeepRunning(Uri me) {
+        try {
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, me));
+        } catch (ActivityNotFoundException e) {
+            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
         }
     }
 
@@ -117,14 +135,22 @@ public class MainActivity extends Activity {
         findViewById(R.id.need_usage).setVisibility(seesApps ? View.GONE : View.VISIBLE);
         findViewById(R.id.need_overlay).setVisibility(drawsOver ? View.GONE : View.VISIBLE);
         findViewById(R.id.setup).setVisibility(seesApps && drawsOver ? View.GONE : View.VISIBLE);
+        boolean leftAlone = getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(getPackageName());
+        findViewById(R.id.keep_running).setVisibility(
+                seesApps && drawsOver && !leftAlone && Status.stoppedByPhone(this) ? View.VISIBLE : View.GONE);
 
-        // He is on duty whenever he is switched on and allowed to do his job.
+        // He is on duty whenever he is switched on and allowed to do his job. If he
+        // should be checking and has not for a while, he has been stopped: start him again.
         boolean should = prefs.enabled() && seesApps && drawsOver;
-        if (onDuty == null || onDuty != should) {
+        boolean checking = Status.checkedAt > 0 && SystemClock.elapsedRealtime() - Status.checkedAt < 5000;
+        if (onDuty == null || onDuty != should || (should && !checking)) {
+            if (onDuty == null || onDuty != should) {
+                Log.i("ScrollBouncer", "duty " + should + ": sees apps " + seesApps + ", draws over " + drawsOver);
+            }
             onDuty = should;
-            Log.i("ScrollBouncer", "duty " + should + ": sees apps " + seesApps + ", draws over " + drawsOver);
             if (should) BouncerService.start(this); else BouncerService.stop(this);
         }
+        ((TextView) findViewById(R.id.status)).setText(status(seesApps && drawsOver, checking));
         ((TextView) findViewById(R.id.closed_today)).setText(String.valueOf(prefs.closedToday()));
         ((TextView) findViewById(R.id.closed_total)).setText(String.valueOf(prefs.closedTotal()));
 
@@ -139,6 +165,75 @@ public class MainActivity extends Activity {
         } else {
             takeBreak.setText(R.string.take_break);
             breakNote.setVisibility(View.GONE);
+        }
+    }
+
+    /** A few lines saying whether he is working, what he has seen, and anything that has gone wrong. */
+    private String status(boolean allowed, boolean checking) {
+        StringBuilder lines = new StringBuilder();
+        boolean onDuty = false;
+        if (!prefs.enabled()) {
+            lines.append(getString(R.string.status_off));
+        } else if (!allowed) {
+            lines.append(getString(R.string.status_needs));
+        } else if (prefs.breakLeftMs() > 0) {
+            lines.append(getString(R.string.status_break));
+            onDuty = true;
+        } else {
+            lines.append(getString(checking ? R.string.status_on : R.string.status_starting));
+            onDuty = true;
+        }
+        if (onDuty) {
+            List<Status.Sighting> seen = Status.sightings();
+            lines.append('\n').append(getString(seen.isEmpty() ? R.string.status_none : R.string.status_noticed));
+            for (Status.Sighting sighting : seen) {
+                lines.append('\n').append(getString(
+                        sighting.onList ? R.string.status_app_listed : R.string.status_app,
+                        label(sighting.app), ago(sighting.at)));
+            }
+        }
+        if (Status.wentOnAt > 0) {
+            lines.append('\n').append(getString(R.string.status_went_on, ago(Status.wentOnAt)));
+        }
+        Status.Note stopped = Status.stopped(this);
+        if (stopped != null) {
+            lines.append('\n').append(getString(R.string.status_stopped, ago(stopped.at), stopped.what));
+        }
+        Status.Note crash = Status.crash(this);
+        if (crash != null) {
+            lines.append('\n').append(getString(R.string.status_crashed, ago(crash.at), crash.what));
+        }
+        Status.Note problem = Status.problem(this);
+        if (problem != null) {
+            lines.append('\n').append(getString(R.string.status_problem, ago(problem.at), problem.what));
+        }
+        // Which version this is and what it is running on, for anyone helping to work out a problem.
+        lines.append('\n').append(getString(R.string.status_phone,
+                version(), Build.VERSION.RELEASE, Build.MANUFACTURER, Build.MODEL));
+        return lines.toString();
+    }
+
+    private CharSequence ago(long when) {
+        long now = System.currentTimeMillis();
+        if (now - when < 3000) return getString(R.string.just_now);
+        return DateUtils.getRelativeTimeSpanString(when, now, DateUtils.SECOND_IN_MILLIS);
+    }
+
+    private String version() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            return "";
+        }
+    }
+
+    /** The name a person knows an app by. */
+    private CharSequence label(String app) {
+        try {
+            PackageManager packages = getPackageManager();
+            return packages.getApplicationLabel(packages.getApplicationInfo(app, 0));
+        } catch (PackageManager.NameNotFoundException e) {
+            return app;
         }
     }
 

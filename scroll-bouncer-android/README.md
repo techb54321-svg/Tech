@@ -20,6 +20,27 @@ and you are back on the home screen.
 
 Tap **See him in action** to watch his routine without opening anything.
 
+## If he does not turn up
+
+The lines under the app's name say how he is getting on: whether he is on
+duty, which apps he has noticed being opened, when he last went on screen, and
+anything that has gone wrong. Open an app on his list, come back to Scroll
+Bouncer, and read them.
+
+- **He cannot start until the two settings below are switched on**: one of the
+  two settings in step 2 is still off.
+- **He is on a break** or **He is switched off**: end the break, or turn the
+  switch at the top back on.
+- **He was stopped**: the phone closed the app. A card appears with a **Let him
+  keep running** button, which asks the phone to leave him alone. Some phones
+  also have their own setting for this, usually called Autostart or Background
+  activity, under the app's battery settings.
+- The app you opened is not marked **on his list**: tick it under **Apps he
+  closes**.
+
+If he cannot be drawn for any reason, the app is still closed, with a short
+"Nope not now" message in his place.
+
 ## Using it
 
 - The switch at the top turns him on and off.
@@ -31,13 +52,15 @@ Tap **See him in action** to watch his routine without opening anything.
 
 While he is switched on, Android shows a small "Scroll Bouncer is on duty"
 notification. If you leave the app yourself before he reaches the button, he
-goes away without doing anything.
+goes away without doing anything. If you are still in an app when a break runs
+out, he comes for it then.
 
 ## What it can see
 
 It is told which app has been opened and when, from Android's record of app
 use. It cannot read what is on the screen, and without the internet permission
-it has no way to send anything anywhere.
+it has no way to send anything anywhere. The last few apps it noticed are shown
+on its own screen and forgotten when the app closes.
 
 It deliberately does not use Android's accessibility permission. Google Play
 Protect refuses to install apps from outside the Play Store that ask for it.
@@ -62,7 +85,10 @@ store.
 - `app/src/main/java/.../BouncerService.java`: checks which app is in front,
   puts him on screen, and sends the phone to its home screen
 - `Access.java`: whether the two settings above are switched on
-- `BootReceiver.java`: puts him back on duty after the phone restarts
+- `BootReceiver.java`: puts him back on duty after the phone restarts or the
+  app is updated
+- `Status.java`: the notes behind the lines under the app's name
+- `App.java`: writes down a crash, so the next visit to the app can say so
 - `Stage.java`: the see-through web view he is drawn in
 - `MainActivity.java`: the settings screen
 - `PreviewActivity.java`: plays his routine inside the app
@@ -70,4 +96,4 @@ store.
 - `app/src/main/assets/bouncer.html`: the page shown in the web view
 - `../scroll-bouncer/guy.js`: the little guy himself, shared with the browser
   extension and copied into the app when it is built
-- `ci/`: tries the app on an emulated phone
+- `ci/`: tries the app on emulated phones running Android 14 and Android 16

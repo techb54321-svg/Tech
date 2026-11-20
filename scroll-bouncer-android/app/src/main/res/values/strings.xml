@@ -5,6 +5,10 @@
     <string name="duty_channel">On duty</string>
     <string name="duty_title">Scroll Bouncer is on duty</string>
     <string name="duty_text">Watching for the apps you chose</string>
+    <string name="help_channel">Needs you</string>
+    <string name="help_title">Scroll Bouncer has gone off duty</string>
+    <string name="help_text">Tap to put him back on.</string>
+    <string name="nope">Nope not now</string>
 
     <string name="enabled_label">Turn Scroll Bouncer on or off</string>
     <string name="setup_title">Two things to switch on</string>
@@ -14,6 +18,45 @@
     <string name="open_overlay">Open Display over other apps</string>
     <string name="restricted_note">If a switch is greyed out or Android says it is a restricted setting: open App info, tap the three dots in the corner, choose Allow restricted settings, then try again.</string>
     <string name="open_app_info">Open App info</string>
+
+    <string name="keep_title">The phone has been stopping him</string>
+    <string name="keep_text">Some phones close apps that run in the background, to save battery. Allow this and he will be left alone.</string>
+    <string name="keep_button">Let him keep running</string>
+
+    <!-- The lines under the app's name, saying how he is getting on. -->
+    <string name="status_on">He is on duty.</string>
+    <string name="status_starting">He is getting ready.</string>
+    <string name="status_off">He is switched off.</string>
+    <string name="status_needs">He cannot start until the two settings below are switched on.</string>
+    <string name="status_break">He is on a break, so the apps on his list will open.</string>
+    <string name="status_none">He has not noticed any app being opened yet.</string>
+    <string name="status_noticed">Apps he has noticed being opened:</string>
+    <string name="status_app">• %1$s, %2$s</string>
+    <string name="status_app_listed">• %1$s (on his list), %2$s</string>
+    <string name="status_went_on">He last went on screen %1$s.</string>
+    <string name="status_stopped">He was stopped %1$s: %2$s.</string>
+    <string name="status_crashed">The app crashed %1$s: %2$s</string>
+    <string name="status_problem">Problem %1$s: %2$s</string>
+    <string name="status_phone">Scroll Bouncer %1$s on Android %2$s, %3$s %4$s</string>
+    <string name="just_now">just now</string>
+
+    <!-- Why Android stopped the app, to finish the sentence "He was stopped two minutes ago: …" -->
+    <string name="stopped_memory">the phone was short of memory</string>
+    <string name="stopped_power">the phone decided the app was using too much power</string>
+    <string name="stopped_by_hand">the app was closed or force-stopped</string>
+    <string name="stopped_by_phone">the phone shut the app down</string>
+    <string name="stopped_crash">the app crashed</string>
+    <string name="stopped_frozen">the app stopped responding</string>
+
+    <!-- Things that can go wrong. Details are Android's own description, for working out the cause. -->
+    <string name="problem_no_duty">Android would not let him go on duty by himself. Opening this app puts him back on. Details: %1$s</string>
+    <string name="problem_no_overlay">An app on his list was opened, but Display over other apps is switched off.</string>
+    <string name="problem_no_web_view">The part of the phone that draws him would not start. Details: %1$s</string>
+    <string name="problem_no_stage">He could not be put on screen, so the app was closed without him. Details: %1$s</string>
+    <string name="problem_too_slow">He went on but did not reach the button in time, so the app was closed without him.</string>
+    <string name="problem_no_end">He closed the app but did not finish afterwards, so he was taken off the screen.</string>
+    <string name="problem_no_home">The phone would not go to its home screen. Details: %1$s</string>
+    <string name="problem_still_open">He did his routine, but the phone did not go to its home screen afterwards.</string>
 
     <string name="closed_today">closed today</string>
     <string name="closed_total">all time</string>

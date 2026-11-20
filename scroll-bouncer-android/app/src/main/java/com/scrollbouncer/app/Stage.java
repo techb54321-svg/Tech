@@ -48,6 +48,7 @@ final class Stage {
                 WebSettings.getDefaultUserAgent(app);
             } catch (RuntimeException e) {
                 Log.w(TAG, "could not load the web view", e);
+                Status.problem(app, app.getString(R.string.problem_no_web_view, e));
             }
             MAIN.post(() -> finishPreparing(app));
         }, "web-view-loader").start();
@@ -63,6 +64,7 @@ final class Stage {
             Log.i(TAG, "web view ready");
         } catch (RuntimeException e) {
             Log.w(TAG, "could not start the web view", e);
+            Status.problem(app, app.getString(R.string.problem_no_web_view, e));
         }
     }
 

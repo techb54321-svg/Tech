@@ -1,14 +1,15 @@
 """Describes a folder of phone screenshots in words and numbers.
 
-    read-screens.py folder [--must-walk]
+    read-screens.py folder [--must-walk] [--brief]
 
-For each screenshot: how much of it is his mint colour and where, and how bright
-the screen is overall. He should show up as mint near the top, moving from left
-to right, then the screen should go dark with him still on it.
+He walks along the top of the screen, so each screenshot is checked for his
+mint colour in its top quarter. He should move from left to right there, then
+the screen should go dark with him still on it.
 
-Two of the screenshots are also drawn as text, so the layout can be checked
-without opening an image: m is him, x is the red close button, w is white (his
-speech bubble, on the dark screen), . is dark and a space is anything else.
+Unless --brief is given, every screenshot gets a line, and two of them are also
+drawn as text so the layout can be checked without opening an image: m is him,
+x is the red close button, w is white (his speech bubble, on the dark screen),
+. is dark and a space is anything else.
 """
 import pathlib
 import sys
@@ -17,7 +18,9 @@ from PIL import Image
 
 folder = pathlib.Path(sys.argv[1])
 must_walk = "--must-walk" in sys.argv  # fail unless he is seen walking across a lit screen
+brief = "--brief" in sys.argv
 times = dict(line.split() for line in (folder / "times.txt").read_text().splitlines())
+ENOUGH = 200  # this many mint pixels in the top quarter (at a quarter size) is him, not an icon
 
 
 def is_mint(pixel):
@@ -49,7 +52,7 @@ def drawing(image):
     return "\n".join("".join(letter(pixels[x, y]) for x in range(72)).rstrip() for y in range(22))
 
 
-rows = []
+rows = []  # (path, image, mint pixels, brightness, how far across he is)
 for path in sorted(folder.glob("*.png")):
     try:
         image = Image.open(path).convert("RGB")
@@ -58,7 +61,7 @@ for path in sorted(folder.glob("*.png")):
         continue
     small = image.resize((image.width // 4, image.height // 4))
     pixels = small.load()
-    mint = [(x, y) for y in range(small.height) for x in range(small.width) if is_mint(pixels[x, y])]
+    mint = [(x, y) for y in range(small.height // 4) for x in range(small.width) if is_mint(pixels[x, y])]
     brightness = sum(sum(pixels[x, y]) for y in range(small.height) for x in range(small.width)) / (3 * small.width * small.height)
     if mint:
         xs, ys = [x for x, _ in mint], [y for _, y in mint]
@@ -66,26 +69,31 @@ for path in sorted(folder.glob("*.png")):
     else:
         where = "nowhere"
     rows.append((path, image, len(mint), brightness, max(xs) * 4 / image.width if mint else 0))
-    print(f"{path.stem}  t={times.get(path.stem, '?'):>5}s  mint pixels={len(mint):5d}  at {where}  brightness={brightness:5.1f}")
+    if not brief:
+        print(f"{path.stem}  t={times.get(path.stem, '?'):>5}s  mint pixels={len(mint):5d}  at {where}  brightness={brightness:5.1f}")
 
 if not rows:
     sys.exit("no screenshots could be read")
 
-mintiest = max(rows, key=lambda row: row[2])
-dark = [row for row in rows if row[2] > 20 and row[3] < 60]
-if mintiest[2] < 40:
+him = [row for row in rows if row[2] >= ENOUGH]
+walking = [row for row in him if row[3] >= 60]   # on a screen that has not gone dark
+dark = [row for row in him if row[3] < 60]
+across = [row[4] for row in walking]
+print(f"He is in {len(him)} of {len(rows)} screenshots: walking in {len(walking)}"
+      + (f", from {min(across):.0%} to {max(across):.0%} of the way across" if across else "")
+      + f", and on a dark screen in {len(dark)}.")
+if not him:
     sys.exit("FAILED: he never appeared on the screen")
 if must_walk:
-    # How far across he was each time he was seen on a screen that had not gone dark.
-    seen = [row[4] for row in rows if row[2] >= 40 and row[3] >= 60]
-    if len(seen) < 2 or max(seen) - min(seen) < 0.15:
+    if len(across) < 2 or max(across) - min(across) < 0.15:
         sys.exit("FAILED: he was not seen walking across the screen before it went dark")
-    if max(seen) < 0.6:
+    if max(across) < 0.6:
         sys.exit("FAILED: he never got past the middle of the screen")
-for label, row in (("walking", mintiest), ("dark", dark[-1] if dark else None)):
-    if row is None:
-        print(f"no {label} screenshot to draw")
-        continue
-    print(f"--- {label}: screenshot {row[0].stem}, top of the screen ---")
-    print(drawing(row[1]))
-    print("---")
+if not brief:
+    for label, row in (("walking", max(walking or him, key=lambda row: row[2])), ("dark", dark[-1] if dark else None)):
+        if row is None:
+            print(f"no {label} screenshot to draw")
+            continue
+        print(f"--- {label}: screenshot {row[0].stem}, top of the screen ---")
+        print(drawing(row[1]))
+        print("---")

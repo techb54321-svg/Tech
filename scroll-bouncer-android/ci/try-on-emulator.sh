@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Installs the app on an emulated phone, opens an app on his list, and checks
 # that the little guy turns up and the phone ends up back on the home screen.
+# Then it stops the app the way a phone does when it wants the memory back, and
+# checks that he comes back by himself and still does his job.
 #
 #   ci/try-on-emulator.sh path/to/app-debug.apk [path/to/app-release.apk]
 #
-# The first part needs the debug build, because that is the one adb is allowed
-# to configure. If the release build is given too, it is installed over the top
+# Those parts need the debug build, because that is the one adb is allowed to
+# configure. If the release build is given too, it is installed over the top
 # and the app's own screen and its preview are tried with that.
 set -euo pipefail
 
@@ -23,7 +25,19 @@ export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$SDK/emulator:$PA
 export ANDROID_AVD_HOME="$HOME/.android/avd"
 mkdir -p "$ANDROID_AVD_HOME"
 
-fail() { echo "FAILED: $1"; exit 1; }
+PASSED=()
+finish() {
+  echo "== Summary (Android API $API)"
+  for line in "${PASSED[@]}"; do echo "PASSED: $line"; done
+  [ -z "${1:-}" ] || echo "FAILED: $1"
+}
+pass() { PASSED+=("$1"); echo "PASSED: $1"; }
+fail() {
+  echo "== The app's own log"
+  tail -n 30 log.txt 2> /dev/null || true
+  finish "$1"
+  exit 1
+}
 
 # Takes a run of screenshots into a folder, noting when each was taken.
 watch_screen() {
@@ -49,16 +63,23 @@ wait_for_words() {
   return 1
 }
 
-# Says how each of the app's processes ended, and what the phone logged around then.
-# A process that is killed or crashes takes him off duty, so this matters.
-how_it_ended() {
-  echo "== How the app's processes have ended"
-  adb shell dumpsys activity exit-info "$APP" | tr -d '\r' \
-    | grep -E "ApplicationExitInfo|timestamp=|process=|description=" | head -n 40 || true
-  echo "== What the phone logged about the app stopping"
+# Collects what the app has logged, which app is in front, and his count.
+collect() {
+  FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
   adb logcat -d -v threadtime > everything.txt || true
-  grep -E "$APP.*(has died|died)|Killing [0-9]+:$APP|lowmemorykiller.*$APP|Fatal signal|F DEBUG|F libc|F chromium|crashed service|ForegroundService|not allowed|Background (activity|start)" everything.txt \
-    | cut -c1-320 | tail -n 40 || true
+  grep -E " (ScrollBouncer|AndroidRuntime) *: |Scroll Bouncer: page ready|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
+    | cut -c1-260 > log.txt || true
+  adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
+  echo "== What the app logged"
+  cat log.txt
+  echo "== In front afterwards: $FOCUS"
+  echo "== His count: $(grep -o 'name="total" value="[0-9]*"' prefs.xml || echo none)"
+  # A process that is stopped or crashes takes him off duty, so say how each one ended.
+  echo "== How the app's own processes have ended"
+  adb shell dumpsys activity exit-info "$APP" | tr -d '\r' | grep -A2 "process=$APP " \
+    | sed 's/^ *//' | cut -c1-200 | head -n 12 || true
+  grep -iE "scrollbouncer" everything.txt | grep -vE " ScrollBouncer *: " \
+    | grep -iE "has died|killing|crash|not allowed|denied|exception|blocked|fatal" | cut -c1-260 | tail -n 12 || true
 }
 
 echo "== Starting an emulated phone (Android API $API)"
@@ -91,16 +112,24 @@ adb shell wm dismiss-keyguard || true
 adb shell input keyevent 82 || true
 sleep 5
 
-# A stock app to stand in for Instagram. Not Settings: Android hides anything
-# drawn over its own settings screens.
-TARGET="$(adb shell pm list packages | tr -d '\r' | sed 's/^package://' \
-  | grep -E '^com\.(google\.)?android\.(deskclock|calendar|contacts)$' | head -n 1 || true)"
+# A stock app to stand in for Instagram: the first of these the phone has. Not
+# Settings, because Android hides anything drawn over its own settings screens,
+# and nothing that starts by asking to sign in, because that page belongs to
+# another app.
+TARGET=""
+INSTALLED="$(adb shell pm list packages | tr -d '\r' | sed 's/^package://')"
+for app in com.google.android.deskclock com.android.deskclock com.google.android.documentsui \
+  com.android.documentsui com.google.android.contacts com.android.contacts; do
+  if echo "$INSTALLED" | grep -qx "$app"; then TARGET="$app"; break; fi
+done
 if [ -z "$TARGET" ]; then
   echo "Apps on this phone that can be opened:"
   adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || true
   fail "the emulated phone has no app to stand in for Instagram"
 fi
 echo "Standing in for Instagram: $TARGET"
+# So it does not start by asking a question, which would be another app's screen.
+adb shell pm grant "$TARGET" android.permission.POST_NOTIFICATIONS 2> /dev/null || true
 
 echo "== Installing and setting up"
 adb install -r "$APK"
@@ -119,56 +148,71 @@ adb shell am start -n "$APP/.MainActivity" > /dev/null
 sleep 25      # a freshly started emulator takes a while to settle
 echo "Usage access: $(adb shell appops get "$APP" GET_USAGE_STATS | tr -d '\r' | head -n 1)"
 echo "Display over other apps: $(adb shell appops get "$APP" SYSTEM_ALERT_WINDOW | tr -d '\r' | head -n 1)"
-echo "Running: $(adb shell dumpsys activity services "$APP" | grep -c ServiceRecord || true) service(s)"
 adb shell input keyevent KEYCODE_HOME
 sleep 25      # the web view finishes loading once the app's own screen is out of the way
 
-echo "== Opening an app on his list and watching the screen"
+echo "== 1. Opening an app on his list and watching the screen"
 adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
 watch_screen shots 22
 sleep 4
-
-FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
-adb logcat -d -s ScrollBouncer:V AndroidRuntime:E chromium:I ActivityTaskManager:I ActivityManager:W > all.txt || true
-grep -E "ScrollBouncer|AndroidRuntime|Scroll Bouncer: page ready|START u0 .*$TARGET|scrollbouncer" all.txt | cut -c1-300 > log.txt || true
-adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
-
-echo "== What the app logged"
-cat log.txt
-echo "== In front afterwards: $FOCUS"
-echo "== His count"
-cat prefs.xml
-how_it_ended
+collect
 echo "== What was on screen"
-python3 "$HERE/read-screens.py" shots --must-walk
+python3 "$HERE/read-screens.py" shots --must-walk || fail "he was not seen walking across the app"
 
 grep -q "on stage" log.txt || fail "he never went on"
 grep -q "dark, sent home" log.txt || fail "the screen never went dark"
 grep -q "off stage" log.txt || fail "he never left"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
-grep -q "ANR in $APP" log.txt && fail "the app stopped responding"
+grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
 grep -q 'name="total" value="1"' prefs.xml || fail "the close was not counted"
-echo "PASSED: he closed the app"
+pass "he walked across the app, closed it, and the phone went to its home screen"
 
-echo "== Opening Scroll Bouncer itself"
+echo "== 2. Stopping the app the way a phone does, with an app on his list left open"
+adb logcat -c
+PID="$(adb shell pidof "$APP" | tr -d '\r' || true)"
+[ -n "$PID" ] || fail "the app was not running before it was stopped"
+# Emulated phones let adb act as the system, which is what it takes to stop another app's process like this.
+adb shell su 0 kill -9 "$PID"
+adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+watch_screen again 28
+sleep 4
+collect
+echo "== What was on screen"
+python3 "$HERE/read-screens.py" again --must-walk --brief || fail "he was not seen walking across the app the second time"
+
+grep -q "on duty" log.txt || fail "he did not go back on duty after the app was stopped"
+grep -q "on stage" log.txt || fail "he went back on duty, but did not come for the app that was already open"
+grep -q "dark, sent home" log.txt || fail "the screen never went dark the second time"
+grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
+echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
+grep -q 'name="total" value="2"' prefs.xml || fail "the second close was not counted"
+pass "after the app was stopped he came back by himself and closed the app that was open"
+
+echo "== 3. Opening Scroll Bouncer itself"
 if [ -n "$RELEASE" ]; then adb install -r "$RELEASE"; fi
 adb logcat -c
 adb shell am start -n "$APP/.MainActivity" > /dev/null
 wait_for_words "See him in action" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's own screen did not open"; }
+# Its screen should say that he is on duty, and that he was stopped earlier.
+wait_for_words "He is on duty" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen does not say he is on duty"; }
 python3 "$HERE/read-ui.py" ui.xml
+python3 "$HERE/read-ui.py" ui.xml "He was stopped" > /dev/null || fail "the app's screen does not mention that he was stopped"
+python3 "$HERE/read-ui.py" ui.xml "Let him keep running" > /dev/null || fail "the app's screen does not offer to keep him running"
+pass "the app's screen says he is on duty and that he was stopped earlier"
 
 echo "== Tapping See him in action"
 TAP="$(python3 "$HERE/read-ui.py" ui.xml "See him in action")"
 # shellcheck disable=SC2086  # two numbers: x and y
 adb shell input tap $TAP
 watch_screen preview 14
-python3 "$HERE/read-screens.py" preview --must-walk || fail "he did not perform in the preview"
+python3 "$HERE/read-screens.py" preview --must-walk --brief || fail "he did not perform in the preview"
 wait_for_words "See him in action" || fail "the preview did not hand back to the app's screen"
-adb logcat -d -s AndroidRuntime:E ActivityManager:E > crashes.txt || true
-grep -q "FATAL EXCEPTION" crashes.txt && { cat crashes.txt; fail "the app crashed"; }
-grep -q "ANR in $APP" crashes.txt && { cat crashes.txt; fail "the app stopped responding"; }
-echo "PASSED: the app opens and its preview plays"
 # Stay a little longer: anything that goes wrong after his routine shows up here.
-sleep 20
-how_it_ended
+sleep 15
+collect
+grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
+grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
+[ -n "$(adb shell pidof "$APP" | tr -d '\r' || true)" ] || fail "the app was no longer running after the preview"
+pass "the app opens and its preview plays"
+finish

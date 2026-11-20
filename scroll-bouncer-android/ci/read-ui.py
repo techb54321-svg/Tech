@@ -1,7 +1,8 @@
 """Lists the words on the phone's screen, or finds where to tap for one of them.
 
     read-ui.py ui.xml                 prints every piece of text on screen
-    read-ui.py ui.xml "Some button"   prints the x and y of the middle of it
+    read-ui.py ui.xml "Some button"   prints the x and y of the middle of it, or
+                                      of the first text with those words in it
 
 The file is what `adb shell uiautomator dump` writes.
 """
@@ -13,10 +14,12 @@ nodes = re.findall(r'<node[^>]*?text="([^"]*)"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d
 
 if len(sys.argv) > 2:
     wanted = sys.argv[2].lower()
-    for text, x1, y1, x2, y2 in nodes:
-        if text.lower() == wanted:
-            print((int(x1) + int(x2)) // 2, (int(y1) + int(y2)) // 2)
-            sys.exit(0)
+    # A piece of text that is exactly these words, or failing that one that has them in it.
+    for matches in (lambda text: text.lower() == wanted, lambda text: wanted in text.lower()):
+        for text, x1, y1, x2, y2 in nodes:
+            if matches(text):
+                print((int(x1) + int(x2)) // 2, (int(y1) + int(y2)) // 2)
+                sys.exit(0)
     sys.exit(f'"{sys.argv[2]}" is not on the screen')
 
-print("On screen: " + " | ".join(text for text, *_ in nodes if text))
+print("On screen: " + " | ".join(text.replace("&#10;", " / ") for text, *_ in nodes if text))

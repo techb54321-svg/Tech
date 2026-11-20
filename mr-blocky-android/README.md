@@ -1,21 +1,21 @@
-# Scroll Bouncer for Android
+# Mr Blocky for Android
 
-The same little guy as the browser extension, for the apps on an Android phone.
-Open an app on his list and he walks across the top of the screen and boops a
-close button. The screen goes dark, he shakes his head and says "Nope not now",
+Mr Blocky, the same little guy as in the browser extension, for the apps on an
+Android phone. Open an app on his list and he walks across the top of the screen
+and boops a close button. The screen goes dark, he shakes his head and says "Nope not now",
 and you are back on the home screen.
 
 ## Install
 
-1. On the phone, download `dist/scroll-bouncer.apk` from this folder (on GitHub,
+1. On the phone, download `dist/mr-blocky.apk` from this folder (on GitHub,
    open the file and tap the download button) and open it. Android asks whether
    to allow installing from that source; allow it, then tap Install.
-2. Open Scroll Bouncer. It lists two things to switch on, each with a button
+2. Open Mr Blocky. It lists two things to switch on, each with a button
    that opens the right settings screen:
    - **Usage access**, so he can see which app you have opened
    - **Display over other apps**, so he can appear on top of it
 3. If a switch is greyed out or Android says it is a **restricted setting**, go
-   back to Scroll Bouncer and tap **Open App info**. Tap the three dots in the
+   back to Mr Blocky and tap **Open App info**. Tap the three dots in the
    top corner, choose **Allow restricted settings**, then try again.
 
 Tap **See him in action** to watch his routine without opening anything.
@@ -24,8 +24,8 @@ Tap **See him in action** to watch his routine without opening anything.
 
 The lines under the app's name say how he is getting on: whether he is on
 duty, which apps he has noticed being opened, when he last went on screen, and
-anything that has gone wrong. Open an app on his list, come back to Scroll
-Bouncer, and read them.
+anything that has gone wrong. Open an app on his list, come back to Mr
+Blocky, and read them.
 
 - **He cannot start until the two settings below are switched on**: one of the
   two settings in step 2 is still off.
@@ -54,7 +54,7 @@ version of the app and of Android this is.
   in.
 - The two numbers count how many times he has closed something.
 
-While he is switched on, Android shows a small "Scroll Bouncer is on duty"
+While he is switched on, Android shows a small "Mr Blocky is on duty"
 notification. If you leave the app yourself before he reaches the button, he
 goes away without doing anything. If you are still in an app when a break runs
 out, he comes for it then.
@@ -76,8 +76,13 @@ Protect refuses to install apps from outside the Play Store that ask for it.
 ```
 
 The app is written to `app/build/outputs/apk/release/app-release.apk`. Building
-needs the Android SDK; Android Studio installs it. `dist/scroll-bouncer.apk` is
+needs the Android SDK; Android Studio installs it. `dist/mr-blocky.apk` is
 a copy of that file, kept here so it can be downloaded without building.
+
+The app used to be called Scroll Bouncer. Its internal name,
+`com.scrollbouncer.app`, and the name of the file its settings are kept in have
+been left alone, so that a new build installs over an old one and keeps its
+settings and permissions.
 
 Every build is signed with `dev.keystore`, a development key kept in this
 folder so that a new build installs over the last one. Anyone with this folder
@@ -108,6 +113,6 @@ watching.
 - `PreviewActivity.java`: plays his routine inside the app
 - `Prefs.java`: the chosen apps, the break, and the counts
 - `app/src/main/assets/bouncer.html`: the page shown in the web view
-- `../scroll-bouncer/guy.js`: the little guy himself, shared with the browser
+- `../mr-blocky/guy.js`: the little guy himself, shared with the browser
   extension and copied into the app when it is built
 - `ci/`: tries the app on emulated phones running Android 14 and Android 16

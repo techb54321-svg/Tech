@@ -28,7 +28,7 @@
 
     if (!closed) {
       // Could not close the tab: keep the page covered instead.
-      show.cover('Tab closed by the Scroll Bouncer.', 'You can close this page.');
+      show.cover('Tab closed by Mr Blocky.', 'You can close this page.');
       try { window.stop(); } catch {}
     }
   }

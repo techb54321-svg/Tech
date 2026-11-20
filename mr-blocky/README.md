@@ -1,17 +1,17 @@
-# Scroll Bouncer
+# Mr Blocky
 
-A browser extension that helps you stop scrolling. Open a social media site and a
-little round guy walks in from the left, toddles all the way across the top of
-the page to the close button and boops it with his nose. The page goes dark, he
-turns to face you, shakes his head, wags a hand and says "Nope not now", and the
-tab is gone.
+A browser extension that helps you stop scrolling. Open a social media site and
+Mr Blocky, a little round guy, walks in from the left, toddles all the way across
+the top of the page to the close button and boops it with his nose. The page
+goes dark, he turns to face you, shakes his head, wags a hand and says "Nope not
+now", and the tab is gone.
 
 ## Install
 
 **Chrome, Edge, Brave, Arc (desktop)**
 
 1. Go to `chrome://extensions` and turn on **Developer mode**.
-2. Click **Load unpacked** and pick this `scroll-bouncer` folder.
+2. Click **Load unpacked** and pick this `mr-blocky` folder.
 
 **Firefox (desktop)**: open `about:debugging#/runtime/this-firefox`, click
 **Load Temporary Add-on**, and pick `manifest.json`.
@@ -26,15 +26,15 @@ versions.
 2. In Terminal, run this. Change the path if the folder is somewhere else:
 
    ```bash
-   xcrun safari-web-extension-packager ~/scroll-bouncer --macos-only --app-name "Scroll Bouncer"
+   xcrun safari-web-extension-packager ~/mr-blocky --macos-only --app-name "Mr Blocky"
    ```
 
    It creates an Xcode project and opens it. On older versions of Xcode the tool
    is called `safari-web-extension-converter`.
-3. In Xcode, press Run. A small Scroll Bouncer app opens; it can be closed.
+3. In Xcode, press Run. A small Mr Blocky app opens; it can be closed.
 4. In Safari's Settings, open Advanced and tick "Show features for web
    developers". Then open the Developer tab and tick "Allow unsigned extensions".
-5. Still in Safari's Settings, open Extensions, tick Scroll Bouncer, and allow it
+5. Still in Safari's Settings, open Extensions, tick Mr Blocky, and allow it
    on every website.
 
 Safari forgets "Allow unsigned extensions" every time it quits, so step 4 has to
@@ -53,19 +53,19 @@ ones Mozilla has signed, so it has to be published on addons.mozilla.org first:
    submit a new add-on. Choose to list it on the site, upload the zip, and tick
    Firefox for Android as a compatible platform.
 3. Once it is approved, open Firefox on the phone, go to Extensions, and install
-   Scroll Bouncer from addons.mozilla.org.
+   Mr Blocky from addons.mozilla.org.
 
 It passes Mozilla's add-on validator, but has not been run in Firefox.
 
 On a phone the extension covers social media opened in the browser, not the
 Instagram or TikTok apps themselves. For those there is a separate Android app
-with the same little guy in `../scroll-bouncer-android`.
+with the same little guy in `../mr-blocky-android`.
 
 ## Using it
 
 Click the toolbar icon to:
 
-- turn the bouncer on or off
+- turn him on or off
 - add or remove sites (`reddit.com` covers the whole site, `youtube.com/shorts`
   covers only that section)
 - take a 5 minute break when you really do need to get in

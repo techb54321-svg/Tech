@@ -28,6 +28,7 @@ final class Prefs {
     private final SharedPreferences store;
 
     Prefs(Context context) {
+        // The app's old name. Changing it would lose the settings of everyone who has the app already.
         store = context.getApplicationContext().getSharedPreferences("scroll-bouncer", Context.MODE_PRIVATE);
     }
 

@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Scroll Bouncer</string>
+    <string name="app_name">Mr Blocky</string>
 
     <string name="duty_channel">On duty</string>
-    <string name="duty_title">Scroll Bouncer is on duty</string>
+    <string name="duty_title">Mr Blocky is on duty</string>
     <string name="duty_text">Watching for the apps you chose</string>
     <string name="help_channel">Needs you</string>
-    <string name="help_title">Scroll Bouncer has gone off duty</string>
+    <string name="help_title">Mr Blocky has gone off duty</string>
     <string name="help_text">Tap to put him back on.</string>
     <string name="nope">Nope not now</string>
 
-    <string name="enabled_label">Turn Scroll Bouncer on or off</string>
+    <string name="enabled_label">Turn Mr Blocky on or off</string>
     <string name="setup_title">Two things to switch on</string>
-    <string name="need_usage">Let him see which app you have opened. Find Scroll Bouncer in the list and turn it on.</string>
+    <string name="need_usage">Let him see which app you have opened. Find Mr Blocky in the list and turn it on.</string>
     <string name="open_usage">Open Usage access</string>
     <string name="need_overlay">Let him appear on top of other apps.</string>
     <string name="open_overlay">Open Display over other apps</string>
@@ -37,7 +37,7 @@
     <string name="status_stopped">He was stopped %1$s: %2$s.</string>
     <string name="status_crashed">The app crashed %1$s: %2$s</string>
     <string name="status_problem">Problem %1$s: %2$s</string>
-    <string name="status_phone">Scroll Bouncer %1$s on Android %2$s, %3$s %4$s</string>
+    <string name="status_phone">Mr Blocky %1$s on Android %2$s, %3$s %4$s</string>
     <string name="just_now">just now</string>
 
     <!-- Why Android stopped the app, to finish the sentence "He was stopped two minutes ago: …" -->

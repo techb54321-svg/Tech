@@ -1,4 +1,4 @@
-name: Build Scroll Bouncer for Android
+name: Build Mr Blocky for Android
 
 # Builds the Android app, then tries it on an emulated phone: opens an app on
 # his list and checks that the little guy turns up and sends it away.
@@ -7,16 +7,16 @@ on:
   push:
     branches: [claude/admiring-franklin-j3e7j5]
     paths:
-      - "scroll-bouncer-android/**"
-      - "scroll-bouncer/guy.js"
-      - ".github/workflows/scroll-bouncer-android.yml"
+      - "mr-blocky-android/**"
+      - "mr-blocky/guy.js"
+      - ".github/workflows/mr-blocky-android.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: scroll-bouncer-android-${{ github.ref }}
+  group: mr-blocky-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
           java-version: 21
 
       - name: Build and check
-        working-directory: scroll-bouncer-android
+        working-directory: mr-blocky-android
         run: |
           # Google refuses to install apps from outside the Play Store that ask for any of these.
           if grep -E "BIND_ACCESSIBILITY_SERVICE|BIND_NOTIFICATION_LISTENER_SERVICE|READ_SMS|RECEIVE_SMS" app/src/main/AndroidManifest.xml; then
@@ -41,10 +41,10 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: scroll-bouncer-android
+          name: mr-blocky-android
           path: |
-            scroll-bouncer-android/app/build/outputs/apk/release/app-release.apk
-            scroll-bouncer-android/app/build/outputs/apk/debug/app-debug.apk
+            mr-blocky-android/app/build/outputs/apk/release/app-release.apk
+            mr-blocky-android/app/build/outputs/apk/debug/app-debug.apk
 
   try-on-a-phone:
     name: try-on-a-phone (Android API ${{ matrix.android }})
@@ -60,7 +60,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: scroll-bouncer-android
+          name: mr-blocky-android
           path: apk
 
       - name: Let the emulator use hardware acceleration
@@ -74,7 +74,7 @@ jobs:
           API: ${{ matrix.android }}
         run: |
           python3 -m pip install --quiet pillow
-          scroll-bouncer-android/ci/try-on-emulator.sh apk/debug/app-debug.apk apk/release/app-release.apk
+          mr-blocky-android/ci/try-on-emulator.sh apk/debug/app-debug.apk apk/release/app-release.apk
 
       - uses: actions/upload-artifact@v4
         if: always()

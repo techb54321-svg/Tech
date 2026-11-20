@@ -211,8 +211,7 @@ final class Status {
             int words = words(exit.getReason());
             if (words == 0) continue;
             String why = context.getString(words);
-            // Android's own short note is for whoever is working out what went wrong.
-            if (exit.getDescription() != null) why += " (" + exit.getDescription() + ")";
+            why += inBrackets(exit.getDescription());
             return new Stop(why, exit.getTimestamp(), words != R.string.stopped_crash && words != R.string.stopped_frozen);
         }
         return null;
@@ -240,7 +239,7 @@ final class Status {
                 } else {
                     continue;
                 }
-                if (exit.getDescription() != null) what += " (" + exit.getDescription() + ")";
+                what += inBrackets(exit.getDescription());
                 stops.add(new Note(what, exit.getTimestamp()));
                 if (stops.size() == 4) break;
             }
@@ -248,6 +247,11 @@ final class Status {
             // Then there is nothing to show.
         }
         return stops;
+    }
+
+    /** Android's own short note on why, which is for whoever is working out what went wrong. Often there is none. */
+    private static String inBrackets(String note) {
+        return note == null || note.trim().isEmpty() ? "" : " (" + note.trim() + ")";
     }
 
     private static int everydayWords(int reason) {

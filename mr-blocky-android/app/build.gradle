@@ -10,8 +10,8 @@ android {
         applicationId 'com.scrollbouncer.app'
         minSdk 26
         targetSdk 36
-        versionCode 3
-        versionName '1.2.0'
+        versionCode 4
+        versionName '1.3.0'
     }
 
     // A development key kept in the project so every build can be installed over
@@ -50,7 +50,7 @@ android {
 }
 
 def copyGuy = tasks.register('copyGuy', Copy) {
-    from rootProject.file('../scroll-bouncer/guy.js')
+    from rootProject.file('../mr-blocky/guy.js')
     into layout.buildDirectory.dir('generated/guy')
 }
 tasks.named('preBuild') { dependsOn copyGuy }

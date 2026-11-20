@@ -69,7 +69,7 @@ wait_for_words() {
 collect() {
   FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
   adb logcat -d -v threadtime > everything.txt || true
-  grep -E " (ScrollBouncer|AndroidRuntime) *: |Scroll Bouncer: page ready|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
+  grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: page ready|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
     | cut -c1-260 > log.txt || true
   adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
   echo "== What the app logged"
@@ -214,7 +214,7 @@ grep -q 'name="total" value="2"' prefs.xml || fail "the second close was not cou
 if grep -q "not allowed on duty" log.txt; then HOW="once a dot was showing, since Android refused at first"; else HOW="straight away"; fi
 pass "after the app was stopped he came back by himself ($HOW) and closed the app that was open"
 
-echo "== 3. Opening Scroll Bouncer itself"
+echo "== 3. Opening Mr Blocky itself"
 if [ -n "$RELEASE" ]; then adb install -r "$RELEASE"; fi
 adb logcat -c
 adb shell am start -n "$APP/.MainActivity" > /dev/null
@@ -249,12 +249,18 @@ sleep 5
 adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
 sleep 25      # he is given a while to appear before the app is closed without him
 collect
-grep -q "closed without him" log.txt || fail "with the web view off, the app was not closed"
 echo "$FOCUS" | grep -q "$TARGET" && fail "with the web view off, the app he was meant to close is still in front"
 # Android stops everything that is using the web view when it goes. The part that keeps watch must not be among them.
 grep -q "on duty" log.txt && fail "the part that keeps watch was restarted when the web view went away"
-adb shell am start -n "$APP/.MainActivity" > /dev/null
-wait_for_words "closed without him" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen does not say that he could not be drawn"; }
-python3 "$HERE/read-ui.py" ui.xml
-pass "with the web view switched off, the app is closed without him and its screen says why"
+if grep -q "on stage" log.txt; then
+  # Some versions of Android carry a second web view to fall back on, and then he is drawn after all.
+  grep -q "dark, sent home" log.txt || fail "he went on with the web view off, but the screen never went dark"
+  pass "this phone still had a web view after Google's was switched off, and he closed the app as usual"
+else
+  grep -q "closed without him" log.txt || fail "with the web view off, the app was not closed"
+  adb shell am start -n "$APP/.MainActivity" > /dev/null
+  wait_for_words "closed without him" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen does not say that he could not be drawn"; }
+  python3 "$HERE/read-ui.py" ui.xml
+  pass "with the web view switched off, the app is closed without him and its screen says why"
+fi
 finish

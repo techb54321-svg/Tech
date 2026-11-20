@@ -1,12 +1,14 @@
 package com.scrollbouncer.app;
 
+import android.Manifest;
 import android.app.Activity;
-import android.content.ComponentName;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -36,6 +38,7 @@ public class MainActivity extends Activity {
         }
     };
     private Prefs prefs;
+    private Boolean onDuty;   // whether the watching service was last told to run; null before the first check
 
     @Override
     protected void onCreate(Bundle saved) {
@@ -45,10 +48,16 @@ public class MainActivity extends Activity {
 
         Switch enabled = findViewById(R.id.enabled);
         enabled.setChecked(prefs.enabled());
-        enabled.setOnCheckedChangeListener((view, on) -> prefs.setEnabled(on));
+        enabled.setOnCheckedChangeListener((view, on) -> {
+            prefs.setEnabled(on);
+            refresh();
+        });
 
-        findViewById(R.id.open_accessibility).setOnClickListener(view ->
-                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        Uri me = Uri.fromParts("package", getPackageName(), null);
+        findViewById(R.id.open_usage).setOnClickListener(view ->
+                openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS, me));
+        findViewById(R.id.open_overlay).setOnClickListener(view ->
+                openSettings(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, me));
         findViewById(R.id.open_app_info).setOnClickListener(view ->
                 startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         Uri.fromParts("package", getPackageName(), null))));
@@ -60,6 +69,20 @@ public class MainActivity extends Activity {
                 startActivity(new Intent(this, PreviewActivity.class)));
 
         listApps();
+
+        // Android wants a notification while he is on duty, and from Android 13 that needs asking for.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, 0);
+        }
+    }
+
+    /** Opens one of Android's settings screens, straight at this app where the phone allows it. */
+    private void openSettings(String screen, Uri me) {
+        try {
+            startActivity(new Intent(screen, me));
+        } catch (ActivityNotFoundException e) {
+            startActivity(new Intent(screen));
+        }
     }
 
     @Override
@@ -76,7 +99,18 @@ public class MainActivity extends Activity {
 
     /** Brings the parts of the screen that change by themselves up to date. */
     private void refresh() {
-        findViewById(R.id.setup).setVisibility(watching() ? View.GONE : View.VISIBLE);
+        boolean seesApps = Access.seesApps(this);
+        boolean drawsOver = Access.drawsOver(this);
+        findViewById(R.id.need_usage).setVisibility(seesApps ? View.GONE : View.VISIBLE);
+        findViewById(R.id.need_overlay).setVisibility(drawsOver ? View.GONE : View.VISIBLE);
+        findViewById(R.id.setup).setVisibility(seesApps && drawsOver ? View.GONE : View.VISIBLE);
+
+        // He is on duty whenever he is switched on and allowed to do his job.
+        boolean should = prefs.enabled() && seesApps && drawsOver;
+        if (onDuty == null || onDuty != should) {
+            onDuty = should;
+            if (should) BouncerService.start(this); else BouncerService.stop(this);
+        }
         ((TextView) findViewById(R.id.closed_today)).setText(String.valueOf(prefs.closedToday()));
         ((TextView) findViewById(R.id.closed_total)).setText(String.valueOf(prefs.closedTotal()));
 
@@ -92,17 +126,6 @@ public class MainActivity extends Activity {
             takeBreak.setText(R.string.take_break);
             breakNote.setVisibility(View.GONE);
         }
-    }
-
-    /** Whether Android has been told to let him watch which app is open. */
-    private boolean watching() {
-        String on = Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        if (on == null) return false;
-        ComponentName mine = new ComponentName(this, BouncerService.class);
-        for (String one : on.split(":")) {
-            if (mine.equals(ComponentName.unflattenFromString(one))) return true;
-        }
-        return false;
     }
 
     /** Fills in the list of apps on the phone, with the ones he closes at the top. */

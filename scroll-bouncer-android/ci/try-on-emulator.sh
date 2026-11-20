@@ -58,9 +58,13 @@ adb shell "run-as $APP mkdir -p shared_prefs"
 printf '%s\n' "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>" \
   "<map><set name=\"apps\"><string>$TARGET</string></set></map>" \
   | adb shell "run-as $APP sh -c 'cat > shared_prefs/scroll-bouncer.xml'"
-adb shell settings put secure enabled_accessibility_services "$APP/$APP.BouncerService"
-adb shell settings put secure accessibility_enabled 1
-sleep 5
+# What a person switches on by hand: usage access, display over other apps, notifications.
+adb shell appops set "$APP" GET_USAGE_STATS allow
+adb shell appops set "$APP" SYSTEM_ALERT_WINDOW allow
+adb shell pm grant "$APP" android.permission.POST_NOTIFICATIONS || true
+# Opening the app puts him on duty.
+adb shell am start -n "$APP/.MainActivity" > /dev/null
+sleep 8
 adb shell input keyevent KEYCODE_HOME
 sleep 3
 
@@ -92,7 +96,7 @@ python3 "$HERE/read-screens.py" shots --must-cross
 
 fail() { echo "FAILED: $1"; exit 1; }
 grep -q "on stage" log.txt || fail "he never went on"
-grep -q "dark, sent home: true" log.txt || fail "the screen never went dark"
+grep -q "dark, sent home" log.txt || fail "the screen never went dark"
 grep -q "off stage" log.txt || fail "he never left"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"

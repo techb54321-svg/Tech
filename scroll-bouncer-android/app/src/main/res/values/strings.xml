@@ -2,14 +2,17 @@
 <resources>
     <string name="app_name">Scroll Bouncer</string>
 
-    <string name="service_summary">Closes the apps you choose</string>
-    <string name="service_description">Scroll Bouncer is told which app has just been opened. When it is one you have chosen, a little guy walks across the screen and sends you back to the home screen. It cannot read what is on your screen, and it has no access to the internet.</string>
+    <string name="duty_channel">On duty</string>
+    <string name="duty_title">Scroll Bouncer is on duty</string>
+    <string name="duty_text">Watching for the apps you chose</string>
 
     <string name="enabled_label">Turn Scroll Bouncer on or off</string>
-    <string name="setup_title">One thing to switch on</string>
-    <string name="setup_body">He needs your permission to see which app is open. In Accessibility settings, find Scroll Bouncer and turn it on.</string>
-    <string name="open_accessibility">Open Accessibility settings</string>
-    <string name="restricted_note">If Android says it is a restricted setting: open App info, tap the three dots in the corner, choose Allow restricted settings, then try again.</string>
+    <string name="setup_title">Two things to switch on</string>
+    <string name="need_usage">Let him see which app you have opened. Find Scroll Bouncer in the list and turn it on.</string>
+    <string name="open_usage">Open Usage access</string>
+    <string name="need_overlay">Let him appear on top of other apps.</string>
+    <string name="open_overlay">Open Display over other apps</string>
+    <string name="restricted_note">If a switch is greyed out or Android says it is a restricted setting: open App info, tap the three dots in the corner, choose Allow restricted settings, then try again.</string>
     <string name="open_app_info">Open App info</string>
 
     <string name="closed_today">closed today</string>

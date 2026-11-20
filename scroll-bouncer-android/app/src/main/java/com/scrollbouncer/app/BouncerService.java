@@ -1,40 +1,68 @@
 package com.scrollbouncer.app;
 
-import android.accessibilityservice.AccessibilityService;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
+import android.content.IntentFilter;
+import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.Display;
 import android.view.Gravity;
 import android.view.WindowInsets;
 import android.view.WindowManager;
-import android.view.accessibility.AccessibilityEvent;
 import android.webkit.WebView;
 
 /**
- * Watches which app comes to the front. When it is one on the list, the little
+ * Keeps an eye on which app is in front. When it is one on the list, the little
  * guy walks across the top of the screen, boops the close button, and the
  * person is sent back to the home screen.
  *
- * Android tells this service only that a different window has come to the
- * front and which app it belongs to. It cannot read what is on the screen.
+ * It learns which app is in front from Android's record of app use, which says
+ * only which app was opened and when. It cannot read what is on the screen.
  */
-public class BouncerService extends AccessibilityService implements Stage.Cues {
+public class BouncerService extends Service implements Stage.Cues {
     private static final String TAG = "ScrollBouncer";
+    private static final String CHANNEL = "on-duty";
+    /** How often to check which app is in front, while the screen is on. */
+    private static final long LOOK_EVERY_MS = 600;
     /** He normally takes about ten seconds. After this long, clear up regardless. */
     private static final long TOO_LONG_MS = 30_000;
     /** After a performance, how long before the same app can set him off again. */
     private static final long REST_MS = 1_500;
 
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final Runnable look = this::look;
     private final Runnable giveUp = this::leave;
+    private final BroadcastReceiver screen = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            // Nothing can be opened while the screen is off, so stop checking until it is back on.
+            main.removeCallbacks(look);
+            if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                lookedUpTo = System.currentTimeMillis();
+                main.post(look);
+            }
+        }
+    };
     private Prefs prefs;
+    private UsageStatsManager usage;
+    private Context windowContext;
     private WindowManager windows;
+    private long lookedUpTo;                         // app-use records before this have been read
 
     private WebView stage;                           // null unless he is on screen
     private WindowManager.LayoutParams stageParams;
@@ -43,15 +71,34 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
     private String lastTarget;
     private long restUntil;
 
+    static void start(Context context) {
+        context.startForegroundService(new Intent(context, BouncerService.class));
+    }
+
+    static void stop(Context context) {
+        context.stopService(new Intent(context, BouncerService.class));
+    }
+
     @Override
-    protected void onServiceConnected() {
+    public void onCreate() {
+        super.onCreate();
         prefs = new Prefs(this);
-        windows = getSystemService(WindowManager.class);
+        usage = getSystemService(UsageStatsManager.class);
+        windowContext = windowContext();
+        windows = windowContext.getSystemService(WindowManager.class);
+        goOnDuty();
+
+        IntentFilter onOrOff = new IntentFilter(Intent.ACTION_SCREEN_ON);
+        onOrOff.addAction(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(screen, onOrOff);
+        lookedUpTo = System.currentTimeMillis();
+        main.post(look);
+
         // Loading the phone's web view for the first time is slow, so do it now
         // rather than when he is first needed.
         main.post(() -> {
             try {
-                new WebView(this).destroy();
+                new WebView(windowContext).destroy();
             } catch (RuntimeException e) {
                 Log.w(TAG, "could not warm up the web view", e);
             }
@@ -59,40 +106,77 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
-        CharSequence name = event.getPackageName();
-        if (name == null || prefs == null) return;
-        String app = name.toString();
-        if (app.equals(getPackageName())) return;
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        return START_STICKY;
+    }
 
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        main.removeCallbacks(look);
+        unregisterReceiver(screen);
+        leave();
+        super.onDestroy();
+    }
+
+    /** Android asks that anything running all the time shows a notification saying so. */
+    private void goOnDuty() {
+        NotificationManager notes = getSystemService(NotificationManager.class);
+        notes.createNotificationChannel(new NotificationChannel(
+                CHANNEL, getString(R.string.duty_channel), NotificationManager.IMPORTANCE_LOW));
+        Notification note = new Notification.Builder(this, CHANNEL)
+                .setSmallIcon(R.drawable.ic_on_duty)
+                .setContentTitle(getString(R.string.duty_title))
+                .setContentText(getString(R.string.duty_text))
+                .setContentIntent(PendingIntent.getActivity(this, 0,
+                        new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
+                .setOngoing(true)
+                .build();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(1, note, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(1, note);
+        }
+    }
+
+    /** Reads what has been opened since the last look, and acts on the most recent. */
+    private void look() {
+        main.postDelayed(look, LOOK_EVERY_MS);
+        long now = System.currentTimeMillis();
+        UsageEvents events = usage.queryEvents(lookedUpTo, now);
+        lookedUpTo = now;
+        UsageEvents.Event event = new UsageEvents.Event();
+        String latest = null;
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event);
+            if (event.getEventType() == UsageEvents.Event.ACTIVITY_RESUMED) latest = event.getPackageName();
+        }
+        if (latest != null) cameToFront(latest);
+    }
+
+    private void cameToFront(String app) {
+        if (app.equals(getPackageName())) return;
         if (stage != null) {
             // He is already on. If they have gone somewhere else themselves before
             // he got there, there is nothing left for him to close.
-            if (!dark && !app.equals(target) && isAnApp(app)) leave();
+            if (!dark && !app.equals(target)) leave();
             return;
         }
-        if (!prefs.closes(app)) return;
+        if (!prefs.closes(app) || !Access.drawsOver(this)) return;
         if (app.equals(lastTarget) && SystemClock.uptimeMillis() < restUntil) return;
         enter(app);
     }
 
-    @Override
-    public void onInterrupt() {
-    }
-
-    @Override
-    public boolean onUnbind(Intent intent) {
-        leave();
-        return super.onUnbind(intent);
-    }
-
-    /** Puts him on screen, over the top of the app, without getting in the way of taps. */
+    /** Puts him on screen, over the top of the app. */
     private void enter(String app) {
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
@@ -106,7 +190,7 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
 
         WebView web;
         try {
-            web = Stage.open(this, statusBarDp(), this);
+            web = Stage.open(windowContext, statusBarDp(), this);
             windows.addView(web, params);
         } catch (RuntimeException e) {
             // The phone's web view is missing or being updated, so he cannot be drawn just now.
@@ -130,8 +214,15 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
         // From here on, taps should not reach whatever is underneath.
         stageParams.flags &= ~WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
         windows.updateViewLayout(stage, stageParams);
-        boolean home = performGlobalAction(GLOBAL_ACTION_HOME);
-        Log.i(TAG, "dark, sent home: " + home);
+        Intent home = new Intent(Intent.ACTION_MAIN)
+                .addCategory(Intent.CATEGORY_HOME)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(home);
+            Log.i(TAG, "dark, sent home");
+        } catch (RuntimeException e) {
+            Log.w(TAG, "dark, but could not go to the home screen", e);
+        }
     }
 
     @Override
@@ -150,18 +241,17 @@ public class BouncerService extends AccessibilityService implements Stage.Cues {
         }
         stage.destroy();
         stage = null;
-        Log.i(TAG, "off stage");
         lastTarget = target;
         restUntil = SystemClock.uptimeMillis() + REST_MS;
+        Log.i(TAG, "off stage");
     }
 
-    /** Whether this is something a person opens, as opposed to a keyboard or a system pop-up. */
-    private boolean isAnApp(String app) {
-        PackageManager packages = getPackageManager();
-        if (packages.getLaunchIntentForPackage(app) != null) return true;
-        Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-        ResolveInfo launcher = packages.resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
-        return launcher != null && launcher.activityInfo != null && app.equals(launcher.activityInfo.packageName);
+    /** A context that is allowed to put a window over other apps. */
+    private Context windowContext() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return this;
+        Display display = getSystemService(DisplayManager.class).getDisplay(Display.DEFAULT_DISPLAY);
+        return createDisplayContext(display)
+                .createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null);
     }
 
     /** Height of the status bar and any camera cut-out, so he walks below them. */

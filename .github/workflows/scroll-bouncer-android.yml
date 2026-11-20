@@ -31,7 +31,13 @@ jobs:
 
       - name: Build and check
         working-directory: scroll-bouncer-android
-        run: ./gradlew --no-daemon assembleRelease assembleDebug lintRelease
+        run: |
+          # Google refuses to install apps from outside the Play Store that ask for any of these.
+          if grep -E "BIND_ACCESSIBILITY_SERVICE|BIND_NOTIFICATION_LISTENER_SERVICE|READ_SMS|RECEIVE_SMS" app/src/main/AndroidManifest.xml; then
+            echo "The app asks for a permission that Google Play Protect blocks."
+            exit 1
+          fi
+          ./gradlew --no-daemon assembleRelease assembleDebug lintRelease
 
       - uses: actions/upload-artifact@v4
         with:

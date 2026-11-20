@@ -58,20 +58,49 @@
                 android:textSize="17sp"
                 android:textStyle="bold" />
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/need_usage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/setup_body"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="15sp" />
+                android:orientation="vertical">
 
-            <Button
-                android:id="@+id/open_accessibility"
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/need_usage"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/open_usage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/open_usage" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/need_overlay"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:text="@string/open_accessibility" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/need_overlay"
+                    android:textColor="?android:attr/textColorPrimary"
+                    android:textSize="15sp" />
+
+                <Button
+                    android:id="@+id/open_overlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/open_overlay" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="match_parent"

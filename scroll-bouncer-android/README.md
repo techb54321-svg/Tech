@@ -10,11 +10,13 @@ and you are back on the home screen.
 1. On the phone, download `dist/scroll-bouncer.apk` from this folder (on GitHub,
    open the file and tap the download button) and open it. Android asks whether
    to allow installing from that source; allow it, then tap Install.
-2. Open Scroll Bouncer and tap **Open Accessibility settings**. Find Scroll
-   Bouncer in the list (it may be under "Downloaded apps") and turn it on.
-3. If Android says it is a **restricted setting**, go back to Scroll Bouncer and
-   tap **Open App info**. Tap the three dots in the top corner, choose **Allow
-   restricted settings**, then repeat step 2.
+2. Open Scroll Bouncer. It lists two things to switch on, each with a button
+   that opens the right settings screen:
+   - **Usage access**, so he can see which app you have opened
+   - **Display over other apps**, so he can appear on top of it
+3. If a switch is greyed out or Android says it is a **restricted setting**, go
+   back to Scroll Bouncer and tap **Open App info**. Tap the three dots in the
+   top corner, choose **Allow restricted settings**, then try again.
 
 Tap **See him in action** to watch his routine without opening anything.
 
@@ -27,16 +29,18 @@ Tap **See him in action** to watch his routine without opening anything.
   in.
 - The two numbers count how many times he has closed something.
 
-If you leave the app yourself before he reaches the button, he goes away
-without doing anything.
+While he is switched on, Android shows a small "Scroll Bouncer is on duty"
+notification. If you leave the app yourself before he reaches the button, he
+goes away without doing anything.
 
 ## What it can see
 
-Android's accessibility permission is a broad one, so this app asks for as
-little of it as it can. It is told only that a different window has come to the
-front and which app it belongs to. It cannot read what is on the screen. It
-requests no other permissions, and without the internet permission it has no
-way to send anything anywhere.
+It is told which app has been opened and when, from Android's record of app
+use. It cannot read what is on the screen, and without the internet permission
+it has no way to send anything anywhere.
+
+It deliberately does not use Android's accessibility permission. Google Play
+Protect refuses to install apps from outside the Play Store that ask for it.
 
 ## Building it
 
@@ -55,8 +59,10 @@ store.
 
 ## How it fits together
 
-- `app/src/main/java/.../BouncerService.java`: watches which app comes to the
-  front, puts him on screen, and sends the phone to its home screen
+- `app/src/main/java/.../BouncerService.java`: checks which app is in front,
+  puts him on screen, and sends the phone to its home screen
+- `Access.java`: whether the two settings above are switched on
+- `BootReceiver.java`: puts him back on duty after the phone restarts
 - `Stage.java`: the see-through web view he is drawn in
 - `MainActivity.java`: the settings screen
 - `PreviewActivity.java`: plays his routine inside the app

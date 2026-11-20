@@ -479,9 +479,11 @@ public class BouncerService extends Service {
                 main.postDelayed(giveUp, widthDp() * WALK_MS_PER_DP + GET_GOING_MS);
                 break;
             case StageService.DARK:
+                // Noted before the phone is sent home, so that the home screen coming to
+                // the front is not taken for the person leaving by themselves.
                 dark = true;
                 prefs.countClose();
-                if (why != null) Status.problem(this, getString(R.string.problem_no_home, why));
+                if (goHome()) Log.i(TAG, "dark, sent home");
                 main.removeCallbacks(giveUp);
                 main.postDelayed(giveUp, ENDING_MS);
                 break;
@@ -494,9 +496,10 @@ public class BouncerService extends Service {
                 break;
             case StageService.FAILED: {
                 String app = target;
+                boolean wasDark = dark;
                 Status.problem(this, getString(R.string.problem_no_stage, why));
                 rest();
-                closeWithoutHim(app);
+                if (!wasDark) closeWithoutHim(app);   // otherwise the phone has already been sent home
                 break;
             }
             default:
@@ -521,19 +524,25 @@ public class BouncerService extends Service {
     /** For when he cannot be shown: the app is closed all the same, with a word to say why. */
     private void closeWithoutHim(String app) {
         prefs.countClose();
+        goHome();
+        Toast.makeText(this, R.string.nope, Toast.LENGTH_SHORT).show();
+        lastTarget = app;
+        restUntil = SystemClock.uptimeMillis() + REST_MS;
+        Log.i(TAG, "closed without him");
+    }
+
+    private boolean goHome() {
         Intent home = new Intent(Intent.ACTION_MAIN)
                 .addCategory(Intent.CATEGORY_HOME)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             startActivity(home);
+            return true;
         } catch (RuntimeException e) {
             Log.w(TAG, "could not go to the home screen", e);
             Status.problem(this, getString(R.string.problem_no_home, e));
+            return false;
         }
-        Toast.makeText(this, R.string.nope, Toast.LENGTH_SHORT).show();
-        lastTarget = app;
-        restUntil = SystemClock.uptimeMillis() + REST_MS;
-        Log.i(TAG, "closed without him");
     }
 
     /** Takes him off screen, if he has been sent for. */

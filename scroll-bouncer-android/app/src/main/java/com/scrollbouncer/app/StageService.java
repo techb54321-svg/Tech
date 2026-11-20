@@ -38,12 +38,17 @@ public class StageService extends Service {
     /** With ENTER: a ResultReceiver that is told how the performance goes. */
     static final String CUES = "cues";
 
-    /** What the watcher is told: he is on screen, the screen has gone dark, he has finished, or he could not go on. */
+    /**
+     * What the watcher is told: he is on screen, the screen has gone dark, he has
+     * finished, or he could not go on. Sending the phone to its home screen when it
+     * goes dark is left to the watcher, which has to know about it first: otherwise
+     * it would see the home screen appear and take it that the person had left.
+     */
     static final int ON = 1;
     static final int DARK = 2;
     static final int DONE = 3;
     static final int FAILED = 4;
-    /** With FAILED, and with DARK if the phone would not go to its home screen: Android's description of what went wrong. */
+    /** With FAILED: Android's description of what went wrong. */
     static final String WHY = "why";
     /** With ON: an IBinder belonging to this process, so the watcher can tell if the process is stopped. */
     static final String ALIVE = "alive";
@@ -53,14 +58,15 @@ public class StageService extends Service {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final IBinder alive = new Binder();
+    private int lastAsk;                             // Android's number for the most recent thing asked of this service
     private final Runnable tooLong = () -> {
         Log.w(TAG, "on stage for too long");
         leave();
-        stopSelf();
+        stopSelf(lastAsk);
     };
+    private static boolean warm;                     // whether this process has loaded the web view
     private Context windowContext;
     private WindowManager windows;
-    private boolean warm;
 
     private WebView stage;                           // null unless he is on screen
     private WindowManager.LayoutParams stageParams;
@@ -83,6 +89,7 @@ public class StageService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        lastAsk = startId;
         String what = intent == null ? null : intent.getAction();
         if (ENTER.equals(what)) {
             leave();
@@ -93,7 +100,8 @@ public class StageService extends Service {
             warmUp();
         }
         // Nothing keeps this process once he is off: Android can have the memory back.
-        if (stage == null) stopSelf();
+        // Giving the number means this is ignored if something else has been asked for since.
+        if (stage == null) stopSelf(startId);
         return START_NOT_STICKY;
     }
 
@@ -104,7 +112,11 @@ public class StageService extends Service {
 
     @Override
     public void onDestroy() {
-        leave();
+        if (stage != null) {
+            // Android has stopped the service with him still on. The watcher is not expecting that.
+            leave();
+            tell(FAILED, "the service that draws him was stopped");
+        }
         super.onDestroy();
     }
 
@@ -180,7 +192,7 @@ public class StageService extends Service {
         tell(ON, null);
     }
 
-    /** The screen is dark: send them home, unseen, while he says his piece. */
+    /** The screen is dark. The watcher sends them home, unseen, while he says his piece. */
     private void wentDark() {
         if (stage == null) return;
         // From here on, taps should not reach whatever is underneath.
@@ -190,25 +202,14 @@ public class StageService extends Service {
         } catch (RuntimeException e) {
             Log.w(TAG, "could not take over the screen's taps", e);
         }
-        Intent home = new Intent(Intent.ACTION_MAIN)
-                .addCategory(Intent.CATEGORY_HOME)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        String problem = null;
-        try {
-            startActivity(home);
-            Log.i(TAG, "dark, sent home");
-        } catch (RuntimeException e) {
-            Log.w(TAG, "dark, but could not go to the home screen", e);
-            problem = String.valueOf(e);
-        }
-        tell(DARK, problem);
+        tell(DARK, null);
     }
 
     /** He has said his piece and faded away. */
     private void finished() {
         leave();
         tell(DONE, null);
-        stopSelf();
+        stopSelf(lastAsk);
     }
 
     /** Takes him off screen. Safe to call when he is not on. */

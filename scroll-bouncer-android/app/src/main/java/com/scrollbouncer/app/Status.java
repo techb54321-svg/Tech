@@ -199,7 +199,7 @@ final class Status {
         ActivityManager manager = context.getSystemService(ActivityManager.class);
         List<ApplicationExitInfo> exits;
         try {
-            exits = manager.getHistoricalProcessExitReasons(null, 0, 8);   // newest first
+            exits = manager.getHistoricalProcessExitReasons(null, 0, 16);   // newest first
         } catch (RuntimeException e) {
             return null;
         }

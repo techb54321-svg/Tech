@@ -94,8 +94,9 @@ watching.
 
 - `app/src/main/java/.../BouncerService.java`: keeps watch. Checks which app is
   in front and sends for him when it is one on the list
-- `StageService.java`: draws him over the app, and sends the phone to its home
-  screen
+- `StageService.java`: draws him over the app, and tells the watcher as he
+  goes on, the screen goes dark and he finishes. The watcher sends the phone
+  to its home screen
 - `Access.java`: whether the two settings above are switched on
 - `BootReceiver.java`: puts him back on duty after the phone restarts or the
   app is updated

@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.scrollbouncer.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.scrollbouncer.app'
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    // A development key kept in the project so every build can be installed over
+    // the last one. Swap it for a private key before publishing to an app store.
+    signingConfigs {
+        dev {
+            storeFile rootProject.file('dev.keystore')
+            storePassword 'scrollbouncer'
+            keyAlias 'dev'
+            keyPassword 'scrollbouncer'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.dev
+        }
+        debug {
+            signingConfig signingConfigs.dev
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The little guy is drawn by guy.js, the same file the browser extension uses.
+    sourceSets.main.assets.srcDirs += layout.buildDirectory.dir('generated/guy').get().asFile
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+def copyGuy = tasks.register('copyGuy', Copy) {
+    from rootProject.file('../scroll-bouncer/guy.js')
+    into layout.buildDirectory.dir('generated/guy')
+}
+tasks.named('preBuild') { dependsOn copyGuy }

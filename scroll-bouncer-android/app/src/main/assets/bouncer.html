@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Scroll Bouncer</title>
+<style>html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }</style>
+</head>
+<body>
+<script src="guy.js"></script>
+<script>
+  // Shown by the Android app in a see-through layer over whatever is on screen.
+  // The number after # is where the status bar ends, so he walks just underneath it.
+  (async () => {
+    try {
+      const top = Number(location.hash.slice(1)) || 0;
+      const show = await ScrollBouncerGuy.perform({ top: top + 8, onDark: () => Android.dark() });
+      await show.fadeOut();
+    } finally {
+      Android.done();
+    }
+  })();
+</script>
+</body>
+</html>

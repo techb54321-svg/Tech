@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scroll Bouncer</string>
+
+    <string name="service_summary">Closes the apps you choose</string>
+    <string name="service_description">Scroll Bouncer is told which app has just been opened. When it is one you have chosen, a little guy walks across the screen and sends you back to the home screen. It cannot read what is on your screen, and it has no access to the internet.</string>
+
+    <string name="enabled_label">Turn Scroll Bouncer on or off</string>
+    <string name="setup_title">One thing to switch on</string>
+    <string name="setup_body">He needs your permission to see which app is open. In Accessibility settings, find Scroll Bouncer and turn it on.</string>
+    <string name="open_accessibility">Open Accessibility settings</string>
+    <string name="restricted_note">If Android says it is a restricted setting: open App info, tap the three dots in the corner, choose Allow restricted settings, then try again.</string>
+    <string name="open_app_info">Open App info</string>
+
+    <string name="closed_today">closed today</string>
+    <string name="closed_total">all time</string>
+
+    <string name="take_break">Let me in for 5 minutes</string>
+    <string name="end_break">End break now</string>
+    <plurals name="break_left">
+        <item quantity="one">On a break for %d more minute</item>
+        <item quantity="other">On a break for %d more minutes</item>
+    </plurals>
+    <string name="preview">See him in action</string>
+    <string name="preview_backdrop">Pretend this is an app you are trying not to open.</string>
+
+    <string name="apps_title">Apps he closes</string>
+</resources>

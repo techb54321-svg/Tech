@@ -72,7 +72,7 @@ Click the toolbar icon to:
 
 ## Changing how he looks, moves and what he says
 
-Six settings at the top of `content.js`:
+Six settings at the top of `guy.js`:
 
 - `WALK_SPEED`: how fast he walks, in pixels per second. His steps keep pace on
   their own, so his feet never slide. He crosses the whole page, so this also
@@ -89,6 +89,7 @@ After a change, click the reload arrow on his card at `chrome://extensions`.
 
 - `manifest.json`: extension manifest (Manifest V3)
 - `defaults.js`: default site list and URL matching
-- `content.js`: the character and his animation
+- `guy.js`: the character, his animation and his routine (shared with the Android app)
+- `content.js`: decides when to send him in, and closes the tab afterwards
 - `background.js`: closes the tab and keeps the count
 - `popup.html`, `popup.js`: settings

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Only told when a different window comes to the front; cannot read what is on screen. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/service_description"
+    android:notificationTimeout="100"
+    android:settingsActivity="com.scrollbouncer.app.MainActivity"
+    android:summary="@string/service_summary" />

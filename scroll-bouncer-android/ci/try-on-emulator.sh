@@ -13,7 +13,9 @@ APK="$1"
 RELEASE="${2:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 APP=com.scrollbouncer.app
-IMAGE="system-images;android-34;google_apis;x86_64"
+# Which version of Android to try it on, as an API level: 34 is Android 14, 36 is Android 16.
+API="${API:-34}"
+IMAGE="system-images;android-$API;google_apis;x86_64"
 SDK="${ANDROID_HOME:?ANDROID_HOME is not set}"
 export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$SDK/emulator:$PATH"
 # Left alone, the tool that creates the phone and the emulator that runs it can look in
@@ -47,7 +49,19 @@ wait_for_words() {
   return 1
 }
 
-echo "== Starting an emulated phone"
+# Says how each of the app's processes ended, and what the phone logged around then.
+# A process that is killed or crashes takes him off duty, so this matters.
+how_it_ended() {
+  echo "== How the app's processes have ended"
+  adb shell dumpsys activity exit-info "$APP" | tr -d '\r' \
+    | grep -E "ApplicationExitInfo|timestamp=|process=|description=" | head -n 40 || true
+  echo "== What the phone logged about the app stopping"
+  adb logcat -d -v threadtime > everything.txt || true
+  grep -E "$APP.*(has died|died)|Killing [0-9]+:$APP|lowmemorykiller.*$APP|Fatal signal|F DEBUG|F libc|F chromium|crashed service|ForegroundService|not allowed|Background (activity|start)" everything.txt \
+    | cut -c1-320 | tail -n 40 || true
+}
+
+echo "== Starting an emulated phone (Android API $API)"
 ls -l /dev/kvm || echo "no /dev/kvm: the emulator will have no hardware acceleration"
 # "yes" is cut off when sdkmanager finishes; that is not a failure.
 (yes 2> /dev/null || true) | sdkmanager --install "$IMAGE" emulator platform-tools > /dev/null
@@ -81,7 +95,11 @@ sleep 5
 # drawn over its own settings screens.
 TARGET="$(adb shell pm list packages | tr -d '\r' | sed 's/^package://' \
   | grep -E '^com\.(google\.)?android\.(deskclock|calendar|contacts)$' | head -n 1 || true)"
-[ -n "$TARGET" ] || fail "the emulated phone has no app to stand in for Instagram"
+if [ -z "$TARGET" ]; then
+  echo "Apps on this phone that can be opened:"
+  adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER || true
+  fail "the emulated phone has no app to stand in for Instagram"
+fi
 echo "Standing in for Instagram: $TARGET"
 
 echo "== Installing and setting up"
@@ -120,6 +138,7 @@ cat log.txt
 echo "== In front afterwards: $FOCUS"
 echo "== His count"
 cat prefs.xml
+how_it_ended
 echo "== What was on screen"
 python3 "$HERE/read-screens.py" shots --must-walk
 
@@ -150,3 +169,6 @@ adb logcat -d -s AndroidRuntime:E ActivityManager:E > crashes.txt || true
 grep -q "FATAL EXCEPTION" crashes.txt && { cat crashes.txt; fail "the app crashed"; }
 grep -q "ANR in $APP" crashes.txt && { cat crashes.txt; fail "the app stopped responding"; }
 echo "PASSED: the app opens and its preview plays"
+# Stay a little longer: anything that goes wrong after his routine shows up here.
+sleep 20
+how_it_ended

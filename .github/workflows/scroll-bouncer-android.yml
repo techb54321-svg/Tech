@@ -47,9 +47,15 @@ jobs:
             scroll-bouncer-android/app/build/outputs/apk/debug/app-debug.apk
 
   try-on-a-phone:
+    name: try-on-a-phone (Android API ${{ matrix.android }})
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # Keep trying the other version of Android when one of them fails.
+      fail-fast: false
+      matrix:
+        android: [34, 36]   # Android 14 and Android 16
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -64,6 +70,8 @@ jobs:
           sudo udevadm trigger --name-match=kvm
 
       - name: Try it on an emulated phone
+        env:
+          API: ${{ matrix.android }}
         run: |
           python3 -m pip install --quiet pillow
           scroll-bouncer-android/ci/try-on-emulator.sh apk/debug/app-debug.apk apk/release/app-release.apk
@@ -71,7 +79,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: emulator-screens
+          name: emulator-screens-${{ matrix.android }}
           path: |
             shots
             preview

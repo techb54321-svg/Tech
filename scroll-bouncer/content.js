@@ -3,7 +3,7 @@
 
   // ---- Settings ------------------------------------------------------------
   // His steps keep pace with the speed automatically, so his feet never slide.
-  const WALK_SPEED = 68;        // pixels per second
+  const WALK_SPEED = 88;        // pixels per second
   const SIZE = 96;              // his height in pixels
   const LINE = 'Nope not now';  // what he says, shaking his head
   const GLASSES = true;         // whether he wears round glasses
@@ -173,8 +173,8 @@
   const ease = (t) => t * t * (3 - 2 * t);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const SWING = 30;  // how far each leg swings, in degrees
-  const LIFT = 5.5;  // how high a foot lifts mid-step
+  const SWING = 32;  // how far each leg swings, in degrees
+  const LIFT = 6;    // how high a foot lifts mid-step
   const SHAKE = 7;   // how far his face turns each way when he shakes his head
   const LEG = ANKLE_Y - HIP_Y;
   // Ground covered by one full stride (two steps), in pixels.

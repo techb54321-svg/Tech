@@ -146,6 +146,12 @@
   window.cancelAnimationFrame = (id) => { frames = frames.filter((f) => f.id !== id); };
   window.setTimeout = (run, ms = 0, ...args) => { timers.push({ id: nextId, at: clock + ms, run, args }); return nextId++; };
   window.clearTimeout = (id) => { timers = timers.filter((t) => t.id !== id); };
+  // guy.js keeps his stage closed to the page he appears on. This page keeps hold of it,
+  // so that the video can follow what he does and time the music to it.
+  let stage = null;
+  const attachShadow = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (options) { stage = attachShadow.call(this, options); return stage; };
+
   function advanceTo(ms) {
     clock = ms;
     const due = timers.filter((t) => t.at <= clock).sort((a, b) => a.at - b.at);
@@ -651,6 +657,28 @@
   const FLICK_MS = 750;
   const WALK_AT = 6150;      // Mr Blocky sets off
   const STATUS_BAR = 36;
+  window.cues = { tap: TAP_AT, open: OPEN_AT, flicks: FLICK_AT };
+
+  // What he is doing at each frame, read off his stage, for make-demo.js to time the music by.
+  const seen = [];
+  window.seen = seen;
+  function watch(t) {
+    if (!stage) return;
+    const part = (name) => stage.querySelector('.' + name);
+    const number = (pattern, text) => { const found = pattern.exec(text || ''); return found ? Number(found[1]) : null; };
+    seen.push({
+      t,
+      shown: part('guy').style.opacity === '1',                                      // he has set off
+      x: number(/translate\(([-\d.]+)px/, part('guy').style.transform),              // how far across he is
+      wide: number(/scale\(([-\d.]+)/, part('torso').getAttribute('transform')),    // widest as each foot lands
+      button: part('x').style.transform,                                             // squashes as his nose hits it
+      veil: Number(part('veil').style.opacity || 0),                                 // the screen going dark
+      front: part('front').style.display !== 'none',                                 // facing you
+      shake: number(/translate\(([-\d.]+)/, part('face').getAttribute('transform')), // shaking his head
+      bubble: Number(part('bubble').style.opacity || 0),                             // "Nope not now"
+      fade: Number(part('stage').style.opacity || 1),                                // fading away
+    });
+  }
 
   const home = document.getElementById('home');
   const app = document.getElementById('app');
@@ -721,6 +749,7 @@
         state.doneAt = clock;
       });
     }
+    watch(t);
     return state;
   };
 </script>

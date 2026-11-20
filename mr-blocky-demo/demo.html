@@ -52,6 +52,7 @@
   const TITLE_MS = 2700;       // how long the opening card stays
   const AFTER_MS = 1900;       // from his exit to the closing card
   const END_MS = 3300;         // how long the closing card stays
+  window.timing = { titleMs: TITLE_MS, afterMs: AFTER_MS };
 
   const clamp = (v) => Math.max(0, Math.min(1, v));
   const easeOut = (v) => 1 - Math.pow(1 - clamp(v), 3);

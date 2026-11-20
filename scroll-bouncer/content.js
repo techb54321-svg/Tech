@@ -30,10 +30,10 @@
 .guy { position: absolute; top: 4px; left: 0; width: 64px; height: 64px;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,.35)); will-change: transform; }
 .guy svg { width: 100%; height: 100%; overflow: visible; display: block; }
-.body { animation: bob .32s ease-in-out infinite alternate; transform-origin: 40px 60px; }
+.body { animation: bob .5s ease-in-out infinite alternate; transform-origin: 40px 60px; }
 .leg { transform-box: fill-box; transform-origin: 50% 0; }
-.walking .leg-a { animation: step .32s ease-in-out infinite alternate; }
-.walking .leg-b { animation: step .32s ease-in-out infinite alternate-reverse; }
+.walking .leg-a { animation: step .5s ease-in-out infinite alternate; }
+.walking .leg-b { animation: step .5s ease-in-out infinite alternate-reverse; }
 .arm { transform-box: fill-box; transform-origin: 0 50%; transform: rotate(55deg); transition: transform .12s; }
 .poke .arm { transform: rotate(-12deg) scaleX(1.25); }
 .bubble { position: absolute; top: 62px; right: 14px; max-width: min(240px, 70vw); padding: 9px 13px;
@@ -55,6 +55,9 @@
     'Future you says thanks.',
     'Back to real life!'
   ];
+
+  // Walking pace: milliseconds per pixel of screen crossed. Higher is slower.
+  const WALK_MS_PER_PX = 6;
 
   let running = false;
   let lastUrl = '';
@@ -95,7 +98,7 @@
       guy.style.transform = `translateX(${stopX}px)`;
       guy.classList.remove('walking');
     } else {
-      const ms = Math.min(2600, Math.max(1100, stopX * 2.4));
+      const ms = Math.min(9000, Math.max(3000, stopX * WALK_MS_PER_PX));
       await guy.animate(
         [{ transform: 'translateX(-80px)' }, { transform: `translateX(${stopX}px)` }],
         { duration: ms, easing: 'linear', ...opts }

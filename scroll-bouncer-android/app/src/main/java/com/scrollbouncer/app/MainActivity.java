@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
@@ -109,6 +110,7 @@ public class MainActivity extends Activity {
         boolean should = prefs.enabled() && seesApps && drawsOver;
         if (onDuty == null || onDuty != should) {
             onDuty = should;
+            Log.i("ScrollBouncer", "duty " + should + ": sees apps " + seesApps + ", draws over " + drawsOver);
             if (should) BouncerService.start(this); else BouncerService.stop(this);
         }
         ((TextView) findViewById(R.id.closed_today)).setText(String.valueOf(prefs.closedToday()));

@@ -62,15 +62,19 @@ printf '%s\n' "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>" \
 adb shell appops set "$APP" GET_USAGE_STATS allow
 adb shell appops set "$APP" SYSTEM_ALERT_WINDOW allow
 adb shell pm grant "$APP" android.permission.POST_NOTIFICATIONS || true
+adb shell setprop log.tag.ScrollBouncer DEBUG
+adb logcat -c
 # Opening the app puts him on duty.
 adb shell am start -n "$APP/.MainActivity" > /dev/null
 sleep 8
+echo "Usage access: $(adb shell appops get "$APP" GET_USAGE_STATS | tr -d '\r' | head -n 1)"
+echo "Display over other apps: $(adb shell appops get "$APP" SYSTEM_ALERT_WINDOW | tr -d '\r' | head -n 1)"
+echo "Running: $(adb shell dumpsys activity services "$APP" | grep -c ServiceRecord || true) service(s)"
 adb shell input keyevent KEYCODE_HOME
 sleep 3
 
 echo "== Opening an app on his list and watching the screen"
 mkdir -p shots
-adb logcat -c
 adb shell am start -a android.settings.SETTINGS > /dev/null
 START=$(date +%s%N)
 for i in $(seq -w 1 16); do
@@ -82,8 +86,8 @@ done
 sleep 4
 
 FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
-adb logcat -d -s ScrollBouncer:V AndroidRuntime:E chromium:I ActivityTaskManager:I > all.txt || true
-grep -E "ScrollBouncer|AndroidRuntime|Scroll Bouncer: page ready|START u0 .*SETTINGS" all.txt > log.txt || true
+adb logcat -d -s ScrollBouncer:V AndroidRuntime:E chromium:I ActivityTaskManager:I ActivityManager:W > all.txt || true
+grep -E "ScrollBouncer|AndroidRuntime|Scroll Bouncer: page ready|START u0 .*SETTINGS|scrollbouncer" all.txt | cut -c1-300 > log.txt || true
 adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
 
 echo "== What the app logged"

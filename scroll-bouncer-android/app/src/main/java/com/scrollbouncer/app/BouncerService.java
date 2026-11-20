@@ -39,6 +39,8 @@ public class BouncerService extends Service implements Stage.Cues {
     private static final String CHANNEL = "on-duty";
     /** How often to check which app is in front, while the screen is on. */
     private static final long LOOK_EVERY_MS = 600;
+    /** How far back each check re-reads, in case Android wrote something down a moment late. */
+    private static final long LOOK_BACK_MS = 3_000;
     /** He normally takes about ten seconds. After this long, clear up regardless. */
     private static final long TOO_LONG_MS = 30_000;
     /** After a performance, how long before the same app can set him off again. */
@@ -53,7 +55,7 @@ public class BouncerService extends Service implements Stage.Cues {
             // Nothing can be opened while the screen is off, so stop checking until it is back on.
             main.removeCallbacks(look);
             if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-                lookedUpTo = System.currentTimeMillis();
+                lastSeen = System.currentTimeMillis();
                 main.post(look);
             }
         }
@@ -62,7 +64,7 @@ public class BouncerService extends Service implements Stage.Cues {
     private UsageStatsManager usage;
     private Context windowContext;
     private WindowManager windows;
-    private long lookedUpTo;                         // app-use records before this have been read
+    private long lastSeen;                           // time of the newest app-use record acted on
 
     private WebView stage;                           // null unless he is on screen
     private WindowManager.LayoutParams stageParams;
@@ -91,8 +93,9 @@ public class BouncerService extends Service implements Stage.Cues {
         IntentFilter onOrOff = new IntentFilter(Intent.ACTION_SCREEN_ON);
         onOrOff.addAction(Intent.ACTION_SCREEN_OFF);
         registerReceiver(screen, onOrOff);
-        lookedUpTo = System.currentTimeMillis();
+        lastSeen = System.currentTimeMillis();
         main.post(look);
+        Log.i(TAG, "on duty");
 
         // Loading the phone's web view for the first time is slow, so do it now
         // rather than when he is first needed.
@@ -147,18 +150,26 @@ public class BouncerService extends Service implements Stage.Cues {
     private void look() {
         main.postDelayed(look, LOOK_EVERY_MS);
         long now = System.currentTimeMillis();
-        UsageEvents events = usage.queryEvents(lookedUpTo, now);
-        lookedUpTo = now;
+        UsageEvents events = usage.queryEvents(Math.max(lastSeen, now - LOOK_BACK_MS), now + 1000);
         UsageEvents.Event event = new UsageEvents.Event();
         String latest = null;
+        long newest = lastSeen;
         while (events.hasNextEvent()) {
             events.getNextEvent(event);
-            if (event.getEventType() == UsageEvents.Event.ACTIVITY_RESUMED) latest = event.getPackageName();
+            if (event.getEventType() != UsageEvents.Event.ACTIVITY_RESUMED) continue;
+            if (event.getTimeStamp() <= lastSeen) continue;   // already acted on
+            if (event.getTimeStamp() >= newest) {
+                newest = event.getTimeStamp();
+                latest = event.getPackageName();
+            }
         }
+        lastSeen = newest;
         if (latest != null) cameToFront(latest);
     }
 
     private void cameToFront(String app) {
+        // Only written when someone has asked for it with: adb shell setprop log.tag.ScrollBouncer DEBUG
+        if (Log.isLoggable(TAG, Log.DEBUG)) Log.d(TAG, "in front: " + app);
         if (app.equals(getPackageName())) return;
         if (stage != null) {
             // He is already on. If they have gone somewhere else themselves before

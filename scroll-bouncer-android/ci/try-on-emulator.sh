@@ -2,7 +2,9 @@
 # Installs the app on an emulated phone, opens an app on his list, and checks
 # that the little guy turns up and the phone ends up back on the home screen.
 # Then it stops the app the way a phone does when it wants the memory back, and
-# checks that he comes back by himself and still does his job.
+# checks that he comes back by himself and still does his job. Last, it switches
+# the phone's web view off, and checks that the app is closed even though he
+# cannot be drawn.
 #
 #   ci/try-on-emulator.sh path/to/app-debug.apk [path/to/app-release.apk]
 #
@@ -86,6 +88,21 @@ collect() {
     | grep -iE "Cmdline|signal [0-9]|Abort message|Fatal signal|#0[0-5] pc" | cut -c1-240 | head -n 16 || true
 }
 
+# On a newly started emulated phone, Google's services restart themselves several
+# times, and each time Android stops anything that is using the web view. The app
+# copes with that, but it would make this a test of luck, so wait for them to settle.
+settle() {
+  local last="" same=0 pid
+  for _ in $(seq 1 48); do            # up to four minutes
+    pid="$(adb shell pidof com.google.android.gms.persistent | tr -d '\r' || true)"
+    if [ -n "$pid" ] && [ "$pid" = "$last" ]; then same=$((same + 1)); else same=0; fi
+    last="$pid"
+    if [ "$same" -ge 9 ]; then return 0; fi      # the same process for 45 seconds
+    sleep 5
+  done
+  echo "Google's services were still restarting after four minutes"
+}
+
 echo "== Starting an emulated phone (Android API $API)"
 ls -l /dev/kvm || echo "no /dev/kvm: the emulator will have no hardware acceleration"
 # "yes" is cut off when sdkmanager finishes; that is not a failure.
@@ -153,7 +170,7 @@ sleep 25      # a freshly started emulator takes a while to settle
 echo "Usage access: $(adb shell appops get "$APP" GET_USAGE_STATS | tr -d '\r' | head -n 1)"
 echo "Display over other apps: $(adb shell appops get "$APP" SYSTEM_ALERT_WINDOW | tr -d '\r' | head -n 1)"
 adb shell input keyevent KEYCODE_HOME
-sleep 25      # the web view finishes loading once the app's own screen is out of the way
+settle
 
 echo "== 1. Opening an app on his list and watching the screen"
 adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
@@ -193,7 +210,9 @@ grep -q "closed without him" log.txt && fail "the app was closed without him the
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 echo "$FOCUS" | grep -q "$TARGET" && fail "the app he was meant to close is still in front"
 grep -q 'name="total" value="2"' prefs.xml || fail "the second close was not counted"
-pass "after the app was stopped he came back by himself and closed the app that was open"
+# From Android 15 an app in the background is not always allowed back on duty straight away.
+if grep -q "not allowed on duty" log.txt; then HOW="once a dot was showing, since Android refused at first"; else HOW="straight away"; fi
+pass "after the app was stopped he came back by himself ($HOW) and closed the app that was open"
 
 echo "== 3. Opening Scroll Bouncer itself"
 if [ -n "$RELEASE" ]; then adb install -r "$RELEASE"; fi
@@ -221,4 +240,21 @@ grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
 [ -n "$(adb shell pidof "$APP" | tr -d '\r' || true)" ] || fail "the part of the app that keeps watch was no longer running after the preview"
 pass "the app opens and its preview plays"
+
+echo "== 4. Switching the phone's web view off, so that he cannot be drawn"
+adb logcat -c
+adb shell input keyevent KEYCODE_HOME
+adb shell pm disable-user --user 0 com.google.android.webview > /dev/null
+sleep 5
+adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+sleep 25      # he is given a while to appear before the app is closed without him
+collect
+grep -q "closed without him" log.txt || fail "with the web view off, the app was not closed"
+echo "$FOCUS" | grep -q "$TARGET" && fail "with the web view off, the app he was meant to close is still in front"
+# Android stops everything that is using the web view when it goes. The part that keeps watch must not be among them.
+grep -q "on duty" log.txt && fail "the part that keeps watch was restarted when the web view went away"
+adb shell am start -n "$APP/.MainActivity" > /dev/null
+wait_for_words "closed without him" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen does not say that he could not be drawn"; }
+python3 "$HERE/read-ui.py" ui.xml
+pass "with the web view switched off, the app is closed without him and its screen says why"
 finish

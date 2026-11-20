@@ -22,6 +22,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.os.SystemClock;
 import android.util.Log;
@@ -110,6 +111,9 @@ public class BouncerService extends Service {
     private int turn;                                // goes up by one each time he is sent for
     private String target;                           // the app he has come to close
     private boolean onStage;                         // whether he has appeared yet
+    private boolean secondTry;                       // whether this is his second go at the same app
+    private IBinder stageAlive;                      // see watchStage
+    private IBinder.DeathRecipient stageWatch;
     private boolean dark;
     private boolean wentElsewhere;                   // whether something else has come to the front since the screen went dark
     private String lastTarget;
@@ -374,7 +378,7 @@ public class BouncerService extends Service {
             return;
         }
         Log.i(TAG, "an app on his list has been opened");
-        sendFor(app);
+        sendFor(app, false);
     }
 
     /**
@@ -397,14 +401,20 @@ public class BouncerService extends Service {
         return place;
     }
 
-    /** Sends for him to come and close this app, and listens for how it goes. */
-    private void sendFor(String app) {
+    /**
+     * Sends for him to come and close this app, and listens for how it goes.
+     *
+     * @param again whether he has already been sent for once and was cut short
+     */
+    private void sendFor(String app, boolean again) {
         int mine = ++turn;
         ResultReceiver cues = new ResultReceiver(main) {
             @Override
             protected void onReceiveResult(int what, Bundle more) {
                 // A cue can arrive a moment after its performance has been called off.
-                if (mine == turn && performing) cue(what, more == null ? null : more.getString(StageService.WHY));
+                if (mine != turn || !performing) return;
+                if (what == StageService.ON && more != null) watchStage(more.getBinder(StageService.ALIVE), mine);
+                cue(what, more == null ? null : more.getString(StageService.WHY));
             }
         };
         try {
@@ -416,11 +426,47 @@ public class BouncerService extends Service {
             return;
         }
         performing = true;
+        secondTry = again;
         target = app;
         onStage = false;
         dark = false;
         wentElsewhere = false;
         main.postDelayed(giveUp, SHOW_UP_MS);
+    }
+
+    /**
+     * Asks to be told if the process that draws him is stopped while he is on. Android
+     * does that to anything using the web view when the web view is updated, or when
+     * the Google service it borrows fonts from restarts.
+     */
+    private void watchStage(IBinder alive, int mine) {
+        if (alive == null) return;
+        IBinder.DeathRecipient watch = () -> main.post(() -> {
+            if (mine == turn && performing) stageGone();
+        });
+        try {
+            alive.linkToDeath(watch, 0);
+            stageAlive = alive;
+            stageWatch = watch;
+        } catch (RemoteException e) {
+            watch.binderDied();   // it has gone already
+        }
+    }
+
+    /** The process that draws him has been stopped, and he has vanished with it. */
+    private void stageGone() {
+        Log.w(TAG, "the stage went away during his performance");
+        String app = target;
+        boolean wasDark = dark;
+        boolean again = !secondTry;
+        rest();
+        if (wasDark) return;   // the phone had already been sent home
+        if (again && app.equals(inFront)) {
+            sendFor(app, true);
+        } else {
+            Status.problem(this, getString(R.string.problem_stage_gone));
+            closeWithoutHim(app);
+        }
     }
 
     /** How his performance is going, as told by the service that draws him. */
@@ -505,6 +551,15 @@ public class BouncerService extends Service {
     /** His performance is over, one way or another. */
     private void rest() {
         main.removeCallbacks(giveUp);
+        if (stageAlive != null) {
+            try {
+                stageAlive.unlinkToDeath(stageWatch, 0);
+            } catch (RuntimeException ignored) {
+                // It was no longer being watched.
+            }
+            stageAlive = null;
+            stageWatch = null;
+        }
         performing = false;
         lastTarget = target;
         restUntil = SystemClock.uptimeMillis() + REST_MS;

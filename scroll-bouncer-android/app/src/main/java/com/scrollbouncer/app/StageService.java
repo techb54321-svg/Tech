@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.PixelFormat;
 import android.hardware.display.DisplayManager;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,11 +45,14 @@ public class StageService extends Service {
     static final int FAILED = 4;
     /** With FAILED, and with DARK if the phone would not go to its home screen: Android's description of what went wrong. */
     static final String WHY = "why";
+    /** With ON: an IBinder belonging to this process, so the watcher can tell if the process is stopped. */
+    static final String ALIVE = "alive";
 
     /** The watcher takes him off long before this. It is here in case the watcher has been stopped. */
     private static final long LONGEST_MS = 90_000;
 
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final IBinder alive = new Binder();
     private final Runnable tooLong = () -> {
         Log.w(TAG, "on stage for too long");
         leave();
@@ -226,6 +230,7 @@ public class StageService extends Service {
         if (cues == null) return;
         Bundle more = new Bundle();
         if (why != null) more.putString(WHY, why);
+        if (what == ON) more.putBinder(ALIVE, alive);
         cues.send(what, more);
     }
 

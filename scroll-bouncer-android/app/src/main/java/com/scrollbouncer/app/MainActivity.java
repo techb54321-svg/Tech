@@ -163,26 +163,25 @@ public class MainActivity extends Activity {
     /** Says whether he is working and, underneath, what he has seen and anything that has gone wrong. */
     private void showStatus(boolean allowed, boolean checking) {
         int headline;
-        boolean onDuty = false;
-        boolean working = false;
+        boolean watching = false;   // whether he is noticing which apps are opened
+        boolean closing = false;    // whether he would also close one on his list
         if (!prefs.enabled()) {
             headline = R.string.status_off;
         } else if (!allowed) {
             headline = R.string.status_needs;
         } else if (prefs.breakLeftMs() > 0) {
             headline = R.string.status_break;
-            onDuty = true;
+            watching = true;
         } else {
             headline = checking ? R.string.status_on : R.string.status_starting;
-            onDuty = true;
-            working = true;
+            watching = true;
+            closing = true;
         }
-        TextView status = findViewById(R.id.status);
-        status.setText(headline);
-        status.setTextColor(getColor(working ? R.color.accent : R.color.warning));
+        show(R.id.status, getString(headline));
+        ((TextView) findViewById(R.id.status)).setTextColor(getColor(closing ? R.color.accent : R.color.warning));
 
         StringBuilder lines = new StringBuilder();
-        if (onDuty) {
+        if (watching) {
             List<Status.Sighting> seen = Status.sightings();
             lines.append(getString(seen.isEmpty() ? R.string.status_none : R.string.status_noticed)).append('\n');
             for (Status.Sighting sighting : seen) {

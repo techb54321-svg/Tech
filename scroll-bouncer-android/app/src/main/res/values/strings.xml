@@ -67,6 +67,7 @@
     <string name="problem_no_stage">He could not be put on screen, so the app was closed without him. Details: %1$s</string>
     <string name="problem_no_show">He was sent for but did not appear in time, so the app was closed without him.</string>
     <string name="problem_too_slow">He went on but did not reach the button in time, so the app was closed without him.</string>
+    <string name="problem_stage_gone">The phone stopped the part that draws him twice running, so the app was closed without him.</string>
     <string name="problem_no_end">He closed the app but did not finish afterwards, so he was taken off the screen.</string>
     <string name="problem_no_home">The phone would not go to its home screen. Details: %1$s</string>
     <string name="problem_still_open">He did his routine, but the phone did not go to its home screen afterwards.</string>

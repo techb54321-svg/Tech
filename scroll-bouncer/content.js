@@ -15,10 +15,10 @@
     'Back to real life!'
   ];
 
-  // The close button he pokes, placed so his outstretched arm lands on it.
+  // The close button he boops, placed so his nose lands on it when he leans in.
   const TOP = 8;
-  const BTN = { size: 40, right: 16, top: Math.round(TOP + 0.56 * SIZE - 20) };
-  const REACH = Math.round(0.915 * SIZE);
+  const BTN = { size: 40, right: 16, top: Math.round(TOP + 0.622 * SIZE - 20) };
+  const REACH = Math.round(0.96 * SIZE);
 
   const CSS = `
 .stage { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; overflow: hidden;
@@ -73,7 +73,7 @@
         leg('leg-a', HIP_A, '#cf5210', '#a63a0c'),
         s('g', { class: 'torso' },
           s('g', { class: 'arm-b' },
-            s('rect', { x: 70, y: 50, width: 17, height: 7.5, rx: 3.75, fill: '#d9560f' })),
+            s('rect', { x: 63, y: 62.25, width: 16, height: 7.5, rx: 3.75, fill: '#d9560f' })),
           s('g', { class: 'leaf' },
             s('path', { d: 'M50 22.5V15', stroke: '#4d7c0f', 'stroke-width': 2.8, 'stroke-linecap': 'round' }),
             s('path', { d: 'M50.5 16C50 7.5 60 3 68.5 6 67 14 58.5 18.5 50.5 16Z', fill: '#84cc16' }),
@@ -82,20 +82,25 @@
           s('ellipse', { cx: 50, cy: 48, rx: 31, ry: 28.5, fill: '#f06d1a' }),
           s('ellipse', { cx: 48.9, cy: 46.2, rx: 28.5, ry: 26, fill: '#ff8f30' }),
           s('ellipse', { cx: 36, cy: 32.5, rx: 10.5, ry: 5.4, transform: 'rotate(-30 36 32.5)', fill: '#ffbd7d', opacity: 0.85 }),
-          s('ellipse', { cx: 44, cy: 60, rx: 4.8, ry: 2.9, fill: '#ff4d6d', opacity: 0.45 }),
-          s('ellipse', { cx: 74.2, cy: 59.4, rx: 3.4, ry: 2.4, fill: '#ff4d6d', opacity: 0.45 }),
+          s('ellipse', { cx: 50.5, cy: 60.5, rx: 4.8, ry: 2.9, fill: '#ff4d6d', opacity: 0.45 }),
           s('g', { class: 'eyes' },
-            s('ellipse', { cx: 52.5, cy: 51, rx: 5.3, ry: 6.8, fill: '#2a1505' }),
-            s('ellipse', { cx: 70, cy: 51, rx: 4.4, ry: 6.1, fill: '#2a1505' }),
+            s('ellipse', { cx: 58.5, cy: 50, rx: 5.4, ry: 6.9, fill: '#2a1505' }),
+            s('ellipse', { cx: 73, cy: 50, rx: 3.8, ry: 6.1, fill: '#2a1505' }),
             s('g', { class: 'shine' },
-              s('circle', { cx: 50.7, cy: 48.2, r: 2.2, fill: '#fff' }),
-              s('circle', { cx: 68.5, cy: 48.4, r: 1.9, fill: '#fff' }),
-              s('circle', { cx: 54.8, cy: 54.2, r: 1.05, fill: '#fff', opacity: 0.85 }),
-              s('circle', { cx: 71.7, cy: 54, r: 0.95, fill: '#fff', opacity: 0.85 }))),
-          s('path', { class: 'smile', d: 'M58.6 57.2q2.8 3.2 5.6 0', stroke: '#2a1505', 'stroke-width': 1.9,
+              s('circle', { cx: 56.7, cy: 47.2, r: 2.2, fill: '#fff' }),
+              s('circle', { cx: 71.8, cy: 47.4, r: 1.7, fill: '#fff' }),
+              s('circle', { cx: 60.8, cy: 53.3, r: 1.05, fill: '#fff', opacity: 0.85 }),
+              s('circle', { cx: 74.4, cy: 53.1, r: 0.9, fill: '#fff', opacity: 0.85 }))),
+          // Eyes squeezed shut in delight, shown while he boops the button.
+          s('path', { class: 'happy', d: 'M53.6 51.6q4.9 -6.4 9.8 0M69.8 51.6q3.2 -5.6 6.4 0', stroke: '#2a1505',
+            'stroke-width': 2.4, 'stroke-linecap': 'round', fill: 'none' }),
+          s('path', { class: 'smile', d: 'M63.6 58.8q2.8 3.2 5.6 0', stroke: '#2a1505', 'stroke-width': 1.9,
             'stroke-linecap': 'round', fill: 'none' }),
-          s('path', { class: 'open', d: 'M57.9 56.4q3.5 7.4 7 0z', fill: '#7f1d1d', stroke: '#2a1505',
+          s('path', { class: 'open', d: 'M62.9 58q3.5 7.4 7 0z', fill: '#7f1d1d', stroke: '#2a1505',
             'stroke-width': 1.4, 'stroke-linejoin': 'round' }),
+          // His nose: the bit that sticks out furthest, and what he closes tabs with.
+          s('ellipse', { cx: 82.3, cy: 57, rx: 5.6, ry: 4.8, fill: '#ef4f2a' }),
+          s('circle', { cx: 80.6, cy: 55.2, r: 1.4, fill: '#fff', opacity: 0.75 }),
           s('g', { class: 'arm-a' },
             s('rect', { x: 30.5, y: 53, width: 7.5, height: 14.5, rx: 3.75, fill: '#e2600f' })))));
   }
@@ -129,7 +134,7 @@
   }
 
   // pose.phase: where he is in the stride. pose.amp: 0 standing still, 1 walking.
-  // pose.lean: degrees he tips forward. pose.reach: 0 arm down, 1 arm poking.
+  // pose.lean: degrees he tips forward. pose.boop: 0 standing, 1 nose pushed out.
   function draw(part, pose, now, blinks) {
     const set = (el, value) => el.setAttribute('transform', value);
     const k = pose.amp;
@@ -145,20 +150,24 @@
 
     const beat = k * Math.cos(2 * TAU * pose.phase);   // +1 as a foot lands, -1 mid-step
     const sway = 3 * k * Math.sin(TAU * pose.phase);
-    set(part.torso, `translate(50 76) rotate(${r3(pose.lean + sway)}) ` +
-      `scale(${r3(1 + 0.03 * beat)} ${r3(1 - 0.035 * beat)}) translate(-50 -76)`);
+    // Booping stretches him forward, nose first, with arms and leaf trailing behind.
+    const boop = pose.boop;
+    set(part.torso, `translate(${r3(50 + 5 * boop)} 76) rotate(${r3(pose.lean + sway)}) ` +
+      `scale(${r3((1 + 0.03 * beat) * (1 + 0.12 * boop))} ${r3((1 - 0.035 * beat) * (1 - 0.06 * boop))}) translate(-50 -76)`);
 
     const swing = k * Math.cos(TAU * pose.phase);
-    set(part.armA, `rotate(${r3(8 + 20 * swing)} 34.25 55)`);
-    const armB = (55 - 14 * swing) * (1 - pose.reach) - 14 * pose.reach;
-    set(part.armB, `translate(73 53.75) rotate(${r3(armB)}) scale(${r3(1 + 0.3 * pose.reach)} 1) translate(-73 -53.75)`);
-    set(part.leaf, `rotate(${r3(9 * k * Math.sin(2 * TAU * pose.phase - 0.9) - 0.7 * pose.lean)} 50 17.5)`);
+    set(part.armA, `rotate(${r3(8 + 20 * swing + 45 * boop)} 34.25 55)`);
+    set(part.armB, `rotate(${r3(70 - 14 * swing + 30 * boop)} 66 66)`);
+    set(part.leaf, `rotate(${r3(9 * k * Math.sin(2 * TAU * pose.phase - 0.9) - 0.7 * pose.lean - 14 * boop)} 50 17.5)`);
 
+    const delighted = boop > 0.5;
     const lid = blinks && now % 2900 < 130 ? 0.12 : 1;
-    set(part.eyes, `translate(0 51) scale(1 ${lid}) translate(0 -51)`);
+    set(part.eyes, `translate(0 50) scale(1 ${lid}) translate(0 -50)`);
     part.shine.style.display = lid < 1 ? 'none' : '';
-    part.smile.style.display = pose.reach > 0.5 ? 'none' : '';
-    part.open.style.display = pose.reach > 0.5 ? '' : 'none';
+    part.eyes.style.display = delighted ? 'none' : '';
+    part.happy.style.display = delighted ? '' : 'none';
+    part.smile.style.display = delighted ? 'none' : '';
+    part.open.style.display = delighted ? '' : 'none';
   }
 
   function tween(ms, step) {
@@ -222,7 +231,7 @@
     const part = {
       rig: find('rig'), torso: find('torso'), legA: find('leg-a'), legB: find('leg-b'),
       armA: find('arm-a'), armB: find('arm-b'), leaf: find('leaf'), eyes: find('eyes'),
-      shine: find('shine'), smile: find('smile'), open: find('open')
+      shine: find('shine'), happy: find('happy'), smile: find('smile'), open: find('open')
     };
 
     const width = document.documentElement.clientWidth || window.innerWidth;
@@ -236,7 +245,7 @@
     bubble.style.maxWidth = `${Math.max(110, Math.min(230, stopX - 16))}px`;
 
     // One loop redraws him every frame; the steps below just change his pose.
-    const pose = { phase: 0.25, amp: 0, lean: 0, reach: 0 };
+    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0 };
     let alive = true;
     requestAnimationFrame(function loop(now) {
       if (!alive) return;
@@ -284,14 +293,16 @@
       { duration: 180, fill: 'forwards' });
     await sleep(calm ? 1100 : 750);
 
-    // Wind up, then poke.
+    // Wind up, then boop the button with his nose.
     if (calm) {
-      pose.reach = 1;
+      pose.boop = 1;
     } else {
-      await tween(170, (t) => { pose.lean = -7 * ease(t); });
-      await tween(110, (t) => { pose.lean = -7 + 16 * t; pose.reach = t; });
-      x.animate([{ transform: 'scale(1)' }, { transform: 'scale(.7)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }],
-        { duration: 300 });
+      await tween(190, (t) => { pose.lean = -9 * ease(t); });
+      await tween(100, (t) => { pose.lean = -9 + 15 * t; pose.boop = t; });
+      x.animate(
+        [{ transform: 'translateX(0) scale(1)' }, { transform: 'translateX(5px) scale(.72)' },
+          { transform: 'translateX(0) scale(1.08)' }, { transform: 'translateX(0) scale(1)' }],
+        { duration: 320 });
       ring.animate([{ opacity: 0.9, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(1.9)' }],
         { duration: 420, easing: 'ease-out' });
     }

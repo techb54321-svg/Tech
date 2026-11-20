@@ -2,7 +2,7 @@
 
 A browser extension that helps you stop scrolling. Open a social media site and a
 little tangerine guy drops in at the top of the page, toddles over to the close
-button, pokes it, and the tab is gone.
+button, boops it with his nose, and the tab is gone.
 
 ## Install
 

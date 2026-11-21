@@ -2,6 +2,7 @@
 const SB_DEFAULTS = {
   enabled: true,
   snoozeUntil: 0,
+  danceDeals: true,
   sites: [
     'instagram.com',
     'tiktok.com',

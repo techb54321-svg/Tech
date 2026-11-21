@@ -71,6 +71,25 @@ Click the toolbar icon to:
 - take a 5 minute break when you really do need to get in
 - see how many tabs he has closed
 
+## Dance deals
+
+Now and then, after "Nope not now", he pauses... "...unless... you want to
+dance with me?" Say yes and he dances for a minute to his own song: dancing,
+star jumps, marching on the spot, a wiggle and a big finish. Dance along to the
+end and he boops the page back open and lets you stay for 5 minutes. Then he
+comes back: "Time's up!"
+
+- He offers about one time in four, and never twice within two hours, so
+  opening a site over and over hoping for a deal does not work.
+- "No thanks", or waiting, closes the tab as usual. So does Stop, part way
+  through.
+- To try it straight away, click **Make the next one a dance** in the popup,
+  then open one of the sites. Dance deals can be switched off there too.
+
+The music is `dance.ogg`, an original song made by
+`../mr-blocky-music/make-dance-music.py`. Its sections are timed to his moves
+(`DANCE` in `guy.js`), so the two change together.
+
 ## Changing how he looks, moves and what he says
 
 Six settings at the top of `guy.js`:
@@ -90,7 +109,8 @@ After a change, click the reload arrow on his card at `chrome://extensions`.
 
 - `manifest.json`: extension manifest (Manifest V3)
 - `defaults.js`: default site list and URL matching
-- `guy.js`: the character, his animation and his routine (shared with the Android app)
-- `content.js`: decides when to send him in, and closes the tab afterwards
+- `guy.js`: the character, his animation, his routine and the dance (shared with the Android app)
+- `dance.ogg`: the dance music
+- `content.js`: decides when to send him in and when to offer a dance, and closes the tab afterwards
 - `background.js`: closes the tab and keeps the count
 - `popup.html`, `popup.js`: settings

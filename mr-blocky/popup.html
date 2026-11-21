@@ -39,6 +39,11 @@
     font-weight: 600; cursor: pointer; }
   button.ghost { width: 100%; margin-top: 14px; background: none; color: var(--fg); border: 1px solid var(--line); }
   #snoozeNote { color: var(--muted); font-size: 12px; margin: 6px 0 0; text-align: center; min-height: 1.4em; }
+  .deal { margin-top: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+  .deal .row { display: flex; align-items: center; gap: 12px; }
+  .deal .row div { flex: 1; }
+  .deal small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .deal button.ghost { margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -65,6 +70,17 @@
 
   <button class="btn ghost" id="snooze">Let me in for 5 minutes</button>
   <p id="snoozeNote"></p>
+
+  <div class="deal">
+    <div class="row">
+      <div><b>Dance deals</b><small>Now and then he'll let you in for 5 minutes if you dance with him for one.</small></div>
+      <label class="switch" title="Turn dance deals on or off">
+        <input type="checkbox" id="danceDeals" aria-label="Dance deals on">
+        <span></span>
+      </label>
+    </div>
+    <button class="btn ghost" id="danceNext">Make the next one a dance</button>
+  </div>
 
   <script src="defaults.js"></script>
   <script src="popup.js"></script>

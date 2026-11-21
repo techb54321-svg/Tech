@@ -32,6 +32,8 @@ const ScrollBouncerGuy = (() => {
   const stylesFor = (top, BTN) => {
     const ON_BUTTON = { position: 'absolute', top: `${BTN.top}px`, right: `${BTN.right}px`,
       width: `${BTN.size}px`, height: `${BTN.size}px`, borderRadius: '50%', boxSizing: 'border-box' };
+    const PILL = { border: 'none', borderRadius: '999px', padding: '9px 15px', margin: '0', cursor: 'pointer',
+      font: '700 14px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif', pointerEvents: 'auto' };
     return {
       stage: { ...FILL, position: 'fixed', zIndex: '2147483647', pointerEvents: 'none', overflow: 'hidden',
         font: '600 14px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif' },
@@ -50,7 +52,33 @@ const ScrollBouncerGuy = (() => {
         whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
       card: { ...FILL, display: 'none', placeItems: 'center', textAlign: 'center', background: '#0c0a09',
         color: '#fafaf9', fontSize: '20px', padding: '24px', boxSizing: 'border-box', pointerEvents: 'auto' },
-      small: { display: 'block', marginTop: '8px', fontWeight: '400', fontSize: '14px', opacity: '.7' }
+      small: { display: 'block', marginTop: '8px', fontWeight: '400', fontSize: '14px', opacity: '.7' },
+
+      // The dance deal: what he offers, the buttons, what he says while dancing, and how far there is to go.
+      deal: { position: 'absolute', top: `${top + 8}px`, right: `${BTN.right + BTN.size + REACH + 2}px`, boxSizing: 'border-box',
+        width: 'max-content', maxWidth: `calc(100% - ${BTN.right + BTN.size + REACH + 14}px)`, padding: '11px 14px',
+        borderRadius: '14px 14px 4px 14px', background: '#fff', color: '#1c1917', fontSize: '15px', opacity: '0',
+        boxShadow: '0 6px 20px rgba(0,0,0,.3)', pointerEvents: 'auto' },
+      choices: { display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' },
+      yes: { ...PILL, background: '#2dd4bf', color: '#06302c' },
+      no: { ...PILL, background: '#eceeed', color: '#1c1917' },
+      say: { position: 'absolute', left: '50%', top: '0', transform: 'translateX(-50%)', boxSizing: 'border-box',
+        width: 'max-content', maxWidth: 'calc(100% - 32px)', padding: '10px 15px', borderRadius: '16px', background: '#fff',
+        color: '#1c1917', fontSize: '17px', textAlign: 'center', opacity: '0', boxShadow: '0 6px 20px rgba(0,0,0,.3)' },
+      title: { position: 'absolute', left: '16px', right: '16px', top: '14%', textAlign: 'center', color: '#fff',
+        fontSize: '30px', fontWeight: '800', lineHeight: '1.15', opacity: '0' },
+      tally: { position: 'absolute', left: '16px', right: '16px', top: 'calc(14% + 46px)', textAlign: 'center',
+        color: '#99f6e4', fontSize: '16px', fontWeight: '700', opacity: '0' },
+      meter: { position: 'absolute', left: '12%', right: '12%', bottom: '11%', height: '8px', borderRadius: '4px',
+        background: 'rgba(255,255,255,.16)', overflow: 'hidden', opacity: '0' },
+      fill: { height: '100%', width: '0%', borderRadius: '4px', background: '#2dd4bf' },
+      left: { position: 'absolute', left: '16px', right: '16px', bottom: 'calc(11% - 28px)', textAlign: 'center',
+        color: 'rgba(255,255,255,.72)', fontSize: '13px', opacity: '0' },
+      stop: { ...PILL, position: 'absolute', top: `${top}px`, left: '16px', padding: '7px 13px', fontSize: '13px',
+        background: 'rgba(255,255,255,.14)', color: '#fff', opacity: '0' },
+      go: { ...ON_BUTTON, background: '#22c55e', border: '2.5px solid #fff', boxShadow: '0 3px 12px rgba(0,0,0,.35)',
+        display: 'grid', placeItems: 'center', opacity: '0' },
+      goRing: { ...ON_BUTTON, border: '3px solid #86efac', opacity: '0' }
     };
   };
 
@@ -76,6 +104,7 @@ const ScrollBouncerGuy = (() => {
   const BELLY = { x: 46, y: 81 };   // bottom of his body, which he rocks and stretches around
   const SIDE_EYE = { x: 69.5, y: 52 };              // level with his nose
   const FRONT_EYES = { left: 35.5, right: 56.5, y: 49 };
+  const FRONT_HIPS = { left: BELLY.x - 8.5, right: BELLY.x + 8.5, y: 64 };
 
   const body = () => [
     s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: `url(#sb-body) ${COLOR.body}` }),
@@ -84,7 +113,7 @@ const ScrollBouncerGuy = (() => {
   // An eye: a white with a dark pupil. `look` nudges the pupil sideways.
   const eye = (cx, cy, look) => [
     s('ellipse', { class: 'white', cx, cy, rx: 4.7, ry: 6.7, fill: '#fff' }),
-    s('ellipse', { cx: cx + look, cy, rx: 2.7, ry: 4.6, fill: COLOR.ink })
+    s('ellipse', { class: 'pupil', cx: cx + look, cy, rx: 2.7, ry: 4.6, fill: COLOR.ink })
   ];
   const stroke = (cls, d, color, width) =>
     s('path', { class: cls, d, stroke: color, 'stroke-width': width, 'stroke-linecap': 'round', fill: 'none' });
@@ -125,13 +154,12 @@ const ScrollBouncerGuy = (() => {
   function frontView() {
     const { left, right, y } = FRONT_EYES;
     const gap = right - left - 16.4;
-    const leg = (hip) => [
+    const leg = (cls, hip) => s('g', { class: cls },
       s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg }),
-      s('rect', { x: hip - 7.5, y: 87, width: 15, height: 9.4, rx: 4.7, fill: COLOR.foot })
-    ];
+      s('rect', { x: hip - 7.5, y: 87, width: 15, height: 9.4, rx: 4.7, fill: COLOR.foot }));
 
     return s('g', { class: 'front' },
-      ...leg(BELLY.x - 8.5), ...leg(BELLY.x + 8.5),
+      leg('front-leg-l', FRONT_HIPS.left), leg('front-leg-r', FRONT_HIPS.right),
       s('g', { class: 'front-torso' },
         ...(ARMS ? [arm('arm-l', SHOULDER.left), arm('arm-r', SHOULDER.right)] : []),
         ...body(),
@@ -139,6 +167,8 @@ const ScrollBouncerGuy = (() => {
           s('g', { class: 'front-eyes' }, ...eye(left, y, 0), ...eye(right, y, 0)),
           // Both eyes shut, for shaking his head.
           stroke('shut', `M${left - 4.2} ${y + 0.4}q4.2 3.6 8.4 0M${right - 4.2} ${y + 0.4}q4.2 3.6 8.4 0`, COLOR.ink, 2.2),
+          // Eyes screwed up with joy, for dancing.
+          stroke('joy', `M${left - 4.2} ${y + 1.8}q4.2 -5.2 8.4 0M${right - 4.2} ${y + 1.8}q4.2 -5.2 8.4 0`, COLOR.ink, 2.2),
           ...(GLASSES ? [
             lens(left, y), lens(right, y),
             stroke('', `M${left + 8.2} ${y - 0.6}q${gap / 2} -1.8 ${gap} 0`, COLOR.frames, 1.7),
@@ -147,6 +177,10 @@ const ScrollBouncerGuy = (() => {
           // His mouth: a little smile, or a firm flat line while he shakes his head.
           stroke('smile', 'M40.6 66.2Q46 71.2 51.4 66.2', COLOR.ink, 2),
           stroke('flat', 'M42 67.8H50', COLOR.ink, 2),
+          // A big open grin, for dancing.
+          s('g', { class: 'grin' },
+            s('path', { d: 'M39.6 64.8Q46 74.6 52.4 64.8Z', fill: COLOR.ink }),
+            s('ellipse', { cx: 46, cy: 68.3, rx: 3.2, ry: 1.4, fill: '#f28da0' })),
           // His nose, seen end on.
           s('circle', { cx: BELLY.x, cy: 58, r: 6.5, fill: COLOR.nose }),
           s('ellipse', { cx: BELLY.x - 2, cy: 55.8, rx: 2.4, ry: 1.7, fill: '#fff', opacity: 0.45 }))));
@@ -170,7 +204,8 @@ const ScrollBouncerGuy = (() => {
       eye: find('eye'), happy: find('happy'), arm: find('arm'), armL: find('arm-l'), armR: find('arm-r'),
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
-      whites: svg.querySelectorAll('.white')
+      joy: find('joy'), grin: find('grin'), legL: find('front-leg-l'), legR: find('front-leg-r'),
+      whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil')
     };
   }
 
@@ -223,18 +258,28 @@ const ScrollBouncerGuy = (() => {
 
     if (pose.front) {
       // Shaking his head: his face slides from side to side and his body rocks with it.
-      set(part.frontTorso, about(BELLY, `rotate(${r3(0.35 * pose.shake)}) ` +
+      // Or, when pose.dance is set, dancing: it says where his arms, legs, eyes and mouth go.
+      const d = pose.dance;
+      set(part.front, d ? `translate(0 ${r3(-d.hop)})` : '');
+      set(part.frontTorso, about(BELLY, `rotate(${r3(d ? d.tilt : 0.35 * pose.shake)}) ` +
         `scale(${r3(1 - 0.008 * breath)} ${r3(1 + 0.012 * breath)})`));
       set(part.face, `translate(${r3(pose.shake)} 0)`);
       set(part.frontEyes, about({ x: 0, y: FRONT_EYES.y }, `scale(1 ${lid})`));
-      part.frontEyes.style.display = pose.shut ? 'none' : '';
-      part.shut.style.display = pose.shut ? '' : 'none';
-      part.smile.style.display = pose.shut ? 'none' : '';
-      part.flat.style.display = pose.shut ? '' : 'none';
+      const eyes = d ? d.eyes : pose.shut ? 'shut' : 'open';
+      const mouth = d ? d.mouth : pose.shut ? 'flat' : 'smile';
+      part.frontEyes.style.display = eyes === 'open' ? '' : 'none';
+      part.shut.style.display = eyes === 'shut' ? '' : 'none';
+      part.joy.style.display = eyes === 'joy' ? '' : 'none';
+      part.smile.style.display = mouth === 'smile' ? '' : 'none';
+      part.flat.style.display = mouth === 'flat' ? '' : 'none';
+      part.grin.style.display = mouth === 'grin' ? '' : 'none';
+      for (const pupil of part.pupils) set(pupil, `translate(${r3(d ? d.look : 0)} 0)`);
+      set(part.legL, d ? `translate(0 ${r3(-d.liftL)}) rotate(${r3(d.legL)} ${FRONT_HIPS.left} ${FRONT_HIPS.y})` : '');
+      set(part.legR, d ? `translate(0 ${r3(-d.liftR)}) rotate(${r3(d.legR)} ${FRONT_HIPS.right} ${FRONT_HIPS.y})` : '');
       if (ARMS) {
         // One arm hangs at his side; the other goes up and wags along with his head.
-        set(part.armL, `rotate(14 ${SHOULDER.left.x} ${SHOULDER.left.y})`);
-        set(part.armR, `rotate(${r3(-14 - pose.raise * (140 + 2.6 * pose.shake))} ${SHOULDER.right.x} ${SHOULDER.right.y})`);
+        set(part.armL, `rotate(${d ? r3(d.armL) : 14} ${SHOULDER.left.x} ${SHOULDER.left.y})`);
+        set(part.armR, `rotate(${r3(d ? d.armR : -14 - pose.raise * (140 + 2.6 * pose.shake))} ${SHOULDER.right.x} ${SHOULDER.right.y})`);
       }
       return;
     }
@@ -312,7 +357,7 @@ const ScrollBouncerGuy = (() => {
   // shakes his head. `top` is how far down the screen he walks. `onDark` is called
   // once the screen is fully dark. The promise resolves when he has finished,
   // with the ways to end the show.
-  async function perform({ top = 8, onDark } = {}) {
+  async function perform({ top = 8, onDark, line = LINE } = {}) {
     // If the page was opened in a background tab, wait until someone is looking.
     await tabVisible();
 
@@ -325,7 +370,7 @@ const ScrollBouncerGuy = (() => {
     const svg = buildGuy();
     const squash = h('squash', svg);
     const guy = h('guy', h('shadow'), squash);
-    const veil = h('veil'), ring = h('ring'), bubble = h('bubble', LINE);
+    const veil = h('veil'), ring = h('ring'), bubble = h('bubble', line);
     const x = h('x', css(s('svg', { viewBox: '0 0 24 24' },
       s('path', { d: 'M7.5 7.5l9 9m0-9l-9 9', stroke: '#fff', 'stroke-width': 3.2, 'stroke-linecap': 'round' })), STYLE.cross));
     const stage = h('stage', veil, ring, x, guy, bubble);
@@ -347,7 +392,7 @@ const ScrollBouncerGuy = (() => {
     const place = () => { guy.style.transform = `translate(${r3(px)}px, 0)`; };
 
     // One loop redraws him every frame; the steps below just change his pose.
-    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false, raise: 0 };
+    const pose = { phase: 0.25, amp: 0, lean: 0, boop: 0, front: false, shake: 0, shut: false, raise: 0, dance: null };
     let alive = true;
     requestAnimationFrame(function loop(now) {
       if (!alive) return;
@@ -455,6 +500,10 @@ const ScrollBouncerGuy = (() => {
         card.style.display = 'grid';
         stage.append(card);
       },
+      // Offer a deal: dance with him for a minute and he lets them in. See dance() below.
+      offerDance(options) {
+        return dance({ stage, guy, squash, veil, bubble, pose, part, STYLE, BTN, top, h, calm, home: px }, options);
+      },
       // Fade him and the dark screen away, then clear up.
       async fadeOut() {
         await tween(calm ? 1 : 260, (t) => { stage.style.opacity = 1 - t; });
@@ -462,6 +511,382 @@ const ScrollBouncerGuy = (() => {
         host.remove();
       }
     };
+  }
+
+
+  // ---- The dance deal --------------------------------------------------------
+  // Now and then, after "Nope not now", he offers a way in: dance with him for a
+  // minute. The music (dance.ogg, made by mr-blocky-music/make-dance-music.py) is
+  // 120 beats a minute, and its sections line up with these moves, so change them together.
+  const DANCE = {
+    bpm: 120,
+    moves: [
+      { until: 4, move: 'ready', say: 'Get ready!' },
+      { until: 20, move: 'bop', say: 'Dance!' },
+      { until: 36, move: 'jumps', say: 'Star jumps!' },
+      { until: 48, move: 'march', say: 'March on the spot!' },
+      { until: 58, move: 'wiggle', say: 'Arms up and wiggle!' },
+      { until: 64, move: 'finish', say: 'Big finish!' },
+      { until: 67, move: 'tada', say: 'Ta-da!' }
+    ]
+  };
+  DANCE.length = DANCE.moves[DANCE.moves.length - 1].until;
+  const STANDING = { tilt: 0, hop: 0, armL: 14, armR: -14, legL: 0, legR: 0, liftL: 0, liftR: 0, eyes: 'open', mouth: 'smile', look: 0 };
+  const clamp01 = (t) => Math.max(0, Math.min(1, t));
+
+  // His pose t seconds into the song, which move that is, and how much to spin or crouch him.
+  function danceAt(t, calm) {
+    const b = (t * DANCE.bpm) / 60;          // beats since the music started
+    const n = Math.floor(b), f = b - n;      // which beat, and how far through it
+    const k = calm ? 0.4 : 1;                // smaller moves for people who prefer less motion
+    const i = DANCE.moves.findIndex((m) => t < m.until);
+    const at = i === -1 ? DANCE.moves.length - 1 : i;
+    const step = DANCE.moves[at], since = t - (at === 0 ? 0 : DANCE.moves[at - 1].until);
+    const p = { ...STANDING, eyes: 'joy', mouth: 'grin' };
+    let spin = 1, crouch = 1;
+    switch (step.move) {
+      case 'ready':   // nodding along to the count-in
+        Object.assign(p, { eyes: 'open', mouth: 'smile', hop: 2.5 * k * Math.sin(Math.PI * f) });
+        break;
+      case 'bop': {   // bouncing on every beat, swaying, an arm up on each side in turn
+        const sway = Math.sin((Math.PI * b) / 2);
+        p.hop = 7 * k * Math.sin(Math.PI * f);
+        p.tilt = 9 * k * sway;
+        p.armL = 14 + 130 * k * Math.max(0, sway);
+        p.armR = -14 - 130 * k * Math.max(0, -sway);
+        p.look = 1.5 * sway;
+        break;
+      }
+      case 'jumps': { // out on one beat and back in on the next: a star jump a second
+        const e = ease(clamp01(f / 0.6)), spread = n % 2 === 0 ? e : 1 - e;
+        p.hop = 16 * k * Math.sin(Math.PI * f);
+        p.armL = 14 + 136 * spread;
+        p.armR = -14 - 136 * spread;
+        p.legL = 14 * spread;
+        p.legR = -14 * spread;
+        break;
+      }
+      case 'march': { // a knee up on every beat, the other arm pumping
+        const lift = Math.sin(Math.PI * f), left = n % 2 === 0;
+        p.liftL = left ? 11 * k * lift : 0;
+        p.liftR = left ? 0 : 11 * k * lift;
+        p.armL = 14 + (left ? 0 : 62 * k * lift);
+        p.armR = -14 - (left ? 62 * k * lift : 0);
+        p.tilt = (left ? 2.5 : -2.5) * k * lift;
+        p.mouth = 'smile';
+        break;
+      }
+      case 'wiggle': { // arms up, wiggling once a beat
+        const w = Math.sin(2 * Math.PI * b);
+        p.armL = 152 + 12 * w;
+        p.armR = -152 + 12 * w;
+        p.tilt = 11 * k * w;
+        p.hop = 3 * k * Math.abs(Math.sin(Math.PI * b));
+        p.look = 2 * w;
+        break;
+      }
+      case 'finish':
+        if (since < 4) {   // two spins, arms out
+          if (!calm) spin = Math.cos(Math.PI * since);
+          p.armL = 104;
+          p.armR = -104;
+          p.hop = 4 * k * Math.abs(Math.sin(Math.PI * b));
+        } else {           // then down low, trembling, ready to spring
+          crouch = 1 - 0.13 * ease(clamp01((since - 4) / 0.4));
+          p.armL = 30;
+          p.armR = -30;
+          p.tilt = 1.2 * k * Math.sin(t * 40);
+          p.eyes = 'shut';
+          p.mouth = 'smile';
+        }
+        break;
+      default:             // ta-da!
+        p.hop = since < 0.45 ? 26 * k * Math.sin((Math.PI * since) / 0.45) : 0;
+        p.armL = 145;
+        p.armR = -145;
+        p.legL = 9;
+        p.legR = -9;
+    }
+    return { pose: p, step, spin, crouch };
+  }
+
+  // Starts fetching the music. Pages loaded from files cannot fetch, but an <audio>
+  // element can still play the file, so that is the fallback.
+  function loadMusic(url) {
+    if (!url) return Promise.resolve(null);
+    return fetch(url)
+      .then((res) => { if (!res.ok) throw new Error(res.status); return res.arrayBuffer(); })
+      .then((bytes) => ({ bytes }))
+      .catch(() => ({ url }));
+  }
+
+  // Plays the music, and keeps the time the dance follows. Call it during the tap on
+  // "Let's dance!", which is what lets the browser play sound. Without music, or if it
+  // cannot play, the dance follows the clock instead.
+  function startSong(loading) {
+    const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
+    let context = null, source = null, element = null, began = null, clockStart = null, locked = false, over = false;
+    try {
+      context = Context ? new Context() : null;
+      if (context) context.resume().catch(() => {});
+    } catch { context = null; }
+    const stop = () => {
+      if (over) return;
+      over = true;
+      try { if (source) source.stop(); } catch { /* never started */ }
+      try { if (element) element.pause(); } catch { /* never started */ }
+      if (context) context.close().catch(() => {});
+    };
+    const started = loading.then(async (loaded) => {
+      if (!loaded || locked) return false;
+      if (loaded.bytes && context) {
+        const buffer = await context.decodeAudioData(loaded.bytes);
+        if (locked) return false;
+        source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(context.destination);
+        source.start();
+        began = context.currentTime;
+        return true;
+      }
+      element = new Audio(loaded.url);
+      await element.play();
+      if (locked) { element.pause(); return false; }
+      began = 0;
+      return true;
+    }).catch(() => false);
+    return {
+      // Waits up to `ms` for the music to start, then commits to it or to the clock.
+      async begin(ms) {
+        const playing = await Promise.race([started, sleep(ms).then(() => false)]);
+        locked = true;
+        if (!playing) { stop(); began = null; clockStart = performance.now(); }
+        return playing;
+      },
+      // Seconds since the music started.
+      now() {
+        if (began !== null && source) return context.currentTime - began;
+        if (began !== null && element) return element.currentTime;
+        return (performance.now() - (clockStart ?? performance.now())) / 1000;
+      },
+      stop
+    };
+  }
+
+  // The deal, from "Nope not now" onwards. Resolves with 'danced' if they dance to the
+  // end and he boops the way back in, or 'declined' or 'stopped' if not.
+  //   music:     address of dance.ogg, or nothing to dance in silence
+  //   counter:   on a phone, counts star jumps with its motion sensor:
+  //              { need, hint, start(onJump), stop() }
+  //   onDancing: called when they say yes
+  //   onLetIn:   called as he boops the way back in
+  async function dance(rig, { music, counter, onDancing, onLetIn } = {}) {
+    const { stage, guy, squash, veil, bubble, pose, STYLE, BTN, top, h, calm } = rig;
+    const fadeIn = (el, ms = 200) => tween(ms, (t) => { el.style.opacity = t; });
+    const fadeOut = (el, ms = 200) => tween(ms, (t) => { el.style.opacity = 1 - t; });
+    const button = (name, label) => css(node(null, 'button', { type: 'button' }, [label]), STYLE[name]);
+    const keys = (handler) => {
+      document.addEventListener('keydown', handler, true);
+      return () => document.removeEventListener('keydown', handler, true);
+    };
+    // From here on the dark screen catches taps, so nothing underneath gets them.
+    veil.style.pointerEvents = 'auto';
+
+    // A moment's silence. He glances away... and back, an idea forming.
+    await fadeOut(bubble, 250);
+    pose.dance = { ...STANDING };
+    await sleep(900);
+    pose.dance.look = -2.4;
+    await sleep(650);
+    pose.dance.look = 2.4;
+    await sleep(450);
+    pose.dance = { ...STANDING };
+
+    const loading = loadMusic(music);
+    const words = node(null, 'span', null, ['…unless…']);
+    const deal = h('deal', words);
+    stage.append(deal);
+    await fadeIn(deal, 180);
+    await sleep(1300);
+    words.textContent = '…you want to dance with me?';
+    const yes = button('yes', "Let's dance! 💃"), no = button('no', 'No thanks');
+    deal.append(h('choices', yes, no));
+    try { yes.focus({ preventScroll: true }); } catch { /* not focusable here */ }
+
+    // He bounces on the spot, hopeful, while they decide.
+    let waiting = true;
+    requestAnimationFrame(function hope(now) {
+      if (!waiting) return;
+      pose.dance.hop = 2.2 * Math.abs(Math.sin(now / 190));
+      requestAnimationFrame(hope);
+    });
+    let song = null;
+    const answer = await new Promise((decide) => {
+      const timer = setTimeout(() => finish('declined'), 20000);
+      const unkey = keys((e) => { if (e.key === 'Escape') finish('declined'); });
+      function finish(choice) {
+        clearTimeout(timer);
+        unkey();
+        decide(choice);
+      }
+      yes.addEventListener('click', () => { song = startSong(loading); finish('yes'); });
+      no.addEventListener('click', () => finish('declined'));
+    });
+    waiting = false;
+    deal.lastChild.remove();
+
+    // A shrug, a parting word, and back to closing.
+    const shrug = async (line) => {
+      words.textContent = line;
+      if (!deal.isConnected) stage.append(deal);
+      deal.style.opacity = '1';
+      pose.dance = { ...STANDING, armL: 62, armR: -62, look: -2, mouth: 'flat', tilt: -3 };
+      await sleep(1500);
+      await fadeOut(deal);
+    };
+    if (answer !== 'yes') {
+      await shrug('Suit yourself!');
+      return 'declined';
+    }
+    if (onDancing) onDancing();
+    await fadeOut(deal, 150);
+    deal.remove();
+
+    // Into the middle of the screen, and bigger, so they can follow him.
+    const width = stage.clientWidth || innerWidth, height = stage.clientHeight || innerHeight;
+    const big = Math.max(1, Math.min(3.2, (height * 0.36) / SIZE, (width * 0.62) / SIZE));
+    const feet = height * 0.66;
+    const spot = { x: rig.home, y: 0, k: 1 };
+    const centre = { x: (width - SIZE) / 2, y: feet - top - SIZE, k: big };
+    const put = (a, b, t, arc = 0) => {
+      const e = ease(t);
+      guy.style.transform = `translate(${r3(a.x + (b.x - a.x) * e)}px, ${r3(a.y + (b.y - a.y) * e - arc * Math.sin(Math.PI * t))}px) ` +
+        `scale(${r3(a.k + (b.k - a.k) * e)})`;
+    };
+    guy.style.transformOrigin = '50% 100%';
+    pose.dance = { ...STANDING, eyes: 'joy', mouth: 'grin' };
+    await tween(calm ? 1 : 650, (t) => put(spot, centre, t, 60));
+
+    const title = h('title'), tally = h('tally'), fill = h('fill'), meter = h('meter', fill), left = h('left');
+    const stop = button('stop', '✕  Stop');
+    stage.append(title, tally, meter, left, stop);
+    title.textContent = DANCE.moves[0].say;
+    for (const el of [title, meter, left, stop]) fadeIn(el);
+    let stopped = false;
+    stop.addEventListener('click', () => { stopped = true; });
+    const unkey = keys((e) => { if (e.key === 'Escape') stopped = true; });
+
+    await song.begin(2500);
+    let jumps = 0, counting = false;
+    const tick = () => {
+      tally.textContent = jumps >= counter.need ? `${jumps} star jumps ✓` : `${counter.hint}  ${jumps} / ${counter.need}`;
+    };
+    const result = await new Promise((finish) => {
+      let shown = null;
+      requestAnimationFrame(function frame() {
+        if (stopped) return finish('stopped');
+        const t = song.now();
+        if (t >= DANCE.length) return finish('done');
+        const { pose: p, step, spin, crouch } = danceAt(t, calm);
+        pose.dance = p;
+        squash.style.transform = spin !== 1 || crouch !== 1 ? `scale(${r3(spin)}, ${r3(crouch)})` : '';
+        if (step !== shown) {
+          shown = step;
+          title.textContent = step.say;
+          if (counter && step.move === 'jumps') {
+            counting = true;
+            counter.start(() => { jumps += 1; tick(); });
+            tick();
+            tally.style.opacity = '1';
+          } else if (counting) {
+            counting = false;
+            counter.stop();
+          }
+        }
+        fill.style.width = `${((100 * t) / DANCE.length).toFixed(1)}%`;
+        left.textContent = `${Math.max(0, Math.ceil(DANCE.length - t))} seconds to go`;
+        requestAnimationFrame(frame);
+      });
+    });
+    unkey();
+    if (counting) counter.stop();
+    squash.style.transform = '';
+    for (const el of [title, tally, meter, left, stop]) fadeOut(el).then(() => el.remove());
+
+    // Something to say, in a bubble just above his head.
+    const say = h('say');
+    const speak = async (line, ms) => {
+      say.textContent = line;
+      say.style.top = `${Math.max(top, feet - big * SIZE - 54)}px`;
+      if (!say.isConnected) stage.append(say);
+      await fadeIn(say, 150);
+      await sleep(ms);
+    };
+    if (result === 'stopped' || (counter && jumps < counter.need)) {
+      song.stop();
+      pose.dance = { ...STANDING, armL: 62, armR: -62, look: -2, mouth: 'flat', tilt: -3 };
+      await speak(result === 'stopped' ? 'Maybe next time!' : `Nice moves, but I needed ${counter.need} star jumps!`, 1800);
+      await fadeOut(say);
+      return 'stopped';
+    }
+
+    // They did it.
+    pose.dance = { ...STANDING, eyes: 'joy', mouth: 'grin', armL: 120, armR: -14 };
+    await speak('OK, you did good!', 1600);
+    await fadeOut(say, 150);
+    say.remove();
+
+    // Back to his spot, where a green button has appeared. He turns side on and boops it.
+    pose.dance = { ...STANDING, mouth: 'grin' };
+    await tween(calm ? 1 : 600, (t) => put(centre, spot, t, 40));
+    guy.style.transform = `translate(${r3(rig.home)}px, 0)`;
+    const go = h('go', css(s('svg', { viewBox: '0 0 24 24' },
+      s('path', { d: 'M5.5 12h12M12.5 6.5l5.5 5.5-5.5 5.5', stroke: '#fff', 'stroke-width': 3.2, 'stroke-linecap': 'round',
+        'stroke-linejoin': 'round', fill: 'none' })), STYLE.cross));
+    const ring = h('goRing');
+    stage.append(ring, go);
+    await tween(calm ? 1 : 260, (t) => {
+      go.style.opacity = Math.min(1, 3 * t);
+      go.style.transform = `scale(${r3(along([[0, 0.4], [0.7, 1.12], [1, 1]], t))})`;
+    });
+    if (!calm) await tween(110, (t) => { squash.style.transform = `scaleX(${r3(1 - 0.9 * t * t)})`; });
+    pose.dance = null;
+    pose.front = false;
+    pose.amp = 0;
+    pose.boop = 0;
+    pose.lean = 0;
+    if (!calm) {
+      await tween(170, (t) => {
+        squash.style.transform = `scaleX(${r3(along([[0, 0.1], [0.7, 1.06], [1, 1]], 1 - (1 - t) * (1 - t)))})`;
+      });
+    }
+    squash.style.transform = '';
+    await sleep(calm ? 200 : 250);
+    if (!calm) {
+      await tween(190, (t) => { pose.lean = -9 * ease(t); });
+      await tween(100, (t) => { pose.lean = -9 + 15 * t; pose.boop = t; });
+    } else {
+      pose.boop = 1;
+    }
+    if (onLetIn) onLetIn();
+    tween(420, (t) => {
+      const out = 1 - (1 - t) * (1 - t);
+      ring.style.opacity = 0.9 * (1 - out);
+      ring.style.transform = `scale(${r3(1 + 0.9 * out)})`;
+    });
+    await tween(calm ? 1 : 300, (t) => {
+      go.style.transform = `translateX(${r3(along([[0, 0], [0.33, 5], [0.66, 0], [1, 0]], t))}px) ` +
+        `scale(${r3(along([[0, 1], [0.33, 0.72], [0.66, 1.08], [1, 1]], t))})`;
+    });
+    // The lights come back on.
+    tween(calm ? 1 : 220, (t) => { pose.boop = 1 - ease(t); pose.lean = 6 * (1 - ease(t)); });
+    await tween(calm ? 1 : 450, (t) => {
+      veil.style.opacity = 1 - t;
+      go.style.opacity = 1 - t;
+    });
+    veil.style.pointerEvents = 'none';
+    song.stop();
+    return 'danced';
   }
 
   return { perform };

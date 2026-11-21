@@ -2,9 +2,12 @@
 const api = globalThis.browser ?? globalThis.chrome;
 const $ = (id) => document.getElementById(id);
 let cfg;
+let danceNext = false;   // kept on this device only, like the times he has offered
 
 function render() {
   $('enabled').checked = cfg.enabled;
+  $('danceDeals').checked = cfg.danceDeals;
+  $('danceNext').textContent = danceNext ? 'The next one will be a dance ✓' : 'Make the next one a dance';
   const list = $('sites');
   list.textContent = '';
   for (const site of cfg.sites) {
@@ -30,6 +33,12 @@ async function save(patch) {
 }
 
 $('enabled').onchange = (e) => save({ enabled: e.target.checked });
+$('danceDeals').onchange = (e) => save({ danceDeals: e.target.checked });
+$('danceNext').onclick = async () => {
+  danceNext = !danceNext;
+  await api.storage.local.set({ danceNext });
+  render();
+};
 
 $('add').onsubmit = (e) => {
   e.preventDefault();
@@ -44,7 +53,8 @@ $('snooze').onclick = () =>
 
 (async () => {
   cfg = await api.storage.sync.get(SB_DEFAULTS);
-  const { stats = {} } = await api.storage.local.get('stats');
+  const { stats = {}, danceNext: next = false } = await api.storage.local.get(['stats', 'danceNext']);
+  danceNext = next;
   const d = new Date();
   const day = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
   $('today').textContent = stats.day === day ? stats.today || 0 : 0;

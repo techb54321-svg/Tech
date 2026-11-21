@@ -627,16 +627,29 @@ const ScrollBouncerGuy = (() => {
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     let context = null, source = null, element = null, began = null, clockStart = null, locked = false, over = false;
     let heard = null;   // the music's own time when it last moved on, and when that was
+    let quiet = false, awake = null;
     try {
       context = Context ? new Context() : null;
       if (context) context.resume().catch(() => {});
     } catch { context = null; }
-    const stop = () => {
-      if (over) return;
-      over = true;
+    // They will be dancing, not touching anything: stop the screen going to sleep meanwhile.
+    try {
+      navigator.wakeLock.request('screen').then((lock) => {
+        if (over) lock.release().catch(() => {}); else awake = lock;
+      }, () => {});
+    } catch { /* no way to keep the screen on here */ }
+    const silence = () => {
+      if (quiet) return;
+      quiet = true;
       try { if (source) source.stop(); } catch { /* never started */ }
       try { if (element) element.pause(); } catch { /* never started */ }
       if (context) context.close().catch(() => {});
+    };
+    const stop = () => {
+      if (over) return;
+      over = true;
+      silence();
+      if (awake) awake.release().catch(() => {});
     };
     const started = loading.then(async (loaded) => {
       if (!loaded || locked) return false;
@@ -661,7 +674,7 @@ const ScrollBouncerGuy = (() => {
       async begin(ms) {
         const playing = await Promise.race([started, sleep(ms).then(() => false)]);
         locked = true;
-        if (!playing) { stop(); began = null; clockStart = performance.now(); }
+        if (!playing) { silence(); began = null; clockStart = performance.now(); }
         return playing;
       },
       // Seconds since the music started.
@@ -675,7 +688,7 @@ const ScrollBouncerGuy = (() => {
             // The music has stopped moving on: the device has nowhere to play it, or a
             // call has taken the sound. Rather than freeze mid-dance, carry on by the
             // clock from here, in silence.
-            stop();
+            silence();
             began = null;
             clockStart = wall - music * 1000;
           }

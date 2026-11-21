@@ -192,6 +192,15 @@ public class StageService extends Service {
                 if (mine != turn) return;
                 main.removeCallbacks(tooLong);
                 main.postDelayed(tooLong, DANCING_MS);
+                // They will be jumping about, not touching the screen: keep it from going to sleep.
+                if (stage != null) {
+                    stageParams.flags |= WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON;
+                    try {
+                        windows.updateViewLayout(stage, stageParams);
+                    } catch (RuntimeException e) {
+                        Log.w(TAG, "could not keep the screen on", e);
+                    }
+                }
                 tell(DANCING, null);
             }
 

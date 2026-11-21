@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
@@ -31,6 +32,12 @@ public class PreviewActivity extends Activity implements Stage.Cues {
     /** Nothing is really being closed here. */
     @Override
     public void dark() {
+    }
+
+    /** They will be jumping about, not touching the screen: keep it from going to sleep. */
+    @Override
+    public void dancing() {
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 
     @Override

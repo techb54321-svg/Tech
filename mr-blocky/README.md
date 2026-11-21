@@ -93,7 +93,7 @@ The music is `dance.ogg`, an original song made by
 
 ## Changing how he looks, moves and what he says
 
-Six settings at the top of `guy.js`:
+Seven settings at the top of `guy.js`:
 
 - `WALK_SPEED`: how fast he walks, in pixels per second. His steps keep pace on
   their own, so his feet never slide. He crosses the whole page, so this also
@@ -103,6 +103,7 @@ Six settings at the top of `guy.js`:
 - `GLASSES`: whether he wears round glasses.
 - `ARMS`: whether he has arms.
 - `COLOR`: his colours.
+- `OUTLINE`: how thick the soft outline round him is.
 
 After a change, click the reload arrow on his card at `chrome://extensions`.
 

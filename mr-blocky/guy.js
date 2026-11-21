@@ -9,15 +9,17 @@ const ScrollBouncerGuy = (() => {
   const GLASSES = true;         // whether he wears round glasses
   const ARMS = true;            // whether he has arms
 
-  // His colours. The body runs from `light` (where the light hits) to `shade`.
-  // His nose and feet are a paler tint of the same colour, and `ink` draws his
-  // eyes and mouth.
+  // His colours. The body runs from `light` (where the light hits) to `shade`, with
+  // a soft `outline` round all of him. His arms and feet are a paler mint, his nose
+  // a glossy button of his own colour, and `ink` draws his eyes and mouth.
   const COLOR = {
-    light: '#b9f8e6', body: '#3fd9b8', shade: '#14a88e',
-    nose: '#bff6e7', foot: '#9aeed9', farFoot: '#77d6c0',
-    leg: '#22b99b', farLeg: '#149a80',
-    ink: '#123a33', frames: '#123a33'
+    light: '#c6f5ea', body: '#3fc9ad', shade: '#1f8f80', outline: '#1d6f66',
+    nose: '#46ccb1', noseLight: '#d2f8ef',
+    limb: '#9ce9d5', foot: '#a3ecd9', farFoot: '#83d6c2',
+    leg: '#93e5cf', farLeg: '#77cfba',
+    blush: '#f7a1ab', iris: '#34504b', ink: '#1d3d38', frames: '#22433e'
   };
+  const OUTLINE = 1.3;   // how thick his outline is, on his 100 x 100 grid
 
   // The close button he boops, placed so his nose lands on it when he leans in.
   // `top` is how far down the screen he walks: just under the top edge of a web
@@ -106,84 +108,120 @@ const ScrollBouncerGuy = (() => {
   const FRONT_EYES = { left: 35.5, right: 56.5, y: 49 };
   const FRONT_HIPS = { left: BELLY.x - 8.5, right: BELLY.x + 8.5, y: 64 };
 
+  const line = (color = COLOR.outline) => ({ stroke: color, 'stroke-width': OUTLINE, 'stroke-linejoin': 'round' });
   const body = () => [
-    s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: `url(#sb-body) ${COLOR.body}` }),
-    s('ellipse', { cx: 33, cy: 35, rx: 11, ry: 6.5, transform: 'rotate(-32 33 35)', fill: '#fff', opacity: 0.2 })
+    s('ellipse', { cx: 46, cy: 50, rx: 33, ry: 31.5, fill: `url(#sb-body) ${COLOR.body}`, ...line() }),
+    s('ellipse', { cx: 33, cy: 34, rx: 12, ry: 6.5, transform: 'rotate(-32 33 34)', fill: '#fff', opacity: 0.34 })
   ];
-  // An eye: a white with a dark pupil. `look` nudges the pupil sideways.
-  const eye = (cx, cy, look) => [
-    s('ellipse', { class: 'white', cx, cy, rx: 4.7, ry: 6.7, fill: '#fff' }),
-    s('ellipse', { class: 'pupil', cx: cx + look, cy, rx: 2.7, ry: 4.6, fill: COLOR.ink })
-  ];
+  // An eye: big and shiny, a dark iris with sparkles on a white. `look` nudges the
+  // iris sideways. The whites and sparkles are hidden as he blinks.
+  const eye = (cx, cy, look, k = 1) => {
+    const x = cx + look;
+    return [
+      s('ellipse', { class: 'white', cx, cy, rx: 5.2 * k, ry: 6.4 * k, fill: '#fff' }),
+      s('g', { class: 'pupil' },
+        s('ellipse', { cx: x, cy: cy + 0.4 * k, rx: 4.1 * k, ry: 5.1 * k, fill: COLOR.iris }),
+        s('circle', { class: 'white', cx: x - 1.4 * k, cy: cy - 1.6 * k, r: 1.6 * k, fill: '#fff' }),
+        s('circle', { class: 'white', cx: x + 1.6 * k, cy: cy + 2.2 * k, r: 0.8 * k, fill: '#fff', opacity: 0.9 }),
+        s('circle', { class: 'white', cx: x + 0.4 * k, cy: cy + 3.3 * k, r: 0.45 * k, fill: '#fff', opacity: 0.8 }))
+    ];
+  };
   const stroke = (cls, d, color, width) =>
     s('path', { class: cls, d, stroke: color, 'stroke-width': width, 'stroke-linecap': 'round', fill: 'none' });
-  // An arm hanging straight down from its shoulder: a short sleeve with a paler hand.
+  // An arm hanging straight down from its shoulder: a soft pale sleeve ending in a
+  // mitten, with its thumb on the `thumb` side (+1 towards the right, -1 the left).
+  // It is drawn twice, outline then fill, so the sleeve flows into the mitten.
+  // His arms stretch for dancing: the .sleeve parts lengthen and the .hand parts move down.
   const SHOULDER = { side: { x: 41, y: 57 }, left: { x: 16.5, y: 55 }, right: { x: 75.5, y: 55 } };
-  const arm = (cls, at) =>
-    s('g', { class: cls },
-      s('rect', { x: at.x - 3.75, y: at.y - 3.75, width: 7.5, height: 19, rx: 3.75, fill: COLOR.leg }),
-      s('circle', { cx: at.x, cy: at.y + 15.5, r: 4.4, fill: COLOR.foot }));
-  const lens = (cx, cy) =>
-    s('circle', { cx, cy, r: 8.2, fill: '#fff', 'fill-opacity': 0.14, stroke: COLOR.frames, 'stroke-width': 1.7 });
+  const arm = (cls, at, thumb) => {
+    const layer = (outline) => {
+      const look = outline
+        ? { fill: COLOR.outline, stroke: COLOR.outline, 'stroke-width': 2 * OUTLINE, 'stroke-linejoin': 'round' }
+        : { fill: COLOR.limb };
+      return [
+        s('rect', { class: 'sleeve', x: at.x - 3.9, y: at.y - 4, width: 7.8, height: 19, rx: 3.9, ...look }),
+        s('g', { class: 'hand' },
+          s('ellipse', { cx: at.x + thumb * 3.8, cy: at.y + 13.4, rx: 2.1, ry: 2.7, ...look }),
+          s('ellipse', { cx: at.x, cy: at.y + 15.5, rx: 4.8, ry: 5.4, ...look }),
+          ...(outline ? [] : [s('path', { d: `M${at.x + thumb * 2.2} ${at.y + 11.6}q${thumb * 0.9} 1.3 ${thumb * 0.6} 3`,
+            stroke: COLOR.outline, 'stroke-width': 0.8, 'stroke-linecap': 'round', fill: 'none', opacity: 0.7 })]))
+      ];
+    };
+    return s('g', { class: cls }, ...layer(true), ...layer(false));
+  };
+  // A round lens of his glasses, with a glint of light across the glass.
+  const lens = (cx, cy, r = 9) => s('g', null,
+    s('circle', { cx, cy, r, fill: '#fff', 'fill-opacity': 0.12, stroke: COLOR.frames, 'stroke-width': 2 }),
+    s('path', { d: `M${cx - r * 0.62} ${cy - r * 0.28}A${r * 0.7} ${r * 0.7} 0 0 1 ${cx - r * 0.18} ${cy - r * 0.68}`,
+      stroke: '#fff', 'stroke-width': 1.1, 'stroke-linecap': 'round', fill: 'none', opacity: 0.55 }));
+  // A rosy cheek.
+  const blush = (cx, cy, rx = 6.6, ry = 3.7) => s('ellipse', { cx, cy, rx, ry, fill: 'url(#sb-blush)' });
+  // His glossy button nose, with a soft shadow under it when seen from the front.
+  const nose = (cx, cy, rx, ry) => [
+    s('ellipse', { cx, cy, rx, ry, fill: `url(#sb-nose) ${COLOR.nose}`, ...line() }),
+    s('ellipse', { cx: cx - rx * 0.3, cy: cy - ry * 0.4, rx: rx * 0.36, ry: ry * 0.27, fill: '#fff', opacity: 0.6 })
+  ];
 
   function sideView() {
     const { x, y } = SIDE_EYE;
     const leg = (name, hip, shade, shoe) =>
       s('g', { class: name },
-        s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: shade }),
-        s('rect', { class: 'foot', x: hip - 6.5, y: 87, width: 17.5, height: 9.4, rx: 4.7, fill: shoe }));
+        s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: shade, ...line() }),
+        s('rect', { class: 'foot', x: hip - 6.5, y: 86.6, width: 18, height: 9.8, rx: 4.9, fill: shoe, ...line() }));
 
     return s('g', { class: 'rig' },
       leg('leg-b', HIP_B, COLOR.farLeg, COLOR.farFoot),
       leg('leg-a', HIP_A, COLOR.leg, COLOR.foot),
       s('g', { class: 'torso' },
         ...body(),
-        ...(ARMS ? [arm('arm', SHOULDER.side)] : []),
-        ...(GLASSES ? [stroke('', `M${x - 8} ${y - 1.2}L45 ${y - 3.6}`, COLOR.frames, 1.7)] : []),
-        s('g', { class: 'eye' }, ...eye(x, y, 0.5)),
+        ...(ARMS ? [arm('arm', SHOULDER.side, 1)] : []),
+        ...(GLASSES ? [stroke('', `M${x - 8.6} ${y - 1.2}L45 ${y - 3.6}`, COLOR.frames, 2)] : []),
+        blush(62.5, 62, 5.2, 3.2),
+        s('g', { class: 'eye' }, ...eye(x, y, 0.6, 0.86)),
         // The same eye squeezed shut in delight, shown while he boops the button.
-        stroke('happy', `M${x - 3.1} ${y + 1.6}q3.1 -5.6 6.2 0`, COLOR.ink, 2.2),
-        ...(GLASSES ? [lens(x + 0.2, y)] : []),
+        stroke('happy', `M${x - 3.3} ${y + 1.6}q3.3 -5.8 6.6 0`, COLOR.ink, 2.3),
+        ...(GLASSES ? [lens(x + 0.2, y, 8.6)] : []),
         // A little smile, tucked under his nose.
-        stroke('', 'M74 65.6Q69.6 70.2 64.4 66.4', COLOR.ink, 2),
+        stroke('', 'M74 65.6Q69.6 70.2 64.4 66.4', COLOR.ink, 1.9),
         // His nose: a round button on the front of his face, and what he closes tabs with.
-        s('ellipse', { cx: 81.5, cy: 57.5, rx: 7.5, ry: 6.3, fill: COLOR.nose }),
-        s('ellipse', { cx: 79.6, cy: 55.2, rx: 2.4, ry: 1.7, fill: '#fff', opacity: 0.45 })));
+        ...nose(81.5, 57.5, 7.5, 6.3)));
   }
 
   function frontView() {
     const { left, right, y } = FRONT_EYES;
-    const gap = right - left - 16.4;
+    const R = 9;                         // the lenses' radius
+    const gap = right - left - 2 * R;
     const leg = (cls, hip) => s('g', { class: cls },
-      s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg }),
-      s('rect', { x: hip - 7.5, y: 87, width: 15, height: 9.4, rx: 4.7, fill: COLOR.foot }));
+      s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg, ...line() }),
+      s('rect', { x: hip - 8, y: 86.4, width: 16, height: 10, rx: 5, fill: COLOR.foot, ...line() }));
 
     return s('g', { class: 'front' },
       leg('front-leg-l', FRONT_HIPS.left), leg('front-leg-r', FRONT_HIPS.right),
       s('g', { class: 'front-torso' },
-        ...(ARMS ? [arm('arm-l', SHOULDER.left), arm('arm-r', SHOULDER.right)] : []),
+        ...(ARMS ? [arm('arm-l', SHOULDER.left, 1), arm('arm-r', SHOULDER.right, -1)] : []),
         ...body(),
         s('g', { class: 'face' },
+          blush(left - 6, 61.8), blush(right + 6, 61.8),
           s('g', { class: 'front-eyes' }, ...eye(left, y, 0), ...eye(right, y, 0)),
           // Both eyes shut, for shaking his head.
-          stroke('shut', `M${left - 4.2} ${y + 0.4}q4.2 3.6 8.4 0M${right - 4.2} ${y + 0.4}q4.2 3.6 8.4 0`, COLOR.ink, 2.2),
+          stroke('shut', `M${left - 4.4} ${y + 0.4}q4.4 3.8 8.8 0M${right - 4.4} ${y + 0.4}q4.4 3.8 8.8 0`, COLOR.ink, 2.3),
           // Eyes screwed up with joy, for dancing.
-          stroke('joy', `M${left - 4.2} ${y + 1.8}q4.2 -5.2 8.4 0M${right - 4.2} ${y + 1.8}q4.2 -5.2 8.4 0`, COLOR.ink, 2.2),
+          stroke('joy', `M${left - 4.4} ${y + 1.8}q4.4 -5.4 8.8 0M${right - 4.4} ${y + 1.8}q4.4 -5.4 8.8 0`, COLOR.ink, 2.3),
           ...(GLASSES ? [
-            lens(left, y), lens(right, y),
-            stroke('', `M${left + 8.2} ${y - 0.6}q${gap / 2} -1.8 ${gap} 0`, COLOR.frames, 1.7),
-            stroke('', `M${left - 8.2} ${y - 0.6}L14.5 ${y - 3}M${right + 8.2} ${y - 0.6}L77.5 ${y - 3}`, COLOR.frames, 1.7)
+            lens(left, y, R), lens(right, y, R),
+            stroke('', `M${left + R} ${y - 0.6}q${gap / 2} -2 ${gap} 0`, COLOR.frames, 2),
+            stroke('', `M${left - R} ${y - 0.6}L13.8 ${y - 3}M${right + R} ${y - 0.6}L78.2 ${y - 3}`, COLOR.frames, 2)
           ] : []),
           // His mouth: a little smile, or a firm flat line while he shakes his head.
-          stroke('smile', 'M40.6 66.2Q46 71.2 51.4 66.2', COLOR.ink, 2),
-          stroke('flat', 'M42 67.8H50', COLOR.ink, 2),
+          stroke('smile', 'M41.6 68.4Q46 72 50.4 68.4', COLOR.ink, 1.7),
+          stroke('flat', 'M42 68.4H50', COLOR.ink, 1.9),
           // A big open grin, for dancing.
           s('g', { class: 'grin' },
-            s('path', { d: 'M39.6 64.8Q46 74.6 52.4 64.8Z', fill: COLOR.ink }),
-            s('ellipse', { cx: 46, cy: 68.3, rx: 3.2, ry: 1.4, fill: '#f28da0' })),
-          // His nose, seen end on.
-          s('circle', { cx: BELLY.x, cy: 58, r: 6.5, fill: COLOR.nose }),
-          s('ellipse', { cx: BELLY.x - 2, cy: 55.8, rx: 2.4, ry: 1.7, fill: '#fff', opacity: 0.45 }))));
+            s('path', { d: 'M39.6 65.4Q46 75.2 52.4 65.4Z', fill: COLOR.ink }),
+            s('ellipse', { cx: 46, cy: 68.9, rx: 3.2, ry: 1.4, fill: '#f28da0' })),
+          // His nose, seen end on, with a soft shadow beneath it.
+          s('ellipse', { cx: BELLY.x, cy: 65.6, rx: 6, ry: 1.6, fill: COLOR.shade, opacity: 0.35 }),
+          ...nose(BELLY.x, 58.6, 7.3, 7))));
   }
 
   function buildGuy() {
@@ -192,7 +230,15 @@ const ScrollBouncerGuy = (() => {
         s('radialGradient', { id: 'sb-body', cx: 0.34, cy: 0.26, r: 0.85 },
           s('stop', { offset: 0, 'stop-color': COLOR.light }),
           s('stop', { offset: 0.42, 'stop-color': COLOR.body }),
-          s('stop', { offset: 1, 'stop-color': COLOR.shade }))),
+          s('stop', { offset: 1, 'stop-color': COLOR.shade })),
+        s('radialGradient', { id: 'sb-nose', cx: 0.36, cy: 0.3, r: 0.8 },
+          s('stop', { offset: 0, 'stop-color': COLOR.noseLight }),
+          s('stop', { offset: 0.5, 'stop-color': COLOR.nose }),
+          s('stop', { offset: 1, 'stop-color': COLOR.shade })),
+        s('radialGradient', { id: 'sb-blush' },
+          s('stop', { offset: 0, 'stop-color': COLOR.blush, 'stop-opacity': 0.95 }),
+          s('stop', { offset: 0.45, 'stop-color': COLOR.blush, 'stop-opacity': 0.75 }),
+          s('stop', { offset: 1, 'stop-color': COLOR.blush, 'stop-opacity': 0 }))),
       sideView(), frontView()), DRAWING);
   }
 
@@ -205,7 +251,8 @@ const ScrollBouncerGuy = (() => {
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
       joy: find('joy'), grin: find('grin'), legL: find('front-leg-l'), legR: find('front-leg-r'),
-      whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil')
+      whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil'),
+      sleeves: svg.querySelectorAll('.arm-l .sleeve, .arm-r .sleeve'), hands: svg.querySelectorAll('.arm-l .hand, .arm-r .hand')
     };
   }
 
@@ -284,10 +331,8 @@ const ScrollBouncerGuy = (() => {
         const reach = d ? d.reach : 1;
         if (part.reach !== reach) {
           part.reach = reach;
-          for (const [arm, at] of [[part.armL, SHOULDER.left], [part.armR, SHOULDER.right]]) {
-            arm.firstChild.setAttribute('height', r3(19 + 15.5 * (reach - 1)));
-            arm.lastChild.setAttribute('cy', r3(at.y + 15.5 * reach));
-          }
+          for (const sleeve of part.sleeves) sleeve.setAttribute('height', r3(19 + 15.5 * (reach - 1)));
+          for (const hand of part.hands) hand.setAttribute('transform', `translate(0 ${r3(15.5 * (reach - 1))})`);
         }
       }
       return;
@@ -550,12 +595,30 @@ const ScrollBouncerGuy = (() => {
   const clamp01 = (t) => Math.max(0, Math.min(1, t));
 
   // His pose t seconds into the song, which move that is, and how much to spin or crouch him.
+  // Each move flows into the next over BLEND seconds, and springs into the ta-da faster.
+  const BLEND = 0.35, SPRING = 0.08;
   function danceAt(t, calm) {
+    const i = DANCE.moves.findIndex((m) => t < m.until);
+    const at = i === -1 ? DANCE.moves.length - 1 : i;
+    const now = moveAt(at, t, calm);
+    const since = t - (at === 0 ? 0 : DANCE.moves[at - 1].until);
+    const over = now.step.move === 'tada' ? SPRING : BLEND;
+    if (at === 0 || since >= over) return now;
+    const was = moveAt(at - 1, t, calm), e = ease(since / over);
+    const mix = (a, b) => a + (b - a) * e;
+    const pose = {};
+    for (const key of Object.keys(now.pose)) {
+      const a = was.pose[key], b = now.pose[key];
+      pose[key] = typeof b === 'number' ? mix(a, b) : e < 0.5 ? a : b;
+    }
+    return { pose, step: now.step, spin: mix(was.spin, now.spin), crouch: mix(was.crouch, now.crouch) };
+  }
+
+  // His pose for one move of the dance, t seconds into the song, even past the move's end.
+  function moveAt(at, t, calm) {
     const b = (t * DANCE.bpm) / 60;          // beats since the music started
     const n = Math.floor(b), f = b - n;      // which beat, and how far through it
     const k = calm ? 0.4 : 1;                // smaller moves for people who prefer less motion
-    const i = DANCE.moves.findIndex((m) => t < m.until);
-    const at = i === -1 ? DANCE.moves.length - 1 : i;
     const step = DANCE.moves[at], since = t - (at === 0 ? 0 : DANCE.moves[at - 1].until);
     const p = { ...STANDING, eyes: 'joy', mouth: 'grin', reach: STRETCH };
     // A bounce on every beat: squashed as he lands on the beat, stretched in the air between.
@@ -589,16 +652,21 @@ const ScrollBouncerGuy = (() => {
         break;
       }
       case 'disco': {  // one hand points up to the sky and down to the floor, then the other
-        const side = Math.floor(b / 4) % 2 === 0 ? 1 : -1;     // +1 his right hand, -1 his left
-        const u = Math.cos(Math.PI * b), up = Math.sign(u) * Math.sqrt(Math.abs(u));   // +1 up, -1 down
+        const up = Math.tanh(2.5 * Math.cos(Math.PI * b)) / Math.tanh(2.5);   // +1 up, -1 down, snapping between
         const point = 95 + 62 * up;
+        // The pose with his right hand (+1) or his left (-1) doing the pointing.
+        const hand = (side) => ({
+          armR: side > 0 ? -point : -30, armL: side > 0 ? 30 : point,
+          x: 7 * k * side * up, tilt: -7 * k * side * up,
+          legR: side > 0 ? -12 * k * Math.max(0, up) : 0, legL: side > 0 ? 0 : 12 * k * Math.max(0, up),
+          look: 2.4 * side * Math.max(0, up)
+        });
+        // Four beats with one hand, then he hands over to the other during the last bit of the fourth.
+        const side = Math.floor(b / 4) % 2 === 0 ? 1 : -1;
+        const w = ease(clamp01(((b % 4) - 3.4) / 0.6));
+        const a = hand(side), c = hand(-side);
         bounce(5);
-        p.armR = side > 0 ? -point : -30;
-        p.armL = side > 0 ? 30 : point;
-        p.x = 7 * k * side * up;
-        p.tilt = -7 * k * side * up;
-        p[side > 0 ? 'legR' : 'legL'] = -side * 12 * k * Math.max(0, up);
-        p.look = 2.4 * side * Math.max(0, up);
+        for (const key of Object.keys(a)) p[key] = a[key] + (c[key] - a[key]) * w;
         break;
       }
       case 'jumps': {  // out on one beat and back in on the next: a star jump a second

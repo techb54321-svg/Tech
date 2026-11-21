@@ -197,6 +197,8 @@ adb shell appops set "$APP" GET_USAGE_STATS allow
 adb shell appops set "$APP" SYSTEM_ALERT_WINDOW allow
 adb shell pm grant "$APP" android.permission.POST_NOTIFICATIONS || true
 adb shell setprop log.tag.ScrollBouncer DEBUG
+# Room for a few minutes of the phone's log: the dance alone takes over two.
+adb logcat -G 16M || true
 adb logcat -c
 # Opening the app puts him on duty.
 adb shell am start -n "$APP/.MainActivity" > /dev/null
@@ -320,7 +322,7 @@ SHOT=0
 while [ $(($(date +%s) - START)) -lt 150 ]; do
   SHOT=$((SHOT + 1))
   adb exec-out screencap -p > "dance/$(printf %02d "$SHOT").png"
-  if adb logcat -d | tr -d '\r' | grep -qE "ScrollBouncer *: let back in$"; then LET_IN=yes; break; fi
+  if adb logcat -d -s ScrollBouncer | tr -d '\r' | grep -qE "ScrollBouncer *: let back in$"; then LET_IN=yes; break; fi
   sleep 5
 done
 rm -f jumping

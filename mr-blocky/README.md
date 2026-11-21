@@ -74,10 +74,11 @@ Click the toolbar icon to:
 ## Dance deals
 
 Now and then, after "Nope not now", he pauses... "...unless... you want to
-dance with me?" Say yes and he dances for a minute to his own song: dancing,
-star jumps, marching on the spot, a wiggle and a big finish. Dance along to the
-end and he boops the page back open and lets you stay for 5 minutes. Then he
-comes back: "Time's up!"
+dance with me?" Say yes and the lights come up, and he dances for a minute to
+his own song, calling out each move for you to copy: side to side, disco point,
+star jumps, marching on the spot, arms up and wiggle, a spin, and a jump for
+the big finish. Dance along to the end and he boops the page back open and lets
+you stay for 5 minutes. Then he comes back: "Time's up!"
 
 - He offers about one time in four, and never twice within two hours, so
   opening a site over and over hoping for a deal does not work.

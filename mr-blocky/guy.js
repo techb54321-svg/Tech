@@ -280,6 +280,15 @@ const ScrollBouncerGuy = (() => {
         // One arm hangs at his side; the other goes up and wags along with his head.
         set(part.armL, `rotate(${d ? r3(d.armL) : 14} ${SHOULDER.left.x} ${SHOULDER.left.y})`);
         set(part.armR, `rotate(${r3(d ? d.armR : -14 - pose.raise * (140 + 2.6 * pose.shake))} ${SHOULDER.right.x} ${SHOULDER.right.y})`);
+        // For dancing his arms stretch out longer, cartoon fashion, so the moves show.
+        const reach = d ? d.reach : 1;
+        if (part.reach !== reach) {
+          part.reach = reach;
+          for (const [arm, at] of [[part.armL, SHOULDER.left], [part.armR, SHOULDER.right]]) {
+            arm.firstChild.setAttribute('height', r3(19 + 15.5 * (reach - 1)));
+            arm.lastChild.setAttribute('cy', r3(at.y + 15.5 * reach));
+          }
+        }
       }
       return;
     }
@@ -522,16 +531,22 @@ const ScrollBouncerGuy = (() => {
     bpm: 120,
     moves: [
       { until: 4, move: 'ready', say: 'Get ready!' },
-      { until: 20, move: 'bop', say: 'Dance!' },
+      { until: 12, move: 'side', say: 'Side to side!' },
+      { until: 20, move: 'disco', say: 'Disco point!' },
       { until: 36, move: 'jumps', say: 'Star jumps!' },
       { until: 48, move: 'march', say: 'March on the spot!' },
       { until: 58, move: 'wiggle', say: 'Arms up and wiggle!' },
-      { until: 64, move: 'finish', say: 'Big finish!' },
+      { until: 62, move: 'spin', say: 'Spin around!' },
+      { until: 64, move: 'crouch', say: 'Get ready to jump…' },
       { until: 67, move: 'tada', say: 'Ta-da!' }
     ]
   };
   DANCE.length = DANCE.moves[DANCE.moves.length - 1].until;
-  const STANDING = { tilt: 0, hop: 0, armL: 14, armR: -14, legL: 0, legR: 0, liftL: 0, liftR: 0, eyes: 'open', mouth: 'smile', look: 0 };
+  // x is a step to the side, sx and sy squash and stretch him, and reach is how long
+  // his arms are: they stretch out for dancing, so the moves can be seen.
+  const STANDING = { tilt: 0, hop: 0, x: 0, sx: 1, sy: 1, reach: 1, armL: 14, armR: -14, legL: 0, legR: 0,
+    liftL: 0, liftR: 0, eyes: 'open', mouth: 'smile', look: 0 };
+  const STRETCH = 1.8;
   const clamp01 = (t) => Math.max(0, Math.min(1, t));
 
   // His pose t seconds into the song, which move that is, and how much to spin or crouch him.
@@ -542,72 +557,138 @@ const ScrollBouncerGuy = (() => {
     const i = DANCE.moves.findIndex((m) => t < m.until);
     const at = i === -1 ? DANCE.moves.length - 1 : i;
     const step = DANCE.moves[at], since = t - (at === 0 ? 0 : DANCE.moves[at - 1].until);
-    const p = { ...STANDING, eyes: 'joy', mouth: 'grin' };
+    const p = { ...STANDING, eyes: 'joy', mouth: 'grin', reach: STRETCH };
+    // A bounce on every beat: squashed as he lands on the beat, stretched in the air between.
+    const bounce = (height, give = 0.07) => {
+      const land = Math.cos(TAU * f);
+      p.hop = height * k * Math.sin(Math.PI * f);
+      p.sy = 1 - give * k * land;
+      p.sx = 1 + 0.75 * give * k * land;
+    };
     let spin = 1, crouch = 1;
     switch (step.move) {
-      case 'ready':   // nodding along to the count-in
-        Object.assign(p, { eyes: 'open', mouth: 'smile', hop: 2.5 * k * Math.sin(Math.PI * f) });
-        break;
-      case 'bop': {   // bouncing on every beat, swaying, an arm up on each side in turn
-        const sway = Math.sin((Math.PI * b) / 2);
-        p.hop = 7 * k * Math.sin(Math.PI * f);
-        p.tilt = 9 * k * sway;
-        p.armL = 14 + 130 * k * Math.max(0, sway);
-        p.armR = -14 - 130 * k * Math.max(0, -sway);
-        p.look = 1.5 * sway;
+      case 'ready': {  // bobbing to the count-in, stretching his arms out ready
+        bounce(3, 0.03);
+        Object.assign(p, { eyes: 'open', mouth: 'smile', reach: 1 + (STRETCH - 1) * ease(clamp01(t / 2.5)) });
+        const swing = 12 * k * Math.sin(Math.PI * b);
+        p.armL = 14 + swing;
+        p.armR = -14 + swing;
         break;
       }
-      case 'jumps': { // out on one beat and back in on the next: a star jump a second
+      case 'side': {   // stepping from side to side, arms swinging after him
+        const sway = Math.sin((Math.PI * b) / 2);   // over and back every four beats
+        bounce(6);
+        p.x = 18 * k * sway;
+        p.tilt = 8 * k * Math.cos((Math.PI * b) / 2);
+        const swing = -50 * k * Math.sin((Math.PI * b) / 2 - 0.6);
+        p.armL = 22 + swing;
+        p.armR = -22 + swing;
+        p.legL = p.legR = 7 * k * sway;
+        p[n % 2 ? 'liftL' : 'liftR'] = 6 * k * Math.sin(Math.PI * f);
+        p.look = 2 * sway;
+        break;
+      }
+      case 'disco': {  // one hand points up to the sky and down to the floor, then the other
+        const side = Math.floor(b / 4) % 2 === 0 ? 1 : -1;     // +1 his right hand, -1 his left
+        const u = Math.cos(Math.PI * b), up = Math.sign(u) * Math.sqrt(Math.abs(u));   // +1 up, -1 down
+        const point = 95 + 62 * up;
+        bounce(5);
+        p.armR = side > 0 ? -point : -30;
+        p.armL = side > 0 ? 30 : point;
+        p.x = 7 * k * side * up;
+        p.tilt = -7 * k * side * up;
+        p[side > 0 ? 'legR' : 'legL'] = -side * 12 * k * Math.max(0, up);
+        p.look = 2.4 * side * Math.max(0, up);
+        break;
+      }
+      case 'jumps': {  // out on one beat and back in on the next: a star jump a second
         const e = ease(clamp01(f / 0.6)), spread = n % 2 === 0 ? e : 1 - e;
-        p.hop = 16 * k * Math.sin(Math.PI * f);
-        p.armL = 14 + 136 * spread;
-        p.armR = -14 - 136 * spread;
-        p.legL = 14 * spread;
-        p.legR = -14 * spread;
+        bounce(22, 0.09);
+        p.armL = 14 + 140 * spread;
+        p.armR = -14 - 140 * spread;
+        p.legL = 26 * spread;
+        p.legR = -26 * spread;
         break;
       }
-      case 'march': { // a knee up on every beat, the other arm pumping
+      case 'march': {  // knees up high in turn, the other arm pumping
         const lift = Math.sin(Math.PI * f), left = n % 2 === 0;
-        p.liftL = left ? 11 * k * lift : 0;
-        p.liftR = left ? 0 : 11 * k * lift;
-        p.armL = 14 + (left ? 0 : 62 * k * lift);
-        p.armR = -14 - (left ? 62 * k * lift : 0);
-        p.tilt = (left ? 2.5 : -2.5) * k * lift;
-        p.mouth = 'smile';
+        bounce(4, 0.05);
+        p.liftL = left ? 18 * k * lift : 0;
+        p.liftR = left ? 0 : 18 * k * lift;
+        p.armL = 14 + (left ? 8 : 90 * k * lift);
+        p.armR = -14 - (left ? 90 * k * lift : 8);
+        p.tilt = (left ? 4 : -4) * k * lift;
         break;
       }
-      case 'wiggle': { // arms up, wiggling once a beat
-        const w = Math.sin(2 * Math.PI * b);
-        p.armL = 152 + 12 * w;
-        p.armR = -152 + 12 * w;
+      case 'wiggle': { // arms right up, waving together, and a shimmy
+        const w = Math.sin(Math.PI * b);
+        bounce(3, 0.04);
+        p.reach = STRETCH + 0.25;
+        p.armL = 162 + 22 * w;
+        p.armR = -162 + 22 * w;
+        p.x = 4 * k * Math.sin(4 * Math.PI * b);
         p.tilt = 11 * k * w;
-        p.hop = 3 * k * Math.abs(Math.sin(Math.PI * b));
         p.look = 2 * w;
         break;
       }
-      case 'finish':
-        if (since < 4) {   // two spins, arms out
-          if (!calm) spin = Math.cos(Math.PI * since);
-          p.armL = 104;
-          p.armR = -104;
-          p.hop = 4 * k * Math.abs(Math.sin(Math.PI * b));
-        } else {           // then down low, trembling, ready to spring
-          crouch = 1 - 0.13 * ease(clamp01((since - 4) / 0.4));
-          p.armL = 30;
-          p.armR = -30;
-          p.tilt = 1.2 * k * Math.sin(t * 40);
-          p.eyes = 'shut';
-          p.mouth = 'smile';
-        }
+      case 'spin':     // two spins, arms out
+        if (!calm) spin = Math.cos(Math.PI * since);
+        bounce(5);
+        p.armL = 108;
+        p.armR = -108;
         break;
-      default:             // ta-da!
-        p.hop = since < 0.45 ? 26 * k * Math.sin((Math.PI * since) / 0.45) : 0;
-        p.armL = 145;
-        p.armR = -145;
-        p.legL = 9;
-        p.legR = -9;
+      case 'crouch':   // down low, trembling, ready to spring
+        crouch = 1 - 0.14 * ease(clamp01(since / 0.4));
+        p.armL = 34;
+        p.armR = -34;
+        p.tilt = 1.2 * k * Math.sin(t * 40);
+        p.eyes = 'shut';
+        p.mouth = 'smile';
+        break;
+      default:         // ta-da!
+        p.hop = since < 0.5 ? 30 * k * Math.sin((Math.PI * since) / 0.5) : 0;
+        if (since < 0.5) { p.sy = 1 + 0.08 * k; p.sx = 1 - 0.05 * k; }
+        p.armL = 150;
+        p.armR = -150;
+        p.legL = 14;
+        p.legR = -14;
     }
     return { pose: p, step, spin, crouch };
+  }
+
+  // Coloured lights for the dance: beams from the top sweeping across the dark, and a
+  // glow on the floor under him, all flashing on the beat. Still, and dimmer, for
+  // people who prefer less motion.
+  const LIGHTS = ['#f472b6', '#fbbf24', '#a78bfa', '#38bdf8'];
+  function partyLights(feet, width) {
+    const beams = LIGHTS.map((color, i) => css(node(null, 'div', null, []), {
+      position: 'absolute', top: '-8%', left: `${3 + i * 24}%`, width: '22%', height: '120%', transformOrigin: '50% 0%',
+      background: `linear-gradient(to bottom, ${color}, transparent 78%)`,
+      clipPath: 'polygon(44% 0, 56% 0, 100% 100%, 0 100%)', opacity: '0.2'
+    }));
+    const glow = css(node(null, 'div', null, []), {
+      position: 'absolute', left: '50%', top: `${feet}px`, width: `${Math.min(width * 0.95, 420)}px`, height: '90px',
+      transform: 'translate(-50%, -50%)', borderRadius: '50%', opacity: '0.5'
+    });
+    const el = css(node(null, 'div', null, [...beams, glow]), { ...FILL, pointerEvents: 'none', opacity: '0' });
+    let shown = -1;
+    return {
+      el,
+      at(t, calm) {
+        const b = (t * DANCE.bpm) / 60, n = Math.floor(b), flash = (1 - (b - n)) ** 2;
+        beams.forEach((beam, i) => {
+          const angle = calm ? 14 * (i - 1.5) : 26 * Math.sin((Math.PI * t) / 2 + i * 1.7);
+          beam.style.transform = `rotate(${r3(angle)}deg)`;
+          beam.style.opacity = calm ? '0.16' : `${r3(0.13 + 0.2 * flash)}`;
+        });
+        if (n !== shown) {
+          shown = n;
+          const color = LIGHTS[(calm ? Math.floor(n / 8) : n) % LIGHTS.length];
+          glow.style.background = `radial-gradient(closest-side, ${color}, transparent)`;
+        }
+        glow.style.opacity = calm ? '0.4' : `${r3(0.3 + 0.35 * flash)}`;
+      }
+    };
   }
 
   // Starts fetching the music. Pages loaded from files cannot fetch, but an <audio>
@@ -803,7 +884,15 @@ const ScrollBouncerGuy = (() => {
     stop.addEventListener('click', () => { stopped = true; });
     const unkey = keys((e) => { if (e.key === 'Escape') stopped = true; });
 
+    // He steps from side to side by moving the whole of him, shadow and all.
+    const unit = (SIZE / 100) * big;
+    const stand = (x) => { guy.style.transform = `translate(${r3(centre.x + x * unit)}px, ${r3(centre.y)}px) scale(${r3(big)})`; };
+    const shadow = guy.firstChild;
+    const lights = partyLights(feet, width);
+    stage.insertBefore(lights.el, guy);
+
     await song.begin(2500);
+    fadeIn(lights.el, 400);
     let jumps = 0, counting = false;
     const tick = () => {
       tally.textContent = jumps >= counter.need ? `${jumps} star jumps ✓` : `${counter.hint}  ${jumps} / ${counter.need}`;
@@ -816,7 +905,10 @@ const ScrollBouncerGuy = (() => {
         if (t >= DANCE.length) return finish('done');
         const { pose: p, step, spin, crouch } = danceAt(t, calm);
         pose.dance = p;
-        squash.style.transform = spin !== 1 || crouch !== 1 ? `scale(${r3(spin)}, ${r3(crouch)})` : '';
+        stand(p.x);
+        squash.style.transform = `scale(${r3(spin * p.sx)}, ${r3(crouch * p.sy)})`;
+        shadow.style.transform = `scale(${r3(Math.max(0.55, 1 - p.hop / 60))})`;
+        lights.at(t, calm);
         if (step !== shown) {
           shown = step;
           title.textContent = step.say;
@@ -837,8 +929,16 @@ const ScrollBouncerGuy = (() => {
     });
     unkey();
     if (counting) counter.stop();
+    for (const el of [title, tally, meter, left, stop, lights.el]) fadeOut(el, 300).then(() => el.remove());
+    // Back down to earth: feet on the floor in the middle, and his arms their usual length.
+    const last = pose.dance;
     squash.style.transform = '';
-    for (const el of [title, tally, meter, left, stop]) fadeOut(el).then(() => el.remove());
+    shadow.style.transform = '';
+    await tween(calm ? 1 : 260, (u) => {
+      const e = ease(u);
+      pose.dance = { ...last, x: 0, hop: last.hop * (1 - e), reach: last.reach + (1 - last.reach) * e };
+      stand(last.x * (1 - e));
+    });
 
     // Something to say, in a bubble just above his head.
     const say = h('say');

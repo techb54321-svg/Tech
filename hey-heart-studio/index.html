@@ -237,6 +237,12 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .qopt.right{background:#D8F3E3;box-shadow:0 0 0 5px #23825A,0 6px 0 rgba(35,130,90,.35)}
 .qopt.wrong{animation:shake .45s}
 @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.clues{position:absolute;top:4%;left:50%;transform:translateX(-50%);z-index:3;display:flex;gap:clamp(6px,1vw,10px);align-items:center;background:rgba(255,248,234,.92);padding:clamp(4px,.8vw,8px) clamp(10px,1.6vw,16px);border-radius:99px;font-size:clamp(14px,2vw,22px);box-shadow:0 4px 14px rgba(0,0,0,.22);pointer-events:none}
+.clues i{width:clamp(12px,1.8vw,20px);aspect-ratio:1;border-radius:50%;background:#E3D6C3;transition:background .3s}
+.clues i.on{background:#B3163A}
+.clues i.new{animation:clue .6s cubic-bezier(.2,1.6,.4,1)}
+.clues.solved i{background:#F4B82E;box-shadow:0 0 10px #F4B82E}
+@keyframes clue{from{transform:scale(0)}}
 .card-award{background:radial-gradient(circle at 50% 35%,#2A8A90 0,transparent 60%),#1C6E74;justify-items:center;align-content:center;gap:3%}
 .card-award .rosette{position:relative;width:clamp(120px,24vw,300px);aspect-ratio:1;border-radius:50%;background:url(avatars/hazel.jpg) 50% 18%/150% no-repeat,#F6E4D2;border:clamp(6px,1.2vw,14px) solid #F4B82E;box-shadow:0 0 0 clamp(4px,.8vw,10px) #B3163A}
 .card-award .rosette::after{content:"";position:absolute;left:50%;bottom:-22%;width:34%;height:30%;transform:translateX(-50%);background:linear-gradient(90deg,#B3163A 0 48%,transparent 48% 52%,#B3163A 52%);clip-path:polygon(0 0,100% 0,100% 100%,75% 80%,50% 100%,25% 80%,0 100%);z-index:-1}
@@ -459,6 +465,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
   <div class="family-grid">
     <div class="player" id="player">
       <div class="stage" id="stage">
+        <div class="clues" id="clues" hidden aria-hidden="true"><span>🔍</span><i></i><i></i><i></i><i></i></div>
         <button class="start" id="start"><span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><b id="start-label">Play Mia's video</b></span></button>
       </div>
       <div class="caption" id="caption" aria-live="polite"></div>
@@ -527,27 +534,27 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 /* ---------- scene library: Heart · Innocent murmur v1.0 ---------- */
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
-  {id:'intro', kind:'title', core:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v19-hello', clen:10, core:true, sfx:'knock', lead:900, voice:'hello', vdur:10.36, voicedFor:{name:'Mia'}, words:[0,.41,1.68,2.07,2.61,2.94,3.84,4.11,5.31,5.54,5.7,5.86,6.2,6.47,6.58,6.73,7.27,8.31,8.57,8.66,8.87,9.04,9.51,9.83], text:"Knock, knock! Hi {name}, it's me, your heart! You had a big day at the doctor's today. Want to know a secret about me?"},
-  {id:'home', clip:'v10-glow', clen:5, cuts:[{at:4.3, clip:'v6-home', clen:10}], core:true, task:'hand', voice:'home', vdur:9.99, words:[0,.29,.64,1.24,1.49,2.35,2.6,3.09,3.38,3.52,3.66,4.55,4.85,5.06,5.45,6.25,6.53,6.71,7.11,7.9,8.93], text:"I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump, thump-thump!"},
-  {id:'squeeze', clip:'v11-fist', clen:10, core:true, task:'fist', voice:'squeeze', vdur:10.91, words:[0,.31,.56,.7,1.3,1.59,1.83,2.17,2.33,3.08,3.72,3.86,4.62,4.85,5.11,5.7,6.8,7.13,7.43,8.21,8.6,8.82,9.02,9.39,9.75,10.15], text:"Now make a fist. That's how big I am! Squeeze it tight... and let go. Squeeze... and let go. That's what I do, all day long!"},
+  {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
+  {id:'hello', clip:'v19-hello', clen:10, core:true, sfx:'knock', lead:900, voice:'hello2', vdur:12.31, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.37,1.13,1.51,2.02,2.33,2.58,2.79,3.95,4.64,5.19,5.64,5.88,6.04,6.59,7.01,7.55,8.44,8.8,8.96,9.2,9.4,9.73,10.45,10.62,10.97,11.12,11.34,11.59], text:"Knock, knock! Hi {name}, it's me, your heart! Today, {doctor} heard a secret sound inside me. Want to be a heart detective and find out what it is?"},
+  {id:'home', clip:'v10-glow', clen:5, cuts:[{at:4.3, clip:'v6-home', clen:10}], core:true, clue:1, task:'hand', voice:'home', vdur:9.99, words:[0,.29,.64,1.24,1.49,2.35,2.6,3.09,3.38,3.52,3.66,4.55,4.85,5.06,5.45,6.25,6.53,6.71,7.11,7.9,8.93], text:"I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump, thump-thump!"},
+  {id:'squeeze', clip:'v11-fist', clen:10, core:true, clue:2, task:'fist', voice:'squeeze', vdur:10.91, words:[0,.31,.56,.7,1.3,1.59,1.83,2.17,2.33,3.08,3.72,3.86,4.62,4.85,5.11,5.7,6.8,7.13,7.43,8.21,8.6,8.82,9.02,9.39,9.75,10.15], text:"Now make a fist. That's how big I am! Squeeze it tight... and let go. Squeeze... and let go. That's what I do, all day long!"},
   {id:'loop', clip:'v2-loop', minRate:.5, core:true, voice:'loop', vdur:8.17, words:[0,.37,.73,.91,1.56,1.72,2.07,2.46,2.61,2.75,2.95,3.7,4.15,4.3,4.51,5.24,5.54,6.39,6.56,6.94,7.41,7.54], text:"Every time I squeeze, I push blood up to your head, down to your toes, and all the way back to me!"},
-  {id:'doors', clip:'v17-doors', clen:10, core:true, sfx:'beat2', task:'say', voice:'doors', vdur:13.37, words:[0,.7,.88,1.08,1.28,1.71,2.46,3.08,4.15,4.46,4.77,5.17,5.62,6.3,6.54,6.66,7.01,7.38,7.88,8.15,8.71,10.09,10.41,10.53,10.74,11.22,12.27], text:"Inside me there are four rooms, called chambers, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
-  {id:'listen', clip:'v19-listen', clen:10, core:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', clip:'v20-whoosh', clen:17, minRate:.5, detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh', vdur:18.9, voicedFor:{doctor:'Dr Sarah'}, words:[0,.27,.76,1.2,1.45,1.89,2.57,3.41,4.01,4.57,5.61,6.07,6.57,6.83,7.25,7.59,8.56,9.11,9.49,9.81,10.41,10.84,11.08,12.09,12.63,13.28,13.82,14.12,14.25,14.8,15.7,16.03,16.31,16.88,17.15,17.78], text:"And {doctor} heard something extra. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through my doors nice and fast, like water whooshing through a garden hose. And my doors are working perfectly!"},
-  {id:'common', clip:'v19-hug', clen:5, cuts:[{at:3.4, clip:'v20-dance', clen:10}], minRate:.5, detect:'common', voice:'common', vdur:14.4, words:[0,.33,.49,1.07,2.07,2.45,3.6,4.13,4.32,4.64,4.78,5.14,5.41,5.77,6.01,6.22,7.29,7.88,8.16,8.29,8.5,9.08,9.78,10.4,10.93,12.42,12.83,13.31,13.47], text:"Is a whoosh scary? No way! Lots and lots of kids have one, just like you. Doctors call it an innocent murmur. Innocent means harmless. I'm healthy and strong!"},
+  {id:'doors', clip:'v17-doors', clen:10, core:true, clue:3, sfx:'beat2', task:'say', voice:'doors', vdur:13.37, words:[0,.7,.88,1.08,1.28,1.71,2.46,3.08,4.15,4.46,4.77,5.17,5.62,6.3,6.54,6.66,7.01,7.38,7.88,8.15,8.71,10.09,10.41,10.53,10.74,11.22,12.27], text:"Inside me there are four rooms, called chambers, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
+  {id:'tryit', clip:'v20-play', clen:10, core:true, clue:4, task:'jump', voice:'tryit', vdur:7.57, words:[0,.37,.73,.91,1.06,1.38,1.74,2.53,2.82,3.04,3.25,3.68,3.82,3.99,4.93,5.2,5.39,5.78,6,6.61], text:"Now jump up and down five times! Then put your hand on your chest. Can you feel me drumming faster?"},
+  {id:'listen', clip:'v19-listen', clen:10, off:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
+  {id:'whoosh', clip:'v19-listen', clen:10, cuts:[{at:6.0, clip:'v20-whoosh', clen:17}], core:true, detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh2', vdur:14.21, voicedFor:{doctor:'Dr Sarah'}, words:[0,.44,.62,.79,1.28,1.93,2.53,2.96,3.67,4.66,5.18,5.63,6.19,6.54,7.02,7.47,7.92,8.31,8.98,9.56,9.93,10.44,10.95,11.2,11.98,12.31,12.82,13.02,13.14], text:"Now for the secret sound {doctor} heard. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through me, nice and fast, like water in a hose!"},
+  {id:'common', clip:'v19-hug', clen:5, cuts:[{at:3.4, clip:'v20-dance', clen:10}], detect:'common', voice:'common2', vdur:12.86, words:[0,.52,.72,1.09,1.24,1.61,1.82,1.93,2.74,3.01,3.25,4.45,5.06,5.36,5.7,6,6.62,7.3,7.95,8.55,9.58,10.14,10.59,11.19,11.7,11.92], text:"Lots and lots of kids have a whoosh, just like you! Doctors call it an innocent murmur. Innocent means harmless. So keep running, jumping and playing!"},
   {id:'fever', clip:'v19-fever', clen:10, detect:'fever', optional:true, sfx:'drumfast', voice:'fever', vdur:9.89, words:[0,.3,.5,.82,1.01,1.86,2.13,2.32,2.55,3,3.43,4.42,4.74,4.99,5.82,6.11,6.26,6.63,7.01,7.35,8.17,8.62,9.14], text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
-  {id:'play', clip:'v20-play', clen:10, detect:'play', voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
-  {id:'tryit', img:'jump-drum', a:[0,22,100], b:[18,26,72], optional:true, off:true, text:"Try it! Put your hand on your chest and jump up and down ten times. Can you feel me drumming?"},
+  {id:'play', clip:'v20-play', clen:10, off:true, voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
   {id:'grow', clip:'v20-grow', clen:10, detect:'grow', sfx:'slow', sfxAt:[{k:'drumsoft', at:5.3}], voice:'grow', vdur:9.57, words:[0,.27,.46,.77,1.46,1.7,2.25,2.52,2.75,3.63,3.89,4.16,4.35,5.82,6.2,6.89,7.23,7.52,8.24,8.71,8.86], text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
-  {id:'outro', kind:'end', core:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
-  {id:'quiz', kind:'quiz', core:true, voice:'quiz', vdur:3.07, words:[0,.62,1.41,1.7,1.88,2.1,2.3], text:"Quiz time! Let's see what you remember."},
-  {id:'award', kind:'award', core:true, sfx:'chime', voice:'expert', vdur:3.67, voicedFor:{name:'Mia'}, words:[0,.8,1.63,1.99,2.16,2.53,2.84], text:"Wow, {name}! You're a real heart expert!"},
+  {id:'outro', kind:'end', off:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
+  {id:'quiz', kind:'quiz', core:true, voice:'quiz2', vdur:3.85, words:[0,.74,1.51,1.75,1.93,2.38,2.81], text:"Detective time! Can you answer three questions?"},
+  {id:'award', kind:'award', core:true, sfx:'chime', voice:'expert2', vdur:5.25, voicedFor:{name:'Mia'}, words:[0,.6,1.32,1.65,2.07,2.22,3.07,3.38,3.54,3.88,4.23], text:"Wow, {name}! You solved the mystery! You're a real heart detective!"},
   {id:'bye', clip:'v2-bye', core:true, sfx:'drumroll', voice:'bye', vdur:1.86, voicedFor:{name:'Mia'}, words:[0,.31,.49,.79,1.21], text:"See you next beat, {name}!"},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
-  common:'From the consult: "Innocent means harmless" + child asked "Is my heart broken?"',
+  common:'From the consult: "Innocent means harmless" + "No restrictions at all"',
   fever:'From the consult: "sounds louder when {name} has a fever"',
   play:'From the consult: "No restrictions at all"',
   grow:'From the consult: "get quieter, or go away completely, as children grow"',
@@ -562,17 +569,18 @@ const NOTFOR = {loop:['little']};
 // English wording by age band (mid = the default text in SCENES)
 const AGE = {
   little: {
-    hello:"Knock, knock! Hi {name}, it's me, your heart! Want to know a secret?",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a secret sound inside me. Want to find out what it is?",
     home:"I live in your chest. Put your hand there. Can you feel me? Thump-thump!",
     squeeze:"Make a fist. That's how big I am! Squeeze... and let go!",
     doors:"Inside me are four little rooms with doors. They go lub-dub! Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a special listening tube.",
-    whoosh:"{doctor} heard a little whoosh. Lub, whoosh, dub! That's just my blood rushing through my doors, like water in a hose. My doors work perfectly!",
-    common:"Is a whoosh scary? No way! Lots of kids have one. I'm strong!",
+    whoosh:"Here's the secret sound! Lub, whoosh, dub! That's just my blood rushing through, like water in a hose.",
+    common:"Lots of kids have a whoosh, just like you! It's okay. So keep running and playing!",
     fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
     play:"So keep running, jumping and dancing!",
     grow:"As you grow, my whoosh might go away. I'll keep beating, day and night.",
     outro:"Remember: my whoosh is okay. I'm strong. And you can play!",
+    tryit:"Jump five times! Then put your hand on your chest. Can you feel me drumming?",
   },
   big: {
     home:"I live in your chest, a little to the left, behind your ribs. Put your hand there... feel that? That's me, thump-thump!",
@@ -580,12 +588,13 @@ const AGE = {
     loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
     doors:"Inside me are four rooms called chambers, two on top and two below. Between them are doors called valves. When they snap shut they make the lub-dub sound. Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
-    whoosh:"{doctor} heard an extra sound between my beats: lub, whoosh, dub. That whoosh is blood flowing fast and smoothly through my valves, like water rushing through a garden hose. My valves are working perfectly.",
-    common:"Is a whoosh something to worry about? No way! Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. I'm healthy and strong!",
+    whoosh:"Now for the secret sound {doctor} heard: lub, whoosh, dub. That whoosh is blood flowing fast and smoothly through me, like water rushing through a garden hose.",
+    common:"Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. So keep doing everything you love: sport, swimming, running and dancing!",
     fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
     play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
     grow:"As you grow bigger, many whooshes get quieter or disappear completely. Either way, I'll keep beating about 100,000 times a day.",
     outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
+    tryit:"Try this: jump up and down ten times, then put your hand on your chest. Feel me beating faster? That's me sending extra blood to your muscles.",
   },
 };
 const LANGS = [
@@ -599,60 +608,60 @@ const LANG = () => LANGS.find(l => l.id === S.lang) || LANGS[0];
 const TR = {
   zh: {
     intro:"这是{doctor}送给{name}的特别视频。",
-    hello:"咚咚！你好，{name}，是我，你的心脏！你今天去看医生了，真是忙碌的一天。想知道我的一个秘密吗？",
+    hello:"咚咚！你好，{name}，是我，你的心脏！今天{doctor}在我身体里听到了一个秘密的声音。想当心脏小侦探，找出它是什么吗？",
     home:"我住在你的胸口里，稍微偏左一点。把手放在那里……你能感觉到我吗？扑通、扑通！",
     squeeze:"现在握紧拳头。我就这么大！用力握紧……再松开。握紧……再松开。我一整天都在这样做！",
     loop:"我每挤一下，就把血液送到你的头，送到你的脚趾，然后再回到我这里！",
     doors:"我身体里有四个小房间，叫作心腔，房间之间有小门。门关上的时候会发出“扑通”声！跟我一起说：扑通！扑通！",
     listen:"今天{doctor}用听诊器听了我的声音。就像把耳朵贴在大人的胸口上，只是声音更大！",
-    whoosh:"{doctor}还听到了一点额外的声音。听！扑、呼、通。那个“呼”的声音，只是血液快快地穿过我的小门，就像水流过花园的水管。我的小门工作得好好的！",
-    common:"“呼呼”声可怕吗？一点也不！很多很多小朋友都有，和你一样。医生叫它“无害性杂音”。无害就是没有危险。我很健康，很强壮！",
+    whoosh:"现在来揭晓{doctor}听到的秘密声音。听！扑、呼、通。那个“呼”的声音，只是血液快快地流过我，就像水流过水管！",
+    common:"很多很多小朋友都有“呼呼”声，和你一样！医生叫它“无害性杂音”。无害就是没有危险。所以继续跑、跳、玩耍吧！",
     fever:"当你发烧，或者跑得很快的时候，我会跳得更快，所以“呼呼”声可能会更响。这也没关系！",
     play:"所以继续跑、跳、跳舞、玩耍吧，和平时一样。我是一块肌肉，肌肉最喜欢运动了！",
-    tryit:"试一试！把手放在胸口上，原地跳十下。你能感觉到我在打鼓吗？",
+    tryit:"现在原地跳五下！然后把手放在胸口上。你能感觉到我打鼓打得更快了吗？",
     grow:"等你长大一些，我的“呼呼”声可能会变小，甚至消失。不管怎样，我都会日日夜夜一直跳动。",
     bye:"{name}，下次心跳见！",
     outro:"记住：我的“呼呼”声叫无害性杂音。我很健康、很强壮。你可以像平时一样玩耍！",
-    quiz:"答题时间到！看看你记住了什么。",
-    award:"哇，{name}！你是真正的心脏小专家！",
+    quiz:"侦探时间！你能回答三个问题吗？",
+    award:"哇，{name}！你解开了谜题！你是真正的心脏小侦探！",
   },
   ar: {
     intro:"فيديو خاص لـ{name}، من {doctor}.",
-    hello:"طق طق! مرحبًا يا {name}، إنه أنا، قلبك! كان يومك حافلًا عند الطبيب اليوم. هل تريد أن تعرف سرًّا عني؟",
+    hello:"طق طق! مرحبًا يا {name}، أنا قلبك! اليوم سمع {doctor} صوتًا سريًا في داخلي. هل تريد أن تصبح محققًا وتكتشف ما هو؟",
     home:"أعيش داخل صدرك، إلى اليسار قليلًا. ضع يدك هناك... هل تشعر بي؟ دُق-دُق، دُق-دُق!",
     squeeze:"والآن اقبض يدك. هذا هو حجمي! اضغط بقوة... ثم أرخِ. اضغط... ثم أرخِ. هذا ما أفعله طوال اليوم!",
     loop:"في كل مرة أنقبض، أدفع الدم إلى رأسك، وإلى أصابع قدميك، ثم يعود إليّ من جديد!",
     doors:"في داخلي أربع غرف تُسمّى الحجرات، وبينها أبواب صغيرة. عندما تُغلق الأبواب تقول: دُق-دُق! قلها معي: دُق-دُق! دُق-دُق!",
     listen:"اليوم استمع {doctor} إليّ بالسماعة الطبية. كأنك تضع أذنك على صدر شخص كبير، لكن الصوت أعلى!",
-    whoosh:"وسمع {doctor} صوتًا إضافيًا. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط دمي وهو يندفع بسرعة عبر أبوابي، مثل الماء في خرطوم الحديقة. وأبوابي تعمل بشكل ممتاز!",
-    common:"هل الصوت مخيف؟ أبدًا! كثير جدًا من الأطفال لديهم هذا الصوت، مثلك تمامًا. يسميه الأطباء نفخة بريئة. بريئة تعني غير مؤذية. أنا قوي وبصحة جيدة!",
+    whoosh:"والآن، الصوت السري الذي سمعه {doctor}. استمع! دُق، ووووش، دُق. هذا الصوت هو فقط دمي وهو يندفع بسرعة، مثل الماء في خرطوم الحديقة!",
+    common:"الكثير والكثير من الأطفال لديهم هذا الصوت، مثلك تمامًا! يسميه الأطباء نفخة بريئة. بريئة تعني غير مؤذية. لذلك استمر في الركض والقفز واللعب!",
     fever:"عندما تكون مصابًا بالحمى، أو تركض بسرعة، أنبض أسرع، لذلك قد يصبح الصوت أعلى. وهذا أمر طبيعي أيضًا!",
     play:"لذلك استمر في الركض والقفز والرقص واللعب كالمعتاد. أنا عضلة، والعضلات تحب الحركة!",
-    tryit:"جرّب! ضع يدك على صدرك واقفز عشر مرات. هل تشعر بي وأنا أقرع الطبل؟",
+    tryit:"الآن اقفز خمس مرات! ثم ضع يدك على صدرك. هل تشعر بي أقرع الطبل أسرع؟",
     grow:"عندما تكبر، قد يصبح الصوت أهدأ، أو قد يختفي تمامًا. وفي كل الأحوال، سأستمر في النبض ليلًا ونهارًا.",
     bye:"أراك في النبضة القادمة يا {name}!",
     outro:"تذكّر: صوتي اسمه نفخة بريئة. أنا قوي وبصحة جيدة. ويمكنك أن تلعب كالمعتاد!",
-    quiz:"وقت المسابقة! لنرَ ماذا تتذكر.",
-    award:"واو يا {name}! أنت خبير قلوب حقيقي!",
+    quiz:"وقت المحقق! هل تستطيع الإجابة عن ثلاثة أسئلة؟",
+    award:"واو يا {name}! لقد حللت اللغز! أنت محقق قلوب حقيقي!",
   },
   vi: {
     intro:"Một video đặc biệt dành cho {name}, từ {doctor}.",
-    hello:"Cốc cốc! Chào {name}, mình đây, trái tim của bạn! Hôm nay bạn đã có một ngày đi khám bác sĩ thật bận rộn. Bạn có muốn biết một bí mật về mình không?",
+    hello:"Cốc, cốc! Chào {name}, mình là trái tim của bạn đây! Hôm nay {doctor} nghe thấy một âm thanh bí mật bên trong mình. Bạn có muốn làm thám tử để tìm ra đó là gì không?",
     home:"Mình sống trong lồng ngực của bạn, hơi lệch sang trái. Đặt tay lên đó nào... bạn có cảm thấy mình không? Thịch-thịch, thịch-thịch!",
     squeeze:"Giờ hãy nắm tay lại. Mình to bằng chừng đó đấy! Bóp thật chặt... rồi thả ra. Bóp... rồi thả ra. Mình làm vậy suốt cả ngày!",
     loop:"Mỗi lần mình bóp, mình đẩy máu lên tới đầu, xuống tới ngón chân, rồi quay trở về với mình!",
     doors:"Bên trong mình có bốn căn phòng, gọi là buồng tim, với những cánh cửa nhỏ ở giữa. Khi cửa đóng lại, chúng kêu thịch-thịch! Nói cùng mình nào: thịch-thịch! Thịch-thịch!",
     listen:"Hôm nay {doctor} đã nghe mình bằng ống nghe. Giống như áp tai vào ngực người lớn, nhưng nghe to hơn!",
-    whoosh:"Và {doctor} nghe thấy một âm thanh nữa. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là máu chảy thật nhanh qua những cánh cửa của mình, giống như nước chảy trong vòi tưới cây. Và những cánh cửa của mình hoạt động rất tốt!",
-    common:"Tiếng vù có đáng sợ không? Không hề! Rất nhiều bạn nhỏ cũng có, giống như bạn. Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không nguy hiểm. Mình khỏe mạnh và mạnh mẽ!",
+    whoosh:"Và đây là âm thanh bí mật mà {doctor} đã nghe. Nghe này! Thịch, vù, thịch. Tiếng vù đó chỉ là máu chảy thật nhanh qua mình, giống như nước chảy trong vòi tưới cây!",
+    common:"Rất nhiều bạn nhỏ cũng có tiếng vù, giống như bạn! Bác sĩ gọi đó là tiếng thổi vô hại. Vô hại nghĩa là không nguy hiểm. Vậy nên cứ chạy, nhảy và vui chơi nhé!",
     fever:"Khi bạn bị sốt, hoặc chạy thật nhanh, mình đập nhanh hơn, nên tiếng vù có thể to hơn. Điều đó cũng không sao!",
     play:"Vì vậy hãy cứ chạy, nhảy, múa và vui chơi như mọi khi. Mình là cơ bắp, và cơ bắp rất thích vận động!",
-    tryit:"Thử nhé! Đặt tay lên ngực và nhảy lên nhảy xuống mười lần. Bạn có cảm thấy mình đang đánh trống không?",
+    tryit:"Bây giờ nhảy lên nhảy xuống năm lần nào! Rồi đặt tay lên ngực. Bạn có cảm thấy mình đánh trống nhanh hơn không?",
     grow:"Khi bạn lớn hơn, tiếng vù có thể nhỏ đi, hoặc biến mất hẳn. Dù thế nào, mình vẫn sẽ đập suốt ngày đêm.",
     bye:"Hẹn gặp lại ở nhịp đập tiếp theo nhé, {name}!",
     outro:"Hãy nhớ: tiếng vù của mình gọi là tiếng thổi vô hại. Mình khỏe mạnh và mạnh mẽ. Và bạn có thể vui chơi như mọi khi!",
-    quiz:"Đến giờ đố vui! Xem bạn nhớ được gì nào.",
-    award:"Ồ, {name}! Bạn đúng là chuyên gia về trái tim!",
+    quiz:"Giờ thám tử! Bạn có trả lời được ba câu hỏi không?",
+    award:"Wow, {name}! Bạn đã giải được bí ẩn! Bạn là một thám tử trái tim thực thụ!",
   },
 };
 const UI = {
@@ -672,27 +681,27 @@ const UI = {
 const QZ = {
   en: {q:['How big is your heart?','What makes the whoosh sound?','Can you still run and play?'],
        o:[['As big as your fist','As big as a house','As tiny as an ant'],['Blood whooshing through, like a hose','A sneezing dragon','A noisy train'],['Yes!','No, sit still']],
-       yes:['Yes! I\'m as big as your fist!','Yes! It\'s just your blood whooshing through your healthy heart. Nothing to worry about!','Yes! Run, jump and play as much as you like. I love it!'], nearly:'Ooh, nearly! Have another go.', badge:'Heart Expert',
-       hand:'Your turn! Put your hand on your chest. Can you feel it?', fist:'Your turn! Make a fist and squeeze.', say:'Your turn! Say it out loud: lub-dub!', did:'I did it!'},
+       yes:['Yes! I\'m as big as your fist!','Yes! It\'s just your blood whooshing through your healthy heart. Nothing to worry about!','Yes! Run, jump and play as much as you like. I love it!'], nearly:'Ooh, nearly! Have another go.', badge:'Heart Detective',
+       hand:'Your turn! Put your hand on your chest. Can you feel it?', fist:'Your turn! Make a fist and squeeze.', say:'Your turn! Say it out loud: lub-dub!', jump:'Your turn! Jump five times, then feel your heart.', did:'I did it!'},
   zh: {q:['你的心脏有多大？','“呼呼”声是什么发出的？','你还能跑和玩吗？'],
        o:[['和你的拳头一样大','和房子一样大','和蚂蚁一样小'],['血液呼呼流过','打喷嚏的小龙','吵闹的火车'],['能！','不能，要坐着不动']],
-       yes:['对啦！我和你的拳头一样大！','对啦！那只是血液呼呼流过你健康的心脏，一点也不用担心！','对啦！想怎么跑、怎么跳、怎么玩都可以。我最喜欢了！'], nearly:'哎呀，差一点！再试一次。', badge:'心脏小专家',
-       hand:'轮到你啦！把手放在胸口上，能感觉到吗？', fist:'轮到你啦！握紧拳头，用力挤一挤。', say:'轮到你啦！大声说：扑通！', did:'我做到了！'},
+       yes:['对啦！我和你的拳头一样大！','对啦！那只是血液呼呼流过你健康的心脏，一点也不用担心！','对啦！想怎么跑、怎么跳、怎么玩都可以。我最喜欢了！'], nearly:'哎呀，差一点！再试一次。', badge:'心脏小侦探',
+       hand:'轮到你啦！把手放在胸口上，能感觉到吗？', fist:'轮到你啦！握紧拳头，用力挤一挤。', say:'轮到你啦！大声说：扑通！', jump:'轮到你啦！跳五下，然后摸摸你的心跳。', did:'我做到了！'},
   ar: {q:['ما حجم قلبك؟','ما الذي يصدر صوت الوشوشة؟','هل ما زال بإمكانك الركض واللعب؟'],
        o:[['بحجم قبضة يدك','بحجم بيت','صغير مثل النملة'],['الدم وهو يندفع','تنين يعطس','قطار مزعج'],['نعم!','لا، أجلس بلا حراك']],
-       yes:['نعم! أنا بحجم قبضة يدك!','نعم! إنه فقط دمك وهو يندفع في قلبك السليم. لا داعي للقلق!','نعم! اركض واقفز والعب كما تحب. أنا أحب ذلك!'], nearly:'أوه، اقتربت! حاول مرة أخرى.', badge:'خبير القلوب',
-       hand:'دورك! ضع يدك على صدرك. هل تشعر به؟', fist:'دورك! اقبض يدك واضغط.', say:'دورك! قلها بصوت عالٍ: دُق-دُق!', did:'فعلتها!'},
+       yes:['نعم! أنا بحجم قبضة يدك!','نعم! إنه فقط دمك وهو يندفع في قلبك السليم. لا داعي للقلق!','نعم! اركض واقفز والعب كما تحب. أنا أحب ذلك!'], nearly:'أوه، اقتربت! حاول مرة أخرى.', badge:'محقق القلب',
+       hand:'دورك! ضع يدك على صدرك. هل تشعر به؟', fist:'دورك! اقبض يدك واضغط.', say:'دورك! قلها بصوت عالٍ: دُق-دُق!', jump:'دورك! اقفز خمس مرات، ثم تحسّس قلبك.', did:'فعلتها!'},
   vi: {q:['Trái tim bạn to cỡ nào?','Tiếng vù là do đâu?','Bạn vẫn có thể chạy nhảy vui chơi chứ?'],
        o:[['To bằng nắm tay','To bằng ngôi nhà','Nhỏ như con kiến'],['Máu chảy vù vù','Chú rồng hắt xì','Đoàn tàu ồn ào'],['Có!','Không, phải ngồi yên']],
-       yes:['Đúng rồi! Mình to bằng nắm tay của bạn!','Đúng rồi! Đó chỉ là máu chảy vù vù qua trái tim khỏe mạnh của bạn. Không có gì phải lo cả!','Đúng rồi! Cứ chạy nhảy vui chơi thoải mái nhé. Mình thích lắm!'], nearly:'Ôi, gần đúng rồi! Thử lại nhé.', badge:'Chuyên gia trái tim',
-       hand:'Đến lượt bạn! Đặt tay lên ngực. Bạn có cảm thấy không?', fist:'Đến lượt bạn! Nắm tay lại và bóp.', say:'Đến lượt bạn! Nói to lên: thịch-thịch!', did:'Mình làm được rồi!'},
+       yes:['Đúng rồi! Mình to bằng nắm tay của bạn!','Đúng rồi! Đó chỉ là máu chảy vù vù qua trái tim khỏe mạnh của bạn. Không có gì phải lo cả!','Đúng rồi! Cứ chạy nhảy vui chơi thoải mái nhé. Mình thích lắm!'], nearly:'Ôi, gần đúng rồi! Thử lại nhé.', badge:'Thám tử trái tim',
+       hand:'Đến lượt bạn! Đặt tay lên ngực. Bạn có cảm thấy không?', fist:'Đến lượt bạn! Nắm tay lại và bóp.', say:'Đến lượt bạn! Nói to lên: thịch-thịch!', jump:'Đến lượt bạn! Nhảy năm lần, rồi cảm nhận trái tim nhé.', did:'Mình làm được rồi!'},
 };
 const qz = () => QZ[S.lang] || QZ.en;
 // picture for each answer: emoji, or a scene still; the first answer in each question is the right one (shuffled on screen)
 const QPIC = [['✊','🏠','🐜'], ['img:v2-whoosh','🐉','🚂'], ['⚽','🛋️']];
 const QVOICE = [{voice:'q1', vdur:2.04}, {voice:'q2', vdur:2.69}, {voice:'q3', vdur:2.51}];
 const YVOICE = [{voice:'yes1', vdur:3.2}, {voice:'yes2', vdur:7.8}, {voice:'yes3', vdur:5.53}];
-const TASK_ICON = {hand:'🫶', fist:'✊', say:'🗣️'};
+const TASK_ICON = {hand:'🫶', fist:'✊', say:'🗣️', jump:'🤸'};
 const t = k => fill(((UI[S.lang] || UI.en)[k]) ?? UI.en[k]);
 const bullets = () => { const b = (UI[S.lang] || UI.en).bullets; return (b[band()] || b.mid).map(fill); };
 const SUM = {
@@ -957,7 +966,7 @@ function renderReview(){
     let thumb;
     if (s.kind === 'title') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#B3163A;font-size:22px">Hey ${esc(S.name)}!</div>`;
     else if (s.kind === 'quiz') thumb = `<div class="thumb" style="background:#F4B82E;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#7E0F29;font-size:20px">Quiz · 3 questions</div>`;
-    else if (s.kind === 'award') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#FFD45C;font-size:20px">Heart Expert award</div>`;
+    else if (s.kind === 'award') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:700;color:#FFD45C;font-size:20px">Heart Detective award</div>`;
     else if (s.kind === 'end') thumb = `<div class="thumb" style="background:#1C6E74;display:grid;place-items:center;font-family:var(--display);font-weight:600;color:#FFD45C;font-size:17px">${esc(S.name)}'s heart facts</div>`;
     else if (s.clip) thumb = `<div class="thumb"><img src="scenes/${s.clip}.jpg" alt="" loading="lazy"></div>`;
     else thumb = `<div class="thumb"><img src="scenes/${s.img}.jpg" alt="" style="transform:${frame(null, s.a)}" loading="lazy"></div>`;
@@ -1184,6 +1193,16 @@ const player = (() => {
     if ('speechSynthesis' in window) speechSynthesis.cancel();
     $$('.layer', stage).forEach((l, k) => l.classList.toggle('on', k === i));
     const s = list[i]; const text = sceneText(s);
+    // detective clue tracker: shown from the first clue to the reveal
+    const clues = $('#clues'), firstClue = list.findIndex(x => x.clue), reveal = list.findIndex(x => x.id === 'whoosh');
+    const lastClueIdx = list.reduce((a, x, k) => x.clue ? k : a, -1);
+    const clueOn = firstClue >= 0 && i >= firstClue && i <= (reveal >= 0 ? reveal : lastClueIdx);
+    clues.hidden = !clueOn;
+    if (clueOn) {
+      const got = list.slice(0, i + 1).filter(x => x.clue).length;
+      $$('i', clues).forEach((d, k) => { d.classList.toggle('on', k < got); d.classList.toggle('new', !!s.clue && k === got - 1); });
+      clues.classList.toggle('solved', s.id === 'whoosh');
+    }
     setCaption(text);
     dur = estimate(s); t0 = performance.now();
     if (kb) kb.cancel(); kb = null;
@@ -1302,7 +1321,7 @@ const player = (() => {
     const card = $$('.layer', stage)[idx];
     const q = qz(), qq = $('.qq', card), box = $('.qopts', card), dots = $$('.dots i', card);
     if (quizAt.idx !== idx) quizAt = {idx, k: 0};
-    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'quiz', vdur: 3.07, text: sceneText(s)}, my); }
+    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'quiz2', vdur: 3.85, text: sceneText(s)}, my); }
     for (let k = quizAt.k; k < q.q.length; k++) {
       quizAt.k = k;
       if (my !== token || !playing) return;

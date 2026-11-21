@@ -20,6 +20,29 @@ and you are back on the home screen.
 
 Tap **See him in action** to watch his routine without opening anything.
 
+## Dance deals
+
+Now and then, after "Nope not now", he goes quiet for a moment, then asks:
+"…unless… you want to dance with me?"
+
+- Tap **No thanks**, or leave it, and he closes the app as usual.
+- Tap **Let's dance!** and music starts. He dances in the middle of the screen
+  for just over a minute, calling out each move: dance, star jumps, march on
+  the spot, arms up and wiggle, and a big finish. Hold on to your phone: it
+  feels your star jumps with its motion sensor, and he needs 10 of them. Tap
+  **Stop** to give up part way.
+- Dance to the end and he says "OK, you did good!", boops the app back open
+  with his nose, and leaves you be for 5 minutes. If you are still in the app
+  when they are up, he comes back for it and says "Time's up!".
+
+He offers it about one time in four, and never twice within two hours. The
+**Dance deals** card on Mr Blocky's screen turns it on or off, **Make the next
+one a dance** makes sure the next app he closes gets the offer, and **Try the
+dance now** plays it inside the app without closing anything.
+
+On a phone with no motion sensor he does not count star jumps, and finishing
+the dance is enough.
+
 ## If he does not turn up
 
 The lines under the app's name say how he is getting on: whether he is on
@@ -51,7 +74,7 @@ version of the app and of Android this is.
 - **Apps he closes** lists the apps on the phone. Instagram, TikTok, Facebook,
   X, Reddit, Threads and Snapchat are ticked to begin with.
 - **Let me in for 5 minutes** gives you a break when you really do need to get
-  in.
+  in. Dancing with him for a dance deal gives you the same break.
 - The two numbers count how many times he has closed something.
 
 While he is switched on, Android shows a small "Mr Blocky is on duty"
@@ -101,7 +124,11 @@ watching.
   in front and sends for him when it is one on the list
 - `StageService.java`: draws him over the app, and tells the watcher as he
   goes on, the screen goes dark and he finishes. The watcher sends the phone
-  to its home screen
+  to its home screen. For a dance deal it also tells the watcher when they say
+  yes, and when he boops the app back open, so the watcher can open it again
+- `JumpCounter.java`: counts star jumps with the phone's motion sensor: a
+  moment of near weightlessness, then the jolt of landing. It needs no
+  permission
 - `Access.java`: whether the two settings above are switched on
 - `BootReceiver.java`: puts him back on duty after the phone restarts or the
   app is updated
@@ -111,8 +138,10 @@ watching.
   and by the preview
 - `MainActivity.java`: the settings screen
 - `PreviewActivity.java`: plays his routine inside the app
-- `Prefs.java`: the chosen apps, the break, and the counts
+- `Prefs.java`: the chosen apps, the break, the counts, and when he last
+  offered a dance deal
 - `app/src/main/assets/bouncer.html`: the page shown in the web view
 - `../mr-blocky/guy.js`: the little guy himself, shared with the browser
-  extension and copied into the app when it is built
+  extension and copied into the app when it is built, along with
+  `../mr-blocky/dance.ogg`, the dance music (made by `../mr-blocky-music`)
 - `ci/`: tries the app on emulated phones running Android 14 and Android 16

@@ -626,6 +626,7 @@ const ScrollBouncerGuy = (() => {
   function startSong(loading) {
     const Context = globalThis.AudioContext || globalThis.webkitAudioContext;
     let context = null, source = null, element = null, began = null, clockStart = null, locked = false, over = false;
+    let heard = null;   // the music's own time when it last moved on, and when that was
     try {
       context = Context ? new Context() : null;
       if (context) context.resume().catch(() => {});
@@ -665,8 +666,21 @@ const ScrollBouncerGuy = (() => {
       },
       // Seconds since the music started.
       now() {
-        if (began !== null && source) return context.currentTime - began;
-        if (began !== null && element) return element.currentTime;
+        if (began !== null && (source || element)) {
+          const music = source ? context.currentTime - began : element.currentTime;
+          const wall = performance.now();
+          if (!heard || music !== heard.music) {
+            heard = { music, wall };
+          } else if (wall - heard.wall > 1500) {
+            // The music has stopped moving on: the device has nowhere to play it, or a
+            // call has taken the sound. Rather than freeze mid-dance, carry on by the
+            // clock from here, in silence.
+            stop();
+            began = null;
+            clockStart = wall - music * 1000;
+          }
+          return music;
+        }
         return (performance.now() - (clockStart ?? performance.now())) / 1000;
       },
       stop

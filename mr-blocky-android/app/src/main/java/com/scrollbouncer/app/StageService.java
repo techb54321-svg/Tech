@@ -37,6 +37,9 @@ public class StageService extends Service {
     static final String LEAVE = "com.scrollbouncer.app.LEAVE";
     /** With ENTER: a ResultReceiver that is told how the performance goes. */
     static final String CUES = "cues";
+    /** With ENTER: whether he offers the dance deal, and what he says if not "Nope not now". */
+    static final String DEAL = "deal";
+    static final String LINE = "line";
 
     /**
      * What the watcher is told: he is on screen, the screen has gone dark, he has
@@ -48,6 +51,9 @@ public class StageService extends Service {
     static final int DARK = 2;
     static final int DONE = 3;
     static final int FAILED = 4;
+    /** They said yes to the dance deal, and they danced to the end so he is letting them back in. */
+    static final int DANCING = 5;
+    static final int LET_IN = 6;
     /** With FAILED: Android's description of what went wrong. */
     static final String WHY = "why";
     /** With ON: an IBinder belonging to this process, so the watcher can tell if the process is stopped. */
@@ -55,6 +61,8 @@ public class StageService extends Service {
 
     /** The watcher takes him off long before this. It is here in case the watcher has been stopped. */
     private static final long LONGEST_MS = 90_000;
+    /** The same, once they have said yes to a dance: it lasts just over a minute. */
+    private static final long DANCING_MS = 180_000;
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final IBinder alive = new Binder();
@@ -75,8 +83,14 @@ public class StageService extends Service {
 
     /** Asks for one of the things above. Throws if Android will not start the service just now. */
     static void ask(Context context, String what, ResultReceiver cues) {
+        ask(context, what, cues, false, null);
+    }
+
+    static void ask(Context context, String what, ResultReceiver cues, boolean deal, String line) {
         Intent intent = new Intent(context, StageService.class).setAction(what);
         if (cues != null) intent.putExtra(CUES, cues);
+        intent.putExtra(DEAL, deal);
+        if (line != null) intent.putExtra(LINE, line);
         context.startService(intent);
     }
 
@@ -93,7 +107,7 @@ public class StageService extends Service {
         String what = intent == null ? null : intent.getAction();
         if (ENTER.equals(what)) {
             leave();
-            enter(receiver(intent));
+            enter(receiver(intent), intent.getBooleanExtra(DEAL, false), intent.getStringExtra(LINE));
         } else if (LEAVE.equals(what)) {
             leave();
         } else if (WARM_UP.equals(what)) {
@@ -142,7 +156,7 @@ public class StageService extends Service {
     }
 
     /** Puts him on screen, over the top of the app. */
-    private void enter(ResultReceiver tellWatcher) {
+    private void enter(ResultReceiver tellWatcher, boolean deal, String line) {
         cues = tellWatcher;
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -172,10 +186,31 @@ public class StageService extends Service {
             public void done() {
                 if (mine == turn) finished();
             }
+
+            @Override
+            public void dancing() {
+                if (mine != turn) return;
+                main.removeCallbacks(tooLong);
+                main.postDelayed(tooLong, DANCING_MS);
+                tell(DANCING, null);
+            }
+
+            @Override
+            public void letIn() {
+                if (mine != turn || stage == null) return;
+                // The app is opening again underneath: let taps through to it as the screen lightens.
+                stageParams.flags |= WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+                try {
+                    windows.updateViewLayout(stage, stageParams);
+                } catch (RuntimeException e) {
+                    Log.w(TAG, "could not let taps through", e);
+                }
+                tell(LET_IN, null);
+            }
         };
         WebView web = null;
         try {
-            web = Stage.open(windowContext, statusBarDp(), fromPage);
+            web = Stage.open(windowContext, statusBarDp(), fromPage, deal, line);
             windows.addView(web, params);
         } catch (RuntimeException e) {
             // The phone's web view is missing or being updated, or the permission to draw over apps has gone.

@@ -1,7 +1,8 @@
 name: Build Mr Blocky for Android
 
 # Builds the Android app, then tries it on an emulated phone: opens an app on
-# his list and checks that the little guy turns up and sends it away.
+# his list and checks that the little guy turns up and sends it away, and that
+# dancing with him for the dance deal gets the app back.
 # The app file from each run is kept under Artifacts on the run's page.
 on:
   push:
@@ -9,6 +10,7 @@ on:
     paths:
       - "mr-blocky-android/**"
       - "mr-blocky/guy.js"
+      - "mr-blocky/dance.ogg"
       - ".github/workflows/mr-blocky-android.yml"
   workflow_dispatch:
 
@@ -83,6 +85,7 @@ jobs:
           path: |
             shots
             preview
+            dance
             ui.xml
             log.txt
             emulator.log

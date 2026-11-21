@@ -24,6 +24,9 @@ final class Prefs {
             "com.snapchat.android"));     // Snapchat
 
     private static final long BREAK_MS = 5 * 60 * 1000;
+    /** How often he offers the dance deal, and never twice within this long. */
+    private static final double DEAL_CHANCE = 0.25;
+    private static final long DEAL_GAP_MS = 2 * 60 * 60 * 1000;
 
     private final SharedPreferences store;
 
@@ -61,6 +64,36 @@ final class Prefs {
 
     void endBreak() {
         store.edit().putLong("breakUntil", 0).apply();
+    }
+
+    /** Whether he now and then offers to let them in if they dance with him. */
+    boolean danceDeals() {
+        return store.getBoolean("danceDeals", true);
+    }
+
+    void setDanceDeals(boolean on) {
+        store.edit().putBoolean("danceDeals", on).apply();
+    }
+
+    /** Whether the next app he closes gets the dance deal for certain, for trying it out. */
+    boolean danceNext() {
+        return store.getBoolean("danceNext", false);
+    }
+
+    void setDanceNext(boolean on) {
+        store.edit().putBoolean("danceNext", on).apply();
+    }
+
+    /**
+     * Whether he offers the dance deal this time. It is noted straight away, so the
+     * next offer is a while off and opening an app over and over does not pay.
+     */
+    boolean dealThisTime() {
+        long now = System.currentTimeMillis();
+        boolean deal = danceNext()
+                || (danceDeals() && now - store.getLong("dealAt", 0) > DEAL_GAP_MS && Math.random() < DEAL_CHANCE);
+        if (deal) store.edit().putBoolean("danceNext", false).putLong("dealAt", now).apply();
+        return deal;
     }
 
     /** Whether he should go after this app right now. */

@@ -74,6 +74,10 @@ public class BouncerService extends Service {
     private static final long GET_GOING_MS = 15_000;
     /** Once the screen is dark, how long he may take to say his piece and leave. */
     private static final long ENDING_MS = 20_000;
+    /** The same when he offers the dance deal, which takes longer: he pauses, asks, and waits for an answer. */
+    private static final long DEAL_MS = 45_000;
+    /** The same once they have said yes to a dance, which lasts just over a minute. */
+    private static final long DANCING_MS = 170_000;
     /** How many times to try going on duty when Android will not allow it straight away, and how far apart. */
     private static final int DUTY_TRIES = 6;
     private static final long DUTY_RETRY_MS = 400;
@@ -112,6 +116,10 @@ public class BouncerService extends Service {
     private String target;                           // the app he has come to close
     private boolean onStage;                         // whether he has appeared yet
     private boolean secondTry;                       // whether this is his second go at the same app
+    private boolean offered;                         // whether he is offering the dance deal this time
+    private boolean dancedIn;                        // whether they danced and he is letting them back in
+    private String saying;                           // what he says this time, if not "Nope not now"
+    private String nextSaying;                       // what he says next time he is sent for
     private IBinder stageAlive;                      // see watchStage
     private IBinder.DeathRecipient stageWatch;
     private boolean dark;
@@ -343,7 +351,11 @@ public class BouncerService extends Service {
             // Their break has run out. If the app they were let into is still in front, it is time.
             String app = letIn;
             letIn = null;
-            if (app.equals(inFront)) cameToFront(app, now, prefs.apps().contains(app));
+            if (app.equals(inFront)) {
+                nextSaying = getString(R.string.times_up);
+                cameToFront(app, now, prefs.apps().contains(app));
+                nextSaying = null;
+            }
         }
     }
 
@@ -360,6 +372,7 @@ public class BouncerService extends Service {
         if (performing) {
             if (dark) {
                 if (!app.equals(target)) wentElsewhere = true;
+                else if (dancedIn) letIn = app;   // back in after dancing, until the break runs out
                 return;
             }
             if (app.equals(target)) return;
@@ -408,6 +421,9 @@ public class BouncerService extends Service {
      */
     private void sendFor(String app, boolean again) {
         int mine = ++turn;
+        // A second go after being cut short says the same, but does not offer the deal again.
+        boolean deal = !again && prefs.dealThisTime();
+        if (!again) saying = nextSaying;
         ResultReceiver cues = new ResultReceiver(main) {
             @Override
             protected void onReceiveResult(int what, Bundle more) {
@@ -418,7 +434,7 @@ public class BouncerService extends Service {
             }
         };
         try {
-            StageService.ask(this, StageService.ENTER, cues);
+            StageService.ask(this, StageService.ENTER, cues, deal, saying);
         } catch (RuntimeException e) {
             Log.w(TAG, "could not send for him", e);
             Status.problem(this, getString(R.string.problem_no_stage, e));
@@ -427,6 +443,8 @@ public class BouncerService extends Service {
         }
         performing = true;
         secondTry = again;
+        offered = deal;
+        dancedIn = false;
         target = app;
         onStage = false;
         dark = false;
@@ -485,10 +503,22 @@ public class BouncerService extends Service {
                 prefs.countClose();
                 if (goHome()) Log.i(TAG, "dark, sent home");
                 main.removeCallbacks(giveUp);
-                main.postDelayed(giveUp, ENDING_MS);
+                main.postDelayed(giveUp, offered ? DEAL_MS : ENDING_MS);
+                break;
+            case StageService.DANCING:
+                Log.i(TAG, "dancing");
+                main.removeCallbacks(giveUp);
+                main.postDelayed(giveUp, DANCING_MS);
+                break;
+            case StageService.LET_IN:
+                // They danced to the end: open the app again, and leave them be for five minutes.
+                dancedIn = true;
+                prefs.startBreak();
+                letIn = target;
+                reopen(target);
                 break;
             case StageService.DONE:
-                if (dark && !wentElsewhere) {
+                if (dark && !wentElsewhere && !dancedIn) {
                     // Nothing else has come to the front, so the app he came to close is still there.
                     Status.problem(this, getString(R.string.problem_still_open));
                 }
@@ -529,6 +559,19 @@ public class BouncerService extends Service {
         lastTarget = app;
         restUntil = SystemClock.uptimeMillis() + REST_MS;
         Log.i(TAG, "closed without him");
+    }
+
+    /** Opens an app again, after they have danced their way back in. */
+    private void reopen(String app) {
+        Intent open = getPackageManager().getLaunchIntentForPackage(app);
+        if (open == null) return;
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            startActivity(open);
+            Log.i(TAG, "let back in");
+        } catch (RuntimeException e) {
+            Log.w(TAG, "could not open the app again", e);
+        }
     }
 
     private boolean goHome() {

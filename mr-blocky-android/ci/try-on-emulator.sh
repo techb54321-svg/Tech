@@ -2,9 +2,11 @@
 # Installs the app on an emulated phone, opens an app on his list, and checks
 # that the little guy turns up and the phone ends up back on the home screen.
 # Then it stops the app the way a phone does when it wants the memory back, and
-# checks that he comes back by himself and still does his job. Last, it switches
-# the phone's web view off, and checks that the app is closed even though he
-# cannot be drawn.
+# checks that he comes back by himself and still does his job. Then it asks for
+# the dance deal, taps "Let's dance!", jumps up and down with the phone the way
+# the emulator lets it, and checks that he lets them back into the app. Last, it
+# switches the phone's web view off, and checks that the app is closed even
+# though he cannot be drawn.
 #
 #   ci/try-on-emulator.sh path/to/app-debug.apk [path/to/app-release.apk]
 #
@@ -65,6 +67,29 @@ wait_for_words() {
   return 1
 }
 
+# Finds some words on the app's screen, scrolling down to them if need be, and
+# leaves what is on screen in ui.xml. It looks from the top of the screen down.
+scroll_to_words() {
+  local x=$((WIDTH / 2))
+  for _ in 1 2 3; do adb shell input swipe "$x" $((HEIGHT * 3 / 10)) "$x" $((HEIGHT * 8 / 10)) 150; done
+  for _ in 1 2 3 4 5 6 7; do
+    sleep 2
+    adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || true
+    adb exec-out cat /sdcard/ui.xml > ui.xml 2> /dev/null || true
+    if python3 "$HERE/read-ui.py" ui.xml "$1" > /dev/null 2>&1; then return 0; fi
+    # A slow drag, so the screen moves by just this much and does not fly past.
+    adb shell input swipe "$x" $((HEIGHT * 7 / 10)) "$x" $((HEIGHT * 4 / 10)) 600
+  done
+  return 1
+}
+
+# Taps some words on the app's screen, scrolling down to them if need be.
+tap_words() {
+  scroll_to_words "$1" || return 1
+  # shellcheck disable=SC2046  # two numbers: x and y
+  adb shell input tap $(python3 "$HERE/read-ui.py" ui.xml "$1")
+}
+
 # Whether the app logged exactly these words. A plain search would take "could not go
 # on stage" for "on stage", and "not allowed on duty" for "on duty".
 logged() { grep -qE "ScrollBouncer *: $1\$" log.txt; }
@@ -73,7 +98,7 @@ logged() { grep -qE "ScrollBouncer *: $1\$" log.txt; }
 collect() {
   FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
   adb logcat -d -v threadtime > everything.txt || true
-  grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: page ready|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
+  grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: (page ready|deal [a-z]+)|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
     | tr -d '\r' | cut -c1-260 > log.txt || true
   adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
   echo "== What the app logged"
@@ -133,6 +158,9 @@ if ! booted; then
   exit 1
 fi
 echo "  the phone is on"
+SIZE="$(adb shell wm size | tr -d '\r' | grep -oE '[0-9]+x[0-9]+' | tail -n 1)"
+WIDTH="${SIZE%x*}"
+HEIGHT="${SIZE#*x}"
 adb shell wm dismiss-keyguard || true
 adb shell input keyevent 82 || true
 sleep 5
@@ -159,8 +187,10 @@ adb shell pm grant "$TARGET" android.permission.POST_NOTIFICATIONS 2> /dev/null 
 echo "== Installing and setting up"
 adb install -r "$APK"
 adb shell "run-as $APP mkdir -p shared_prefs"
+# Dance deals are off, or one could turn up by chance where a plain close is expected.
+# The dance deal gets a part of its own, asked for with "Make the next one a dance".
 printf '%s\n' "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>" \
-  "<map><set name=\"apps\"><string>$TARGET</string></set></map>" \
+  "<map><set name=\"apps\"><string>$TARGET</string></set><boolean name=\"danceDeals\" value=\"false\" /></map>" \
   | adb shell "run-as $APP sh -c 'cat > shared_prefs/scroll-bouncer.xml'"
 # What a person switches on by hand: usage access, display over other apps, notifications.
 adb shell appops set "$APP" GET_USAGE_STATS allow
@@ -245,7 +275,84 @@ grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
 [ -n "$(adb shell pidof "$APP" | tr -d '\r' || true)" ] || fail "the part of the app that keeps watch was no longer running after the preview"
 pass "the app opens and its preview plays"
 
-echo "== 4. Switching the phone's web view off, so that he cannot be drawn"
+echo "== 4. The dance deal: saying yes, dancing, and being let back in"
+tap_words "Make the next one a dance" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen has no button to make the next one a dance"; }
+sleep 2
+scroll_to_words "The next one will be a dance" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the button does not say that the next one will be a dance"; }
+adb shell input keyevent KEYCODE_HOME
+sleep 3
+adb logcat -c
+adb shell monkey -p "$TARGET" -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1
+# He closes the app as usual, then asks. His buttons are drawn in his own page, which
+# the phone's list of what is on screen does not reach, so "Let's dance!" is found by its colour.
+mkdir -p dance
+OFFER=""
+for _ in $(seq 1 50); do
+  adb exec-out screencap -p > dance/offer.png
+  if OFFER="$(python3 "$HERE/find-button.py" dance/offer.png 2dd4bf 2> /dev/null)"; then break; fi
+  OFFER=""
+  sleep 0.5
+done
+[ -n "$OFFER" ] || { collect; fail "he never offered the dance deal"; }
+# shellcheck disable=SC2086  # two numbers: x and y
+adb shell input tap $OFFER
+echo "Tapped Let's dance! at $OFFER"
+
+# Star jumps, as the phone's motion sensor feels them: up in the air, where it feels
+# almost weightless, then the jolt of landing, over and over. He only counts them
+# during the star jumps part of the dance, so keep jumping all the way through.
+echo "The motion sensor before jumping: $(adb emu sensor get acceleration 2>&1 | tr -d '\r' | head -n 1)"
+touch jumping
+(
+  while [ -e jumping ]; do
+    adb emu sensor set acceleration 0:0:2 > /dev/null 2>&1 || true
+    sleep 0.25
+    adb emu sensor set acceleration 0:0:22 > /dev/null 2>&1 || true
+    sleep 0.25
+  done
+  adb emu sensor set acceleration 0:9.8:0 > /dev/null 2>&1 || true   # standing still again
+) &
+JUMPER=$!
+# The dance lasts just over a minute. Photograph it every few seconds until he lets them back in.
+LET_IN=""
+START=$(date +%s)
+SHOT=0
+while [ $(($(date +%s) - START)) -lt 150 ]; do
+  SHOT=$((SHOT + 1))
+  adb exec-out screencap -p > "dance/$(printf %02d "$SHOT").png"
+  if adb logcat -d | tr -d '\r' | grep -qE "ScrollBouncer *: let back in$"; then LET_IN=yes; break; fi
+  sleep 5
+done
+rm -f jumping
+wait "$JUMPER" || true
+echo "The dance took $(($(date +%s) - START)) s from the tap"
+sleep 5
+collect
+logged "dark, sent home" || fail "the screen never went dark before he offered the deal"
+logged "dancing" || fail "tapping Let's dance! did not start the dance"
+grep -q "Mr Blocky: deal stopped" log.txt && fail "he stopped the dance part way: the star jumps were not counted"
+[ -n "$LET_IN" ] || fail "they danced, but he did not let them back into the app"
+grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
+grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
+echo "$FOCUS" | grep -q "$TARGET" || fail "after the dance, the app he let them back into is not in front"
+# He leaves them be for five minutes: the app stays open, and he does not come again.
+sleep 15
+collect
+[ "$(grep -cE "ScrollBouncer *: on stage$" log.txt)" = 1 ] || fail "he came again during the five minutes he gave them"
+echo "$FOCUS" | grep -q "$TARGET" || fail "the app he let them back into was closed again"
+pass "they said yes to a dance, did star jumps, and he let them back into the app"
+
+adb shell am start -n "$APP/.MainActivity" > /dev/null
+sleep 3
+scroll_to_words "He is on a break" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "after the dance, the app's screen does not say he is on a break"; }
+python3 "$HERE/read-ui.py" ui.xml
+# End the break, so he comes for the app again in the next part.
+tap_words "End break now" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "the app's screen has no button to end the break"; }
+sleep 2
+scroll_to_words "He is on duty" || { python3 "$HERE/read-ui.py" ui.xml || true; fail "ending the break did not put him back on duty"; }
+pass "the app's screen shows the break the dance earned, and ending it puts him back on duty"
+
+echo "== 5. Switching the phone's web view off, so that he cannot be drawn"
 adb logcat -c
 adb shell input keyevent KEYCODE_HOME
 adb shell pm disable-user --user 0 com.google.android.webview > /dev/null

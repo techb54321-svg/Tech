@@ -77,6 +77,16 @@ public class MainActivity extends Activity {
         findViewById(R.id.preview).setOnClickListener(view ->
                 startActivity(new Intent(this, PreviewActivity.class)));
 
+        Switch deals = findViewById(R.id.dance_deals);
+        deals.setChecked(prefs.danceDeals());
+        deals.setOnCheckedChangeListener((view, on) -> prefs.setDanceDeals(on));
+        findViewById(R.id.dance_next).setOnClickListener(view -> {
+            prefs.setDanceNext(!prefs.danceNext());
+            refresh();
+        });
+        findViewById(R.id.dance_try).setOnClickListener(view ->
+                startActivity(new Intent(this, PreviewActivity.class).putExtra(PreviewActivity.DEAL, true)));
+
         listApps();
 
         // Android wants a notification while he is on duty, and from Android 13 that needs asking for.
@@ -143,6 +153,7 @@ public class MainActivity extends Activity {
             if (should) BouncerService.start(this); else BouncerService.stop(this);
         }
         showStatus(seesApps && drawsOver, checking);
+        ((Button) findViewById(R.id.dance_next)).setText(prefs.danceNext() ? R.string.deals_next_set : R.string.deals_next);
         ((TextView) findViewById(R.id.closed_today)).setText(String.valueOf(prefs.closedToday()));
         ((TextView) findViewById(R.id.closed_total)).setText(String.valueOf(prefs.closedTotal()));
 

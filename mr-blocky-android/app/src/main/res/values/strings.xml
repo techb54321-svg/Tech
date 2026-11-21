@@ -9,6 +9,7 @@
     <string name="help_title">Mr Blocky has gone off duty</string>
     <string name="help_text">Tap to put him back on.</string>
     <string name="nope">Nope not now</string>
+    <string name="times_up">Time\'s up!</string>
 
     <string name="enabled_label">Turn Mr Blocky on or off</string>
     <string name="setup_title">Two things to switch on</string>
@@ -82,6 +83,12 @@
         <item quantity="other">On a break for %d more minutes</item>
     </plurals>
     <string name="preview">See him in action</string>
+    <string name="deals_title">Dance deals</string>
+    <string name="deals_label">Turn dance deals on or off</string>
+    <string name="deals_text">Now and then he\'ll let you in for 5 minutes if you dance with him for one. Hold on to your phone: it counts your star jumps.</string>
+    <string name="deals_next">Make the next one a dance</string>
+    <string name="deals_next_set">The next one will be a dance ✓</string>
+    <string name="deals_try">Try the dance now</string>
     <string name="preview_backdrop">Pretend this is an app you are trying not to open.</string>
 
     <string name="apps_title">Apps he closes</string>

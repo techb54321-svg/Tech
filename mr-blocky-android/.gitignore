@@ -5,3 +5,8 @@ local.properties
 # ...except the ready-built copy people download.
 !dist/*.apk
 __pycache__/
+# Signing keys never belong here (the dev key, dev.keystore, is the one exception).
+*.jks
+*.aab
+# ...except the ready-built bundle for uploading to Google Play.
+!dist/*.aab

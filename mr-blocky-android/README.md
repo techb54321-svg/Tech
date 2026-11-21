@@ -56,9 +56,10 @@ Blocky, and read them.
 - **He is on a break** or **He is switched off**: end the break, or turn the
   switch at the top back on.
 - **He was stopped**: the phone closed the app. A card appears with a **Let him
-  keep running** button, which asks the phone to leave him alone. Some phones
-  also have their own setting for this, usually called Autostart or Background
-  activity, under the app's battery settings.
+  keep running** button, which opens Mr Blocky's page in Android's settings:
+  tap **Battery** (or **App battery usage**) and choose **Unrestricted**. Some
+  phones also have their own setting for this, usually called Autostart or
+  Background activity, under the app's battery settings.
 - The app you opened is not marked **on his list**: tick it under **Apps he
   closes**.
 
@@ -103,15 +104,27 @@ The app is written to `app/build/outputs/apk/release/app-release.apk`. Building
 needs the Android SDK; Android Studio installs it. `dist/mr-blocky.apk` is
 a copy of that file, kept here so it can be downloaded without building.
 
+For Google Play, the same app is built as an app bundle signed with a private
+upload key, which is kept out of this repository:
+
+```bash
+./gradlew bundlePlay -PuploadKeystore=/path/to/mr-blocky-upload.jks -PuploadPassword=...
+```
+
+It is written to `app/build/outputs/bundle/play/app-play.aab`, and
+`dist/mr-blocky-play.aab` is the copy to upload. `../mr-blocky-store/README.md`
+explains the key and how to publish.
+
 The app used to be called Scroll Bouncer. Its internal name,
 `com.scrollbouncer.app`, and the name of the file its settings are kept in have
 been left alone, so that a new build installs over an old one and keeps its
 settings and permissions.
 
-Every build is signed with `dev.keystore`, a development key kept in this
+Every other build is signed with `dev.keystore`, a development key kept in this
 folder so that a new build installs over the last one. Anyone with this folder
-has that key, so replace it with a private one before publishing to an app
-store.
+has that key, which is why the Play Store build uses the private upload key
+instead. The two are signed differently, so a copy installed from `dist/` has to
+be uninstalled before installing Mr Blocky from Google Play.
 
 ## How it fits together
 

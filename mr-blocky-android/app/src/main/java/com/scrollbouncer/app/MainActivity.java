@@ -1,7 +1,6 @@
 package com.scrollbouncer.app;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.NotificationManager;
@@ -96,16 +95,13 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Asks Android not to stop the app to save battery. Only offered once the phone
-     * has stopped him, since he cannot do his job if he is not left running.
+     * Opens the app's page in Android's settings, where its battery use can be set to
+     * Unrestricted. Only offered once the phone has stopped him, since he cannot do his
+     * job if he is not left running. (Asking Android directly needs a permission that
+     * Google Play only allows for a few kinds of app.)
      */
-    @SuppressLint("BatteryLife")
     private void askToKeepRunning(Uri me) {
-        try {
-            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, me));
-        } catch (ActivityNotFoundException e) {
-            startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
-        }
+        openSettings(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, me);
     }
 
     /** Opens one of Android's settings screens, straight at this app where the phone allows it. */

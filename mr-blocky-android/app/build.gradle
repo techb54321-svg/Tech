@@ -10,12 +10,16 @@ android {
         applicationId 'com.scrollbouncer.app'
         minSdk 26
         targetSdk 36
-        versionCode 6
-        versionName '1.4.1'
+        versionCode 7
+        versionName '1.5.0'
     }
 
-    // A development key kept in the project so every build can be installed over
-    // the last one. Swap it for a private key before publishing to an app store.
+    // A development key kept in the project, so every build of the downloadable app
+    // installs over the last one. The Google Play build is signed with a private upload
+    // key instead, which is never kept here: pass its file and password when building,
+    //   ./gradlew bundlePlay -PuploadKeystore=/path/to/upload.jks -PuploadPassword=...
+    // (see ../mr-blocky-store/README.md).
+    def uploadKeystore = project.findProperty('uploadKeystore')
     signingConfigs {
         dev {
             storeFile rootProject.file('dev.keystore')
@@ -23,12 +27,25 @@ android {
             keyAlias 'dev'
             keyPassword 'scrollbouncer'
         }
+        if (uploadKeystore) {
+            upload {
+                storeFile file(uploadKeystore)
+                storePassword project.findProperty('uploadPassword')
+                keyAlias 'upload'
+                keyPassword project.findProperty('uploadPassword')
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
             signingConfig signingConfigs.dev
+        }
+        // The same app for Google Play, as an app bundle (bundlePlay), signed with the upload key.
+        play {
+            initWith release
+            signingConfig uploadKeystore ? signingConfigs.upload : null
         }
         debug {
             signingConfig signingConfigs.dev

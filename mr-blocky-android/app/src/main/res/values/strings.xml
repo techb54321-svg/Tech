@@ -21,7 +21,7 @@
     <string name="open_app_info">Open App info</string>
 
     <string name="keep_title">The phone has been stopping him</string>
-    <string name="keep_text">Some phones close apps that run in the background, to save battery. Allow this and he will be left alone.</string>
+    <string name="keep_text">Some phones close apps that run in the background, to save battery. Tap below, then Battery (or App battery usage), and choose Unrestricted. Then he will be left alone.</string>
     <string name="keep_button">Let him keep running</string>
 
     <!-- The lines under the app's name, saying how he is getting on. -->

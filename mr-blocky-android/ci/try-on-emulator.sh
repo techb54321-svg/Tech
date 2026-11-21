@@ -96,7 +96,11 @@ logged() { grep -qE "ScrollBouncer *: $1\$" log.txt; }
 
 # Collects what the app has logged, which app is in front, and his count.
 collect() {
-  FOCUS="$(adb shell dumpsys window | grep -m1 mCurrentFocus || true)"
+  # Which app is in front: the one whose screen Android has resumed. Not the window dump,
+  # which starts with a snapshot from the last time anything stopped responding, so it can
+  # say what was in front back then.
+  FOCUS="$(adb shell dumpsys activity activities | tr -d '\r' | grep -m1 'topResumedActivity=' || true)"
+  [ -n "$FOCUS" ] || FOCUS="$(adb shell dumpsys activity activities | tr -d '\r' | grep -m1 'ResumedActivity' || true)"
   adb logcat -d -v threadtime > everything.txt || true
   grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: (page ready|deal [a-z]+)|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
     | tr -d '\r' | cut -c1-260 > log.txt || true
@@ -329,19 +333,11 @@ done
 rm -f jumping
 wait "$JUMPER" || true
 echo "The dance took $(($(date +%s) - START)) s from the tap"
-# What is in front in the seconds after he lets them back in, and whether the screen is on.
-for _ in 1 2 3 4 5; do
-  echo "  $(date +%T) $(adb shell dumpsys window | grep -m1 -oE 'mCurrentFocus=.*' | tr -d '\r' | cut -c1-120) $(adb shell dumpsys power | grep -m1 -oE 'mWakefulness=[A-Za-z]+' | tr -d '\r')"
-  sleep 1
-done
+sleep 5
 collect
-echo "== Android's own record of what came and went since the dance began"
-adb shell dumpsys usagestats | tr -d '\r' \
-  | grep -E "type=(ACTIVITY_RESUMED|ACTIVITY_PAUSED|SCREEN_INTERACTIVE|SCREEN_NON_INTERACTIVE|KEYGUARD_SHOWN|KEYGUARD_HIDDEN)" \
-  | grep -oE 'time="[^"]*" type=[A-Z_]+( package=[^ ]+)?' | tail -n 14 || true
-echo "== What the system said about it"
-awk '/ScrollBouncer *: dancing$/{on=1} on' everything.txt | grep -vE " (ScrollBouncer|chromium) *: " \
-  | grep -iE "deskclock|nexuslauncher|BAL_|background activ|abort|keyguard|dream|sleep|wakefulness" | cut -c1-400 | head -n 30 || true
+echo "== Android's own record of the last apps to come and go"
+adb shell dumpsys usagestats | tr -d '\r' | grep -E "type=(ACTIVITY_RESUMED|ACTIVITY_PAUSED|SCREEN_NON_INTERACTIVE)" \
+  | grep -oE 'time="[^"]*" type=[A-Z_]+( package=[^ ]+)?' | tail -n 6 || true
 logged "dark, sent home" || fail "the screen never went dark before he offered the deal"
 logged "dancing" || fail "tapping Let's dance! did not start the dance"
 grep -q "Mr Blocky: deal stopped" log.txt && fail "he stopped the dance part way: the star jumps were not counted"

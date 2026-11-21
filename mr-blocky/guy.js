@@ -923,7 +923,8 @@ const ScrollBouncerGuy = (() => {
           }
         }
         fill.style.width = `${((100 * t) / DANCE.length).toFixed(1)}%`;
-        left.textContent = `${Math.max(0, Math.ceil(DANCE.length - t))} seconds to go`;
+        const togo = Math.max(0, Math.ceil(DANCE.length - t));
+        left.textContent = `${togo} ${togo === 1 ? 'second' : 'seconds'} to go`;
         requestAnimationFrame(frame);
       });
     });

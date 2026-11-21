@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mr Blocky – the little guy who stops you scrolling</title>
+<meta name="description" content="Open a social media app and Mr Blocky walks across your screen, boops the close button with his nose and says: Nope, not now. Free, with no ads and nothing collected.">
+<meta property="og:title" content="Mr Blocky – the little guy who stops you scrolling">
+<meta property="og:description" content="He closes social media for you. Nope, not now. Sometimes he'll let you in… if you dance with him first.">
+<meta property="og:image" content="https://techb54321-svg.github.io/Tech/mr-blocky/images/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0c0a09">
+<link rel="icon" href="images/favicon-32.png" sizes="32x32">
+<link rel="icon" href="images/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+<style>
+  :root {
+    --mint: #ddf7f0; --mint-2: #b9f8e6; --teal: #2dd4bf; --teal-dark: #0f766e; --ink: #123a33; --ink-soft: #3b625a;
+    --stage: #0c0a09; --stage-2: #1d1633; --glow: #99f6e4; --white: #fff;
+    --pink: #f472b6; --yellow: #fbbf24; --violet: #a78bfa; --sky: #38bdf8;
+    --radius: 22px; --shadow: 0 18px 50px rgba(18, 58, 51, .18);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--mint); color: var(--ink);
+    font: 400 17px/1.55 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  img, video { max-width: 100%; height: auto; display: block; }
+  a { color: var(--teal-dark); }
+  h1, h2, h3 { line-height: 1.12; letter-spacing: -0.02em; margin: 0 0 .5em; }
+  h1 { font-size: clamp(38px, 7vw, 68px); font-weight: 900; }
+  h2 { font-size: clamp(30px, 4.6vw, 46px); font-weight: 850; }
+  h3 { font-size: 21px; font-weight: 800; }
+  p { margin: 0 0 1em; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  section { padding: 72px 0; }
+
+  /* Top bar */
+  .top { position: sticky; top: 0; z-index: 10; background: rgba(12, 10, 9, .86); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 60px; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; color: var(--white); text-decoration: none; font-weight: 850; font-size: 19px; }
+  .brand img { width: 34px; height: 34px; border-radius: 9px; }
+  .top nav { display: flex; gap: 18px; }
+  .top nav a { color: rgba(255, 255, 255, .82); text-decoration: none; font-weight: 600; font-size: 15px; }
+  .top nav a:hover { color: var(--white); }
+  @media (max-width: 560px) { .top nav a.optional { display: none; } }
+
+  /* The dark stage, with coloured beams like the ones he dances under */
+  .stage-bg { position: relative; overflow: hidden; color: var(--white);
+    background: radial-gradient(120% 90% at 50% 110%, #2a1f45 0%, #120f1c 48%, var(--stage) 100%); }
+  .beam { position: absolute; top: -12%; height: 130%; width: 22%; transform-origin: 50% 0; opacity: .26; pointer-events: none;
+    clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); animation: sweep 7s ease-in-out infinite alternate; }
+  .beam.b1 { left: 6%;  background: linear-gradient(to bottom, var(--pink), transparent 80%); --a: 18deg; --b: -6deg; }
+  .beam.b2 { left: 30%; background: linear-gradient(to bottom, var(--yellow), transparent 80%); --a: -10deg; --b: 12deg; animation-delay: -2s; }
+  .beam.b3 { left: 54%; background: linear-gradient(to bottom, var(--violet), transparent 80%); --a: 14deg; --b: -14deg; animation-delay: -4s; }
+  .beam.b4 { left: 76%; background: linear-gradient(to bottom, var(--sky), transparent 80%); --a: -18deg; --b: 8deg; animation-delay: -1s; }
+  @keyframes sweep { from { transform: rotate(var(--a)); } to { transform: rotate(var(--b)); } }
+  @media (prefers-reduced-motion: reduce) { .beam { animation: none; transform: rotate(var(--a)); } }
+  .stage-bg > .wrap { position: relative; }
+
+  /* Hero */
+  .hero { padding: 56px 0 64px; }
+  .hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; align-items: center; gap: 28px; }
+  .hero p.lead { font-size: 20px; color: rgba(255, 255, 255, .86); max-width: 34em; }
+  .hero .guy { justify-self: center; width: min(360px, 80%); filter: drop-shadow(0 30px 40px rgba(0, 0, 0, .35)); }
+  .floor { height: 30px; margin: -18px auto 0; width: 70%; border-radius: 50%; background: radial-gradient(closest-side, rgba(244, 114, 182, .7), transparent); }
+  .bubble { display: inline-block; background: var(--white); color: #1c1917; font-weight: 750; padding: 10px 16px; border-radius: 16px 16px 5px 16px; margin-bottom: 18px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; border: 0; cursor: pointer; text-decoration: none;
+    font: 750 17px/1 Inter, system-ui, sans-serif; padding: 15px 22px; border-radius: 999px; }
+  .btn.primary { background: var(--teal); color: #06302c; }
+  .btn.primary:hover { background: #5eead4; }
+  .btn.ghost { background: rgba(255, 255, 255, .12); color: var(--white); }
+  .btn.ghost:hover { background: rgba(255, 255, 255, .2); }
+  .btn.dark { background: var(--ink); color: var(--white); }
+  .btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+  .small { font-size: 14.5px; color: rgba(255, 255, 255, .7); }
+  @media (max-width: 760px) {
+    .hero .wrap { grid-template-columns: 1fr; text-align: center; }
+    .hero .guy { order: -1; width: min(240px, 62%); }
+    .hero p.lead { margin: 0 auto 1em; }
+    .buttons { justify-content: center; }
+  }
+
+  /* How it works */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 30px; }
+  .step { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+  .step img { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+  .step div { padding: 18px 20px 22px; }
+  .step p { color: var(--ink-soft); margin: 0; }
+  .num { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--mint-2); font-weight: 850; margin-right: 6px; }
+  @media (max-width: 820px) { .steps { grid-template-columns: 1fr; max-width: 460px; margin-left: auto; margin-right: auto; } }
+
+  /* The dance */
+  .dance .wrap { display: grid; grid-template-columns: 1fr 340px; gap: 40px; align-items: center; }
+  .dance p { color: rgba(255, 255, 255, .86); }
+  .moves { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 8px; padding: 0; list-style: none; }
+  .moves li { background: rgba(255, 255, 255, .1); border-radius: 999px; padding: 6px 13px; font-weight: 650; font-size: 15px; }
+  .phone { border-radius: 34px; overflow: hidden; border: 8px solid #1f1b2e; box-shadow: 0 30px 70px rgba(0, 0, 0, .5); background: #000; }
+  .phone video { width: 100%; height: auto; }
+  @media (max-width: 820px) { .dance .wrap { grid-template-columns: 1fr; } .phone { max-width: 320px; margin: 0 auto; } }
+
+  /* You're in charge */
+  .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 26px; }
+  .feature { background: rgba(255, 255, 255, .6); border-radius: 18px; padding: 20px 22px; }
+  .feature p { margin: 0; color: var(--ink-soft); }
+  @media (max-width: 680px) { .features { grid-template-columns: 1fr; } }
+
+  /* Get it */
+  .get { background: var(--white); }
+  .stores { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 26px; }
+  .store { border: 2px solid var(--mint-2); border-radius: var(--radius); padding: 22px; }
+  .store .soon { display: inline-block; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--teal-dark); background: var(--mint); border-radius: 999px; padding: 4px 10px; margin-bottom: 10px; }
+  .store p { color: var(--ink-soft); margin: 0 0 .6em; }
+  @media (max-width: 680px) { .stores { grid-template-columns: 1fr; } }
+
+  /* Privacy and questions */
+  .privacy .card { background: var(--ink); color: var(--white); border-radius: var(--radius); padding: 34px; display: grid; grid-template-columns: 120px 1fr; gap: 26px; align-items: center; }
+  .privacy .card p { color: rgba(255, 255, 255, .85); }
+  .privacy .card a { color: var(--glow); }
+  @media (max-width: 620px) { .privacy .card { grid-template-columns: 1fr; text-align: center; } .privacy .card img { margin: 0 auto; } }
+  details { background: var(--white); border-radius: 16px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(18, 58, 51, .06); }
+  summary { font-weight: 750; cursor: pointer; }
+  details p { margin: 10px 0 0; color: var(--ink-soft); }
+
+  footer { background: var(--stage); color: rgba(255, 255, 255, .7); padding: 30px 0; font-size: 15px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+  footer a { color: rgba(255, 255, 255, .9); }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#"><img src="images/icon-192.png" alt="">Mr Blocky</a>
+    <nav aria-label="Main">
+      <a class="optional" href="#how">How it works</a>
+      <a class="optional" href="#dance">The dance</a>
+      <a href="#get">Get it</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero stage-bg">
+    <div class="beam b1"></div><div class="beam b2"></div><div class="beam b3"></div><div class="beam b4"></div>
+    <div class="wrap">
+      <div>
+        <div class="bubble">Nope, not now.</div>
+        <h1>The little guy who stops you scrolling</h1>
+        <p class="lead">Open a social media app and Mr Blocky toddles across the top of your screen, boops the close button with his nose, and shakes his head at you.</p>
+        <div class="buttons">
+          <button class="btn primary" type="button" data-demo="close">▶ Watch him do it</button>
+          <a class="btn ghost" href="#get">Get Mr Blocky</a>
+        </div>
+        <p class="small">Free. No account, no ads, and nothing collected.</p>
+      </div>
+      <div>
+        <img class="guy" src="images/tada.png" alt="Mr Blocky, a round mint-green character with round glasses, cheering with both arms up" width="508" height="420">
+        <div class="floor"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p>Pick the apps or websites that eat your time. Mr Blocky keeps watch, and steps in when you open one.</p>
+      <div class="steps">
+        <div class="step">
+          <img src="images/walk.jpg" alt="Mr Blocky walking across the top of a social media feed towards a red close button" width="540" height="540" loading="lazy">
+          <div><h3><span class="num">1</span>You open the app</h3><p>A moment later, Mr Blocky walks in and heads for the close button.</p></div>
+        </div>
+        <div class="step">
+          <img src="images/nope.jpg" alt="The screen gone dark, with Mr Blocky saying Nope not now" width="540" height="540" loading="lazy">
+          <div><h3><span class="num">2</span>He closes it</h3><p>Boop. The screen goes dark, he shakes his head, and you are back on your home screen.</p></div>
+        </div>
+        <div class="step">
+          <img src="images/offer.jpg" alt="Mr Blocky asking: you want to dance with me? with the buttons Let's dance and No thanks" width="540" height="540" loading="lazy">
+          <div><h3><span class="num">3</span>Sometimes, a deal</h3><p>Now and then he goes quiet… then asks if you want to dance with him.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dance" class="dance stage-bg">
+    <div class="beam b1"></div><div class="beam b3"></div><div class="beam b4"></div>
+    <div class="wrap">
+      <div>
+        <h2>Dance your way back in</h2>
+        <p>Say yes and the lights come up. He calls out each move for a minute and you copy him. Make it to the end and he boops the app back open, and leaves you be for 5 minutes.</p>
+        <ul class="moves">
+          <li>Side to side</li><li>Disco point</li><li>Star jumps</li><li>March on the spot</li><li>Arms up and wiggle</li><li>Spin around</li><li>Ta-da!</li>
+        </ul>
+        <p>On a phone, hold on to it: it counts your star jumps, and he needs ten.</p>
+        <div class="buttons"><button class="btn primary" type="button" data-demo="dance">💃 Try the dance</button></div>
+        <p class="small">It comes with its own song, so turn your sound up.</p>
+      </div>
+      <div class="phone">
+        <video src="media/dance.mp4" poster="media/dance-poster.jpg" controls playsinline preload="none" width="540" height="1108"
+          aria-label="Mr Blocky offering the dance deal, then dancing on a phone"></video>
+      </div>
+    </div>
+  </section>
+
+  <section id="control">
+    <div class="wrap">
+      <h2>You're in charge</h2>
+      <div class="features">
+        <div class="feature"><h3>Choose what he closes</h3><p>Instagram, TikTok, Facebook, X, Reddit and others are ticked to start with. Add or remove any you like.</p></div>
+        <div class="feature"><h3>Take a break</h3><p>Really need to get in? Let yourself in for 5 minutes, any time.</p></div>
+        <div class="feature"><h3>Dance deals, or not</h3><p>He offers one about one time in four, never twice in two hours. Turn them off if you'd rather he just said no.</p></div>
+        <div class="feature"><h3>See your progress</h3><p>He keeps count of how many times he's closed something for you, today and all time.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="get" class="get">
+    <div class="wrap">
+      <h2>Get Mr Blocky</h2>
+      <div class="stores">
+        <div class="store">
+          <span class="soon">Coming soon</span>
+          <h3>Android phones</h3>
+          <p>On its way to Google Play. He works with apps like Instagram and TikTok themselves, not just websites.</p>
+          <p>Can't wait? <a href="https://github.com/techb54321-svg/Tech/raw/HEAD/mr-blocky-android/dist/mr-blocky.apk">Download the early version</a>. Your phone will warn you about it, because it isn't from the Play Store yet.</p>
+        </div>
+        <div class="store">
+          <span class="soon">Coming soon</span>
+          <h3>Chrome, Edge and Brave</h3>
+          <p>On its way to the Chrome Web Store, for social media opened in your browser on a computer.</p>
+        </div>
+        <div class="store">
+          <span class="soon">Coming soon</span>
+          <h3>Firefox</h3>
+          <p>On its way to Firefox Add-ons.</p>
+        </div>
+        <div class="store">
+          <span class="soon">Not yet</span>
+          <h3>iPhone and Safari</h3>
+          <p>iPhones don't let apps step in front of other apps, so the walking, booping version can't work there. We're looking at what can.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy" class="privacy">
+    <div class="wrap">
+      <div class="card">
+        <img src="images/side.png" alt="" width="120" height="100" loading="lazy">
+        <div>
+          <h2>Nothing leaves your device</h2>
+          <p>Mr Blocky doesn't collect anything about you. No account, no ads, no trackers. The Android app doesn't even have permission to use the internet.</p>
+          <p><a href="privacy.html">Read the privacy policy</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <details><summary>Why does the Android app need "Usage access"?</summary>
+        <p>So it can tell which app you've just opened. That's checked on your phone and never sent anywhere.</p></details>
+      <details><summary>And "Display over other apps"?</summary>
+        <p>That's what lets Mr Blocky walk across the top of the app you opened.</p></details>
+      <details><summary>Does it cost anything?</summary>
+        <p>No. It's free, with no ads and no in-app purchases.</p></details>
+      <details><summary>Can I still use the apps?</summary>
+        <p>Yes. Switch him off, take a 5-minute break, or dance with him when he offers. He's there to make you stop and think, not to lock you out.</p></details>
+      <details><summary>Does he work on websites too?</summary>
+        <p>Yes, with the browser extension. When he closes a website, he closes the tab.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Mr Blocky · Free, and nothing collected</span>
+    <span><a href="privacy.html">Privacy policy</a></span>
+  </div>
+</footer>
+
+<script src="guy.js" defer></script>
+<script>
+  // The buttons above run the real Mr Blocky on this page: the same code as the app.
+  let busy = false;
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-demo]');
+    if (!button || busy || typeof ScrollBouncerGuy === 'undefined') return;
+    busy = true;
+    try {
+      const show = await ScrollBouncerGuy.perform({ top: 8 });
+      if (button.dataset.demo === 'dance') await show.offerDance({ music: 'dance.ogg' });
+      await show.fadeOut();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      busy = false;
+    }
+  });
+</script>
+</body>
+</html>

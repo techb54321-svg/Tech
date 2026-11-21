@@ -4,6 +4,7 @@ name: Deploy web apps to GitHub Pages
 #   https://<user>.github.io/Tech/             → Inside the Sip (WebXR)
 #   https://<user>.github.io/Tech/clip-forge/  → Clip Forge (3D video ad maker)
 #   https://<user>.github.io/Tech/gym-accountability/ → Ironclad (gym accountability, static)
+#   https://<user>.github.io/Tech/mr-blocky/   → Mr Blocky's home page and privacy policy
 on:
   push:
     branches: [claude/wizardly-noether-ji4obu, claude/video-clip-app-g3e6sg, ccr-c7cbb14b-l69v7c, ccr-6d9d710c-9v3uwl]
@@ -56,6 +57,10 @@ jobs:
           cp -r gym-accountability/landing/. site/ironclad/
           mkdir -p site/quiet-table
           cp -r quiet-table/. site/quiet-table/
+          # Mr Blocky's page runs the little guy himself, so it gets his code and dance music too.
+          mkdir -p site/mr-blocky
+          cp -r mr-blocky-site/. site/mr-blocky/
+          cp mr-blocky/guy.js mr-blocky/dance.ogg site/mr-blocky/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -537,7 +537,7 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v21-knock', clen:10, core:true, lead:1500, fx:[{f:'knock', at:.15, v:1}], voice:'h-hello', vdur:15.54, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.08,0.43,1.12,1.36,1.92,2.28,2.64,3.04,3.68,4.08,4.48,4.72,4.88,5.28,5.8,6.08,6.36,7.04,7.8,8.52,9.28,9.44,9.6,9.84,9.97,10.08,10.32,11.28,11.6,12.4,12.72,12.88,13.64,13.92,14.16,14.4], text:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a funny sound inside me today: lub... whoosh... dub! Did it make you a bit worried? Me too! Let's play hide-and-seek and find that whoosh!"},
+  {id:'hello', clip:'v26-door', clen:5, cuts:[{at:3.6, clip:'v21-knock', clen:10}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], voice:'h-hello', vdur:15.54, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.08,0.43,1.12,1.36,1.92,2.28,2.64,3.04,3.68,4.08,4.48,4.72,4.88,5.28,5.8,6.08,6.36,7.04,7.8,8.52,9.28,9.44,9.6,9.84,9.97,10.08,10.32,11.28,11.6,12.4,12.72,12.88,13.64,13.92,14.16,14.4], text:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a funny sound inside me today: lub... whoosh... dub! Did it make you a bit worried? Me too! Let's play hide-and-seek and find that whoosh!"},
   {id:'home', clip:'v21-glow', clen:5, cuts:[{at:7.8, clip:'v21-home', clen:8}], core:true, clue:1, fx:[{f:'heartbeat', at:7.25, v:.9}], task:'hand', voice:'h-home', vdur:9.61, words:[0.07,0.31,0.55,0.91,1.27,1.43,1.59,2.55,3.48,3.59,3.79,3.95,4.07,4.43,4.99,5.31,5.59,5.79,5.91,6.19,6.83,7.83,8.07,8.47,8.63], text:"Is the whoosh hiding in your tummy? No! Put your hand on your chest, a tiny bit to the left... thump-thump! It's hiding in me!"},
   {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, fx:[{f:'squish', at:3.85, v:.9}], task:'fist', voice:'h-squeeze', vdur:11.58, words:[0.07,0.31,0.55,0.95,1.19,2.31,2.55,2.63,3.11,3.43,4.47,4.63,4.83,5.43,5.87,6.35,6.63,6.91,7.15,7.75,8.31,8.71,9.35,9.59,10.31,10.55], text:"Is the whoosh my squeeze? Make a fist and squeeze... and let go. That's me, pushing my blood out. Squeezing goes thump, not whoosh. Keep looking!"},
   {id:'loop', clip:'v22-train', clen:8, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'h-loop', vdur:7.33, words:[0.1,0.34,0.54,1.22,1.46,1.78,2.18,2.5,2.9,3.38,3.5,3.62,3.78,4.38,4.58,4.66,4.82,5.46,5.7,5.94,6.18,6.46], text:"Off it goes! My blood rides all round you: up to your head, down to your toes, and back home to me!"},
@@ -1109,9 +1109,10 @@ function fxLoad(name){
   if (!FX[name]) FX[name] = fetch(`sfx/${name}.mp3`).then(r => r.arrayBuffer()).then(a => new Promise((ok, no) => AC.decodeAudioData(a, ok, no))).catch(() => null);
   return FX[name];
 }
-function fxPreload(){ if (audio()) FX_NAMES.forEach(fxLoad); }
+function fxPreload(){ if (SFX_ON && audio()) FX_NAMES.forEach(fxLoad); }
+const SFX_ON = false;   // sound effects switched off for now; set true to bring them back
 function fx(name, vol = 1){
-  if (!audio()) return;
+  if (!SFX_ON || !audio()) return;
   fxLoad(name).then(buf => {
     if (!buf) return;
     const src = AC.createBufferSource(), g = AC.createGain();
@@ -1121,7 +1122,7 @@ function fx(name, vol = 1){
 }
 function fxStop(){ fxLive.forEach(x => { try { x.stop(); } catch {} }); fxLive.clear(); }
 function sfx(kind){
-  if (!kind || !audio()) return;
+  if (!SFX_ON || !kind || !audio()) return;
   const t = AC.currentTime + .05;
   const beat = (t0, g = 1) => { thump(t0, g); thump(t0 + .24, g * .7); };
   if (kind === 'beat') { beat(t); beat(t + .85); }

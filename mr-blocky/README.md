@@ -75,9 +75,9 @@ Click the toolbar icon to:
 
 Now and then, after "Nope not now", he pauses... "...unless... you want to
 dance with me?" Say yes and the lights come up, and he dances for a minute to
-his own song, calling out each move for you to copy: side to side, disco point,
-star jumps, marching on the spot, arms up and wiggle, a spin, and a jump for
-the big finish. Dance along to the end and he boops the page back open and lets
+his own song, calling out each move for you to copy: side to side, squats,
+star jumps, knees up, arms up and wiggle, a spin, and a jump for the big
+finish. Dance along to the end and he boops the page back open and lets
 you stay for 5 minutes. Then he comes back: "Time's up!"
 
 - He offers about one time in four, and never twice within two hours, so

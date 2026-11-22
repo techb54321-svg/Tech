@@ -64,12 +64,12 @@ final class Stage {
     public static final class Bridge {
         private final Handler main = new Handler(Looper.getMainLooper());
         private final Cues cues;
-        private final JumpCounter jumps;
+        private final MoveCounter moves;
 
         Bridge(Context context, WebView web, Cues cues) {
             this.cues = cues;
-            jumps = JumpCounter.available(context)
-                    ? new JumpCounter(context, () -> web.evaluateJavascript("window.mrBlockyJump && window.mrBlockyJump()", null))
+            moves = MoveCounter.available(context)
+                    ? new MoveCounter(context, () -> web.evaluateJavascript("window.mrBlockyMove && window.mrBlockyMove()", null))
                     : null;
             // However the page ends, stop listening to the sensor once it is off screen.
             web.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
@@ -79,7 +79,7 @@ final class Stage {
 
                 @Override
                 public void onViewDetachedFromWindow(View view) {
-                    if (jumps != null) jumps.stop();
+                    if (moves != null) moves.stop();
                 }
             });
         }
@@ -104,17 +104,20 @@ final class Stage {
             main.post(cues::letIn);
         }
 
-        /** Whether the phone can feel star jumps. */
+        /** Whether the phone can feel the exercises being done. */
         @JavascriptInterface
         public boolean hasMotion() {
-            return jumps != null;
+            return moves != null;
         }
 
-        /** Starts or stops counting star jumps; each one calls window.mrBlockyJump() in the page. */
+        /**
+         * Starts counting one kind of exercise ("jump", "squat" or "knee"), or stops counting.
+         * Each one counted calls window.mrBlockyMove() in the page.
+         */
         @JavascriptInterface
-        public void countJumps(boolean on) {
-            if (jumps == null) return;
-            main.post(on ? jumps::start : jumps::stop);
+        public void countMoves(String kind, boolean on) {
+            if (moves == null) return;
+            main.post(on ? () -> moves.start(kind) : moves::stop);
         }
     }
 }

@@ -10,8 +10,8 @@ android {
         applicationId 'com.scrollbouncer.app'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '1.6.0'
+        versionCode 9
+        versionName '1.7.0'
     }
 
     // A development key kept in the project, so every build of the downloadable app

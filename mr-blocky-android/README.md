@@ -28,10 +28,10 @@ Now and then, after "Nope not now", he goes quiet for a moment, then asks:
 - Tap **No thanks**, or leave it, and he closes the app as usual.
 - Tap **Let's dance!** and music starts. He dances in the middle of the screen
   for just over a minute, under coloured lights, calling out each move for
-  you to copy: side to side, disco point, star jumps, march on the spot, arms
-  up and wiggle, a spin, and a jump for the big finish. Hold on to your phone: it
-  feels your star jumps with its motion sensor, and he needs 10 of them. Tap
-  **Stop** to give up part way.
+  you to copy: side to side, squats, star jumps, knees up, arms up and wiggle,
+  a spin, and a jump for the big finish. Hold on to your phone: it feels the
+  exercises with its motion sensor, and he needs 5 squats, 10 star jumps and
+  12 knees up. Tap **Stop** to give up part way.
 - Dance to the end and he says "OK, you did good!", boops the app back open
   with his nose, and leaves you be for 5 minutes. If you are still in the app
   when they are up, he comes back for it and says "Time's up!".
@@ -41,8 +41,8 @@ He offers it about one time in four, and never twice within two hours. The
 one a dance** makes sure the next app he closes gets the offer, and **Try the
 dance now** plays it inside the app without closing anything.
 
-On a phone with no motion sensor he does not count star jumps, and finishing
-the dance is enough.
+On a phone with no motion sensor he does not count anything, and finishing the
+dance is enough.
 
 ## If he does not turn up
 
@@ -140,8 +140,9 @@ watching.
   goes on, the screen goes dark and he finishes. The watcher sends the phone
   to its home screen. For a dance deal it also tells the watcher when they say
   yes, and when he boops the app back open, so the watcher can open it again
-- `JumpCounter.java`: counts star jumps with the phone's motion sensor: a
-  moment of near weightlessness, then the jolt of landing. It needs no
+- `MoveCounter.java`: counts squats, star jumps and knees up with the phone's
+  motion sensor: each is a moment of feeling lighter, then heavier (going up,
+  then landing; or starting down, then stopping at the bottom). It needs no
   permission
 - `Access.java`: whether the two settings above are switched on
 - `BootReceiver.java`: puts him back on duty after the phone restarts or the

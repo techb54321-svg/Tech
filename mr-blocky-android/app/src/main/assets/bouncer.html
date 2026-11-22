@@ -22,12 +22,22 @@
         top: top + 8, line: options.get('line') || undefined, onDark: () => Android.dark()
       });
       if (options.get('deal') === '1') {
-        // On a phone he checks for real star jumps, with its motion sensor.
+        // On a phone he checks they really do the squats, star jumps and knees up,
+        // with its motion sensor. The app calls mrBlockyMove() for each one it feels.
+        let kind = '', counted = 0;
         const counter = Android.hasMotion() ? {
-          need: 10,
           hint: 'Hold on to your phone!',
-          start(onJump) { window.mrBlockyJump = onJump; Android.countJumps(true); },
-          stop() { Android.countJumps(false); window.mrBlockyJump = null; }
+          start(move, onCount) {
+            kind = move;
+            counted = 0;
+            window.mrBlockyMove = () => { counted += 1; onCount(); };
+            Android.countMoves(move, true);
+          },
+          stop() {
+            Android.countMoves('', false);
+            window.mrBlockyMove = null;
+            console.log('Mr Blocky: counted ' + counted + ' ' + kind);
+          }
         } : undefined;
         const answer = await show.offerDance({
           music: 'dance.ogg', counter, onDancing: () => Android.dancing(), onLetIn: () => Android.letIn()

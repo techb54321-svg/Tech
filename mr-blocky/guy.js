@@ -107,6 +107,10 @@ const ScrollBouncerGuy = (() => {
   const SIDE_EYE = { x: 69.5, y: 52 };              // level with his nose
   const FRONT_EYES = { left: 35.5, right: 56.5, y: 49 };
   const FRONT_HIPS = { left: BELLY.x - 8.5, right: BELLY.x + 8.5, y: 64 };
+  const FRONT_FOOT_Y = 91.4;   // the middle of a front foot
+  // A front leg lifted more than `ahead` is drawn in front of him, its knee starting at `y`,
+  // the bottom of his body, and rising `rise` times as fast as the foot.
+  const KNEE = { ahead: 3, y: 80.4, rise: 1.5 };
 
   const line = (color = COLOR.outline) => ({ stroke: color, 'stroke-width': OUTLINE, 'stroke-linejoin': 'round' });
   const body = () => [
@@ -192,8 +196,8 @@ const ScrollBouncerGuy = (() => {
     const R = 9;                         // the lenses' radius
     const gap = right - left - 2 * R;
     const leg = (cls, hip) => s('g', { class: cls },
-      s('rect', { x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg, ...line() }),
-      s('rect', { x: hip - 8, y: 86.4, width: 16, height: 10, rx: 5, fill: COLOR.foot, ...line() }));
+      s('rect', { class: 'shin', x: hip - 5.5, y: 62, width: 11, height: 30, rx: 5.5, fill: COLOR.leg, ...line() }),
+      s('rect', { class: 'foot', x: hip - 8, y: FRONT_FOOT_Y - 5, width: 16, height: 10, rx: 5, fill: COLOR.foot, ...line() }));
 
     return s('g', { class: 'front' },
       leg('front-leg-l', FRONT_HIPS.left), leg('front-leg-r', FRONT_HIPS.right),
@@ -251,6 +255,8 @@ const ScrollBouncerGuy = (() => {
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
       joy: find('joy'), grin: find('grin'), legL: find('front-leg-l'), legR: find('front-leg-r'),
+      shinL: svg.querySelector('.front-leg-l .shin'), shinR: svg.querySelector('.front-leg-r .shin'),
+      footL: svg.querySelector('.front-leg-l .foot'), footR: svg.querySelector('.front-leg-r .foot'),
       whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil'),
       sleeves: svg.querySelectorAll('.arm-l .sleeve, .arm-r .sleeve'), hands: svg.querySelectorAll('.arm-l .hand, .arm-r .hand')
     };
@@ -321,8 +327,29 @@ const ScrollBouncerGuy = (() => {
       part.flat.style.display = mouth === 'flat' ? '' : 'none';
       part.grin.style.display = mouth === 'grin' ? '' : 'none';
       for (const pupil of part.pupils) set(pupil, `translate(${r3(d ? d.look : 0)} 0)`);
-      set(part.legL, d ? `translate(0 ${r3(-d.liftL)}) rotate(${r3(d.legL)} ${FRONT_HIPS.left} ${FRONT_HIPS.y})` : '');
-      set(part.legR, d ? `translate(0 ${r3(-d.liftR)}) rotate(${r3(d.legR)} ${FRONT_HIPS.right} ${FRONT_HIPS.y})` : '');
+      // His legs swing out from his hips, keeping their feet flat and down on the floor, and lift.
+      // A knee lifted up comes in front of his tummy, where it can be seen. Seen from the
+      // front a raised leg looks shorter: its top, the knee, rises up from the bottom of
+      // his body faster than the foot does.
+      for (const side of ['L', 'R']) {
+        const leg = part['leg' + side], shin = part['shin' + side], foot = part['foot' + side];
+        const hip = side === 'L' ? FRONT_HIPS.left : FRONT_HIPS.right;
+        const angle = d ? d['leg' + side] : 0, lift = d ? d['lift' + side] : 0;
+        const drop = (FRONT_FOOT_Y - FRONT_HIPS.y) * (1 - Math.cos(rad(angle)));
+        set(leg, d ? `translate(0 ${r3(drop - lift)}) rotate(${r3(angle)} ${hip} ${FRONT_HIPS.y})` : '');
+        set(foot, angle ? `rotate(${r3(-angle)} ${hip} ${FRONT_FOOT_Y})` : '');
+        const ahead = lift > KNEE.ahead;
+        if (ahead !== !!leg.ahead) {
+          leg.ahead = ahead;
+          if (ahead) part.front.append(leg); else part.front.insertBefore(leg, part.frontTorso);
+        }
+        const top = ahead ? r3(KNEE.y + lift - KNEE.rise * (lift - KNEE.ahead)) : 62;
+        if (shin.top !== top) {
+          shin.top = top;
+          shin.setAttribute('y', top);
+          shin.setAttribute('height', r3(92 - top));
+        }
+      }
       if (ARMS) {
         // One arm hangs at his side; the other goes up and wags along with his head.
         set(part.armL, `rotate(${d ? r3(d.armL) : 14} ${SHOULDER.left.x} ${SHOULDER.left.y})`);
@@ -572,14 +599,16 @@ const ScrollBouncerGuy = (() => {
   // Now and then, after "Nope not now", he offers a way in: dance with him for a
   // minute. The music (dance.ogg, made by mr-blocky-music/make-dance-music.py) is
   // 120 beats a minute, and its sections line up with these moves, so change them together.
+  // The exercises carry `count`, the kind of move a phone's motion sensor counts, `need`,
+  // how many it takes to win the deal, and `name`, what to call them.
   const DANCE = {
     bpm: 120,
     moves: [
       { until: 4, move: 'ready', say: 'Get ready!' },
       { until: 12, move: 'side', say: 'Side to side!' },
-      { until: 20, move: 'disco', say: 'Disco point!' },
-      { until: 36, move: 'jumps', say: 'Star jumps!' },
-      { until: 48, move: 'march', say: 'March on the spot!' },
+      { until: 20, move: 'squats', say: 'Squats!', count: 'squat', need: 5, name: 'squats' },
+      { until: 36, move: 'jumps', say: 'Star jumps!', count: 'jump', need: 10, name: 'star jumps' },
+      { until: 48, move: 'knees', say: 'Knees up!', count: 'knee', need: 12, name: 'knees up' },
       { until: 58, move: 'wiggle', say: 'Arms up and wiggle!' },
       { until: 62, move: 'spin', say: 'Spin around!' },
       { until: 64, move: 'crouch', say: 'Get ready to jump…' },
@@ -651,22 +680,15 @@ const ScrollBouncerGuy = (() => {
         p.look = 2 * sway;
         break;
       }
-      case 'disco': {  // one hand points up to the sky and down to the floor, then the other
-        const up = Math.tanh(2.5 * Math.cos(Math.PI * b)) / Math.tanh(2.5);   // +1 up, -1 down, snapping between
-        const point = 95 + 62 * up;
-        // The pose with his right hand (+1) or his left (-1) doing the pointing.
-        const hand = (side) => ({
-          armR: side > 0 ? -point : -30, armL: side > 0 ? 30 : point,
-          x: 7 * k * side * up, tilt: -7 * k * side * up,
-          legR: side > 0 ? -12 * k * Math.max(0, up) : 0, legL: side > 0 ? 0 : 12 * k * Math.max(0, up),
-          look: 2.4 * side * Math.max(0, up)
-        });
-        // Four beats with one hand, then he hands over to the other during the last bit of the fourth.
-        const side = Math.floor(b / 4) % 2 === 0 ? 1 : -1;
-        const w = ease(clamp01(((b % 4) - 3.4) / 0.6));
-        const a = hand(side), c = hand(-side);
-        bounce(5);
-        for (const key of Object.keys(a)) p[key] = a[key] + (c[key] - a[key]) * w;
+      case 'squats': { // down on one beat and back up on the next: a squat a second
+        const depth = (1 - Math.cos(Math.PI * b)) / 2;   // 0 standing on even beats, 1 down low on odd ones
+        crouch = 1 - 0.17 * k * depth;
+        p.sx = 1 + 0.06 * k * depth;
+        p.legL = 18 * k * depth;
+        p.legR = -18 * k * depth;
+        p.armL = 14 + 80 * depth;                         // arms out to balance
+        p.armR = -14 - 80 * depth;
+        if (depth > 0.75) { p.eyes = 'shut'; p.mouth = 'flat'; }   // and a bit of effort at the bottom
         break;
       }
       case 'jumps': {  // out on one beat and back in on the next: a star jump a second
@@ -678,14 +700,14 @@ const ScrollBouncerGuy = (() => {
         p.legR = -26 * spread;
         break;
       }
-      case 'march': {  // knees up high in turn, the other arm pumping
+      case 'knees': {  // running on the spot, a knee right up on every beat, the other arm pumping
         const lift = Math.sin(Math.PI * f), left = n % 2 === 0;
-        bounce(4, 0.05);
-        p.liftL = left ? 18 * k * lift : 0;
-        p.liftR = left ? 0 : 18 * k * lift;
-        p.armL = 14 + (left ? 8 : 90 * k * lift);
-        p.armR = -14 - (left ? 90 * k * lift : 8);
-        p.tilt = (left ? 4 : -4) * k * lift;
+        bounce(6, 0.07);
+        p.liftL = left ? 12 * k * lift : 0;
+        p.liftR = left ? 0 : 12 * k * lift;
+        p.armL = 14 + (left ? 10 : 100 * k * lift);
+        p.armR = -14 - (left ? 100 * k * lift : 10);
+        p.tilt = (left ? 5 : -5) * k * lift;
         break;
       }
       case 'wiggle': { // arms right up, waving together, and a shimmy
@@ -852,8 +874,8 @@ const ScrollBouncerGuy = (() => {
   // The deal, from "Nope not now" onwards. Resolves with 'danced' if they dance to the
   // end and he boops the way back in, or 'declined' or 'stopped' if not.
   //   music:     address of dance.ogg, or nothing to dance in silence
-  //   counter:   on a phone, counts star jumps with its motion sensor:
-  //              { need, hint, start(onJump), stop() }
+  //   counter:   on a phone, counts the exercises with its motion sensor:
+  //              { hint, start(kind, onCount), stop() }, kind being a move's `count`
   //   onDancing: called when they say yes
   //   onLetIn:   called as he boops the way back in
   async function dance(rig, { music, counter, onDancing, onLetIn } = {}) {
@@ -961,9 +983,12 @@ const ScrollBouncerGuy = (() => {
 
     await song.begin(2500);
     fadeIn(lights.el, 400);
-    let jumps = 0, counting = false;
+    // How many of each exercise the phone has counted, and the exercise it is counting now.
+    const counts = {};
+    let counting = null;
     const tick = () => {
-      tally.textContent = jumps >= counter.need ? `${jumps} star jumps ✓` : `${counter.hint}  ${jumps} / ${counter.need}`;
+      const done = counts[counting.count];
+      tally.textContent = done >= counting.need ? `${done} ${counting.name} ✓` : `${counter.hint}  ${done} / ${counting.need}`;
     };
     const result = await new Promise((finish) => {
       let shown = null;
@@ -980,14 +1005,16 @@ const ScrollBouncerGuy = (() => {
         if (step !== shown) {
           shown = step;
           title.textContent = step.say;
-          if (counter && step.move === 'jumps') {
-            counting = true;
-            counter.start(() => { jumps += 1; tick(); });
+          if (counting) {
+            counter.stop();
+            counting = null;
+          }
+          if (counter && step.count) {
+            const exercise = counting = step;
+            counts[exercise.count] = 0;
+            counter.start(exercise.count, () => { counts[exercise.count] += 1; if (counting === exercise) tick(); });
             tick();
             tally.style.opacity = '1';
-          } else if (counting) {
-            counting = false;
-            counter.stop();
           }
         }
         fill.style.width = `${((100 * t) / DANCE.length).toFixed(1)}%`;
@@ -1018,10 +1045,11 @@ const ScrollBouncerGuy = (() => {
       await fadeIn(say, 150);
       await sleep(ms);
     };
-    if (result === 'stopped' || (counter && jumps < counter.need)) {
+    const missed = counter && DANCE.moves.find((m) => m.count && (counts[m.count] || 0) < m.need);
+    if (result === 'stopped' || missed) {
       song.stop();
       pose.dance = { ...STANDING, armL: 62, armR: -62, look: -2, mouth: 'flat', tilt: -3 };
-      await speak(result === 'stopped' ? 'Maybe next time!' : `Nice moves, but I needed ${counter.need} star jumps!`, 1800);
+      await speak(result === 'stopped' ? 'Maybe next time!' : `Nice moves, but I needed ${missed.need} ${missed.name}!`, 1800);
       await fadeOut(say);
       return 'stopped';
     }

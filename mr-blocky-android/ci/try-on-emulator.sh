@@ -102,7 +102,7 @@ collect() {
   FOCUS="$(adb shell dumpsys activity activities | tr -d '\r' | grep -m1 'topResumedActivity=' || true)"
   [ -n "$FOCUS" ] || FOCUS="$(adb shell dumpsys activity activities | tr -d '\r' | grep -m1 'ResumedActivity' || true)"
   adb logcat -d -v threadtime > everything.txt || true
-  grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: (page ready|deal [a-z]+)|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
+  grep -E " (ScrollBouncer|AndroidRuntime) *: |Mr Blocky: (page ready|deal [a-z]+|counted [0-9]+ [a-z]+)|ActivityTaskManager: START u0 .*($TARGET|$APP)" everything.txt \
     | tr -d '\r' | cut -c1-260 > log.txt || true
   adb shell "run-as $APP cat shared_prefs/scroll-bouncer.xml" > prefs.xml || true
   echo "== What the app logged"
@@ -305,17 +305,18 @@ done
 adb shell input tap $OFFER
 echo "Tapped Let's dance! at $OFFER"
 
-# Star jumps, as the phone's motion sensor feels them: up in the air, where it feels
-# almost weightless, then the jolt of landing, over and over. He only counts them
-# during the star jumps part of the dance, so keep jumping all the way through.
+# Squats, star jumps and knees up, as the phone's motion sensor feels them: lighter
+# (up in the air, or starting down) then heavier (landing, or stopping at the bottom),
+# over and over. He counts each one in its own part of the dance, so keep going all the
+# way through, quickly enough for knees up, a step every half a second.
 echo "The motion sensor before jumping: $(adb emu sensor get acceleration 2>&1 | tr -d '\r' | head -n 1)"
 touch jumping
 (
   while [ -e jumping ]; do
     adb emu sensor set acceleration 0:0:2 > /dev/null 2>&1 || true
-    sleep 0.25
+    sleep 0.15
     adb emu sensor set acceleration 0:0:22 > /dev/null 2>&1 || true
-    sleep 0.25
+    sleep 0.15
   done
   adb emu sensor set acceleration 0:9.8:0 > /dev/null 2>&1 || true   # standing still again
 ) &
@@ -340,7 +341,7 @@ adb shell dumpsys usagestats | tr -d '\r' | grep -E "type=(ACTIVITY_RESUMED|ACTI
   | grep -oE 'time="[^"]*" type=[A-Z_]+( package=[^ ]+)?' | tail -n 6 || true
 logged "dark, sent home" || fail "the screen never went dark before he offered the deal"
 logged "dancing" || fail "tapping Let's dance! did not start the dance"
-grep -q "Mr Blocky: deal stopped" log.txt && fail "he stopped the dance part way: the star jumps were not counted"
+grep -q "Mr Blocky: deal stopped" log.txt && fail "he did not let them in: the squats, star jumps and knees up were not all counted"
 [ -n "$LET_IN" ] || fail "they danced, but he did not let them back into the app"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
@@ -350,7 +351,7 @@ sleep 15
 collect
 [ "$(grep -cE "ScrollBouncer *: on stage$" log.txt)" = 1 ] || fail "he came again during the five minutes he gave them"
 echo "$FOCUS" | grep -q "$TARGET" || fail "the app he let them back into was closed again"
-pass "they said yes to a dance, did star jumps, and he let them back into the app"
+pass "they said yes to a dance, did the squats, star jumps and knees up, and he let them back into the app"
 
 adb shell am start -n "$APP/.MainActivity" > /dev/null
 sleep 3

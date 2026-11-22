@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mr Blocky",
-  "version": "1.17.0",
+  "version": "1.18.0",
   "description": "Mr Blocky walks out and closes the tab whenever you open social media. Now and then he lets you in, if you dance with him.",
   "permissions": [
     "storage"

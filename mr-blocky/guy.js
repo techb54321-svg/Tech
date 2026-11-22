@@ -153,6 +153,17 @@ const ScrollBouncerGuy = (() => {
     };
     return s('g', { class: cls }, ...layer(true), ...layer(false));
   };
+  // Both arms bent, hands on hips: each goes out to an elbow and back in to his side, where
+  // the hand rests. The arms are drawn behind him (outline, then fill) and the hands in front.
+  const AKIMBO = [[SHOULDER.left, -1], [SHOULDER.right, 1]];   // each shoulder, and which way is out
+  const akimboArms = () => {
+    const path = ([at, out]) => `M${at.x} ${at.y}L${at.x + out * 11} ${at.y + 9.5}L${at.x - out} ${at.y + 17}`;
+    const layer = (color, width) => AKIMBO.map((side) => s('path', { d: path(side), fill: 'none', stroke: color,
+      'stroke-width': width, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    return css(s('g', { class: 'akimbo' }, ...layer(COLOR.outline, 7.8 + 2 * OUTLINE), ...layer(COLOR.limb, 7.8)), { display: 'none' });
+  };
+  const akimboHands = () => css(s('g', { class: 'akimbo-hands' }, ...AKIMBO.map(([at, out]) =>
+    s('ellipse', { cx: at.x - out * 2.7, cy: at.y + 18.1, rx: 4.6, ry: 5, fill: COLOR.limb, ...line() }))), { display: 'none' });
   // A round lens of his glasses, with a glint of light across the glass.
   const lens = (cx, cy, r = 9) => s('g', null,
     s('circle', { cx, cy, r, fill: '#fff', 'fill-opacity': 0.12, stroke: COLOR.frames, 'stroke-width': 2 }),
@@ -202,8 +213,9 @@ const ScrollBouncerGuy = (() => {
     return s('g', { class: 'front' },
       leg('front-leg-l', FRONT_HIPS.left), leg('front-leg-r', FRONT_HIPS.right),
       s('g', { class: 'front-torso' },
-        ...(ARMS ? [arm('arm-l', SHOULDER.left, 1), arm('arm-r', SHOULDER.right, -1)] : []),
+        ...(ARMS ? [arm('arm-l', SHOULDER.left, 1), arm('arm-r', SHOULDER.right, -1), akimboArms()] : []),
         ...body(),
+        ...(ARMS ? [akimboHands()] : []),
         // Seen from behind, as he turns round: no face, just a little crease at the bottom.
         css(s('g', { class: 'booty' }, stroke('', 'M46 71.2q-1.3 5.3 0 10.3', COLOR.outline, 1.6)), { display: 'none' }),
         s('g', { class: 'face' },
@@ -257,6 +269,7 @@ const ScrollBouncerGuy = (() => {
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
       joy: find('joy'), grin: find('grin'), booty: find('booty'), legL: find('front-leg-l'), legR: find('front-leg-r'),
+      akimbo: find('akimbo'), akimboHands: find('akimbo-hands'),
       shinL: svg.querySelector('.front-leg-l .shin'), shinR: svg.querySelector('.front-leg-r .shin'),
       footL: svg.querySelector('.front-leg-l .foot'), footR: svg.querySelector('.front-leg-r .foot'),
       whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil'),
@@ -356,6 +369,10 @@ const ScrollBouncerGuy = (() => {
         }
       }
       if (ARMS) {
+        // Hands on hips, for dancing, or else his ordinary straight arms.
+        const akimbo = !!(d && d.akimbo);
+        part.armL.style.display = part.armR.style.display = akimbo ? 'none' : '';
+        part.akimbo.style.display = part.akimboHands.style.display = akimbo ? '' : 'none';
         // One arm hangs at his side; the other goes up and wags along with his head.
         set(part.armL, `rotate(${d ? r3(d.armL) : 14} ${SHOULDER.left.x} ${SHOULDER.left.y})`);
         set(part.armR, `rotate(${r3(d ? d.armR : -14 - pose.raise * (140 + 2.6 * pose.shake))} ${SHOULDER.right.x} ${SHOULDER.right.y})`);
@@ -611,11 +628,11 @@ const ScrollBouncerGuy = (() => {
     moves: [
       { until: 4, move: 'ready', say: 'Get ready!' },
       { until: 12, move: 'side', say: 'Side to side!' },
-      { until: 20, move: 'booty', say: 'Shake your booty!' },
+      { until: 20, move: 'hips', say: 'Move your hips!' },
       { until: 36, move: 'jumps', say: 'Star jumps!', count: 'jump', need: 10, name: 'star jumps' },
       { until: 48, move: 'knees', say: 'Knees up!', count: 'knee', need: 12, name: 'knees up' },
       { until: 58, move: 'wiggle', say: 'Arms up and wiggle!' },
-      { until: 62, move: 'spin', say: 'Spin around!' },
+      { until: 62, move: 'booty', say: 'Shake your booty!' },
       { until: 64, move: 'crouch', say: 'Get ready to jump…' },
       { until: 67, move: 'tada', say: 'Ta-da!' }
     ]
@@ -623,9 +640,10 @@ const ScrollBouncerGuy = (() => {
   DANCE.length = DANCE.moves[DANCE.moves.length - 1].until;
   // x is a step to the side, sx and sy squash and stretch him, and reach is how long
   // his arms are: they stretch out for dancing, so the moves can be seen. hips slides his
-  // body sideways over his feet, and back turns him round, so his back is to you.
+  // body sideways over his feet, back turns him round, so his back is to you, and akimbo
+  // puts his hands on his hips.
   const STANDING = { tilt: 0, hop: 0, x: 0, sx: 1, sy: 1, reach: 1, armL: 14, armR: -14, legL: 0, legR: 0,
-    liftL: 0, liftR: 0, hips: 0, back: false, eyes: 'open', mouth: 'smile', look: 0 };
+    liftL: 0, liftR: 0, hips: 0, back: false, akimbo: false, eyes: 'open', mouth: 'smile', look: 0 };
   const TURN = 0.5;   // seconds to turn round, to shake his booty
   const STRETCH = 1.8;
   const clamp01 = (t) => Math.max(0, Math.min(1, t));
@@ -687,6 +705,16 @@ const ScrollBouncerGuy = (() => {
         p.look = 2 * sway;
         break;
       }
+      case 'hips': {   // hands on hips, swinging his hips over to one side on each beat
+        const sway = Math.tanh(1.6 * Math.cos(Math.PI * b)) / Math.tanh(1.6);
+        p.akimbo = true;
+        p.hips = 7 * k * sway;
+        p.tilt = -0.7 * p.hips;                     // his head stays where it is
+        crouch = 1 - 0.04 * k * (1 - Math.abs(sway)); // dipping a little as they swing across
+        p.legL = 6;
+        p.legR = -6;
+        break;
+      }
       case 'booty': {  // he turns his back to you, shakes his booty, and turns round again
         const length = step.until - DANCE.moves[at - 1].until;
         // How far he has turned away: 0 facing you, 1 with his back to you.
@@ -735,13 +763,6 @@ const ScrollBouncerGuy = (() => {
         p.look = 2 * w;
         break;
       }
-      case 'spin':     // two spins, arms out
-        if (!calm) spin = Math.cos(Math.PI * since);
-        p.back = spin < 0;
-        bounce(5);
-        p.armL = 108;
-        p.armR = -108;
-        break;
       case 'crouch':   // down low, trembling, ready to spring
         crouch = 1 - 0.14 * ease(clamp01(since / 0.4));
         p.armL = 34;

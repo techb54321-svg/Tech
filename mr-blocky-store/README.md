@@ -81,7 +81,7 @@ Mr Blocky is a little round guy with big glasses who helps you scroll less.
 Open Instagram, TikTok or another app on your list, and a moment later Mr Blocky toddles across the top of your screen, boops the close button with his nose, and shakes his head at you: "Nope not now." Then you're back on your home screen.
 
 DANCE YOUR WAY BACK IN
-Now and then he goes quiet… then asks if you want to dance with him. Say yes and the lights come up. For a minute he calls out the moves and you copy him: side to side, shake your booty, star jumps, knees up, arms up and wiggle, spin around, ta-da! Hold on to your phone: it counts your star jumps and knees up. Make it to the end and he boops the app back open, and leaves you be for 5 minutes.
+Now and then he goes quiet… then asks if you want to dance with him. Say yes and the lights come up. For a minute he calls out the moves and you copy him: side to side, move your hips, star jumps, knees up, arms up and wiggle, shake your booty, ta-da! Hold on to your phone: it counts your star jumps and knees up. Make it to the end and he boops the app back open, and leaves you be for 5 minutes.
 
 YOU'RE IN CHARGE
 • Choose which apps he closes

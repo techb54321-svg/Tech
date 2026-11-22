@@ -28,9 +28,9 @@ Now and then, after "Nope not now", he goes quiet for a moment, then asks:
 - Tap **No thanks**, or leave it, and he closes the app as usual.
 - Tap **Let's dance!** and music starts. He dances in the middle of the screen
   for just over a minute, under coloured lights, calling out each move for
-  you to copy: side to side, shake your booty (he turns round to wiggle his),
-  star jumps, knees up, arms up and wiggle, a spin, and a jump for the big
-  finish. Hold on to your phone: it feels the exercises with its motion sensor,
+  you to copy: side to side, move your hips, star jumps, knees up, arms up and
+  wiggle, shake your booty (he turns round to wiggle his), and a jump for the
+  big finish. Hold on to your phone: it feels the exercises with its motion sensor,
   and he needs 10 star jumps and 12 knees up. Tap **Stop** to give up part way.
 - Dance to the end and he says "OK, you did good!", boops the app back open
   with his nose, and leaves you be for 5 minutes. If you are still in the app

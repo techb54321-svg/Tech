@@ -17,11 +17,11 @@ up with the moves in guy.js (DANCE there), so if a section changes length here,
 change it there too:
 
     bars  0-1    0-4 s   get ready
-    bars  2-9    4-20 s  side to side, then shake your booty
+    bars  2-9    4-20 s  side to side, then move your hips
     bars 10-17  20-36 s  star jumps, one on beats 1 and 3
     bars 18-23  36-48 s  knees up, a step every beat
     bars 24-28  48-58 s  arms up and wiggle
-    bars 29-31  58-64 s  big finish
+    bars 29-31  58-64 s  big finish: shake your booty, then get ready to jump
     bar  32     64 s     ta-da, then applause
 """
 import json

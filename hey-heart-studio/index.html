@@ -537,22 +537,22 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v21-knock', clen:10, core:true, lead:1500, fx:[{f:'knock', at:.15, v:1}], voice:'e3-hello', vdur:15.35, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.16,0.4,1.12,1.36,1.92,2.28,2.72,3.04,3.68,4.16,4.56,4.96,5.32,5.44,5.68,5.84,6.12,6.48,6.8,7.76,8.32,8.96,9.76,10,10.32,11.2,11.44,11.56,11.68,12.56,12.84,12.96,13.8,14.04,14.24], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard a secret sound: lub, whoosh, dub! What's that whoosh? And is it okay? Let's be detectives and find out!"},
-  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:7.3, clip:'v21-home', clen:8}], core:true, clue:1, fx:[{f:'heartbeat', at:6.9, v:.9}], task:'hand', voice:'e3-home', vdur:9.46, words:[0.1,0.42,1.22,1.46,1.62,1.78,2.26,2.5,3.28,3.38,3.66,3.82,3.94,4.3,4.86,5.18,5.46,5.62,5.74,5.86,6.66,7.62,7.98,8.18,8.5], text:"Clue one: where is the sound coming from? Put your hand on your chest, a tiny bit to the left... thump-thump! It's coming from me!"},
-  {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, fx:[{f:'squish', at:4.4, v:.9}], task:'fist', voice:'e3-squeeze', vdur:9.65, words:[0.1,0.5,1.3,1.46,1.66,1.86,2.02,2.3,2.98,3.18,3.3,3.78,4.1,5.18,5.3,5.58,6.26,6.42,6.9,7.14,7.38,7.86,8.06,8.3,8.5,8.66,8.82], text:"Clue two: what do I do all day? Make a fist and squeeze... and let go. I squeeze just like that, to push blood out of me."},
-  {id:'loop', clip:'v22-train', clen:8, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'e3-loop', vdur:6.22, words:[0.07,0.23,0.47,0.79,1.35,1.59,1.75,1.91,2.23,2.71,2.83,2.95,3.11,3.67,3.95,4.07,4.23,4.83,5.07,5.23,5.35], text:"And that blood rushes all the way round you: up to your head, down to your toes, and back to me!"},
-  {id:'doors', clip:'v24-doors', clen:13, core:true, clue:3, fx:[{f:'clack', at:5.45, v:1}, {f:'clack', at:6.1, v:1}, {f:'clack', at:10.0, v:.7}], task:'say', voice:'e3-doors', vdur:11.29, words:[0.1,0.5,1.3,1.54,1.94,2.1,3.06,3.26,3.54,3.94,4.5,5.18,5.82,6.58,6.74,6.98,7.38,7.62,7.98,8.1,8.34,9.3,9.54,9.7,10.1,10.22,10.42], text:"Clue three: what makes my sounds? My little doors snapping shut: lub... dub! So if lub and dub are my doors... what's the whoosh in the middle?"},
-  {id:'tryit', clip:'v21-jump', clen:8, core:true, clue:4, fx:[{f:'bounce', at:1.3, v:.8}, {f:'drum', at:3.6, v:.85}], task:'jump', voice:'e3-tryit', vdur:10.81, words:[0.1,0.42,1.14,1.54,1.86,2.5,2.74,2.98,3.54,4.38,5.06,5.3,5.62,5.94,6.66,6.82,7.06,7.86,8.82,9.06,9.34,9.58,9.94], text:"Clue four! Jump five times, then feel me. Faster, stronger! When blood rushes faster, I get louder. Hmm... I think we've cracked it!"},
+  {id:'hello', clip:'v21-knock', clen:10, core:true, lead:1500, fx:[{f:'knock', at:.15, v:1}], voice:'h-hello', vdur:15.54, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.08,0.43,1.12,1.36,1.92,2.28,2.64,3.04,3.68,4.08,4.48,4.72,4.88,5.28,5.8,6.08,6.36,7.04,7.8,8.52,9.28,9.44,9.6,9.84,9.97,10.08,10.32,11.28,11.6,12.4,12.72,12.88,13.64,13.92,14.16,14.4], text:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a funny sound inside me today: lub... whoosh... dub! Did it make you a bit worried? Me too! Let's play hide-and-seek and find that whoosh!"},
+  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:7.8, clip:'v21-home', clen:8}], core:true, clue:1, fx:[{f:'heartbeat', at:7.25, v:.9}], task:'hand', voice:'h-home', vdur:9.61, words:[0.07,0.31,0.55,0.91,1.27,1.43,1.59,2.55,3.48,3.59,3.79,3.95,4.07,4.43,4.99,5.31,5.59,5.79,5.91,6.19,6.83,7.83,8.07,8.47,8.63], text:"Is the whoosh hiding in your tummy? No! Put your hand on your chest, a tiny bit to the left... thump-thump! It's hiding in me!"},
+  {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, fx:[{f:'squish', at:3.85, v:.9}], task:'fist', voice:'h-squeeze', vdur:11.58, words:[0.07,0.31,0.55,0.95,1.19,2.31,2.55,2.63,3.11,3.43,4.47,4.63,4.83,5.43,5.87,6.35,6.63,6.91,7.15,7.75,8.31,8.71,9.35,9.59,10.31,10.55], text:"Is the whoosh my squeeze? Make a fist and squeeze... and let go. That's me, pushing my blood out. Squeezing goes thump, not whoosh. Keep looking!"},
+  {id:'loop', clip:'v22-train', clen:8, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'h-loop', vdur:7.33, words:[0.1,0.34,0.54,1.22,1.46,1.78,2.18,2.5,2.9,3.38,3.5,3.62,3.78,4.38,4.58,4.66,4.82,5.46,5.7,5.94,6.18,6.46], text:"Off it goes! My blood rides all round you: up to your head, down to your toes, and back home to me!"},
+  {id:'doors', clip:'v25-doors', clen:12, core:true, clue:3, fx:[{f:'clack', at:3.35, v:1}, {f:'clack', at:4.12, v:.8}, {f:'clack', at:7.28, v:.75}], task:'say', voice:'h-doors', vdur:9.49, words:[0.06,0.26,0.46,0.78,1.02,1.9,2.22,2.94,3.7,4.54,5.26,5.5,5.66,5.82,6.06,6.46,6.86,7.5,7.86,8.22], text:"Is the whoosh my doors? Let's check! Lub... dub! No, that's just my little doors snapping shut. They're working perfectly!"},
+  {id:'tryit', clip:'v21-jump', clen:8, core:true, clue:4, fx:[{f:'bounce', at:.5, v:.8}, {f:'drum', at:3.3, v:.85}], task:'jump', voice:'h-tryit', vdur:9.04, words:[0.1,0.34,0.46,0.58,0.98,1.3,2.1,2.26,2.42,2.58,2.78,2.98,3.78,4.02,4.18,4.58,4.98,5.7,5.86,6.26,6.58,7.38,7.7,7.94], text:"Jump up and down five times! Can you feel me going faster? When my blood rushes faster, the whoosh gets louder... We're getting warmer!"},
   {id:'listen', clip:'v19-listen', clen:10, off:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', clip:'v21-listen', clen:5, cuts:[{at:1.4, clip:'v21-hose', clen:10}], core:true, detect:'whoosh', lead:2600, fx:[{f:'murmur', at:.1, v:.9}, {f:'hose', at:4.1, v:.55}], voice:'e3-whoosh', vdur:9.77, words:[0.11,0.51,1.55,2.11,2.71,3.46,3.55,4.03,4.27,4.51,4.83,5.23,5.63,5.95,6.19,6.43,6.59,7.35,7.55,8.03,8.43,8.63,8.75], text:"Listen closely... lub, whoosh, dub! The whoosh is just my blood rushing through me between my doors, like water whooshing through a hose!"},
-  {id:'common', clip:'v21-photo', clen:10, detect:'common', fx:[{f:'kids', at:1.6, v:.7}], voice:'e3-common', vdur:9.81, words:[0.1,0.22,0.34,0.5,1.38,2.18,2.62,2.86,3.06,3.26,3.46,3.58,3.7,4.18,4.46,4.66,5.5,5.78,6.02,6.18,6.42,6.98,7.74,8.34,8.66], text:"And is it okay? Yes! Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means harmless."},
+  {id:'whoosh', clip:'v21-listen', clen:5, cuts:[{at:4.35, clip:'v21-hose', clen:10}], core:true, detect:'whoosh', lead:450, fx:[{f:'murmur', at:2.25, v:.55}, {f:'hose', at:4.9, v:.55}], voice:'h-whoosh', vdur:10.77, words:[0.38,1.19,2.03,2.83,3.67,4.43,4.83,5.54,5.63,6.03,6.27,6.63,6.91,7.23,7.75,7.95,8.35,8.59,9.07,9.47,9.63,9.71], text:"Shhh... listen. Lub... whoosh... dub. Found it! The whoosh is just my blood rushing through me, like water whooshing through a hose!"},
+  {id:'common', clip:'v21-photo', clen:10, detect:'common', fx:[{f:'kids', at:1.55, v:.7}], voice:'h-common', vdur:9.69, words:[0.21,0.35,0.55,1.19,1.59,1.91,2.15,2.43,2.63,2.75,2.87,3.35,3.63,3.83,4.59,4.87,5.11,5.27,5.51,6.03,6.79,7.35,7.67,8.55], text:"And guess what? Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means harmless. Phew!"},
   {id:'fever', clip:'v19-fever', clen:10, off:true, optional:true, sfx:'drumfast', voice:'fever', vdur:9.89, text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
   {id:'play', clip:'v20-play', clen:10, off:true, voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
-  {id:'grow', clip:'v21-height', clen:10, detect:'grow', fx:[{f:'night', at:.2, v:.5}, {f:'pencil', at:.9, v:1}], voice:'e3-grow', vdur:7.28, words:[0.15,0.24,0.56,1.04,1.2,1.6,1.84,2.08,2.88,3.08,3.28,3.44,4.36,4.56,5.04,5.28,5.88,6.2], text:"As you grow, my whoosh might get quieter, or even go away. Either way, I'm healthy and strong!"},
+  {id:'grow', clip:'v21-height', clen:10, detect:'grow', fx:[{f:'night', at:.2, v:.5}, {f:'pencil', at:.9, v:1}], voice:'h-grow', vdur:7.29, words:[0.21,0.31,0.47,1.03,1.27,1.67,1.91,2.15,2.95,3.15,3.35,3.51,4.39,4.75,5.15,5.43,5.91,6.15], text:"As you grow, my whoosh might get quieter, or even go away. Either way, I'm healthy and strong!"},
   {id:'outro', kind:'end', off:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
-  {id:'quiz', kind:'quiz', core:true, voice:'e3-quiz', vdur:3.4, words:[0.28,0.49,1.21,1.33,1.45,1.85,2.09], text:"Detective time! Can you answer three questions?"},
-  {id:'award', kind:'award', core:true, fx:[{f:'jingle', at:.05, v:.9}], voice:'e3-expert', vdur:7.71, voicedFor:{name:'Mia'}, words:[0.08,0.56,1.48,1.64,1.96,2.08,2.56,3.24,3.52,3.76,4.16,4.52,5,5.41,5.6,5.84,6.16,6.6], text:"Case closed! You solved the mystery, {name}: your heart is healthy and strong. You're a real heart detective!"},
-  {id:'bye', clip:'v21-night', clen:8, core:true, fx:[{f:'night', at:0, v:.6}, {f:'heartbeat', at:1.5, v:.35}], voice:'e3-bye', vdur:4.51, voicedFor:{name:'Mia'}, words:[0.22,0.48,1.2,1.36,1.6,1.92,2.44,3.28,3.44,3.76], text:"Goodnight, {name}. I'll be right here, beating, all night long."},
+  {id:'quiz', kind:'quiz', core:true, voice:'h-quiz', vdur:2.54, words:[0.27,0.39,1.11,1.27,1.59], text:"Quiz time! Can you remember?"},
+  {id:'award', kind:'award', core:true, fx:[{f:'jingle', at:.05, v:.9}], voice:'h-expert', vdur:4.21, voicedFor:{name:'Mia'}, words:[0.24,0.42,0.7,0.82,1.22,1.9,2.1,2.34,2.74,2.98], text:"You found the whoosh, {name}! You're a real heart detective!"},
+  {id:'bye', clip:'v21-night', clen:8, core:true, fx:[{f:'night', at:0, v:.6}, {f:'heartbeat', at:1.75, v:.35}], voice:'h-bye', vdur:5.53, voicedFor:{name:'Mia'}, words:[0.28,0.58,1.34,2.1,2.9,3.1,3.26,3.58,4.26,4.46,4.7], text:"Goodnight, {name}. Lub... dub... I'll be right here, all night long."},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
@@ -571,36 +571,36 @@ const NOTFOR = {loop:['little']};
 // English wording by age band (mid = the default text in SCENES)
 const AGE = {
   little: {
-    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a sound inside me: lub, whoosh, dub! What's that whoosh? Let's find out!",
-    home:"Clue one: where is the sound? Put your hand on your chest. Thump-thump! It's me!",
-    squeeze:"Clue two: what do I do? Make a fist and squeeze! I squeeze to push blood out.",
-    doors:"Clue three: my little doors go lub... dub! So what's the whoosh?",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a funny sound inside me: lub... whoosh... dub! Let's play hide-and-seek and find that whoosh!",
+    home:"Is the whoosh in your tummy? No! Put your hand on your chest. Thump-thump! It's in me!",
+    squeeze:"Is it my squeeze? Make a fist and squeeze! Squeezing goes thump, not whoosh. Keep looking!",
+    doors:"Is it my doors? Lub... dub! No, my doors just snap shut. They work perfectly!",
     listen:"Today {doctor} listened to me with a special listening tube.",
-    whoosh:"Listen... lub, whoosh, dub! The whoosh is just my blood rushing through me, like water in a hose!",
-    common:"Is it okay? Yes! Lots of kids have a whoosh, just like you!",
+    whoosh:"Shhh... listen. Lub... whoosh... dub. Found it! It's just my blood rushing through me, like water in a hose!",
+    common:"Lots of kids have a whoosh, just like you. It's harmless. Phew!",
     fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
     play:"So keep running, jumping and dancing!",
     grow:"As you grow, my whoosh might go away. I'm healthy and strong!",
     outro:"Remember: my whoosh is okay. I'm strong. And you can play!",
-    tryit:"Clue four! Jump five times. Feel me go faster! Fast blood is louder!",
-    bye:"Goodnight, {name}. I'll be right here, beating, all night long.",
-    loop:"My blood goes up to your head, down to your toes, and back to me!",
-    award:"Case closed! You solved the mystery, {name}! You're a heart detective!",
+    tryit:"Jump five times! Feel me go faster? Fast blood makes the whoosh louder. We're getting warmer!",
+    bye:"Goodnight, {name}. Lub... dub... I'll be right here, all night long.",
+    loop:"Off it goes! My blood goes up to your head, down to your toes, and back to me!",
+    award:"You found the whoosh, {name}! You're a heart detective!",
   },
   big: {
-    home:"Clue one: where is the sound coming from? Put your hand on your chest, a little to the left, behind your ribs... thump-thump. It's coming from me!",
-    squeeze:"Clue two: what do I do all day? Make a fist: that's about my size. Squeeze and let go. I squeeze about 100,000 times a day to push blood out of me.",
-    loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
-    doors:"Clue three: what makes my sounds? I have four rooms called chambers, with doors called valves between them. When the valves snap shut they make lub... dub. So what's the whoosh in between?",
+    home:"Is the whoosh coming from your tummy? No. Put your hand on your chest, a little to the left, behind your ribs... thump-thump. It's coming from me!",
+    squeeze:"Is the whoosh my squeeze? Make a fist: that's about my size. Squeeze and let go. I squeeze about 100,000 times a day to push blood out, but squeezing goes thump, not whoosh. Keep looking!",
+    loop:"My blood leaves through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
+    doors:"Is the whoosh my doors? My four chambers have doors called valves between them. Lub... dub: that's the valves snapping shut, and they're working perfectly. So it's not the doors!",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
-    whoosh:"Listen closely: lub, whoosh, dub. The whoosh is blood flowing fast and smoothly through me between my valves, like water rushing through a garden hose.",
-    common:"And is it okay? Yes. Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point.",
+    whoosh:"Listen closely: lub... whoosh... dub. Found it! The whoosh is blood flowing fast and smoothly through me, like water rushing through a garden hose.",
+    common:"And guess what? Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. Phew!",
     fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
     play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
     grow:"As you grow, many whooshes get quieter or disappear completely. Either way, I'm healthy and strong.",
     outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
-    tryit:"Clue four! Jump up and down ten times, then feel me. When blood flows faster, I sound louder. I think we've cracked it!",
-    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened with a stethoscope and heard an extra sound between my beats: lub, whoosh, dub. What is that whoosh, and is it okay? Let's investigate!",
+    tryit:"Jump up and down ten times, then feel me. When blood flows faster, I sound louder. We're getting warmer!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened with a stethoscope and heard an extra sound between my beats: lub... whoosh... dub. Did that make you a bit worried? Let's track down that whoosh together!",
   },
 };
 const LANGS = [
@@ -1226,8 +1226,8 @@ const player = (() => {
       const got = list.slice(0, i + 1).filter(x => x.clue).length;
       $$('i', clues).forEach((d, k) => { d.classList.toggle('on', k < got); d.classList.toggle('new', !!s.clue && k === got - 1); });
       clues.classList.toggle('solved', s.id === 'whoosh');
-      const CL = S.lang === 'en' ? ['Where?', 'What?', 'Sounds?', 'Faster?'] : [];
-      $('.cl', clues).textContent = s.id === 'whoosh' ? (S.lang === 'en' ? 'Cracked it!' : '') : (s.clue ? (CL[s.clue - 1] || '') : '');
+      const CL = S.lang === 'en' ? ['Tummy?', 'Squeeze?', 'Doors?', 'Warmer!'] : [];
+      $('.cl', clues).textContent = s.id === 'whoosh' ? (S.lang === 'en' ? 'Found it!' : '') : (s.clue ? (CL[s.clue - 1] || '') : '');
     }
     setCaption(text);
     dur = estimate(s); t0 = performance.now();
@@ -1354,7 +1354,7 @@ const player = (() => {
     const card = $$('.layer', stage)[idx];
     const q = qz(), qq = $('.qq', card), box = $('.qopts', card), dots = $$('.dots i', card);
     if (quizAt.idx !== idx) quizAt = {idx, k: 0};
-    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'e3-quiz', vdur: 3.4, text: sceneText(s)}, my); }
+    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'h-quiz', vdur: 2.54, text: sceneText(s)}, my); }
     for (let k = quizAt.k; k < q.q.length; k++) {
       quizAt.k = k;
       if (my !== token || !playing) return;

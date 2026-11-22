@@ -5,7 +5,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 src, out = sys.argv[1], sys.argv[2]
-FPS, DUR, W, H = 24, 13.0, 1280, 720
+FPS, DUR, W, H = 24, 12.0, 1280, 720
 base = Image.open(src).convert("RGB").resize((W, H), Image.LANCZOS)
 S = H / 714  # measurements were taken on a 1280x714 copy
 
@@ -62,11 +62,11 @@ def flap(rx, o):
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
 def openness(t):
-    o = ramp(1.2, 2.1, t) * (1 - ramp(5.35, 5.55, t))      # open while asking, snap shut on "lub"
-    o += ramp(7.4, 8.3, t) * (1 - ramp(9.85, 10.05, t))    # open again, shut
+    o = ramp(1.6, 2.4, t) * (1 - ramp(3.25, 3.42, t))      # open on "Let's check!", snap shut on "Lub"
+    o += ramp(5.2, 5.9, t) * (1 - ramp(7.15, 7.32, t))     # open again, shut on "snapping shut"
     return min(1, o)
-def squeeze(t):
-    return 1 - 0.02 * (math.exp(-((t - 6.2) / 0.18) ** 2) + 0.6 * math.exp(-((t - 5.5) / 0.12) ** 2))
+def squeeze(t):                                          # the whole heart squeezes on "lub" and "dub"
+    return 1 - 0.02 * (math.exp(-((t - 4.15) / 0.18) ** 2) + 0.6 * math.exp(-((t - 3.4) / 0.12) ** 2))
 
 def frame(t):
     o = openness(t)

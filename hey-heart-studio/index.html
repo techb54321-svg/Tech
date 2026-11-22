@@ -1155,12 +1155,13 @@ function voiceFor(tag){
   return vs.find(v => v.lang.replace('_', '-') === tag) || vs[0] || null;
 }
 /* ---------- background music ---------- */
-const music = new Audio('music/theme.mp3');
+const music = new Audio('music/score.mp3');
 music.loop = true; music.preload = 'auto';
 let musicOn = true;
 const MUSIC_VOL = .16;
+const lullaby = new Audio('music/lullaby.mp3'); lullaby.preload = 'auto';
 function musicPlay(){ fxPreload(); if (!musicOn) return; music.volume = MUSIC_VOL; music.play().catch(() => {}); }
-function musicPause(){ music.pause(); }
+function musicPause(){ music.pause(); lullaby.pause(); }
 function musicDuck(on){ music.volume = on ? MUSIC_VOL * .55 : MUSIC_VOL; }
 
 /* ---------- player ---------- */
@@ -1261,6 +1262,11 @@ const player = (() => {
     (s.cuts || []).forEach((c, k) => setTimeout(() => { if (my !== token || !playing) return; const v = vids[k + 1]; if (!v) return; v.classList.add('show'); v.play().catch(() => {}); setTimeout(() => { if (my === token) vid.pause(); }, 1000); }, (s.lead || 450) + c.at * 1000));
     sfx(s.sfx);
     fxStop();
+    // goodnight always lands on the score's closing music-box lullaby
+    if (s.id === 'bye' && musicOn) {
+      let v = music.volume; const fo = setInterval(() => { v -= .02; if (v <= .01) { clearInterval(fo); music.pause(); } else music.volume = v; }, 40);
+      lullaby.currentTime = 0; lullaby.volume = MUSIC_VOL * .75; lullaby.play().catch(() => {});
+    } else if (!lullaby.paused) { lullaby.pause(); if (playing) musicPlay(); }
     (s.fx || []).forEach(x => setTimeout(() => { if (my === token && playing) fx(x.f, x.v ?? 1); }, x.at * 1000));
     (s.sfxAt || []).forEach(x => setTimeout(() => { if (my === token && playing) sfx(x.k); }, x.at * 1000));
     if (s.kind === 'award') confetti();
@@ -1388,7 +1394,7 @@ const player = (() => {
   }
   function end(){
     playing = false; setPlayIcon(); cancelAnimationFrame(raf); paintSegs(1);
-    let v = music.volume; const fo = setInterval(() => { v -= .02; if (v <= 0) { clearInterval(fo); musicPause(); music.currentTime = 0; } else music.volume = v; }, 120);
+    let v = music.volume, w = lullaby.volume; const fo = setInterval(() => { v -= .02; w -= .015; if (w > 0) lullaby.volume = w; if (v <= 0 && w <= 0) { clearInterval(fo); musicPause(); music.currentTime = 0; } else if (v > 0) music.volume = v; }, 120);
     $$('button', segs).forEach(b => b.classList.add('done'));
   }
   function play(){

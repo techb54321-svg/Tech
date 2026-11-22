@@ -537,22 +537,22 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v21-knock', clen:10, core:true, sfx:'knock', lead:700, voice:'e2-hello', vdur:14.73, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.05,0.29,1.01,1.25,1.81,2.17,2.61,2.93,3.57,4.05,4.45,4.85,5.21,5.33,5.57,5.73,6.01,6.37,6.69,7.65,8.21,8.85,9.65,9.89,10.21,11.09,11.33,11.45,11.57,12.45,12.73,12.85,13.69,13.93,14.13], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard a secret sound: lub, whoosh, dub! What's that whoosh? And is it okay? Let's be detectives and find out!"},
-  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:7.3, clip:'v21-home', clen:8}], core:true, clue:1, task:'hand', voice:'e2-home', vdur:8.89, words:[0.05,0.37,1.17,1.41,1.57,1.73,2.21,2.45,3.22,3.33,3.61,3.77,3.89,4.25,4.81,5.13,5.41,5.57,5.69,5.81,6.61,7.57,7.93,8.13,8.45], text:"Clue one: where is the sound coming from? Put your hand on your chest, a tiny bit to the left... thump-thump! It's coming from me!"},
-  {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, task:'fist', voice:'e2-squeeze', vdur:9.58, words:[0.05,0.45,1.25,1.41,1.61,1.81,1.97,2.25,2.93,3.13,3.25,3.73,4.05,5.13,5.25,5.53,6.21,6.37,6.85,7.09,7.33,7.81,8.01,8.25,8.45,8.61,8.77], text:"Clue two: what do I do all day? Make a fist and squeeze... and let go. I squeeze just like that, to push blood out of me."},
-  {id:'loop', clip:'v22-train', clen:8, core:true, voice:'e2-loop', vdur:5.9, words:[0.05,0.21,0.45,0.77,1.33,1.57,1.73,1.89,2.21,2.69,2.81,2.93,3.09,3.65,3.93,4.05,4.21,4.81,5.05,5.21,5.33], text:"And that blood rushes all the way round you: up to your head, down to your toes, and back to me!"},
-  {id:'doors', clip:'v21-doors', clen:10, core:true, clue:3, sfx:'beat2', task:'say', voice:'e2-doors', vdur:10.86, words:[0.05,0.45,1.25,1.49,1.89,2.05,3.01,3.21,3.49,3.89,4.45,5.13,5.77,6.53,6.69,6.93,7.33,7.57,7.93,8.05,8.29,9.25,9.49,9.65,10.05,10.17,10.37], text:"Clue three: what makes my sounds? My little doors snapping shut: lub... dub! So if lub and dub are my doors... what's the whoosh in the middle?"},
-  {id:'tryit', clip:'v21-jump', clen:8, core:true, clue:4, task:'jump', voice:'e2-tryit', vdur:10.38, words:[0.05,0.37,1.09,1.49,1.81,2.45,2.69,2.93,3.49,4.33,5.01,5.25,5.57,5.89,6.61,6.77,7.01,7.81,8.77,9.01,9.29,9.53,9.89], text:"Clue four! Jump five times, then feel me. Faster, stronger! When blood rushes faster, I get louder. Hmm... I think we've cracked it!"},
+  {id:'hello', clip:'v21-knock', clen:10, core:true, lead:1500, fx:[{f:'knock', at:.15, v:1}], voice:'e2-hello', vdur:14.73, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.05,0.29,1.01,1.25,1.81,2.17,2.61,2.93,3.57,4.05,4.45,4.85,5.21,5.33,5.57,5.73,6.01,6.37,6.69,7.65,8.21,8.85,9.65,9.89,10.21,11.09,11.33,11.45,11.57,12.45,12.73,12.85,13.69,13.93,14.13], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard a secret sound: lub, whoosh, dub! What's that whoosh? And is it okay? Let's be detectives and find out!"},
+  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:7.3, clip:'v21-home', clen:8}], core:true, clue:1, fx:[{f:'heartbeat', at:6.9, v:.9}], task:'hand', voice:'e2-home', vdur:8.89, words:[0.05,0.37,1.17,1.41,1.57,1.73,2.21,2.45,3.22,3.33,3.61,3.77,3.89,4.25,4.81,5.13,5.41,5.57,5.69,5.81,6.61,7.57,7.93,8.13,8.45], text:"Clue one: where is the sound coming from? Put your hand on your chest, a tiny bit to the left... thump-thump! It's coming from me!"},
+  {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, fx:[{f:'squish', at:4.4, v:.9}], task:'fist', voice:'e2-squeeze', vdur:9.58, words:[0.05,0.45,1.25,1.41,1.61,1.81,1.97,2.25,2.93,3.13,3.25,3.73,4.05,5.13,5.25,5.53,6.21,6.37,6.85,7.09,7.33,7.81,8.01,8.25,8.45,8.61,8.77], text:"Clue two: what do I do all day? Make a fist and squeeze... and let go. I squeeze just like that, to push blood out of me."},
+  {id:'loop', clip:'v22-train', clen:8, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'e2-loop', vdur:5.9, words:[0.05,0.21,0.45,0.77,1.33,1.57,1.73,1.89,2.21,2.69,2.81,2.93,3.09,3.65,3.93,4.05,4.21,4.81,5.05,5.21,5.33], text:"And that blood rushes all the way round you: up to your head, down to your toes, and back to me!"},
+  {id:'doors', clip:'v21-doors', clen:10, core:true, clue:3, fx:[{f:'clack', at:5.45, v:1}, {f:'clack', at:6.1, v:1}], task:'say', voice:'e2-doors', vdur:10.86, words:[0.05,0.45,1.25,1.49,1.89,2.05,3.01,3.21,3.49,3.89,4.45,5.13,5.77,6.53,6.69,6.93,7.33,7.57,7.93,8.05,8.29,9.25,9.49,9.65,10.05,10.17,10.37], text:"Clue three: what makes my sounds? My little doors snapping shut: lub... dub! So if lub and dub are my doors... what's the whoosh in the middle?"},
+  {id:'tryit', clip:'v21-jump', clen:8, core:true, clue:4, fx:[{f:'bounce', at:1.3, v:.8}, {f:'drum', at:3.6, v:.85}], task:'jump', voice:'e2-tryit', vdur:10.38, words:[0.05,0.37,1.09,1.49,1.81,2.45,2.69,2.93,3.49,4.33,5.01,5.25,5.57,5.89,6.61,6.77,7.01,7.81,8.77,9.01,9.29,9.53,9.89], text:"Clue four! Jump five times, then feel me. Faster, stronger! When blood rushes faster, I get louder. Hmm... I think we've cracked it!"},
   {id:'listen', clip:'v19-listen', clen:10, off:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', clip:'v21-listen', clen:5, cuts:[{at:1.4, clip:'v21-hose', clen:10}], core:true, detect:'whoosh', lead:500, voice:'e2-whoosh', vdur:9.54, words:[0.05,0.45,1.49,2.05,2.65,3.4,3.49,3.97,4.21,4.45,4.77,5.17,5.57,5.89,6.13,6.37,6.53,7.29,7.49,7.97,8.37,8.57,8.69], text:"Listen closely... lub, whoosh, dub! The whoosh is just my blood rushing through me between my doors, like water whooshing through a hose!"},
-  {id:'common', clip:'v21-photo', clen:10, detect:'common', voice:'e2-common', vdur:9.74, words:[0.05,0.17,0.29,0.45,1.33,2.13,2.57,2.81,3.01,3.21,3.41,3.53,3.65,4.13,4.41,4.61,5.45,5.73,5.97,6.13,6.37,6.93,7.69,8.29,8.61], text:"And is it okay? Yes! Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means harmless."},
+  {id:'whoosh', clip:'v21-listen', clen:5, cuts:[{at:1.4, clip:'v21-hose', clen:10}], core:true, detect:'whoosh', lead:2600, fx:[{f:'murmur', at:.1, v:.9}, {f:'hose', at:4.1, v:.55}], voice:'e2-whoosh', vdur:9.54, words:[0.05,0.45,1.49,2.05,2.65,3.4,3.49,3.97,4.21,4.45,4.77,5.17,5.57,5.89,6.13,6.37,6.53,7.29,7.49,7.97,8.37,8.57,8.69], text:"Listen closely... lub, whoosh, dub! The whoosh is just my blood rushing through me between my doors, like water whooshing through a hose!"},
+  {id:'common', clip:'v21-photo', clen:10, detect:'common', fx:[{f:'kids', at:1.6, v:.7}], voice:'e2-common', vdur:9.74, words:[0.05,0.17,0.29,0.45,1.33,2.13,2.57,2.81,3.01,3.21,3.41,3.53,3.65,4.13,4.41,4.61,5.45,5.73,5.97,6.13,6.37,6.93,7.69,8.29,8.61], text:"And is it okay? Yes! Lots and lots of kids have a whoosh, just like you. Doctors call it an innocent murmur. Innocent means harmless."},
   {id:'fever', clip:'v19-fever', clen:10, off:true, optional:true, sfx:'drumfast', voice:'fever', vdur:9.89, text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
   {id:'play', clip:'v20-play', clen:10, off:true, voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
-  {id:'grow', clip:'v21-height', clen:10, detect:'grow', sfxAt:[{k:'drumsoft', at:4.5}], voice:'e2-grow', vdur:7.03, words:[0.05,0.14,0.46,0.94,1.1,1.5,1.74,1.98,2.78,2.98,3.18,3.34,4.27,4.46,4.94,5.18,5.78,6.1], text:"As you grow, my whoosh might get quieter, or even go away. Either way, I'm healthy and strong!"},
+  {id:'grow', clip:'v21-height', clen:10, detect:'grow', fx:[{f:'night', at:.2, v:.5}, {f:'pencil', at:.9, v:1}], voice:'e2-grow', vdur:7.03, words:[0.05,0.14,0.46,0.94,1.1,1.5,1.74,1.98,2.78,2.98,3.18,3.34,4.27,4.46,4.94,5.18,5.78,6.1], text:"As you grow, my whoosh might get quieter, or even go away. Either way, I'm healthy and strong!"},
   {id:'outro', kind:'end', off:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
   {id:'quiz', kind:'quiz', core:true, voice:'e2-quiz', vdur:3.14, words:[0.05,0.25,0.97,1.09,1.21,1.61,1.85], text:"Detective time! Can you answer three questions?"},
-  {id:'award', kind:'award', core:true, sfx:'chime', voice:'e2-expert', vdur:7.66, voicedFor:{name:'Mia'}, words:[0.05,0.53,1.45,1.61,1.93,2.05,2.53,3.21,3.49,3.73,4.13,4.49,4.97,5.38,5.57,5.81,6.13,6.57], text:"Case closed! You solved the mystery, {name}: your heart is healthy and strong. You're a real heart detective!"},
-  {id:'bye', clip:'v21-night', clen:8, core:true, voice:'e2-bye', vdur:4.32, voicedFor:{name:'Mia'}, words:[0.05,0.31,1.03,1.19,1.43,1.75,2.27,3.11,3.27,3.59], text:"Goodnight, {name}. I'll be right here, beating, all night long."},
+  {id:'award', kind:'award', core:true, fx:[{f:'jingle', at:.05, v:.9}], voice:'e2-expert', vdur:7.66, voicedFor:{name:'Mia'}, words:[0.05,0.53,1.45,1.61,1.93,2.05,2.53,3.21,3.49,3.73,4.13,4.49,4.97,5.38,5.57,5.81,6.13,6.57], text:"Case closed! You solved the mystery, {name}: your heart is healthy and strong. You're a real heart detective!"},
+  {id:'bye', clip:'v21-night', clen:8, core:true, fx:[{f:'night', at:0, v:.6}, {f:'heartbeat', at:1.5, v:.35}], voice:'e2-bye', vdur:4.32, voicedFor:{name:'Mia'}, words:[0.05,0.31,1.03,1.19,1.43,1.75,2.27,3.11,3.27,3.59], text:"Goodnight, {name}. I'll be right here, beating, all night long."},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
@@ -1103,6 +1103,23 @@ function cymbal(t, g = .16){
   v.gain.setValueAtTime(g, t); v.gain.exponentialRampToValueAtTime(0.0001, t + 1.4);
   n.connect(f).connect(v).connect(master); n.start(t); n.stop(t + 1.45);
 }
+const FX = {}, fxLive = new Set();
+const FX_NAMES = ['knock', 'heartbeat', 'squish', 'train', 'clack', 'bounce', 'drum', 'murmur', 'hose', 'kids', 'pencil', 'jingle', 'night'];
+function fxLoad(name){
+  if (!FX[name]) FX[name] = fetch(`sfx/${name}.mp3`).then(r => r.arrayBuffer()).then(a => new Promise((ok, no) => AC.decodeAudioData(a, ok, no))).catch(() => null);
+  return FX[name];
+}
+function fxPreload(){ if (audio()) FX_NAMES.forEach(fxLoad); }
+function fx(name, vol = 1){
+  if (!audio()) return;
+  fxLoad(name).then(buf => {
+    if (!buf) return;
+    const src = AC.createBufferSource(), g = AC.createGain();
+    src.buffer = buf; g.gain.value = vol; src.connect(g).connect(master);
+    src.onended = () => fxLive.delete(src); fxLive.add(src); src.start();
+  });
+}
+function fxStop(){ fxLive.forEach(x => { try { x.stop(); } catch {} }); fxLive.clear(); }
 function sfx(kind){
   if (!kind || !audio()) return;
   const t = AC.currentTime + .05;
@@ -1142,7 +1159,7 @@ const music = new Audio('music/theme.mp3');
 music.loop = true; music.preload = 'auto';
 let musicOn = true;
 const MUSIC_VOL = .16;
-function musicPlay(){ if (!musicOn) return; music.volume = MUSIC_VOL; music.play().catch(() => {}); }
+function musicPlay(){ fxPreload(); if (!musicOn) return; music.volume = MUSIC_VOL; music.play().catch(() => {}); }
 function musicPause(){ music.pause(); }
 function musicDuck(on){ music.volume = on ? MUSIC_VOL * .55 : MUSIC_VOL; }
 
@@ -1243,6 +1260,8 @@ const player = (() => {
     }
     (s.cuts || []).forEach((c, k) => setTimeout(() => { if (my !== token || !playing) return; const v = vids[k + 1]; if (!v) return; v.classList.add('show'); v.play().catch(() => {}); setTimeout(() => { if (my === token) vid.pause(); }, 1000); }, (s.lead || 450) + c.at * 1000));
     sfx(s.sfx);
+    fxStop();
+    (s.fx || []).forEach(x => setTimeout(() => { if (my === token && playing) fx(x.f, x.v ?? 1); }, x.at * 1000));
     (s.sfxAt || []).forEach(x => setTimeout(() => { if (my === token && playing) sfx(x.k); }, x.at * 1000));
     if (s.kind === 'award') confetti();
     if (s.kind === 'quiz') { runQuiz(s, my); return; }
@@ -1378,7 +1397,7 @@ const player = (() => {
     playing = true; musicPlay(); show(idx);
   }
   function pause(){
-    playing = false; token++; setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
+    playing = false; token++; fxStop(); setPlayIcon(); cancelAnimationFrame(raf); kb?.pause();
     $$('.layer video', stage).forEach(v => v.pause());
     vo.pause();
     musicPause();

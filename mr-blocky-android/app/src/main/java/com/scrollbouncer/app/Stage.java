@@ -111,7 +111,7 @@ final class Stage {
         }
 
         /**
-         * Starts counting one kind of exercise ("jump", "squat" or "knee"), or stops counting.
+         * Starts counting one kind of exercise ("jump" or "knee"), or stops counting.
          * Each one counted calls window.mrBlockyMove() in the page.
          */
         @JavascriptInterface

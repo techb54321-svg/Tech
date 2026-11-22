@@ -23,7 +23,7 @@ line up with his moves in `DANCE` in `../mr-blocky/guy.js`:
 | Bars  | Seconds | Move |
 |-------|---------|------|
 | 0-1   | 0-4     | get ready (a count-in) |
-| 2-9   | 4-20    | side to side, then squats |
+| 2-9   | 4-20    | side to side, then shake your booty |
 | 10-17 | 20-36   | star jumps, a brass hit on each one |
 | 18-23 | 36-48   | knees up, a cowbell on each step |
 | 24-28 | 48-58   | arms up and wiggle |

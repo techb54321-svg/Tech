@@ -17,7 +17,7 @@ up with the moves in guy.js (DANCE there), so if a section changes length here,
 change it there too:
 
     bars  0-1    0-4 s   get ready
-    bars  2-9    4-20 s  side to side, then squats
+    bars  2-9    4-20 s  side to side, then shake your booty
     bars 10-17  20-36 s  star jumps, one on beats 1 and 3
     bars 18-23  36-48 s  knees up, a step every beat
     bars 24-28  48-58 s  arms up and wiggle

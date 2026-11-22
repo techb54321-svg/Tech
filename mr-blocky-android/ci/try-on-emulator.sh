@@ -305,10 +305,10 @@ done
 adb shell input tap $OFFER
 echo "Tapped Let's dance! at $OFFER"
 
-# Squats, star jumps and knees up, as the phone's motion sensor feels them: lighter
-# (up in the air, or starting down) then heavier (landing, or stopping at the bottom),
-# over and over. He counts each one in its own part of the dance, so keep going all the
-# way through, quickly enough for knees up, a step every half a second.
+# Star jumps and knees up, as the phone's motion sensor feels them: up in the air, where
+# it feels lighter, then the jolt of landing, over and over. He counts each one in its own
+# part of the dance, so keep going all the way through, quickly enough for knees up, a
+# step every half a second.
 echo "The motion sensor before jumping: $(adb emu sensor get acceleration 2>&1 | tr -d '\r' | head -n 1)"
 touch jumping
 (
@@ -341,7 +341,7 @@ adb shell dumpsys usagestats | tr -d '\r' | grep -E "type=(ACTIVITY_RESUMED|ACTI
   | grep -oE 'time="[^"]*" type=[A-Z_]+( package=[^ ]+)?' | tail -n 6 || true
 logged "dark, sent home" || fail "the screen never went dark before he offered the deal"
 logged "dancing" || fail "tapping Let's dance! did not start the dance"
-grep -q "Mr Blocky: deal stopped" log.txt && fail "he did not let them in: the squats, star jumps and knees up were not all counted"
+grep -q "Mr Blocky: deal stopped" log.txt && fail "he did not let them in: the star jumps and knees up were not all counted"
 [ -n "$LET_IN" ] || fail "they danced, but he did not let them back into the app"
 grep -q "FATAL EXCEPTION" log.txt && fail "the app crashed"
 grep -q "ANR in $APP" everything.txt && fail "the app stopped responding"
@@ -351,7 +351,7 @@ sleep 15
 collect
 [ "$(grep -cE "ScrollBouncer *: on stage$" log.txt)" = 1 ] || fail "he came again during the five minutes he gave them"
 echo "$FOCUS" | grep -q "$TARGET" || fail "the app he let them back into was closed again"
-pass "they said yes to a dance, did the squats, star jumps and knees up, and he let them back into the app"
+pass "they said yes to a dance, did the star jumps and knees up, and he let them back into the app"
 
 adb shell am start -n "$APP/.MainActivity" > /dev/null
 sleep 3

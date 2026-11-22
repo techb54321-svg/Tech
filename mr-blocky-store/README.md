@@ -81,7 +81,7 @@ Mr Blocky is a little round guy with big glasses who helps you scroll less.
 Open Instagram, TikTok or another app on your list, and a moment later Mr Blocky toddles across the top of your screen, boops the close button with his nose, and shakes his head at you: "Nope not now." Then you're back on your home screen.
 
 DANCE YOUR WAY BACK IN
-Now and then he goes quiet… then asks if you want to dance with him. Say yes and the lights come up. For a minute he calls out the moves and you copy him: side to side, squats, star jumps, knees up, arms up and wiggle, spin around, ta-da! Hold on to your phone: it counts your squats, star jumps and knees up. Make it to the end and he boops the app back open, and leaves you be for 5 minutes.
+Now and then he goes quiet… then asks if you want to dance with him. Say yes and the lights come up. For a minute he calls out the moves and you copy him: side to side, shake your booty, star jumps, knees up, arms up and wiggle, spin around, ta-da! Hold on to your phone: it counts your star jumps and knees up. Make it to the end and he boops the app back open, and leaves you be for 5 minutes.
 
 YOU'RE IN CHARGE
 • Choose which apps he closes
@@ -164,10 +164,10 @@ Once the 14 days are up, the dashboard offers **Apply for production**. Answer
 honestly; these are starting points to change to match what actually happened:
 
 - **How did you recruit users for your closed test?** Friends and family who use social media on Android phones.
-- **Describe the engagement you received from testers.** Testers kept Mr Blocky switched on with their usual social media apps on his list, so he closed those apps for them many times a day. Several tried the dance deal, using the motion sensor to count their squats, star jumps and knees up.
+- **Describe the engagement you received from testers.** Testers kept Mr Blocky switched on with their usual social media apps on his list, so he closed those apps for them many times a day. Several tried the dance deal, using the motion sensor to count their star jumps and knees up.
 - **Summarise the feedback you received and how you collected it.** Collected by message and in person. [What they liked, and what they asked for.]
 - **Who is the intended audience?** People aged 13 and over who want to spend less time on social media.
-- **How does your app provide value to users?** It interrupts the habit of opening social media without thinking, in a friendly way: a short animation, then back to the home screen. It offers a 5-minute break when needed, and a playful way back in through a one-minute dance, with squats, star jumps and knees up to get you moving. It collects no data.
+- **How does your app provide value to users?** It interrupts the habit of opening social media without thinking, in a friendly way: a short animation, then back to the home screen. It offers a 5-minute break when needed, and a playful way back in through a one-minute dance, with star jumps and knees up to get you moving. It collects no data.
 - **What changes did you make based on testing?** [Anything changed after testers' feedback.]
 - **How did you decide it is ready?** Testers used it daily for two weeks on a range of phones, it ran reliably in the background, and no crashes were reported.
 

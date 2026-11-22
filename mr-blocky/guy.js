@@ -204,6 +204,8 @@ const ScrollBouncerGuy = (() => {
       s('g', { class: 'front-torso' },
         ...(ARMS ? [arm('arm-l', SHOULDER.left, 1), arm('arm-r', SHOULDER.right, -1)] : []),
         ...body(),
+        // Seen from behind, as he turns round: no face, just a little crease at the bottom.
+        css(s('g', { class: 'booty' }, stroke('', 'M46 71.2q-1.3 5.3 0 10.3', COLOR.outline, 1.6)), { display: 'none' }),
         s('g', { class: 'face' },
           blush(left - 6, 61.8), blush(right + 6, 61.8),
           s('g', { class: 'front-eyes' }, ...eye(left, y, 0), ...eye(right, y, 0)),
@@ -254,7 +256,7 @@ const ScrollBouncerGuy = (() => {
       eye: find('eye'), happy: find('happy'), arm: find('arm'), armL: find('arm-l'), armR: find('arm-r'),
       front: find('front'), frontTorso: find('front-torso'), face: find('face'),
       frontEyes: find('front-eyes'), shut: find('shut'), smile: find('smile'), flat: find('flat'),
-      joy: find('joy'), grin: find('grin'), legL: find('front-leg-l'), legR: find('front-leg-r'),
+      joy: find('joy'), grin: find('grin'), booty: find('booty'), legL: find('front-leg-l'), legR: find('front-leg-r'),
       shinL: svg.querySelector('.front-leg-l .shin'), shinR: svg.querySelector('.front-leg-r .shin'),
       footL: svg.querySelector('.front-leg-l .foot'), footR: svg.querySelector('.front-leg-r .foot'),
       whites: svg.querySelectorAll('.white'), pupils: svg.querySelectorAll('.front-eyes .pupil'),
@@ -314,8 +316,11 @@ const ScrollBouncerGuy = (() => {
       // Or, when pose.dance is set, dancing: it says where his arms, legs, eyes and mouth go.
       const d = pose.dance;
       set(part.front, d ? `translate(0 ${r3(-d.hop)})` : '');
-      set(part.frontTorso, about(BELLY, `rotate(${r3(d ? d.tilt : 0.35 * pose.shake)}) ` +
-        `scale(${r3(1 - 0.008 * breath)} ${r3(1 + 0.012 * breath)})`));
+      set(part.frontTorso, (d && d.hips ? `translate(${r3(d.hips)} 0) ` : '') +
+        about(BELLY, `rotate(${r3(d ? d.tilt : 0.35 * pose.shake)}) scale(${r3(1 - 0.008 * breath)} ${r3(1 + 0.012 * breath)})`));
+      const back = !!(d && d.back);
+      part.face.style.display = back ? 'none' : '';
+      part.booty.style.display = back ? '' : 'none';
       set(part.face, `translate(${r3(pose.shake)} 0)`);
       set(part.frontEyes, about({ x: 0, y: FRONT_EYES.y }, `scale(1 ${lid})`));
       const eyes = d ? d.eyes : pose.shut ? 'shut' : 'open';
@@ -606,7 +611,7 @@ const ScrollBouncerGuy = (() => {
     moves: [
       { until: 4, move: 'ready', say: 'Get ready!' },
       { until: 12, move: 'side', say: 'Side to side!' },
-      { until: 20, move: 'squats', say: 'Squats!', count: 'squat', need: 5, name: 'squats' },
+      { until: 20, move: 'booty', say: 'Shake your booty!' },
       { until: 36, move: 'jumps', say: 'Star jumps!', count: 'jump', need: 10, name: 'star jumps' },
       { until: 48, move: 'knees', say: 'Knees up!', count: 'knee', need: 12, name: 'knees up' },
       { until: 58, move: 'wiggle', say: 'Arms up and wiggle!' },
@@ -617,9 +622,11 @@ const ScrollBouncerGuy = (() => {
   };
   DANCE.length = DANCE.moves[DANCE.moves.length - 1].until;
   // x is a step to the side, sx and sy squash and stretch him, and reach is how long
-  // his arms are: they stretch out for dancing, so the moves can be seen.
+  // his arms are: they stretch out for dancing, so the moves can be seen. hips slides his
+  // body sideways over his feet, and back turns him round, so his back is to you.
   const STANDING = { tilt: 0, hop: 0, x: 0, sx: 1, sy: 1, reach: 1, armL: 14, armR: -14, legL: 0, legR: 0,
-    liftL: 0, liftR: 0, eyes: 'open', mouth: 'smile', look: 0 };
+    liftL: 0, liftR: 0, hips: 0, back: false, eyes: 'open', mouth: 'smile', look: 0 };
+  const TURN = 0.5;   // seconds to turn round, to shake his booty
   const STRETCH = 1.8;
   const clamp01 = (t) => Math.max(0, Math.min(1, t));
 
@@ -680,15 +687,22 @@ const ScrollBouncerGuy = (() => {
         p.look = 2 * sway;
         break;
       }
-      case 'squats': { // down on one beat and back up on the next: a squat a second
-        const depth = (1 - Math.cos(Math.PI * b)) / 2;   // 0 standing on even beats, 1 down low on odd ones
-        crouch = 1 - 0.17 * k * depth;
-        p.sx = 1 + 0.06 * k * depth;
-        p.legL = 18 * k * depth;
-        p.legR = -18 * k * depth;
-        p.armL = 14 + 80 * depth;                         // arms out to balance
-        p.armR = -14 - 80 * depth;
-        if (depth > 0.75) { p.eyes = 'shut'; p.mouth = 'flat'; }   // and a bit of effort at the bottom
+      case 'booty': {  // he turns his back to you, shakes his booty, and turns round again
+        const length = step.until - DANCE.moves[at - 1].until;
+        // How far he has turned away: 0 facing you, 1 with his back to you.
+        const away = calm ? 0 : ease(clamp01(since / TURN)) * (1 - ease(clamp01((since - length + TURN) / TURN)));
+        spin = Math.cos(Math.PI * away);
+        p.back = spin < 0;
+        // His bottom swings from side to side, once a beat, snapping from one side to the other.
+        const shake = Math.tanh(2.2 * Math.sin(TAU * b)) / Math.tanh(2.2);
+        p.hips = 8 * k * shake;
+        p.tilt = -0.9 * p.hips;                     // while his head stays where it is
+        crouch = 1 - 0.05 * k;                      // knees bent
+        bounce(2, 0.05);
+        p.legL = 8;
+        p.legR = -8;
+        p.armL = 34 + 12 * shake;                   // one hand down, swinging along,
+        p.armR = -150 + 16 * Math.sin(TAU * b + 1); // and the other waving in the air
         break;
       }
       case 'jumps': {  // out on one beat and back in on the next: a star jump a second
@@ -723,6 +737,7 @@ const ScrollBouncerGuy = (() => {
       }
       case 'spin':     // two spins, arms out
         if (!calm) spin = Math.cos(Math.PI * since);
+        p.back = spin < 0;
         bounce(5);
         p.armL = 108;
         p.armR = -108;

@@ -22,8 +22,8 @@
         top: top + 8, line: options.get('line') || undefined, onDark: () => Android.dark()
       });
       if (options.get('deal') === '1') {
-        // On a phone he checks they really do the squats, star jumps and knees up,
-        // with its motion sensor. The app calls mrBlockyMove() for each one it feels.
+        // On a phone he checks they really do the star jumps and knees up, with its
+        // motion sensor. The app calls mrBlockyMove() for each one it feels.
         let kind = '', counted = 0;
         const counter = Android.hasMotion() ? {
           hint: 'Hold on to your phone!',

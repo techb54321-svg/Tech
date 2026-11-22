@@ -535,22 +535,22 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v19-hello', clen:10, core:true, sfx:'knock', lead:900, voice:'hello2', vdur:12.31, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.37,1.13,1.51,2.02,2.33,2.58,2.79,3.95,4.64,5.19,5.64,5.88,6.04,6.59,7.01,7.55,8.44,8.8,8.96,9.2,9.4,9.73,10.45,10.62,10.97,11.12,11.34,11.59], text:"Knock, knock! Hi {name}, it's me, your heart! Today, {doctor} heard a secret sound inside me. Want to be a heart detective and find out what it is?"},
-  {id:'home', clip:'v10-glow', clen:5, cuts:[{at:4.3, clip:'v6-home', clen:10}], core:true, clue:1, task:'hand', voice:'home', vdur:9.99, words:[0,.29,.64,1.24,1.49,2.35,2.6,3.09,3.38,3.52,3.66,4.55,4.85,5.06,5.45,6.25,6.53,6.71,7.11,7.9,8.93], text:"I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump, thump-thump!"},
-  {id:'squeeze', clip:'v11-fist', clen:10, core:true, clue:2, task:'fist', voice:'squeeze', vdur:10.91, words:[0,.31,.56,.7,1.3,1.59,1.83,2.17,2.33,3.08,3.72,3.86,4.62,4.85,5.11,5.7,6.8,7.13,7.43,8.21,8.6,8.82,9.02,9.39,9.75,10.15], text:"Now make a fist. That's how big I am! Squeeze it tight... and let go. Squeeze... and let go. That's what I do, all day long!"},
-  {id:'loop', clip:'v2-loop', minRate:.5, core:true, voice:'loop', vdur:8.17, words:[0,.37,.73,.91,1.56,1.72,2.07,2.46,2.61,2.75,2.95,3.7,4.15,4.3,4.51,5.24,5.54,6.39,6.56,6.94,7.41,7.54], text:"Every time I squeeze, I push blood up to your head, down to your toes, and all the way back to me!"},
-  {id:'doors', clip:'v17-doors', clen:10, core:true, clue:3, sfx:'beat2', task:'say', voice:'doors', vdur:13.37, words:[0,.7,.88,1.08,1.28,1.71,2.46,3.08,4.15,4.46,4.77,5.17,5.62,6.3,6.54,6.66,7.01,7.38,7.88,8.15,8.71,10.09,10.41,10.53,10.74,11.22,12.27], text:"Inside me there are four rooms, called chambers, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub! Lub-dub!"},
-  {id:'tryit', clip:'v20-play', clen:10, core:true, clue:4, task:'jump', voice:'tryit', vdur:7.57, words:[0,.37,.73,.91,1.06,1.38,1.74,2.53,2.82,3.04,3.25,3.68,3.82,3.99,4.93,5.2,5.39,5.78,6,6.61], text:"Now jump up and down five times! Then put your hand on your chest. Can you feel me drumming faster?"},
+  {id:'hello', clip:'v21-knock', clen:10, core:true, sfx:'knock', lead:700, voice:'e-hello', vdur:10.25, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.05,0.4,1.09,1.33,1.97,2.21,2.81,3.17,4.11,4.61,4.93,5.33,5.57,5.73,6.21,6.73,7.01,7.65,7.85,7.93,8.05,8.13,8.37,8.93,9.13,9.33,9.49,9.61,9.73], text:"Knock, knock! Hi {name}, it's me, your heart! Today, {doctor} heard a secret sound inside me. Want to be a heart detective and find out what it is?"},
+  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:2.6, clip:'v21-home', clen:8}], core:true, clue:1, task:'hand', voice:'e-home', vdur:7.93, words:[0.05,0.45,1.21,1.41,1.69,1.97,2.13,2.85,3.01,3.41,3.61,3.73,3.97,4.61,4.77,4.97,5.17,5.81,5.97,6.17,6.37,6.97], text:"Clue one! I live inside your chest, a tiny bit to the left. Put your hand there... can you feel me? Thump-thump!"},
+  {id:'squeeze', clip:'v21-fist', clen:10, core:true, clue:2, task:'fist', voice:'e-squeeze', vdur:8.33, words:[0.05,0.45,1.25,1.49,1.57,2.41,2.61,2.93,3.17,3.33,3.97,4.37,4.65,5.21,5.33,5.61,6.21,6.45,6.61,6.81,7.29,7.49,7.73], text:"Clue two! Make a fist. That's how big I am! Squeeze it tight... and let go. That's what I do, all day long!"},
+  {id:'loop', clip:'v21-train', clen:8, core:true, voice:'e-loop', vdur:6.38, words:[0.05,0.37,0.61,0.85,1.65,1.85,2.05,2.53,2.73,2.85,3.01,3.61,3.81,3.89,4.05,4.69,5.01,5.17,5.33,5.49,5.69,5.81], text:"Every time I squeeze, I send blood up to your head, down to your toes, and all the way back to me!"},
+  {id:'doors', clip:'v21-doors', clen:10, core:true, clue:3, sfx:'beat2', task:'say', voice:'e-doors', vdur:9.98, words:[0.05,0.45,1.25,1.81,2.05,2.29,2.61,3.25,3.41,3.65,4.05,4.49,5.01,5.17,5.41,5.65,5.97,6.53,6.69,6.93,7.97,8.17,8.29,8.45,9.09], text:"Clue three! Inside me are four rooms, with little doors between them. When the doors snap shut, they go lub-dub! Say it with me... lub-dub!"},
+  {id:'tryit', clip:'v21-jump', clen:8, core:true, clue:4, task:'jump', voice:'e-tryit', vdur:6.74, words:[0.05,0.31,1.11,1.39,1.51,1.75,2.07,2.47,3.27,3.43,3.59,3.79,3.95,4.07,4.23,4.95,5.19,5.35,5.51,5.63,5.99], text:"Clue four! Jump up and down five times... then put your hand on your chest. Can you feel me drumming faster?"},
   {id:'listen', clip:'v19-listen', clen:10, off:true, voice:'listen', vdur:8.27, voicedFor:{doctor:'Dr Sarah'}, words:[0,.5,1,1.41,1.78,1.9,2.09,2.33,2.49,3.98,4.35,4.63,5.03,5.26,5.57,5.74,5.9,6.54,7.09,7.5], text:"Today {doctor} listened to me with a stethoscope. It's like putting your ear on a grown-up's chest, only louder!"},
-  {id:'whoosh', clip:'v19-listen', clen:10, cuts:[{at:6.0, clip:'v20-whoosh', clen:17}], core:true, detect:'whoosh', sfx:'murmur', lead:2900, voice:'whoosh2', vdur:14.21, voicedFor:{doctor:'Dr Sarah'}, words:[0,.44,.62,.79,1.28,1.93,2.53,2.96,3.67,4.66,5.18,5.63,6.19,6.54,7.02,7.47,7.92,8.31,8.98,9.56,9.93,10.44,10.95,11.2,11.98,12.31,12.82,13.02,13.14], text:"Now for the secret sound {doctor} heard. Listen! Lub, whoosh, dub. That whoosh is just my blood rushing through me, nice and fast, like water in a hose!"},
-  {id:'common', clip:'v19-hug', clen:5, cuts:[{at:3.4, clip:'v20-dance', clen:10}], detect:'common', voice:'common2', vdur:12.86, words:[0,.52,.72,1.09,1.24,1.61,1.82,1.93,2.74,3.01,3.25,4.45,5.06,5.36,5.7,6,6.62,7.3,7.95,8.55,9.58,10.14,10.59,11.19,11.7,11.92], text:"Lots and lots of kids have a whoosh, just like you! Doctors call it an innocent murmur. Innocent means harmless. So keep running, jumping and playing!"},
-  {id:'fever', clip:'v19-fever', clen:10, detect:'fever', optional:true, sfx:'drumfast', voice:'fever', vdur:9.89, words:[0,.3,.5,.82,1.01,1.86,2.13,2.32,2.55,3,3.43,4.42,4.74,4.99,5.82,6.11,6.26,6.63,7.01,7.35,8.17,8.62,9.14], text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
+  {id:'whoosh', clip:'v21-listen', clen:5, cuts:[{at:2.1, clip:'v21-hose', clen:10}], core:true, detect:'whoosh', lead:500, voice:'e-whoosh', vdur:11.42, words:[0.05,0.37,0.61,1.17,2.28,2.77,3.29,3.97,4.25,4.37,4.77,5.72,5.89,6.37,6.61,6.89,7.17,7.49,8.01,8.21,8.61,8.85,9.21,9.69,9.97,10.17,10.29,10.37], text:"Now listen closely, detective... Lub, whoosh, dub! That's the secret sound! The whoosh is just my blood rushing through me, nice and fast, like water in a hose."},
+  {id:'common', clip:'v21-photo', clen:10, detect:'common', voice:'e-common', vdur:9.98, words:[0.05,0.41,0.65,0.85,1.01,1.25,1.41,1.53,2.05,2.33,2.53,3.25,3.73,3.97,4.13,4.37,4.85,5.65,6.25,6.41,7.25,7.53,7.73,8.41,8.77,9.09], text:"Lots and lots of kids have a whoosh, just like you! Doctors call it an innocent murmur. Innocent means harmless. So keep running, jumping and playing!"},
+  {id:'fever', clip:'v19-fever', clen:10, off:true, optional:true, sfx:'drumfast', voice:'fever', vdur:9.89, text:"When you have a fever, or you've been running really fast, I beat faster. So my whoosh can sound louder. That's okay too!"},
   {id:'play', clip:'v20-play', clen:10, off:true, voice:'play', vdur:7.57, words:[0,.38,.81,1.42,1.9,2.35,2.51,2.94,3.22,3.47,4.23,4.61,4.78,5.52,5.81,6.37,6.7,6.83], text:"So keep running, jumping, dancing and playing, just like always. I'm a muscle, and muscles love to move!"},
-  {id:'grow', clip:'v20-grow', clen:10, detect:'grow', sfx:'slow', sfxAt:[{k:'drumsoft', at:5.3}], voice:'grow', vdur:9.57, words:[0,.27,.46,.77,1.46,1.7,2.25,2.52,2.75,3.63,3.89,4.16,4.35,5.82,6.2,6.89,7.23,7.52,8.24,8.71,8.86], text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
+  {id:'grow', clip:'v21-height', clen:10, detect:'grow', sfxAt:[{k:'drumsoft', at:4.5}], voice:'e-grow', vdur:8.22, words:[0.05,0.21,0.37,0.61,1.25,1.41,1.89,2.13,2.29,3.17,3.37,3.57,3.73,4.81,5.01,5.53,5.85,6.01,6.77,7.01,7.17], text:"As you grow bigger, my whoosh might get quieter, or even go away. Either way, I'll keep beating, day and night."},
   {id:'outro', kind:'end', off:true, voice:'outro', vdur:10.59, words:[0,1.21,1.51,2.23,2.71,3.22,3.56,4.28,5.6,5.93,6.42,6.65,7.64,7.98,8.17,8.41,8.81,9.23,9.56], text:"Remember: my whoosh is called an innocent murmur. I'm healthy and strong. And you can play just like always!"},
-  {id:'quiz', kind:'quiz', core:true, voice:'quiz2', vdur:3.85, words:[0,.74,1.51,1.75,1.93,2.38,2.81], text:"Detective time! Can you answer three questions?"},
-  {id:'award', kind:'award', core:true, sfx:'chime', voice:'expert2', vdur:5.25, voicedFor:{name:'Mia'}, words:[0,.6,1.32,1.65,2.07,2.22,3.07,3.38,3.54,3.88,4.23], text:"Wow, {name}! You solved the mystery! You're a real heart detective!"},
-  {id:'bye', clip:'v2-bye', core:true, sfx:'drumroll', voice:'bye', vdur:1.86, voicedFor:{name:'Mia'}, words:[0,.31,.49,.79,1.21], text:"See you next beat, {name}!"},
+  {id:'quiz', kind:'quiz', core:true, voice:'e-quiz', vdur:3.38, words:[0.05,0.33,1.13,1.25,1.37,1.77,2.09], text:"Detective time! Can you answer three questions?"},
+  {id:'award', kind:'award', core:true, sfx:'chime', voice:'e-expert', vdur:5.02, voicedFor:{name:'Mia'}, words:[0.05,0.49,1.09,1.33,1.65,1.81,2.65,2.93,3.17,3.49,3.93], text:"Wow, {name}! You solved the mystery! You're a real heart detective!"},
+  {id:'bye', clip:'v21-night', clen:8, core:true, voice:'e-bye', vdur:5.9, voicedFor:{name:'Mia'}, words:[0.05,0.61,1.65,2.05,2.77,2.93,3.17,3.41,3.93,4.73,4.93,5.17], text:"Mystery solved. Goodnight, {name}. I'll be right here, beating, all night long."},
 ];
 const WHY = {
   whoosh:'From the consult: "a soft whooshing sound as blood flows through the heart"',
@@ -570,31 +570,32 @@ const NOTFOR = {loop:['little']};
 const AGE = {
   little: {
     hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard a secret sound inside me. Want to find out what it is?",
-    home:"I live in your chest. Put your hand there. Can you feel me? Thump-thump!",
-    squeeze:"Make a fist. That's how big I am! Squeeze... and let go!",
-    doors:"Inside me are four little rooms with doors. They go lub-dub! Say it with me: lub-dub!",
+    home:"Clue one! I live in your chest. Put your hand there. Can you feel me? Thump-thump!",
+    squeeze:"Clue two! Make a fist. That's how big I am! Squeeze... and let go!",
+    doors:"Clue three! Inside me are little doors. They go lub-dub! Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a special listening tube.",
-    whoosh:"Here's the secret sound! Lub, whoosh, dub! That's just my blood rushing through, like water in a hose.",
+    whoosh:"Now listen, detective... Lub, whoosh, dub! That's the secret sound! It's just my blood rushing through, like water in a hose.",
     common:"Lots of kids have a whoosh, just like you! It's okay. So keep running and playing!",
     fever:"When you're sick or running fast, I go faster, and my whoosh gets louder. That's okay!",
     play:"So keep running, jumping and dancing!",
     grow:"As you grow, my whoosh might go away. I'll keep beating, day and night.",
     outro:"Remember: my whoosh is okay. I'm strong. And you can play!",
-    tryit:"Jump five times! Then put your hand on your chest. Can you feel me drumming?",
+    tryit:"Clue four! Jump five times! Then put your hand on your chest. Can you feel me drumming?",
+    bye:"Mystery solved. Goodnight, {name}!",
   },
   big: {
-    home:"I live in your chest, a little to the left, behind your ribs. Put your hand there... feel that? That's me, thump-thump!",
-    squeeze:"Make a fist: that's about my size. Squeeze it tight and let go. Every squeeze pushes blood around your body, about 100,000 times a day!",
+    home:"Clue one! I live in your chest, a little to the left, behind your ribs. Put your hand there... feel that? That's me, thump-thump!",
+    squeeze:"Clue two! Make a fist: that's about my size. Squeeze it tight and let go. Every squeeze pushes blood around your body, about 100,000 times a day!",
     loop:"Blood leaves me through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
-    doors:"Inside me are four rooms called chambers, two on top and two below. Between them are doors called valves. When they snap shut they make the lub-dub sound. Say it with me: lub-dub!",
+    doors:"Clue three! Inside me are four rooms called chambers, two on top and two below. Between them are doors called valves. When they snap shut they make the lub-dub sound. Say it with me: lub-dub!",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",
-    whoosh:"Now for the secret sound {doctor} heard: lub, whoosh, dub. That whoosh is blood flowing fast and smoothly through me, like water rushing through a garden hose.",
+    whoosh:"Now listen closely, detective... lub, whoosh, dub. That's the secret sound! The whoosh is blood flowing fast and smoothly through me, like water rushing through a garden hose.",
     common:"Doctors call it an innocent murmur. Innocent means harmless: nothing is wrong with me. More than half of all kids have one at some point. So keep doing everything you love: sport, swimming, running and dancing!",
     fever:"When you have a fever or you've been exercising, I pump faster and harder, so the whoosh can sound louder. That's normal for an innocent murmur.",
     play:"So keep doing everything you love: sport, swimming, running and dancing. There's nothing you need to stop.",
     grow:"As you grow bigger, many whooshes get quieter or disappear completely. Either way, I'll keep beating about 100,000 times a day.",
     outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
-    tryit:"Try this: jump up and down ten times, then put your hand on your chest. Feel me beating faster? That's me sending extra blood to your muscles.",
+    tryit:"Clue four! Jump up and down ten times, then put your hand on your chest. Feel me beating faster? That's me sending extra blood to your muscles.",
   },
 };
 const LANGS = [
@@ -620,7 +621,7 @@ const TR = {
     play:"所以继续跑、跳、跳舞、玩耍吧，和平时一样。我是一块肌肉，肌肉最喜欢运动了！",
     tryit:"现在原地跳五下！然后把手放在胸口上。你能感觉到我打鼓打得更快了吗？",
     grow:"等你长大一些，我的“呼呼”声可能会变小，甚至消失。不管怎样，我都会日日夜夜一直跳动。",
-    bye:"{name}，下次心跳见！",
+    bye:"谜题解开啦。晚安，{name}。我会一直在这里，整夜跳动。",
     outro:"记住：我的“呼呼”声叫无害性杂音。我很健康、很强壮。你可以像平时一样玩耍！",
     quiz:"侦探时间！你能回答三个问题吗？",
     award:"哇，{name}！你解开了谜题！你是真正的心脏小侦探！",
@@ -639,7 +640,7 @@ const TR = {
     play:"لذلك استمر في الركض والقفز والرقص واللعب كالمعتاد. أنا عضلة، والعضلات تحب الحركة!",
     tryit:"الآن اقفز خمس مرات! ثم ضع يدك على صدرك. هل تشعر بي أقرع الطبل أسرع؟",
     grow:"عندما تكبر، قد يصبح الصوت أهدأ، أو قد يختفي تمامًا. وفي كل الأحوال، سأستمر في النبض ليلًا ونهارًا.",
-    bye:"أراك في النبضة القادمة يا {name}!",
+    bye:"تم حل اللغز. تصبح على خير يا {name}. سأبقى هنا، أنبض طوال الليل.",
     outro:"تذكّر: صوتي اسمه نفخة بريئة. أنا قوي وبصحة جيدة. ويمكنك أن تلعب كالمعتاد!",
     quiz:"وقت المحقق! هل تستطيع الإجابة عن ثلاثة أسئلة؟",
     award:"واو يا {name}! لقد حللت اللغز! أنت محقق قلوب حقيقي!",
@@ -658,7 +659,7 @@ const TR = {
     play:"Vì vậy hãy cứ chạy, nhảy, múa và vui chơi như mọi khi. Mình là cơ bắp, và cơ bắp rất thích vận động!",
     tryit:"Bây giờ nhảy lên nhảy xuống năm lần nào! Rồi đặt tay lên ngực. Bạn có cảm thấy mình đánh trống nhanh hơn không?",
     grow:"Khi bạn lớn hơn, tiếng vù có thể nhỏ đi, hoặc biến mất hẳn. Dù thế nào, mình vẫn sẽ đập suốt ngày đêm.",
-    bye:"Hẹn gặp lại ở nhịp đập tiếp theo nhé, {name}!",
+    bye:"Bí ẩn đã được giải. Chúc ngủ ngon, {name}. Mình sẽ luôn ở đây, đập suốt đêm.",
     outro:"Hãy nhớ: tiếng vù của mình gọi là tiếng thổi vô hại. Mình khỏe mạnh và mạnh mẽ. Và bạn có thể vui chơi như mọi khi!",
     quiz:"Giờ thám tử! Bạn có trả lời được ba câu hỏi không?",
     award:"Wow, {name}! Bạn đã giải được bí ẩn! Bạn là một thám tử trái tim thực thụ!",
@@ -699,8 +700,8 @@ const QZ = {
 const qz = () => QZ[S.lang] || QZ.en;
 // picture for each answer: emoji, or a scene still; the first answer in each question is the right one (shuffled on screen)
 const QPIC = [['✊','🏠','🐜'], ['img:v2-whoosh','🐉','🚂'], ['⚽','🛋️']];
-const QVOICE = [{voice:'q1', vdur:2.04}, {voice:'q2', vdur:2.69}, {voice:'q3', vdur:2.51}];
-const YVOICE = [{voice:'yes1', vdur:3.2}, {voice:'yes2', vdur:7.8}, {voice:'yes3', vdur:5.53}];
+const QVOICE = [{voice:'e-q1', vdur:1.7}, {voice:'e-q2', vdur:2.02}, {voice:'e-q3', vdur:1.9}];
+const YVOICE = [{voice:'e-yes1', vdur:2.8}, {voice:'e-yes2', vdur:5.86}, {voice:'e-yes3', vdur:4.65}];
 const TASK_ICON = {hand:'🫶', fist:'✊', say:'🗣️', jump:'🤸'};
 const t = k => fill(((UI[S.lang] || UI.en)[k]) ?? UI.en[k]);
 const bullets = () => { const b = (UI[S.lang] || UI.en).bullets; return (b[band()] || b.mid).map(fill); };
@@ -1321,7 +1322,7 @@ const player = (() => {
     const card = $$('.layer', stage)[idx];
     const q = qz(), qq = $('.qq', card), box = $('.qopts', card), dots = $$('.dots i', card);
     if (quizAt.idx !== idx) quizAt = {idx, k: 0};
-    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'quiz2', vdur: 3.85, text: sceneText(s)}, my); }
+    if (quizAt.k === 0) { qq.textContent = ''; box.innerHTML = ''; await say({voice: 'e-quiz', vdur: 3.38, text: sceneText(s)}, my); }
     for (let k = quizAt.k; k < q.q.length; k++) {
       quizAt.k = k;
       if (my !== token || !playing) return;
@@ -1344,7 +1345,7 @@ const player = (() => {
             misses++;
             b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx('buzz');
             if (misses >= 2) $('.qopt[data-j="0"]', box)?.classList.add('hint');
-            say({voice: 'nearly', vdur: 2.69, text: q.nearly}, my);
+            say({voice: 'e-nearly', vdur: 2.54, text: q.nearly}, my);
           }
         });
       });

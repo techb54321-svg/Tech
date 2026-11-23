@@ -15,10 +15,21 @@ sh, sw = spr.shape[:2]
 yy, xx = np.mgrid[0:sh, 0:sw] / SC
 # split into cars: wagon 1 | wagon 2 | engine (the Heart overhangs wagon 2, so the engine claims x>=147 up top)
 eng = (xx >= 168) | ((xx >= 147) & (yy < 75))
+# the Heart rides the engine as a separate piece, so it can stay upright while the cars lean
+heart_m = (((xx - 187.5) / 27) ** 2 + ((yy - 46) / 38) ** 2 <= 1) | (((xx - 152) / 11) ** 2 + ((yy - 49) / 10) ** 2 <= 1)
+heart_m &= (yy < 82) & (xx >= 140)
+hy_, hx_ = np.where(heart_m & (spr[..., 3] > 20))
+HB = (hx_.min(), hy_.min(), hx_.max() + 1, hy_.max() + 1)
+HEART = spr[HB[1]:HB[3], HB[0]:HB[2]].copy(); HEART[..., 3] = (HEART[..., 3] * heart_m[HB[1]:HB[3], HB[0]:HB[2]]).astype(np.uint8)
+_hm = (HEART[..., 3] > 40).astype(np.uint8); _n, _l, _st, _ = cv2.connectedComponentsWithStats(_hm)
+_keep = np.isin(_l, [i for i in range(1, _n) if _st[i, 4] >= 0.05 * _hm.sum()])        # drop stray specks
+HEART[..., 3] = (HEART[..., 3] * _keep).astype(np.uint8)
+SEAT = (190 * SC, 80 * SC)                                               # where the Heart sits on the engine (sprite coords)
 cars = []
-for name, m, cx, by, back in [("w1", xx < 85, 42, 118, 178), ("w2", (xx >= 85) & ~eng, 127, 124, 93), ("eng", eng, 220, 132, 0)]:
+for name, m, cx, by, back in [("w1", xx < 85, 42, 118, 178), ("w2", (xx >= 85) & ~eng & ~heart_m, 127, 124, 93), ("eng", eng & ~heart_m & ~((yy < 76) & (xx < 228)), 220, 132, 0)]:
     c = spr.copy(); c[..., 3] = (c[..., 3] * m).astype(np.uint8)
-    cars.append(dict(img=c, ax=cx * SC, ay=(by - 3) * SC, back=back * SC))
+    cars.append(dict(name=name, img=c, ax=cx * SC, ay=(by - 3) * SC, back=back * SC))
+MAXTILT = 35                                                              # cars lean into climbs and dips, never tip over
 
 # background: original frames ping-ponged (Mia's small movements), poster area from the clean plate
 cap = cv2.VideoCapture(src_clip); frames = []
@@ -62,7 +73,8 @@ def place(canvas, car, s, t, idx):
     img = car["img"]; ax = car["ax"]
     if flipped:
         img = img[:, ::-1]; ax = sw - 1 - ax; deg = deg - 180 if deg > 0 else deg + 180
-    bob = 1.5 * math.sin(t * 18 + idx) if 1.75 < t < 5.95 else 0
+    deg = max(-MAXTILT, min(MAXTILT, deg))
+    bob = 1.2 * math.sin(t * 18 + idx) if 1.2 < t < 8.4 else 0
     M = cv2.getRotationMatrix2D((ax, car["ay"]), -deg, 1.0)
     M[0, 2] += p[0] - ax; M[1, 2] += p[1] - car["ay"] + bob
     warped = cv2.warpAffine(img, M, (W, H), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
@@ -70,6 +82,16 @@ def place(canvas, car, s, t, idx):
     shadow = cv2.GaussianBlur(np.roll(np.roll(a[..., 0], 3, 0), 2, 1), (9, 9), 0)[..., None] * 0.16
     canvas[:] = canvas * (1 - shadow)
     canvas[:] = canvas * (1 - a) + warped[..., :3].astype(np.float32) * a
+    if car["name"] == "eng":                       # the Heart, sitting upright on the engine
+        sx_ = (sw - 1 - SEAT[0]) if flipped else SEAT[0]
+        hx = M[0, 0] * sx_ + M[0, 1] * SEAT[1] + M[0, 2]; hy = M[1, 0] * sx_ + M[1, 1] * SEAT[1] + M[1, 2]
+        hi = HEART[:, ::-1] if flipped else HEART
+        hh, hw = hi.shape[:2]
+        R = cv2.getRotationMatrix2D((hw / 2, hh), -deg * 0.25, 1.0)        # just a slight lean
+        R[0, 2] += hx - hw / 2; R[1, 2] += hy - hh + 1.0 * math.sin(t * 9)
+        hwp = cv2.warpAffine(np.ascontiguousarray(hi), R, (W, H), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
+        ha = hwp[..., 3:4].astype(np.float32) / 255
+        canvas[:] = canvas * (1 - ha) + hwp[..., :3].astype(np.float32) * ha
 
 p = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
                       "-c:v", "libx264", "-crf", "18", "-preset", "slow", "-pix_fmt", "yuv420p", out], stdin=subprocess.PIPE)

@@ -201,6 +201,9 @@ for k, (cx, cy, rx, ry, kb) in enumerate(DOORS):
     dw, fw = doorway(w, h)
     FRONT.append((front_door(w, h, hinge), dw, fw, w, h, hinge))
 
+ROLL = 1.1                                                         # seconds for one cell to roll into the doorway
+DEPARTS = list(np.arange(0.45, DUR, 0.55))                         # a new cell leaves the pile every 0.55 s (only while the door is open)
+
 def frame(t):
     o = openness(t)
     im = plate.copy()
@@ -211,23 +214,23 @@ def frame(t):
         sh = Image.new("RGBA", (w + 8, 6), (30, 16, 8, 70)).filter(ImageFilter.GaussianBlur(2))
         im.paste(sh, (x0 - 4, int(cy + ry) - 2), sh)
         im.paste(dw, (x0 - fw, y0 - fw), dw)
-        if o > 0.35:     # blood rolls along the floor and in through the open doorway
-            for j in range(4):
-                ph = (t * 1.1 + j / 4 + k * 0.13) % 1.0
-                side = -1 if j % 2 else 1
-                sc = 1 - 0.12 * ph
-                bs = max(6, int(RB.size[0] * sc))
-                bx = cx + side * (w * 0.95) * (1 - ph) - bs / 2
-                by = cy + ry - 4 - bs - 2 * (1 - ph)
-                a = min(1, ph * 5) * min(1, (1 - ph) * 3) * min(1, (o - 0.35) / 0.3)
-                b = ImageEnhance.Brightness(RB.resize((bs, bs), Image.LANCZOS)).enhance(1 - 0.6 * ph)
-                im.paste(b, (int(bx), int(by)), RB_M.resize((bs, bs), Image.LANCZOS).point(lambda v: int(v * a)))
-            for j in range(2):   # ...and drops out under the floor into the room below, same size as the cells there
-                ph = (t * 1.1 + j / 2 + k * 0.13 + 0.35) % 1.0
-                bx = cx - 28 + (j * 2 - 1) * 9
-                by = PLANK[3] - 40 + 105 * ph * ph
-                a = min(1, ph * 6) * min(1, (1 - ph) * 4) * min(1, (o - 0.35) / 0.3)
-                im.paste(RB, (int(bx), int(by)), RB_M.point(lambda v: int(v * a)))
+        # blood rolls off the edge of the pile (the side away from the door's hinge), across the floor
+        # and into the dark doorway: it turns as it rolls and simply goes into the dark, nothing pops in or out
+        side = -hinge
+        bs = RB.size[0]; r = bs * 0.44
+        sx, ex = cx + side * (w * 0.5 + r + 6), cx               # start beside the doorway, end inside it
+        fy = cy + ry - 3 - bs                                     # sitting on the floor
+        im.paste(RB, (int(sx - bs / 2), int(fy)), RB_M)          # the cell waiting at the pile edge
+        for td in DEPARTS:
+            u = (t - td) / ROLL
+            if 0 <= u <= 1 and openness(td) > 0.6:
+                e = u * u * (3 - 2 * u)                           # gentle start, glide in
+                x = sx + (ex - sx) * e
+                spin = math.degrees(-(x - sx) / r) * side
+                inside = max(0, min(1, (abs(x - sx) - (w * 0.5 + 6)) / (r * 1.2)))   # how far into the doorway
+                b = ImageEnhance.Brightness(RB.rotate(spin, resample=Image.BICUBIC)).enhance(1 - 0.75 * inside)
+                a = 1 - max(0, (u - 0.8) / 0.2)                   # last bit: lost in the dark
+                im.paste(b, (int(x - bs / 2), int(fy)), RB_M.point(lambda v: int(v * a)))
         if ang <= math.pi / 2:
             d2, pad = swung(door, ang, hinge)
             im.paste(d2, (x0, y0 - pad), d2)

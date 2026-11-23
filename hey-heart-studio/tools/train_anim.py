@@ -9,7 +9,7 @@ FPS, DUR, W, H = 24, 10.5, 1280, 720
 plate = cv2.imread(SB + "train_plate.png")
 P = np.array(json.load(open(SB + "train_path.json"))["points"]); N = len(P); STEP = 2.0; L = N * STEP
 SC = 0.6                                                                 # train scaled to suit the track's curves
-spr0 = cv2.imread(SB + "train_sprite.png", cv2.IMREAD_UNCHANGED)         # 270 x 146, engine on the right
+spr0 = cv2.imread(SB + "train_sprite_clean.png", cv2.IMREAD_UNCHANGED)         # 270 x 146, engine on the right
 spr = cv2.resize(spr0, None, fx=SC, fy=SC, interpolation=cv2.INTER_AREA)
 sh, sw = spr.shape[:2]
 yy, xx = np.mgrid[0:sh, 0:sw] / SC
@@ -67,7 +67,7 @@ def place(canvas, car, s, t, idx):
     M[0, 2] += p[0] - ax; M[1, 2] += p[1] - car["ay"] + bob
     warped = cv2.warpAffine(img, M, (W, H), flags=cv2.INTER_LINEAR, borderValue=(0, 0, 0, 0))
     a = warped[..., 3:4].astype(np.float32) / 255
-    shadow = cv2.GaussianBlur(np.roll(np.roll(a[..., 0], 5, 0), 3, 1), (11, 11), 0)[..., None] * 0.35
+    shadow = cv2.GaussianBlur(np.roll(np.roll(a[..., 0], 3, 0), 2, 1), (9, 9), 0)[..., None] * 0.16
     canvas[:] = canvas * (1 - shadow)
     canvas[:] = canvas * (1 - a) + warped[..., :3].astype(np.float32) * a
 

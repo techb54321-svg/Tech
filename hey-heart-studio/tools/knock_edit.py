@@ -9,7 +9,7 @@ cap = cv2.VideoCapture(src); fps = cap.get(cv2.CAP_PROP_FPS); fr = []
 while True:
     ok, f = cap.read()
     if not ok: break
-    fr.append(cv2.resize(f, (1280, 720), interpolation=cv2.INTER_AREA))
+    fr.append(cv2.resize(f[192:895, 670:1920], (1280, 720), interpolation=cv2.INTER_AREA))   # reframed: door and Heart only, no empty bed
 def src_t(t):                                 # output time -> source time
     if t < 1.45: return 1.65 + t              # closed door (static)
     return 3.10 + (t - 1.45) * 0.85           # door opening and the Heart, slightly slowed
@@ -21,8 +21,8 @@ while n / 24 < DUR:
     t = n / 24; f = fr[min(len(fr) - 1, int(round(src_t(t) * fps)))]
     bump = sum(np.exp(-((t - k) / 0.045) ** 2) for k in KNOCKS)        # a quick jolt of the door on each knock
     if bump > 0.01:
-        door = f[0:430, 410:830].copy()
+        door = f[0:560, 80:480].copy()
         M = np.float32([[1, 0, 7 * bump], [0, 1, -2.5 * bump]])
-        f = f.copy(); f[0:430, 410:830] = cv2.warpAffine(door, M, (420, 430), borderMode=cv2.BORDER_REPLICATE)
+        f = f.copy(); f[0:560, 80:480] = cv2.warpAffine(door, M, (400, 560), borderMode=cv2.BORDER_REPLICATE)
     p.stdin.write(f.tobytes()); n += 1
 p.stdin.close(); p.wait(); print("done", round(DUR, 2), "s")

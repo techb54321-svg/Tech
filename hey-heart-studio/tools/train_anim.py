@@ -29,15 +29,21 @@ while True:
 seq = frames + frames[::-1]
 pm = np.zeros((H, W), np.float32); cv2.rectangle(pm, (512, 22), (948, 612), 1, -1); pm = cv2.GaussianBlur(pm, (13, 13), 0)[..., None]
 
+KEYS = [(0.0, 0), (1.2, 0), (4.0, 400), (6.3, 1212), (8.4, L), (10.5, L)]   # (time, distance): leave on "zooms", head ~"head", home at "warmer!"
+def _pchip_slopes(ts, ss):
+    """Monotone cubic (Fritsch-Carlson) slopes: smooth speed, never runs backwards or overshoots."""
+    h = np.diff(ts); d = np.diff(ss) / h; m = np.zeros(len(ts))
+    for i in range(1, len(ts) - 1):
+        if d[i - 1] * d[i] > 0:
+            w1, w2 = 2 * h[i] + h[i - 1], h[i] + 2 * h[i - 1]
+            m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i])
+    return m
+_TS = np.array([k[0] for k in KEYS]); _SS = np.array([k[1] for k in KEYS], float); _M = _pchip_slopes(_TS, _SS)
 def smooth_s(t):
-    keys = [(0, 0), (1.75, 0), (3.95, 332), (5.05, 1212), (5.95, L), (99, L)]
-    for (t0, s0), (t1, s1) in zip(keys, keys[1:]):
-        if t0 <= t < t1:
-            u = (t - t0) / (t1 - t0)
-            if s0 == 0 and s1 == 332: u = u * u * (1.4 - 0.4 * u)               # pull away gently
-            elif s1 == L and s0 == 1212: u = 1 - (1 - u) ** 2                    # brake into the station
-            return s0 + (s1 - s0) * u
-    return L
+    if t >= _TS[-1]: return L
+    i = max(0, np.searchsorted(_TS, t, side="right") - 1); h = _TS[i + 1] - _TS[i]; u = (t - _TS[i]) / h
+    h00, h10, h01, h11 = 2*u**3 - 3*u**2 + 1, u**3 - 2*u**2 + u, -2*u**3 + 3*u**2, u**3 - u**2
+    return h00 * _SS[i] + h10 * h * _M[i] + h01 * _SS[i + 1] + h11 * h * _M[i + 1]
 
 def at(s):
     s %= L; i = int(s / STEP) % N; j = (i + 1) % N; f = s / STEP - int(s / STEP)

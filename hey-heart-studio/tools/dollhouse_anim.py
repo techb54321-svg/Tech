@@ -103,7 +103,7 @@ plank = plate.crop(PLANK)
 # a clean single ball from the top-left room for blood rolling through the doors
 _rb = base.crop((350, 312, 398, 360))
 RB_M = Image.new("L", _rb.size, 0); ImageDraw.Draw(RB_M).ellipse((4, 4, 44, 44), fill=255)
-RB_M = RB_M.filter(ImageFilter.GaussianBlur(1.2)); RB = _rb.resize((30, 30)); RB_M = RB_M.resize((30, 30))
+RB_M = RB_M.filter(ImageFilter.GaussianBlur(1.2)); RB = _rb.resize((44, 44), Image.LANCZOS); RB_M = RB_M.resize((44, 44), Image.LANCZOS)   # same size as the cells in the rooms
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
 def openness(t):
@@ -214,13 +214,19 @@ def frame(t):
             for j in range(4):
                 ph = (t * 1.1 + j / 4 + k * 0.13) % 1.0
                 side = -1 if j % 2 else 1
-                sc = 1 - 0.45 * ph
+                sc = 1 - 0.25 * ph
                 bs = max(6, int(RB.size[0] * sc))
                 bx = cx + side * (w * 0.95) * (1 - ph) - bs / 2
                 by = cy + ry - 4 - bs - 2 * (1 - ph)
                 a = min(1, ph * 5) * min(1, (1 - ph) * 3) * min(1, (o - 0.35) / 0.3)
                 b = ImageEnhance.Brightness(RB.resize((bs, bs), Image.LANCZOS)).enhance(1 - 0.6 * ph)
                 im.paste(b, (int(bx), int(by)), RB_M.resize((bs, bs), Image.LANCZOS).point(lambda v: int(v * a)))
+            for j in range(2):   # ...and drops out under the floor into the room below, same size as the cells there
+                ph = (t * 1.1 + j / 2 + k * 0.13 + 0.35) % 1.0
+                bx = cx - 22 + (j * 2 - 1) * 9
+                by = PLANK[3] - 40 + 105 * ph * ph
+                a = min(1, ph * 6) * min(1, (1 - ph) * 4) * min(1, (o - 0.35) / 0.3)
+                im.paste(RB, (int(bx), int(by)), RB_M.point(lambda v: int(v * a)))
         if ang <= math.pi / 2:
             d2, pad = swung(door, ang, hinge)
             im.paste(d2, (x0, y0 - pad), d2)

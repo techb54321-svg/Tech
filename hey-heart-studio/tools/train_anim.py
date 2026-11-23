@@ -27,7 +27,7 @@ while True:
     if not ok: break
     frames.append(f)
 seq = frames + frames[::-1]
-pm = np.zeros((H, W), np.float32); cv2.rectangle(pm, (512, 22), (948, 612), 1, -1); pm = cv2.GaussianBlur(pm, (13, 13), 0)[..., None]
+pm = np.zeros((H, W), np.float32); cv2.rectangle(pm, (488, 22), (948, 612), 1, -1); pm = cv2.GaussianBlur(pm, (7, 7), 0)[..., None]
 
 KEYS = [(0.0, 0), (1.2, 0), (4.0, 400), (6.3, 1212), (8.4, L), (10.5, L)]   # (time, distance): leave on "zooms", head ~"head", home at "warmer!"
 def _pchip_slopes(ts, ss):

@@ -20,7 +20,7 @@ A whistly sound ("wheeee") has been coming from Leo's chest. The Lungs want to f
 | 1 | Leo's bedroom. Two little felt lungs peek out from under his pillow. | Peekaboo! Hi Leo, it's us, your lungs! Dr Sarah heard a funny whistle when you breathe: wheee... It's called a wheeze. Let's be breathing detectives and find out what makes it! | |
 | 2 | The Lungs puff up big, then go small. | We help you breathe. Put your hand on your tummy. Smell the flower... in! Blow out the candle... out! That's us working. | Hand on tummy, smell the flower, blow the candle |
 | 3 | Inside view: an upside-down felt tree of tubes, air zooming down like little breezes. **Clue 1: Tubes?** | Inside us are lots of little tubes, like the branches of an upside-down tree. Air zooms down every branch. Whoosh! | |
-| 4 | One branch gets puffy and squeezy; a sticky goo blob; air squeaks through. **Clue 2: Squeeze?** | But sometimes our tubes get grumpy. They squeeze tight, get puffy, and fill with sticky goo. The air has to squeak through: wheee! Cough, cough! Your chest might feel tight. That's asthma. | Breathe out through a tiny "straw" of your lips. Hear the whistle? |
+| 4 | One branch squeezes and puffs up until it's as narrow as a skinny straw; air squeaks through. **Clue 2: Squeeze?** | But sometimes our tubes get grumpy. They squeeze tight and puff up, so they get narrow, like a skinny straw. The air has to squeak through: wheee! Cough, cough! Your chest might feel tight. That's asthma. | Breathe out through a tiny "straw" of your lips. Hear the whistle? |
 | 5 | Leo's room: a sneezy cold, dusty teddy, a puff of smoke out the window, chilly wind. **Clue 3: Triggers?** | What makes our tubes grumpy? Colds, dust, smoke, cold air, and sometimes running really hard. Can you spot them in your room? | Point to the dusty teddy |
 | 6 | Mum hands Leo the blue puffer. Inside view: the squeezed tube relaxes. **Clue 4: Helper!** | This is your blue puffer. It's a helper! It sends medicine down to tell the squeeze to let go, fast. Ahhh. Now the air can whoosh again. | |
 | 7 | Leo uses the puffer with the spacer, with a grown-up. **Clue 5: Tunnel!** | The puffer goes in its friend, the spacer. Shake it, click it in, lips around the end. One puff, then four slow breaths: one... two... three... four. | Count the four breaths |
@@ -39,11 +39,12 @@ A whistly sound ("wheeee") has been coming from Leo's chest. The Lungs want to f
 
 ## Versions by age (like the heart story)
 
-- **Little (3–4):** shorter lines; skip the goo and triggers detail; keep the flower and candle breathing and the blue puffer as "the helper".
-- **Big (7–10):** use the words *airways*, *muscles tighten*, *swelling*, *mucus*, *reliever* and *preventer*, triggers including exercise; spacer technique "shake, 1 puff, 4 breaths, repeat as your plan says"; Asthma Action Plan; when to call an ambulance (000) is for the parent page.
+- **Little (3–4):** shorter lines; "our tubes get squeezy and narrow"; skip the triggers detail; keep the flower and candle breathing and the blue puffer as "the helper".
+- **Big (7–10):** "In asthma your airways get narrow in three ways: the muscles around them tighten, the lining swells, and extra mucus makes them narrower still. Your reliever relaxes the muscles fast; your preventer calms the swelling over time." Triggers including exercise; spacer technique "shake, 1 puff, 4 breaths, repeat as your plan says"; Asthma Action Plan. When to call an ambulance (000) is for the parent page.
 
 ## Clinical checks for Dr Sarah before production
 
+- Scene 4 makes narrowing (muscle squeeze + swelling) the key idea; mucus appears only in the older-child version, so younger children don't think the puffer "clears goo".
 - Spacer wording follows the common "1 puff, 4 breaths" teaching. Number of puffs is left to the child's own action plan.
 - Scene 8 (preventer) is optional per child.
 - Emergency guidance for parents (ambulance 000, the 4×4×4 first-aid steps) belongs on the parent summary, not in the child's story.

@@ -107,11 +107,11 @@ RB_M = RB_M.filter(ImageFilter.GaussianBlur(1.2)); RB = _rb.resize((30, 30)); RB
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
 def openness(t):
-    o = ramp(0.5, 1.2, t) * (1 - ramp(1.7, 1.87, t))       # open on "Is it my doors?", snap shut on "Lub"
-    o += ramp(3.3, 4.0, t) * (1 - ramp(5.25, 5.42, t))     # open again, shut on "snapping shut"
+    o = ramp(0.5, 1.2, t) * (1 - ramp(1.58, 1.75, t))      # open on "Is it my doors?", snap shut on "Lub"
+    o += ramp(3.4, 4.1, t) * (1 - ramp(5.32, 5.49, t))     # open again, shut on "snapping shut"
     return min(1, o)
 def squeeze(t):                                          # the whole heart squeezes on "lub" and "dub"
-    return 1 - 0.02 * (math.exp(-((t - 2.5) / 0.18) ** 2) + 0.6 * math.exp(-((t - 1.85) / 0.12) ** 2))
+    return 1 - 0.02 * (math.exp(-((t - 2.57) / 0.18) ** 2) + 0.6 * math.exp(-((t - 1.74) / 0.12) ** 2))
 
 # ---- upright front doors, like a dolls house: one stands at the front of each top room ----
 def door_size(rx): return int(rx * 1.0), int(rx * 1.55)

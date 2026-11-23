@@ -12,7 +12,8 @@ while True:
 clean = frames[40].astype(np.int16)                 # before any pencil marks
 X0, X1, Y0, Y1 = 800, 834, 166, 272                 # where the stray vertical strokes are
 LY, LX0, LX1 = 224, 742, 866                        # the height line: y, left and right ends
-F0, F1 = 78, 112                                    # line grows over these frames, while the Heart draws
+F0, F1 = 60, 69                                     # pencil crosses Mia's head height: the mark spreads out from its tip
+TIP = 818
 
 def lum(a): return a[..., 0] * .11 + a[..., 1] * .59 + a[..., 2] * .3
 H, W = frames[0].shape[:2]
@@ -20,7 +21,7 @@ p = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt
                       "-c:v", "libx264", "-crf", "18", "-preset", "slow", "-pix_fmt", "yuv420p", out], stdin=subprocess.PIPE)
 for n, f in enumerate(frames):
     g = f.copy()
-    if n > 60:
+    if n > 40:
         reg = g[Y0:Y1, X0:X1]
         L = lum(reg.astype(np.float32)).astype(np.float32)
         closed = cv2.morphologyEx(L, cv2.MORPH_CLOSE, np.ones((1, 15), np.uint8))   # fills thin dark vertical lines
@@ -36,11 +37,12 @@ for n, f in enumerate(frames):
         if m.any():
             g[Y0:Y1, X0:X1] = cv2.inpaint(np.ascontiguousarray(reg), m, 4, cv2.INPAINT_TELEA)
     if n >= F0:
-        x_end = int(LX0 + (LX1 - LX0) * min(1, (n - F0) / (F1 - F0)))
-        if x_end > LX0:
+        k = min(1, (n - F0 + 1) / (F1 - F0)); k = 1 - (1 - k) ** 2              # quick swipe, easing out
+        xa, xb = int(TIP - (TIP - LX0) * k), int(TIP + (LX1 - TIP) * k)
+        if xb > xa:
             lay = g.copy()
-            cv2.line(lay, (LX0, LY), (x_end, LY), (36, 28, 160), 5, cv2.LINE_AA)      # red pencil line
-            cv2.line(lay, (LX0, LY - 2), (x_end, LY - 2), (80, 70, 205), 1, cv2.LINE_AA)
+            cv2.line(lay, (xa, LY), (xb, LY), (36, 28, 160), 5, cv2.LINE_AA)      # red pencil line
+            cv2.line(lay, (xa, LY - 2), (xb, LY - 2), (80, 70, 205), 1, cv2.LINE_AA)
             band = slice(LY - 5, LY + 6), slice(LX0 - 2, LX1 + 3)
             b = f[band].astype(np.int16)                                                # wall/chart, not hair or Heart
             wall = (lum(b) > 95) & ~(b[..., 2] > b[..., 1] + 105) & ~(b[..., 1] > b[..., 2] + 10)

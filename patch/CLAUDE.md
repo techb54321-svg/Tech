@@ -182,4 +182,20 @@ owner can upload full lists later.
   unrelated projects.
 - Web pages (privacy policy, terms, delete-account request) can be hosted on
   this repo's existing GitHub Pages setup.
-- Phase status: Phase 0 (brief + plan) done. Phase 1 not started.
+- Phase status: Phase 1 (app shell with sample data) done, awaiting owner's
+  OK. Next: Phase 2 (Supabase + sign-in).
+- Expo SDK 58, Expo Router (`src/app/`), JS tabs from `expo-router/tabs`,
+  first-launch guard with `Stack.Protected`.
+- All reference data goes through `src/lib/data-source.ts` (sample data in
+  Phase 1, Supabase from Phase 2). Scan rules are pure functions in
+  `src/lib/scan-logic.ts` so the Edge Function can reuse them.
+- Decisions/assumptions to confirm with owner:
+  - Free plan holds up to 3 saved plants (brief says Plus = "unlimited
+    plants" but doesn't give the free number).
+  - App ID `com.patchgarden.app` is a placeholder; must be final before the
+    first store upload.
+  - Contact email, privacy and terms links are placeholders until Phase 6.
+- Phase 1 has a "Testing tools" section in Settings (switch Plus on/off,
+  reset scans, restart onboarding). Remove before release.
+- Cloud container: Expo's online services are blocked by the network
+  policy; use `EXPO_OFFLINE=1` for `npx expo install` / `npx expo lint`.

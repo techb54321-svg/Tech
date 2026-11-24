@@ -5,7 +5,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 src, out = sys.argv[1], sys.argv[2]
-FPS, DUR, W, H = 24, 14.0, 1280, 720
+FPS, DUR, W, H = 24, 21.0, 1280, 720
 base = Image.open(src).convert("RGB").resize((W, H), Image.LANCZOS)
 S = H / 714  # measurements were taken on a 1280x714 copy
 
@@ -107,12 +107,13 @@ RB_M = RB_M.filter(ImageFilter.GaussianBlur(1.0))
 RB = _rb.resize((57, 57), Image.LANCZOS); RB_M = RB_M.resize((57, 57), Image.LANCZOS)   # visible ball ~50 px, same as the rooms
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
-def openness(t):
-    o = ramp(0.5, 1.2, t) * (1 - ramp(1.58, 1.75, t))      # open on "Is it my doors?", snap shut on "Lub"
-    o += ramp(3.4, 4.1, t) * (1 - ramp(5.32, 5.49, t))     # open again, shut on "snapping shut"
+def openness(t):                                         # timed to "I have four little rooms, with doors in between. Listen: lub... dub! ..."
+    o = ramp(2.3, 3.0, t) * (1 - ramp(4.23, 4.40, t))      # open on "doors in between", snap shut on "lub"
+    o += ramp(5.9, 6.5, t) * (1 - ramp(7.03, 7.20, t))     # open again, shut on "snapping shut"
+    o += ramp(8.0, 8.7, t) * (1 - ramp(10.31, 10.48, t))   # "Is the whoosh coming from my doors?" ... shut on "No!"
     return min(1, o)
 def squeeze(t):                                          # the whole heart squeezes on "lub" and "dub"
-    return 1 - 0.02 * (math.exp(-((t - 2.57) / 0.18) ** 2) + 0.6 * math.exp(-((t - 1.74) / 0.12) ** 2))
+    return 1 - 0.02 * (math.exp(-((t - 5.24) / 0.18) ** 2) + 0.6 * math.exp(-((t - 4.40) / 0.12) ** 2))
 
 # ---- upright front doors, like a dolls house: one stands at the front of each top room ----
 def door_size(rx): return int(rx * 1.0), int(rx * 1.55)

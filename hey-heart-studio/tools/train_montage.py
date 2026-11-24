@@ -8,6 +8,6 @@ src, out = sys.argv[1], sys.argv[2]
 SPEED = float(sys.argv[3]) if len(sys.argv) > 3 else 0.55
 START, END = 1.33, 4.42                                   # seconds of the AI lap that are used
 subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{START}", "-to", f"{END}", "-i", src,
-                "-vf", f"scale=1280:720,setpts=PTS/{SPEED},minterpolate=fps=24:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1",
+                "-vf", f"scale=1280:720,setpts=PTS/{SPEED},fps=24",
                 "-an", "-c:v", "libx264", "-crf", "21", "-preset", "slow", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out], check=True)
 print("done", out)

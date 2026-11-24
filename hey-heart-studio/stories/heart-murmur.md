@@ -9,8 +9,8 @@ Sound tracker on screen: **Lub? Dub? Whoosh?** → **Lub ✓ Dub ✓** (dolls ho
 |---|---|---|---|---|
 | 1 | Door knock → Mia and the Heart on her bed | Knock, knock! Hi Mia, it's me, your heart! Today Dr Sarah listened to me and heard lub... whoosh... dub. Let's find out what makes my sounds! | | browser voice (to record) |
 | 2 | Hand on chest, glowing | Do you know where I live? Put your hand on your chest... thump-thump! Here I am! | hand on chest | browser voice (to record) |
-| 3 | Fist | I'm as big as your fist. Make a fist, squeeze... and let go! That's me pumping your blood all round your body. | fist | browser voice (to record) |
-| 4 | Toy train on the body mat | My blood zooms all round you, to your head, to your toes, and back to me! | wave bye-bye to the train: choo choo! | Elizabeth, trimmed |
+| 3 | Fist | Do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping your blood all round your body. | fist | browser voice (to record) |
+| 4 | Toy train on the body mat | My blood zooms all round you, to your head, to your toes, and back to me! | | Elizabeth, trimmed |
 | 5 | Dolls house (four rooms, two doors), doors open and shut | I have four little rooms, with doors in between. Listen: lub... dub. That's my doors snapping shut! Found lub! Found dub! But what's the whoosh? | say lub-dub | Elizabeth, old line ("Is it my doors?...") until re-recorded |
 | 6 | Stethoscope → hose | Shhh... lub... whoosh... dub. Is it a sneezing dragon? No, silly! It's my blood rushing through me, like water in a hose! Found the whoosh! | | Elizabeth, old line (no dragon) until re-recorded |
 | 7 | Jumping | Want to feel me go faster? Jump five times! Hand on your chest... Faster blood, bigger whoosh! | jump five times | Elizabeth, trimmed ("Jump five times! ... bigger whoosh!") |

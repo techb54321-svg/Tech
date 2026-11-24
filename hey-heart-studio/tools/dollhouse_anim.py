@@ -5,7 +5,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 src, out = sys.argv[1], sys.argv[2]
-FPS, DUR, W, H = 24, 21.0, 1280, 720
+FPS, DUR, W, H = 24, 16.5, 1280, 720
 base = Image.open(src).convert("RGB").resize((W, H), Image.LANCZOS)
 S = H / 714  # measurements were taken on a 1280x714 copy
 
@@ -108,12 +108,70 @@ RB = _rb.resize((57, 57), Image.LANCZOS); RB_M = RB_M.resize((57, 57), Image.LAN
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
 def openness(t):                                         # timed to "I have four little rooms, with doors in between. Listen: lub... dub! ..."
-    o = ramp(2.3, 3.0, t) * (1 - ramp(4.23, 4.40, t))      # open on "doors in between", snap shut on "lub"
-    o += ramp(5.9, 6.5, t) * (1 - ramp(7.03, 7.20, t))     # open again, shut on "snapping shut"
-    o += ramp(8.0, 8.7, t) * (1 - ramp(10.31, 10.48, t))   # "Is the whoosh coming from my doors?" ... shut on "No!"
+    # timed to the short line (+0.45 s scene lead): "I have four little rooms with doors in between. Listen... lub... dub!
+    # That's my doors shutting. Is the whoosh from my doors? No! So where's that whoosh?"
+    o = ramp(2.0, 2.6, t) * (1 - ramp(4.30, 4.45, t))      # open on "doors in between", snap shut on "lub"
+    o += ramp(7.1, 7.7, t) * (1 - ramp(9.25, 9.41, t))     # "Is the whoosh from my doors?" ... snap shut on "No!"
+    o += ramp(12.6, 13.2, t) * (1 - ramp(13.9, 14.05, t))  # the child's turn ("say lub-dub"): one more lub... dub
     return min(1, o)
 def squeeze(t):                                          # the whole heart squeezes on "lub" and "dub"
-    return 1 - 0.02 * (math.exp(-((t - 5.24) / 0.18) ** 2) + 0.6 * math.exp(-((t - 4.40) / 0.12) ** 2))
+    return 1 - 0.02 * sum(math.exp(-((t - d) / 0.18) ** 2) + 0.6 * math.exp(-((t - l) / 0.12) ** 2) for l, d in ((LUB, DUB), (LUB2, DUB2)))
+
+LUB, DUB, NO, LUB2, DUB2 = 4.45, 5.05, 9.41, 14.05, 14.65
+SNAPS = [LUB, NO, LUB2]                                  # doors snap shut: a little sparkle
+BEATS = [LUB, DUB, NO, LUB2, DUB2]                                   # the blood cells beam (^ ^) on each beat
+
+# little faces on some of the felt blood cells (centre x, y, radius, blink phase) in base-image pixels
+CELLS = [(426, 341, 25, 0.3), (564, 323, 20, 1.7), (719, 336, 28, 2.9), (856, 325, 22, 0.9),
+         (576, 552, 26, 2.2), (712, 549, 21, 3.4), (750, 528, 25, 1.2), (508, 489, 19, 2.6)]
+DARK, CHEEK = (52, 22, 20), (246, 120, 120)
+
+def cell_face(im, cx, cy, r, phase, t, look):
+    """Dot eyes, rosy cheeks and a smile drawn onto a felt ball; happy ^ ^ eyes on the beats, a blink now and then."""
+    happy = max([math.exp(-((t - b) / 0.22) ** 2) for b in BEATS] + [0]) > 0.35
+    blink = ((t + phase) % 3.7) < 0.12 and not happy
+    n = int(r * 2.2) * SS
+    lay = Image.new("RGBA", (n, n), (0, 0, 0, 0)); d = ImageDraw.Draw(lay)
+    u = r * SS / 25.0                                    # scale: features sized for a radius-25 ball
+    c = n / 2; ey = c - 3 * u; ex = 8 * u
+    for sx in (-1, 1):
+        x = c + sx * ex + look * 2.2 * u
+        d.ellipse((c + sx * 12 * u - 4.5 * u, c + 4 * u - 2.6 * u, c + sx * 12 * u + 4.5 * u, c + 4 * u + 2.6 * u), fill=CHEEK + (150,))
+        if happy:
+            d.arc((x - 4 * u, ey - 2 * u, x + 4 * u, ey + 5 * u), 200, 340, fill=DARK + (255,), width=int(1.8 * u))
+        elif blink:
+            d.line((x - 3.2 * u, ey + 1 * u, x + 3.2 * u, ey + 1 * u), fill=DARK + (255,), width=int(1.8 * u))
+        else:
+            d.ellipse((x - 3.2 * u, ey - 4 * u, x + 3.2 * u, ey + 4 * u), fill=DARK + (255,))
+            d.ellipse((x - 1.6 * u, ey - 3 * u, x + 0.2 * u, ey - 1.2 * u), fill=(255, 255, 255, 235))
+    mw = (7 if happy else 5) * u
+    d.arc((c - mw + look * u, c + 1 * u, c + mw + look * u, c + (11 if happy else 8) * u), 15, 165, fill=DARK + (255,), width=int(1.8 * u))
+    lay = lay.resize((n // SS, n // SS), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.35))
+    im.paste(lay, (int(cx - n / SS / 2), int(cy - n / SS / 2)), lay)
+
+def star(d, x, y, R, col):
+    pts = []
+    for i in range(8):
+        a = math.pi / 4 * i - math.pi / 2; rr = R if i % 2 == 0 else R * 0.32
+        pts.append((x + rr * math.cos(a), y + rr * math.sin(a)))
+    d.polygon(pts, fill=col)
+
+def sparkles(im, t):
+    """Tiny gold stars pop out round each doorway as the doors snap shut, then fade."""
+    for t0 in SNAPS:
+        u = (t - t0) / 0.55
+        if not 0 <= u <= 1: continue
+        lay = Image.new("RGBA", (W * 2, H * 2), (0, 0, 0, 0)); d = ImageDraw.Draw(lay)
+        a = int(255 * (1 - u) ** 1.3)
+        for k, (cx, cy, rx, ry, kb) in enumerate(DOORS):
+            w, h = door_size(rx); top = cy + ry - h
+            for j, ang in enumerate((-150, -100, -60, -20, 30, 210)):
+                rad = math.radians(ang); dist = (8 + 26 * math.sqrt(u)) * (1 + 0.15 * (j % 2))
+                x = cx + (w * 0.55 + dist) * math.cos(rad); y = top + h * 0.45 + (h * 0.5 + dist) * math.sin(rad)
+                R = 1.6 * (5 + 3 * (j % 3)) * (1 - 0.5 * u) * math.sin(math.pi * min(1, u * 3) / 2 + 0.3)
+                star(d, 2 * x, 2 * y, 2 * R, (255, 226, 120, a))
+        lay = lay.resize((W, H), Image.LANCZOS)
+        im.paste(lay, (0, 0), lay)
 
 # ---- upright front doors, like a dolls house: one stands at the front of each top room ----
 def door_size(rx): return int(rx * 1.0), int(rx * 1.55)
@@ -245,6 +303,10 @@ def frame(t):
             d2 = d2.transpose(Image.FLIP_LEFT_RIGHT)
             im.paste(d2, (x0 + (ox if hinge < 0 else 0) + (0 if hinge < 0 else w - 0), y0 - pad) if False else (x0 - d2.size[0] if hinge < 0 else x0 + w, y0 - pad), d2)
     im.paste(plank, PLANK[:2])   # floor edge in front of the falling blood
+    look = max(-1, min(1, (o - 0.2) * 1.5)) if o > 0.2 else 0     # faces glance toward the doors while they are open
+    for cx, cy, r, ph in CELLS:
+        cell_face(im, cx, cy, r, ph, t, (1 if cx < 640 else -1) * max(0, look) * (1 if cy < 450 else 0.5))
+    sparkles(im, t)
     s = (1 + 0.05 * t / DUR) * squeeze(t)
     cxp, cyp = 640, 380
     l, tp = cxp * (1 - 1 / s), cyp * (1 - 1 / s)

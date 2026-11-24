@@ -201,6 +201,7 @@ for k, (cx, cy, rx, ry, kb) in enumerate(DOORS):
     dw, fw = doorway(w, h)
     FRONT.append((front_door(w, h, hinge), dw, fw, w, h, hinge))
 
+ROLLING_CELLS = False                                              # blood cells rolling through the doors
 ROLL = 1.1                                                         # seconds for one cell to roll into the doorway
 DEPARTS = list(np.arange(0.45, DUR, 0.55))                         # a new cell leaves the pile every 0.55 s (only while the door is open)
 
@@ -216,12 +217,13 @@ def frame(t):
         im.paste(dw, (x0 - fw, y0 - fw), dw)
         # blood rolls off the edge of the pile (the side away from the door's hinge), across the floor
         # and into the dark doorway: it turns as it rolls and simply goes into the dark, nothing pops in or out
+        # (switched off: the doors opening and snapping shut tell the story; the rolling cells looked odd)
         side = -hinge
         bs = RB.size[0]; r = bs * 0.44
         sx, ex = cx + side * (w * 0.5 + r + 6), cx               # start beside the doorway, end inside it
         fy = cy + ry - 3 - bs                                     # sitting on the floor
-        im.paste(RB, (int(sx - bs / 2), int(fy)), RB_M)          # the cell waiting at the pile edge
-        for td in DEPARTS:
+        if ROLLING_CELLS: im.paste(RB, (int(sx - bs / 2), int(fy)), RB_M)          # the cell waiting at the pile edge
+        for td in (DEPARTS if ROLLING_CELLS else []):
             u = (t - td) / ROLL
             if 0 <= u <= 1 and openness(td) > 0.6:
                 e = u * u * (3 - 2 * u)                           # gentle start, glide in

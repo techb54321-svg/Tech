@@ -11,7 +11,7 @@ Sound tracker on screen: **Lub? Dub? Whoosh?** → **Lub ✓ Dub ✓** (dolls ho
 | 2 | Hand on chest, glowing | First, find me! Put your hand on your chest... thump-thump! Here I am! | hand on chest | Elizabeth, trimmed ("Put your hand... It's in me!") |
 | 3 | Fist | I'm as big as your fist. Make a fist, squeeze... and let go! That's me pumping your blood all round your body. | fist | browser voice (to record) |
 | 4 | Toy train on the body mat | My blood zooms all round you, to your head, to your toes, and back to me! | wave bye-bye to the train: choo choo! | Elizabeth, trimmed |
-| 5 | Dolls house, doors open and shut | Inside me are little rooms, with doors in between. Listen: lub... dub. That's my doors snapping shut! Found lub! Found dub! But what's the whoosh? | say lub-dub | Elizabeth, old line ("Is it my doors?...") until re-recorded |
+| 5 | Dolls house (four rooms, two doors), doors open and shut | I have four little rooms, with doors in between. Listen: lub... dub. That's my doors snapping shut! Found lub! Found dub! But what's the whoosh? | say lub-dub | Elizabeth, old line ("Is it my doors?...") until re-recorded |
 | 6 | Stethoscope → hose | Shhh... lub... whoosh... dub. Is it a sneezing dragon? No, silly! It's my blood rushing through me, like water in a hose! Found the whoosh! | | Elizabeth, old line (no dragon) until re-recorded |
 | 7 | Jumping | Want to feel me go faster? Jump five times! Hand on your chest... Faster blood, bigger whoosh! | jump five times | Elizabeth, trimmed ("Jump five times! ... bigger whoosh!") |
 | 8 | Photo of kids | Lots and lots of kids have a whoosh, just like you. Doctors have a special name for it: an innocent murmur. Innocent means it's not doing anything wrong! Phew! | | Elizabeth, old line until re-recorded |
@@ -26,5 +26,5 @@ Lines 1, 2, 3, 5, 6, 7 and 8 above, in that order, with the same tags as before 
 
 ## Shots to re-make after a top-up
 
-- Train: the Heart shows its face from both sides on the far side of the loop.
+- Train: the AI Heart sits backwards on the engine; the edit only shows the parts of the lap where it faces the right way. A re-made shot could show a full lap.
 - Mia's hands with four digits: hand on chest (2), fist (3), stethoscope (6).

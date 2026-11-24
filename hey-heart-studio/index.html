@@ -537,8 +537,8 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v38-knock', clen:3.73, rate:1, cuts:[{at:3.5, clip:'v34-pillow', clen:10, rate:.9}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard lub... whoosh... dub. It's a friendly sound. Let's find out what makes my sounds!"},
-  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:4.9, clip:'v21-home', clen:8}], core:true, fx:[{f:'heartbeat', at:4.5, v:.9}], task:'hand', voice:'k-home3', vdur:4.25, words:[0.13,0.23,0.43,0.59,0.71,1.07,1.71,2.63,2.87,3.11], text:"Put your hand on your chest... thump-thump! It's in me!"},
+  {id:'hello', clip:'v38-knock', clen:3.73, rate:1, cuts:[{at:3.5, clip:'v34-pillow', clen:10, rate:.9}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard lub... whoosh... dub. Let's find out what makes my sounds!"},
+  {id:'home', clip:'v21-glow', clen:5, cuts:[{at:4.9, clip:'v21-home', clen:8}], core:true, fx:[{f:'heartbeat', at:4.5, v:.9}], task:'hand', text:"Do you know where I live? Put your hand on your chest... thump-thump! Here I am!"},
   {id:'squeeze', clip:'v21-fist', clen:10, core:true, fx:[{f:'squish', at:3.3, v:.9}], task:'fist', text:"I'm as big as your fist. Make a fist, squeeze... and let go! That's me pumping your blood all round your body."},
   {id:'loop', clip:'v43-train', clen:10.04, rate:1, core:true, task:'wave', fx:[{f:'train', at:.2, v:.75}], voice:'k-loop3', vdur:5.25, words:[0.34,0.66,0.98,1.54,1.78,2.18,2.46,2.58,2.74,3.18,3.3,3.46,4.02,4.22,4.38,4.5], text:"My blood zooms all round you, to your head, to your toes, and back to me!"},
   {id:'doors', clip:'v43-doors', clen:14, core:true, clue:2, fx:[{f:'clack', at:1.74, v:1}, {f:'clack', at:2.57, v:.8}, {f:'clack', at:5.49, v:.75}], task:'say', voice:'m-doors', vdur:7.39, words:[0.06,0.16,0.24,0.64,1.29,2.12,2.96,3.68,3.92,4.08,4.4,4.64,5.04,5.76,6.08,6.32], text:"Is it my doors? Lub... dub! No, that's just my doors snapping shut. Where's that whoosh?"},
@@ -571,8 +571,8 @@ const NOTFOR = {loop:['little']};
 // English wording by age band (mid = the default text in SCENES)
 const AGE = {
   little: {
-    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard my sounds: lub... whoosh... dub. It's a friendly sound. Let's find out what makes it!",
-    home:"Put your hand on your chest... thump-thump! Here I am!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard my sounds: lub... whoosh... dub. Let's find out what makes them!",
+    home:"Do you know where I live? Hand on your chest... thump-thump! Here I am!",
     squeeze:"I'm as big as your fist. Squeeze... and let go! That's me pumping.",
     doors:"I have four little rooms, with doors in between. Listen: lub... dub! That's my doors shutting. But what's the whoosh?",
     listen:"Today {doctor} listened to me with a special listening tube.",
@@ -588,7 +588,7 @@ const AGE = {
     award:"You found the whoosh, {name}! Hooray!",
   },
   big: {
-    home:"Put your hand on your chest, a little to the left, behind your ribs... thump-thump. Here I am!",
+    home:"Do you know where I live? Put your hand on your chest, a little to the left, behind your ribs... thump-thump. Here I am!",
     squeeze:"I'm about the size of your fist, and I'm a pump. Squeeze and let go: I do that about 100,000 times a day, pushing blood all round your body.",
     loop:"My blood leaves through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
     doors:"Inside me are four rooms, with doors called valves between them. Lub... dub: that's the valves snapping shut, keeping blood flowing the right way. So what's the whoosh?",
@@ -600,7 +600,7 @@ const AGE = {
     grow:"As you grow, many whooshes get quieter or disappear completely. Either way, I'm healthy and strong, and you can keep running, jumping and playing just like normal. No special care needed!",
     outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
     tryit:"Jump up and down ten times, then feel me. When blood flows faster, the whoosh can get louder.",
-    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened with a stethoscope and heard my sounds: lub... whoosh... dub. It's a friendly sound. Let's work out what makes each one!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened with a stethoscope and heard my sounds: lub... whoosh... dub. Let's work out what makes each one!",
   },
 };
 const LANGS = [

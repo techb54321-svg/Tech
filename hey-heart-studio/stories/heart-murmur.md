@@ -7,8 +7,8 @@ Sound tracker on screen: **Lub? Dub? Whoosh?** → **Lub ✓ Dub ✓** (dolls ho
 
 | # | Shot | Line | Child joins in | Voice now |
 |---|---|---|---|---|
-| 1 | Door knock → Mia and the Heart on her bed | Knock, knock! Hi Mia, it's me, your heart! Today Dr Sarah listened to me and heard lub... whoosh... dub. It's a friendly sound. Let's find out what makes my sounds! | | browser voice (to record) |
-| 2 | Hand on chest, glowing | First, find me! Put your hand on your chest... thump-thump! Here I am! | hand on chest | Elizabeth, trimmed ("Put your hand... It's in me!") |
+| 1 | Door knock → Mia and the Heart on her bed | Knock, knock! Hi Mia, it's me, your heart! Today Dr Sarah listened to me and heard lub... whoosh... dub. Let's find out what makes my sounds! | | browser voice (to record) |
+| 2 | Hand on chest, glowing | Do you know where I live? Put your hand on your chest... thump-thump! Here I am! | hand on chest | browser voice (to record) |
 | 3 | Fist | I'm as big as your fist. Make a fist, squeeze... and let go! That's me pumping your blood all round your body. | fist | browser voice (to record) |
 | 4 | Toy train on the body mat | My blood zooms all round you, to your head, to your toes, and back to me! | wave bye-bye to the train: choo choo! | Elizabeth, trimmed |
 | 5 | Dolls house (four rooms, two doors), doors open and shut | I have four little rooms, with doors in between. Listen: lub... dub. That's my doors snapping shut! Found lub! Found dub! But what's the whoosh? | say lub-dub | Elizabeth, old line ("Is it my doors?...") until re-recorded |

@@ -5,7 +5,7 @@ import numpy as np, cv2
 from PIL import Image, ImageDraw, ImageFilter, ImageEnhance
 
 src, out = sys.argv[1], sys.argv[2]
-FPS, DUR, W, H = 24, 16.5, 1280, 720
+FPS, DUR, W, H = 24, 17.1, 1280, 720
 base = Image.open(src).convert("RGB").resize((W, H), Image.LANCZOS)
 S = H / 714  # measurements were taken on a 1280x714 copy
 
@@ -108,16 +108,16 @@ RB = _rb.resize((57, 57), Image.LANCZOS); RB_M = RB_M.resize((57, 57), Image.LAN
 
 def ramp(a, b, x): return min(1, max(0, (x - a) / (b - a)))
 def openness(t):                                         # timed to "I have four little rooms, with doors in between. Listen: lub... dub! ..."
-    # timed to the short line (+0.45 s scene lead): "I have four little rooms with doors in between. Listen... lub... dub!
+    # timed to the short line (+0.45 s scene lead): "I have four little rooms full of blood, with doors in between. Listen... lub... dub!
     # That's my doors shutting. Is the whoosh from my doors? No! So where's that whoosh?"
-    o = ramp(2.0, 2.6, t) * (1 - ramp(4.30, 4.45, t))      # open on "doors in between", snap shut on "lub"
-    o += ramp(7.1, 7.7, t) * (1 - ramp(9.25, 9.41, t))     # "Is the whoosh from my doors?" ... snap shut on "No!"
-    o += ramp(12.6, 13.2, t) * (1 - ramp(13.9, 14.05, t))  # the child's turn ("say lub-dub"): one more lub... dub
+    o = ramp(2.9, 3.5, t) * (1 - ramp(5.01, 5.16, t))      # open on "doors in between", snap shut on "lub"
+    o += ramp(7.8, 8.4, t) * (1 - ramp(9.88, 10.04, t))     # "Is the whoosh from my doors?" ... snap shut on "No!"
+    o += ramp(13.2, 13.8, t) * (1 - ramp(14.5, 14.65, t))  # the child's turn ("say lub-dub"): one more lub... dub
     return min(1, o)
 def squeeze(t):                                          # the whole heart squeezes on "lub" and "dub"
     return 1 - 0.02 * sum(math.exp(-((t - d) / 0.18) ** 2) + 0.6 * math.exp(-((t - l) / 0.12) ** 2) for l, d in ((LUB, DUB), (LUB2, DUB2)))
 
-LUB, DUB, NO, LUB2, DUB2 = 4.45, 5.05, 9.41, 14.05, 14.65
+LUB, DUB, NO, LUB2, DUB2 = 5.16, 5.84, 10.04, 14.65, 15.25
 SNAPS = [LUB, NO, LUB2]                                  # doors snap shut: a little sparkle
 BEATS = [LUB, DUB, NO, LUB2, DUB2]                                   # the blood cells beam (^ ^) on each beat
 

@@ -26,5 +26,5 @@ Lines 1 to 8 above, in that order, with the same tags as before ([playful], [cur
 
 ## Shots re-made
 
-- Train: new AI lap with the Heart sitting forwards on the engine and Mia matching the bedroom scenes (tools/train_matfix.py keeps the felt heart on the mat's chest).
+- Train: new AI lap ending with the engine back beside the heart on the mat (tools/train_matfix.py keeps the felt heart on the chest; the take is cut at 8.25 s).
 - Hand on chest, fist and stethoscope re-made from corrected first frames with five fingers.

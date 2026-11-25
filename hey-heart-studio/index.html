@@ -125,6 +125,8 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
 .ai-none{font-size:13px;color:var(--muted)}
 .build-bar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:16px}
 .notice{font-size:13px;color:var(--muted)}
+.build-hint{margin:10px 2px 0;font-size:14px;line-height:1.45;color:var(--muted);text-align:center}
+.build-hint button{font:inherit;font-weight:700;color:var(--ink);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
 .match-msg{margin-top:12px;padding:12px 14px;border-radius:10px;font-size:14px;background:var(--sunk)}
 
 /* processing overlay */
@@ -408,6 +410,7 @@ textarea.notes{width:100%;min-height:260px;border:1px solid var(--line);border-r
       </div>
       <div class="panel-b" style="border-top:1px solid var(--line)">
         <button class="btn btn-primary btn-lg" id="build" style="width:100%" disabled>Build Mia's video</button>
+        <p class="build-hint" id="build-hint">This switches on once there's a consult to work from: press the microphone above, or paste notes and press <b>Analyse notes</b>. <button id="go-rec">Play the sample consult</button></p>
       </div>
     </div>
   </div>
@@ -851,7 +854,8 @@ function addAI(d){
   $('[data-empty]', g).hidden = true;
   const el = document.createElement('div');
   el.className = 'ai-item';
-  el.innerHTML = `<span class="k"></span><div>${esc(d.l)}${d.n ? `<small>${esc(d.n)}</small>` : ''}${d.key ? `<small>Adds scene: ${esc(fill(SCENES.find(s => s.detect === d.key).text).split('.')[0].slice(0,46))}…</small>` : ''}</div>`;
+  const adds = d.key && SCENES.find(s => s.detect === d.key);   // some messages (no restrictions, fever) have no scene of their own any more
+  el.innerHTML = `<span class="k"></span><div>${esc(d.l)}${d.n ? `<small>${esc(d.n)}</small>` : ''}${adds ? `<small>Adds scene: ${esc(fill(adds.text).split('.')[0].slice(0,46))}…</small>` : ''}</div>`;
   g.appendChild(el);
 }
 let listening = false, runId = 0;
@@ -883,6 +887,7 @@ $('#rec').addEventListener('click', async () => {
   $('#build').disabled = false;
 });
 function stopRec(msg){
+  setTimeout(() => window.buildHint && buildHint(), 0);
   $('#rec').classList.remove('on'); $('#rec').setAttribute('aria-label','Start listening'); waveOn(false);
   $('#rec-meta').innerHTML = `<strong>${esc(msg)}</strong>${msg === 'Paused' ? 'Press again to restart the sample.' : `${T.length} turns · audio deleted after transcription`}`;
 }
@@ -917,7 +922,7 @@ $('#analyse').addEventListener('click', () => {
     if (/echo/i.test(txt)) addAI({g:'plan', l: /no echo/i.test(txt) ? 'No echo needed' : 'Echo mentioned: check plan wording'});
     if (/safety|syncope|faint|cyanos|chest pain/i.test(txt)) addAI({g:'safety', l:'Safety-net advice given', n:'Standard red flags added to parent summary'});
     $('#ai-status').className = 'pill ok'; $('#ai-status').textContent = 'Ready';
-    box.innerHTML = `<div class="match-msg">Matched <b>Heart · Innocent murmur</b> with ${S.detected.size} personalised scenes.</div>`;
+    box.innerHTML = `<div class="match-msg">Matched <b>Heart · Innocent murmur</b> with ${[...S.detected].filter(k => SCENES.some(s => s.detect === k)).length} personalised scenes.</div>`;
     $('#build').disabled = false;
   } else {
     const hit = OTHER.find(([re]) => re.test(txt));
@@ -929,6 +934,16 @@ $('#analyse').addEventListener('click', () => {
 });
 
 /* ---------- build (processing) ---------- */
+// explain the greyed-out button, and offer a one-tap way to start the sample consult
+const buildHint = window.buildHint = () => { $('#build-hint').hidden = !$('#build').disabled || listening; };
+new MutationObserver(buildHint).observe($('#build'), {attributes: true, attributeFilter: ['disabled']});
+$('#go-rec').addEventListener('click', () => {
+  setTab(true);
+  $('#rec').scrollIntoView({behavior: 'smooth', block: 'center'});
+  if (!listening) $('#rec').click();
+  setTimeout(buildHint, 50);
+});
+buildHint();
 $('#build').addEventListener('click', async () => {
   syncNames(); S.edits = {}; S.include = {}; S.summary = null; S.approved = false;
   const steps = ['Removing the audio recording', 'Finding the diagnosis', 'Matching approved scenes', `Personalising for ${S.name}`, 'Writing the parent summary'];

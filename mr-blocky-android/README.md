@@ -157,5 +157,5 @@ watching.
 - `app/src/main/assets/bouncer.html`: the page shown in the web view
 - `../mr-blocky/guy.js`: the little guy himself, shared with the browser
   extension and copied into the app when it is built, along with
-  `../mr-blocky/dance.ogg`, the dance music (made by `../mr-blocky-music`)
+  `../mr-blocky/dance.ogg`, the dance music (made with ElevenLabs: see `../mr-blocky-music`)
 - `ci/`: tries the app on emulated phones running Android 14 and Android 16

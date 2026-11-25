@@ -6,7 +6,8 @@
 The song is written out below as notes. This saves it as a MIDI file, plays it
 through fluidsynth with the MuseScore General sound bank (recordings of real
 instruments, MIT licence, parts public domain), evens out the loudness with
-ffmpeg and saves it as an .ogg file, by default ../mr-blocky/dance.ogg.
+ffmpeg and saves it as an .ogg file, by default dance-original.ogg next to this script.
+The dance itself now uses a song made with ElevenLabs: see README.md.
 
 Needs fluidsynth, the MuseScore General sound bank and ffmpeg. On Ubuntu:
 
@@ -33,7 +34,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOUNDS = '/usr/share/sounds/sf3/MuseScore_General_Full.sf3'
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'mr-blocky', 'dance.ogg')
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'dance-original.ogg')
 
 BPM = 120
 PPQ = 480                  # MIDI ticks to a beat

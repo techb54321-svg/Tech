@@ -87,9 +87,10 @@ you stay for 5 minutes. Then he comes back: "Time's up!"
 - To try it straight away, click **Make the next one a dance** in the popup,
   then open one of the sites. Dance deals can be switched off there too.
 
-The music is `dance.ogg`, an original song made by
-`../mr-blocky-music/make-dance-music.py`. Its sections are timed to his moves
-(`DANCE` in `guy.js`), so the two change together.
+The music is `dance.ogg`, a funky disco song made with ElevenLabs Music
+(`../mr-blocky-music/README.md` says how). It runs at 120 beats a minute, lined up
+so his bounces land on its beat and its final chord on his ta-da, 64 seconds in,
+so the dance (`DANCE` in `guy.js`) and the song change together.
 
 ## Changing how he looks, moves and what he says
 

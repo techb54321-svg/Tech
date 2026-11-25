@@ -60,5 +60,5 @@ That keeps the picture and takes a few seconds.
 disco lights, for social media. It was made with Everygen (Kling 3.0) as two
 8-second clips, one groovy and one funny, each starting and ending on the same
 picture of him from the app, so they join seamlessly and the video loops. His
-own dance song (`../mr-blocky/dance.ogg`, from 49.65 s) plays over it, lined up
-so the song's ta-da lands on his ta-da.
+dance song (`../mr-blocky/dance.ogg`, the ElevenLabs disco track, from 49.65 s)
+plays over it, lined up so its final chord lands on his ta-da.

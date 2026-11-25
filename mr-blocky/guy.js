@@ -619,8 +619,9 @@ const ScrollBouncerGuy = (() => {
 
   // ---- The dance deal --------------------------------------------------------
   // Now and then, after "Nope not now", he offers a way in: dance with him for a
-  // minute. The music (dance.ogg, made by mr-blocky-music/make-dance-music.py) is
-  // 120 beats a minute, and its sections line up with these moves, so change them together.
+  // minute. The music (dance.ogg, made with ElevenLabs: see mr-blocky-music/README.md) is
+  // 120 beats a minute, a beat every half second, and its final chord lands on the ta-da,
+  // 64 seconds in, so change them together.
   // The exercises carry `count`, the kind of move a phone's motion sensor counts, `need`,
   // how many it takes to win the deal, and `name`, what to call them.
   const DANCE = {

@@ -541,8 +541,8 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
   {id:'hello', clip:'v38-knock', clen:3.73, rate:.9, cuts:[{at:3.84, atWord:8, clip:'v54-flashback', clen:8.6, rate:1}, {at:10.32, atWord:23, clip:'v34-pillow', clen:10, rate:.9}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], voice:'n-hello', vdur:12.36, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.16,0.4,1.12,1.36,1.92,2.24,2.72,3.12,3.84,4.4,4.8,5.2,5.6,5.76,6.32,6.4,6.56,6.72,6.88,7.04,7.92,8.72,9.52,10.32,10.64,10.88,11.12,11.32,11.52,11.92], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me. Do you know what she heard? Lub... whoosh... dub! Let's find out what that whoosh is!"},
-  {id:'home', clip:'v50-glow', clen:5, cuts:[{at:4.6, atWord:13, clip:'v21-home', clen:8}], core:true, fx:[{f:'heartbeat', at:4.5, v:.9}], task:'hand', voice:'n-home', vdur:5.53, words:[0.36,0.52,0.68,0.88,1.16,1.42,1.96,2.12,2.4,2.56,2.68,3.04,3.68,4.68,5,5.08], text:"Do you know where I live? Put your hand on your chest... thump-thump! Here I am!"},
-  {id:'squeeze', clip:'v50-fist', clen:10, core:true, fx:[{f:'squish', at:3.3, v:.9}], task:'fist', voice:'n-squeeze', vdur:7.31, words:[0.13,0.23,0.39,0.55,0.87,1.19,1.27,1.99,2.23,2.35,3.11,3.35,4.07,5.07,5.19,5.47,6.07,6.31,6.59], text:"Do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping!"},
+  {id:'home', clip:'v50-glow', clen:5, cuts:[{at:5.68, atWord:15, clip:'v21-home', clen:8}], core:true, fx:[{f:'heartbeat', at:4.5, v:.9}], task:'hand', voice:'n-home', vdur:6.86, words:[0.08,0.32,1.12,1.28,1.44,1.6,1.92,2,2.88,3.04,3.28,3.44,3.6,3.76,4.64,5.68,6.08,6.24], text:"But first, do you know where I live? Put your hand on your chest... thump-thump! Here I am!"},
+  {id:'squeeze', clip:'v50-fist', clen:10, core:true, fx:[{f:'squish', at:3.3, v:.9}], task:'fist', voice:'n-squeeze', vdur:8.22, words:[0.12,0.52,0.64,0.76,1.08,1.32,1.64,1.72,2.58,2.68,2.8,3.59,3.92,4.6,5.6,5.72,6.04,6.68,7.04,7.24], text:"And do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping!"},
   {id:'loop', clip:'v51-train', clen:8.25, rate:.78, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'n-loop', vdur:10.27, words:[0.08,0.24,0.56,0.88,1.12,1.44,1.92,2.24,2.56,2.96,3.84,4.32,4.88,5.2,5.36,5.76,6.4,6.8,7.04,7.44,7.6,7.76,8.24,8.4,8.56,9.2,9.36,9.6,9.76], text:"I work hard for you every day and every night! Every squeeze sends my blood zooming all round you, to your head, to your toes, and back to me!"},
   {id:'doors', clip:'v52-doors', clen:17.1, rate:1, core:true, clue:2, fx:[{f:'clack', at:5.16, v:1}, {f:'clack', at:10.04, v:.8}, {f:'clack', at:14.65, v:.7}], task:'say', voice:'n-doors', vdur:12.04, words:[0.12,0.23,0.55,0.71,1.03,1.51,1.75,1.99,2.43,2.67,2.87,3.15,4.09,4.63,5.31,5.99,6.31,6.55,6.75,7.72,7.79,7.99,8.39,8.55,8.95,9.59,10.6,10.87,11.19,11.43], text:"I have four little rooms full of blood, with doors in between. Listen... lub... dub! That's my doors shutting. Is the whoosh from my doors? No! So where's that whoosh?"},
   {id:'whoosh', clip:'v50-listen', clen:5, cuts:[{at:7.25, atWord:11, clip:'v21-hose', clen:10}], core:true, clue:3, detect:'whoosh', lead:450, fx:[{f:'murmur', at:1.75, v:.55}, {f:'hose', at:4.3, v:.55}], voice:'n-whoosh', vdur:12.12, words:[0.16,1.32,2.24,3.16,4.13,4.2,4.32,4.56,4.8,5.76,6.28,7.25,7.48,7.8,8.08,8.6,8.8,9.24,9.44,9.8,9.88,10,10.99,11.12,11.2], text:"Shhh... lub... whoosh... dub. Is it a tiny rocket? No, silly! It's my blood rushing through me, like water in a hose! Found the whoosh!"},
@@ -575,8 +575,8 @@ const NOTFOR = {loop:['little']};
 const AGE = {
   little: {
     hello:"Knock, knock! Hi {name}, it's me, your heart! Do you know what {doctor} heard? Lub... whoosh... dub! Let's find out what that whoosh is!",
-    home:"Do you know where I live? Hand on your chest... thump-thump! Here I am!",
-    squeeze:"Do you know how big I am? Make a fist... that's me! Squeeze... and let go!",
+    home:"But first, do you know where I live? Hand on your chest... thump-thump! Here I am!",
+    squeeze:"And do you know how big I am? Make a fist... that's me! Squeeze... and let go!",
     doors:"I have four little rooms full of blood, with doors in between. Listen: lub... dub! That's my doors shutting. But what's the whoosh?",
     listen:"Today {doctor} listened to me with a special listening tube.",
     whoosh:"Shhh... lub... whoosh... dub. Is it a tiny rocket? No, silly! It's my blood rushing, like water in a hose!",
@@ -591,8 +591,8 @@ const AGE = {
     award:"You found the whoosh, {name}! Hooray!",
   },
   big: {
-    home:"Do you know where I live? Put your hand on your chest, a little to the left, behind your ribs... thump-thump. Here I am!",
-    squeeze:"Do you know how big I am? About the size of your fist, and I'm a pump. Squeeze and let go: I do that about 100,000 times a day, pushing blood all round your body.",
+    home:"But first, do you know where I live? Put your hand on your chest, a little to the left, behind your ribs... thump-thump. Here I am!",
+    squeeze:"And do you know how big I am? About the size of your fist, and I'm a pump. Squeeze and let go: I do that about 100,000 times a day, pushing blood all round your body.",
     loop:"My blood leaves through tubes called arteries, travels all the way to your toes, and comes back to me through veins.",
     doors:"Inside me are four rooms, with doors called valves between them. Lub... dub: that's the valves snapping shut, keeping blood flowing the right way. So what's the whoosh?",
     listen:"Today {doctor} listened to me with a stethoscope. It picks up every sound I make, a bit like a microphone for hearts.",

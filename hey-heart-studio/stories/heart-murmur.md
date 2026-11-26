@@ -8,8 +8,8 @@ Sound tracker on screen: **Lub? Dub? Whoosh?** → **Lub ✓ Dub ✓** (dolls ho
 | # | Shot | Line | Child joins in | Voice now |
 |---|---|---|---|---|
 | 1 | Door knock, the Heart comes in → flashback to Dr Sarah listening with her stethoscope (soft white edges) → Mia and the Heart on her bed | Knock, knock! Hi Mia, it's me, your heart! Today Dr Sarah listened to me. Do you know what she heard? Lub... whoosh... dub! Let's find out what that whoosh is! | | Elizabeth |
-| 2 | Hand on chest, glowing | Do you know where I live? Put your hand on your chest... thump-thump! Here I am! | hand on chest | Elizabeth |
-| 3 | Fist | Do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping! | fist | browser voice (to record) |
+| 2 | Hand on chest, glowing | But first, do you know where I live? Put your hand on your chest... thump-thump! Here I am! | hand on chest | Elizabeth |
+| 3 | Fist | And do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping! | fist | browser voice (to record) |
 | 4 | Toy train on the body mat | I work hard for you every day and every night! Every squeeze sends my blood zooming all round you, to your head, to your toes, and back to me! | | Elizabeth, trimmed (without the first sentence) until re-recorded |
 | 5 | Dolls house (four rooms, two doors); smiley blood cells beam on each beat, sparkles as the doors snap shut | I have four little rooms full of blood, with doors in between. Listen... lub... dub! That's my doors shutting. Is the whoosh from my doors? No! So where's that whoosh? | say lub-dub | Elizabeth, old line ("Is it my doors?...") until re-recorded |
 | 6 | Stethoscope → hose | Shhh... lub... whoosh... dub. Is it a tiny rocket? No, silly! It's my blood rushing through me, like water in a hose! Found the whoosh! | | Elizabeth |

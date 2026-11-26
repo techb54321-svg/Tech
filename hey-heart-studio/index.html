@@ -540,7 +540,7 @@ const fill = t => t.replace(/\{name\}/g, S.name).replace(/\{parent\}/g, S.parent
 // a/b = Ken Burns start/end window as [x%, y%, width%] of the square page; height = width * 9/16
 const SCENES = [
   {id:'intro', kind:'title', off:true, sfx:'beat', voice:'intro', vdur:4.18, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0,.23,.91,1.45,1.74,2.59,2.88,3.37], text:"A special video for {name}, from {doctor}."},
-  {id:'hello', clip:'v38-knock', clen:3.73, rate:.9, cuts:[{at:4, atWord:8, clip:'v54-flashback', clen:7, rate:1}, {at:8.93, atWord:19, clip:'v34-pillow', clen:10, rate:.9}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], voice:'n-hello', vdur:10.94, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.08,0.43,1.12,1.36,2,2.24,2.72,3.12,4,4.24,4.64,5.04,5.4,5.52,5.76,6.04,6.56,7.32,8.12,8.93,9.12,9.36,9.52,9.8,10.04,10.44], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me and heard lub... whoosh... dub. Let's find out what makes my sounds!"},
+  {id:'hello', clip:'v38-knock', clen:3.73, rate:.9, cuts:[{at:3.84, atWord:8, clip:'v54-flashback', clen:8.6, rate:1}, {at:10.32, atWord:23, clip:'v34-pillow', clen:10, rate:.9}], core:true, lead:300, fx:[{f:'knock', at:.15, v:1}], voice:'n-hello', vdur:12.36, voicedFor:{name:'Mia', doctor:'Dr Sarah'}, words:[0.16,0.4,1.12,1.36,1.92,2.24,2.72,3.12,3.84,4.4,4.8,5.2,5.6,5.76,6.32,6.4,6.56,6.72,6.88,7.04,7.92,8.72,9.52,10.32,10.64,10.88,11.12,11.32,11.52,11.92], text:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me. Do you know what she heard? Lub... whoosh... dub! Let's find out what that whoosh is!"},
   {id:'home', clip:'v50-glow', clen:5, cuts:[{at:4.6, atWord:13, clip:'v21-home', clen:8}], core:true, fx:[{f:'heartbeat', at:4.5, v:.9}], task:'hand', voice:'n-home', vdur:5.53, words:[0.36,0.52,0.68,0.88,1.16,1.42,1.96,2.12,2.4,2.56,2.68,3.04,3.68,4.68,5,5.08], text:"Do you know where I live? Put your hand on your chest... thump-thump! Here I am!"},
   {id:'squeeze', clip:'v50-fist', clen:10, core:true, fx:[{f:'squish', at:3.3, v:.9}], task:'fist', voice:'n-squeeze', vdur:7.31, words:[0.13,0.23,0.39,0.55,0.87,1.19,1.27,1.99,2.23,2.35,3.11,3.35,4.07,5.07,5.19,5.47,6.07,6.31,6.59], text:"Do you know how big I am? Make a fist... that's me! Squeeze... and let go! That's me pumping!"},
   {id:'loop', clip:'v51-train', clen:8.25, rate:.78, core:true, fx:[{f:'train', at:.2, v:.75}], voice:'n-loop', vdur:10.27, words:[0.08,0.24,0.56,0.88,1.12,1.44,1.92,2.24,2.56,2.96,3.84,4.32,4.88,5.2,5.36,5.76,6.4,6.8,7.04,7.44,7.6,7.76,8.24,8.4,8.56,9.2,9.36,9.6,9.76], text:"I work hard for you every day and every night! Every squeeze sends my blood zooming all round you, to your head, to your toes, and back to me!"},
@@ -574,7 +574,7 @@ const NOTFOR = {loop:['little']};
 // English wording by age band (mid = the default text in SCENES)
 const AGE = {
   little: {
-    hello:"Knock, knock! Hi {name}, it's me, your heart! {doctor} heard my sounds: lub... whoosh... dub. Let's find out what makes them!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! Do you know what {doctor} heard? Lub... whoosh... dub! Let's find out what that whoosh is!",
     home:"Do you know where I live? Hand on your chest... thump-thump! Here I am!",
     squeeze:"Do you know how big I am? Make a fist... that's me! Squeeze... and let go!",
     doors:"I have four little rooms full of blood, with doors in between. Listen: lub... dub! That's my doors shutting. But what's the whoosh?",
@@ -603,7 +603,7 @@ const AGE = {
     grow:"As you grow, many whooshes get quieter or disappear completely. Either way, I'm healthy and strong, and you can keep running, jumping and playing just like normal. No special care needed!",
     outro:"Remember: my whoosh is an innocent murmur. I'm healthy and strong. And you can do everything you love!",
     tryit:"Jump up and down ten times, then feel me. When blood flows faster, the whoosh can get louder.",
-    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened with a stethoscope and heard my sounds: lub... whoosh... dub. Let's work out what makes each one!",
+    hello:"Knock, knock! Hi {name}, it's me, your heart! Today {doctor} listened to me with a stethoscope. Do you know what {doctor} heard? Lub... whoosh... dub. Let's work out what that whoosh is!",
   },
 };
 const LANGS = [

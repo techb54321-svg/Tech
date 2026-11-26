@@ -24,6 +24,14 @@ def door_frame(side, t):
     """Which source frame shows this door's state at time t: ('A'|'B', frame)."""
     last_open = max([o for o in OPENS if o <= t], default=None)
     last_shut = max([s for s in SHUTS[side] if s - 0.125 <= t], default=None)
+    if side == "L":
+        # in shot A the left door leans and twists as it opens, so the left door always comes from shot B:
+        # its clean snap shut, played backwards, is the opening (timed to match the right door, ~0.5 s after the cue)
+        if last_open is None: return B, SNAP + 8
+        if last_shut is None or last_open > last_shut:
+            dt = t - last_open
+            return B, (SNAP + 8 if dt < 0.5 else int(max(SNAP - 8, SNAP + 3 - (dt - 0.5) * FPS)))
+        return B, int(min(SNAP + 8, SNAP + (t - last_shut) * FPS))
     if last_open is None: return A, 8                                        # closed, before anything happens
     if last_shut is None or last_open > last_shut:                           # opening or open
         return A, int(min(OPEN1 + 6, OPEN0 + (t - last_open) * FPS))

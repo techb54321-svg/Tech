@@ -5,186 +5,218 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Dog Friendly Victoria — Open doors. Responsible paws.</title>
 <meta name="description" content="Dog Friendly Victoria is a proposed independent, single-issue political party. Dog-friendly by default, rather than by exception." />
-<meta name="theme-color" content="#0e1f3f" />
+<meta name="theme-color" content="#00273d" />
 <meta property="og:title" content="Dog Friendly Victoria" />
 <meta property="og:description" content="Open doors. Responsible paws." />
 <meta property="og:image" content="logo.webp" />
 <link rel="icon" type="image/png" href="mark.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --navy: #0e1f3f;
-    --navy-2: #172c55;
-    --green: #177a2c;
-    --lime: #5c9f2b;
-    --lime-bright: #8fd04a;
-    --tint: #eef6e8;
-    --white: #ffffff;
-    --ink-soft: #4a5672;
-    --line: #dbe6d3;
-    --sun: #ffc93c;
-    --stop: #d8402f;
-    --font: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    --wrap: 1120px;
+    --navy: #00273d;
+    --navy-2: #0a3a55;
+    --teal: #00706b;
+    --aqua: #4db7b1;
+    --mist: #e4f3f1;
+    --ice: #f3fafa;
+    --sun: #ffd166;
+    --stop: #e2583e;
+    --soft: #4b6474;
+    --font: "Outfit", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --hand: "Caveat", "Segoe Script", cursive;
+    --wrap: 1160px;
   }
   *, *::before, *::after { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: 80px; -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: var(--white); color: var(--navy); font-family: var(--font); font-size: 17px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  html { scroll-behavior: smooth; scroll-padding-top: 84px; -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: #fff; color: var(--navy); font-family: var(--font); font-size: 18px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   img, svg { max-width: 100%; display: block; }
   img { height: auto; }
   h1, h2, h3, p { margin: 0; }
-  h1, h2 { font-weight: 800; font-style: italic; line-height: 1.02; letter-spacing: -0.025em; text-wrap: balance; }
+  h1, h2 { font-weight: 800; line-height: .98; letter-spacing: -0.035em; text-wrap: balance; }
   a { color: inherit; }
   button { font: inherit; color: inherit; }
   :focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; border-radius: 8px; }
-  .wrap { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 0 20px; }
-  .green { color: var(--green); }
-  .skip { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--sun); color: var(--navy); padding: 10px 16px; border-radius: 10px; font-weight: 700; text-decoration: none; }
+  ::selection { background: var(--aqua); color: var(--navy); }
+  .wrap { width: 100%; max-width: var(--wrap); margin: 0 auto; padding: 0 22px; }
+  .teal { color: var(--teal); }
+  .hand { font-family: var(--hand); font-weight: 700; letter-spacing: 0; }
+  .skip { position: absolute; left: 16px; top: -60px; z-index: 200; background: var(--sun); padding: 10px 16px; border-radius: 10px; font-weight: 700; text-decoration: none; }
   .skip:focus { top: 12px; }
 
-  /* Header */
-  .top { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-  .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; font-style: italic; font-size: 1.08rem; letter-spacing: -0.02em; white-space: nowrap; }
-  .brand img { width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--green); }
-  .top nav { display: flex; align-items: center; gap: 2px; }
-  .top nav a { white-space: nowrap; text-decoration: none; font-weight: 600; font-size: .93rem; padding: 8px 13px; border-radius: 999px; }
-  .top nav a:hover { background: var(--tint); }
-  .top nav a.pill { background: var(--green); color: #fff; margin-left: 6px; }
-  .top nav a.pill:hover { background: var(--navy); }
-  @media (max-width: 720px) { .top nav a:not(.pill) { display: none; } }
-  @media (max-width: 420px) { .brand { font-size: .92rem; } .brand img { width: 36px; } .top nav a.pill { padding: 8px 12px; font-size: .85rem; } }
-  @media (max-width: 340px) { .brand span { display: none; } }
+  /* Scroll progress: a paw walks the page */
+  .progress { position: fixed; left: 0; top: 0; height: 4px; width: 100%; z-index: 120; pointer-events: none; }
+  .progress i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--teal), var(--aqua)); transform-origin: left; transform: scaleX(var(--p, 0)); }
+  .progress svg { position: absolute; top: 1px; left: calc(var(--p, 0) * 100%); width: 22px; height: 22px; margin-left: -11px; fill: var(--teal); transform: rotate(90deg); filter: drop-shadow(0 1px 0 #fff); }
 
+  /* Cursor paw prints */
+  .prints { position: fixed; inset: 0; pointer-events: none; z-index: 110; overflow: hidden; }
+  .prints svg { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; fill: var(--aqua); animation: fade 1.4s forwards; }
+  @keyframes fade { from { opacity: .55; } to { opacity: 0; } }
+
+  /* Header */
+  .top { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,.86); backdrop-filter: blur(14px) saturate(1.4); -webkit-backdrop-filter: blur(14px) saturate(1.4); }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 68px; }
+  .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.025em; white-space: nowrap; }
+  .brand img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2.500px var(--teal); transition: transform .3s cubic-bezier(.2,1.6,.4,1); }
+  .brand:hover img { transform: rotate(-8deg) scale(1.1); }
+  .top nav { display: flex; align-items: center; gap: 2px; }
+  .top nav a { white-space: nowrap; text-decoration: none; font-weight: 600; font-size: .98rem; padding: 9px 14px; border-radius: 999px; transition: background .2s; }
+  .top nav a:hover { background: var(--mist); }
+  .top nav a.pill { background: var(--navy); color: #fff; margin-left: 6px; }
+  .top nav a.pill:hover { background: var(--teal); }
+  @media (max-width: 740px) { .top nav a:not(.pill) { display: none; } }
+  @media (max-width: 400px) { .brand { font-size: .96rem; } .brand img { width: 38px; height: 38px; } }
+
+  main { overflow-x: clip; }
   /* Hero */
-  .hero { position: relative; text-align: center; overflow: hidden; padding: clamp(28px, 5vw, 56px) 0 0; }
-  .hero-logo { width: min(520px, 82vw); margin: 0 auto; mix-blend-mode: multiply; animation: pop .7s cubic-bezier(.2,1.3,.4,1) both; }
-  .hero h1 { font-size: clamp(2.7rem, 9.5vw, 6.6rem); margin-top: clamp(10px, 2vw, 22px); }
-  .hero h1 span { display: block; animation: rise .7s ease both; }
-  .hero h1 span:nth-child(2) { animation-delay: .15s; }
-  .hero-lede { max-width: 30em; margin: 22px auto 0; font-size: clamp(1.02rem, 1.7vw, 1.2rem); color: var(--ink-soft); font-weight: 500; }
-  .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 28px; }
-  .btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; padding: 15px 28px; border-radius: 999px; border: 0; cursor: pointer; transition: transform .15s, background .15s, box-shadow .15s; }
-  .btn:hover { transform: translateY(-3px); }
-  .btn-go { background: var(--green); color: #fff; box-shadow: 0 10px 24px -10px rgba(23,122,44,.8); }
-  .btn-go:hover { background: #12692a; }
+  .hero { position: relative; text-align: center; padding: clamp(8px, 2vw, 24px) 0 clamp(56px, 8vw, 96px); background: radial-gradient(60% 55% at 50% 30%, var(--ice) 0%, #fff 70%); }
+  .hero-logo { position: relative; width: min(600px, 100%); margin: 0 auto; mix-blend-mode: multiply; animation: pop .9s cubic-bezier(.2,1.25,.4,1) both; }
+  .hero h1 { font-size: clamp(3rem, 9.500vw, 6.400rem); margin-top: clamp(4px, 1vw, 12px); }
+  .hero h1 .line { display: block; overflow: hidden; padding-bottom: .08em; }
+  .hero h1 .line > span { display: inline-block; animation: up .9s cubic-bezier(.2,.9,.2,1) both .25s; }
+  .hero h1 .line:nth-child(2) > span { animation-delay: .4s; }
+  .scribble { position: relative; white-space: nowrap; }
+  .scribble svg { position: absolute; left: -3%; bottom: -.14em; width: 106%; height: .22em; overflow: visible; }
+  .scribble path { fill: none; stroke: var(--aqua); stroke-width: 7; stroke-linecap: round; stroke-dasharray: 620; stroke-dashoffset: 620; animation: draw .9s ease forwards 1.150s; }
+  .hero-sub { margin: 20px auto 0; font-size: clamp(1.7rem, 4.200vw, 2.600rem); color: var(--teal); line-height: 1.1; transform: rotate(-2deg); animation: up .8s ease both .7s; }
+  .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 30px; animation: up .8s ease both .85s; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; font-size: 1.05rem; padding: 16px 30px; border-radius: 999px; border: 0; cursor: pointer; transition: transform .2s cubic-bezier(.2,1.6,.4,1), background .2s, color .2s, box-shadow .2s; }
+  .btn:hover { transform: translateY(-3px) scale(1.03); }
+  .btn-go { background: var(--teal); color: #fff; box-shadow: 0 14px 28px -12px rgba(0,112,107,.9); }
+  .btn-go:hover { background: var(--navy); }
   .btn-line { box-shadow: inset 0 0 0 2px var(--navy); }
   .btn-line:hover { background: var(--navy); color: #fff; }
   .btn svg { width: 20px; height: 20px; fill: currentColor; }
+  .float { position: absolute; fill: var(--aqua); opacity: .22; animation: bob 6s ease-in-out infinite; pointer-events: none; }
+  @keyframes pop { from { opacity: 0; transform: scale(.9) translateY(14px); } }
+  @keyframes up { from { opacity: 0; transform: translateY(105%); } }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes bob { 50% { translate: 0 -16px; } }
 
-  .trail { display: flex; justify-content: center; gap: clamp(14px, 4vw, 40px); margin-top: clamp(30px, 5vw, 52px); }
-  .trail svg { width: clamp(22px, 4vw, 34px); height: auto; fill: var(--lime); opacity: 0; animation: step 4.8s infinite; }
-  .trail svg:nth-child(odd) { transform: translateY(-9px) rotate(78deg); }
-  .trail svg:nth-child(even) { transform: translateY(9px) rotate(102deg); }
-  .swoosh { display: block; width: 100%; height: clamp(50px, 9vw, 120px); margin-top: 8px; }
+  /* Marquee banner (echoes the logo's ribbon) */
+  .ribbon { background: var(--navy); color: #fff; padding: 14px 0; transform: rotate(-1.500deg) scale(1.03); overflow: hidden; border-block: 4px solid var(--aqua); position: relative; z-index: 2; }
+  .ribbon div { display: flex; width: max-content; animation: slide 26s linear infinite; }
+  .ribbon span { font-family: var(--hand); font-size: clamp(1.7rem, 4vw, 2.500rem); white-space: nowrap; display: flex; align-items: center; }
+  .ribbon svg { width: .8em; height: .8em; fill: var(--aqua); margin: 0 .7em; }
+  @keyframes slide { to { transform: translateX(-50%); } }
 
-  @keyframes pop { from { opacity: 0; transform: scale(.86); } }
-  @keyframes rise { from { opacity: 0; transform: translateY(24px); } }
-  @keyframes step { 0%, 100% { opacity: 0; } 12%, 55% { opacity: 1; } 75% { opacity: 0; } }
-
-  /* Section basics */
-  section { padding: clamp(56px, 8vw, 104px) 0; }
-  .kicker { display: inline-block; font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--green); background: var(--tint); padding: 6px 14px; border-radius: 999px; }
-  h2 { font-size: clamp(2.1rem, 6vw, 4rem); margin-top: 16px; }
-  .sub { margin-top: 14px; font-size: 1.08rem; color: var(--ink-soft); font-weight: 500; max-width: 34em; }
+  /* Sections */
+  section { padding: clamp(64px, 9vw, 120px) 0; }
+  .kicker { font-family: var(--hand); font-size: 1.700rem; color: var(--teal); line-height: 1; display: inline-block; transform: rotate(-2deg); }
+  h2 { font-size: clamp(2.500rem, 7.500vw, 5.400rem); margin-top: 8px; }
   .center { text-align: center; }
-  .center .sub { margin-left: auto; margin-right: auto; }
 
   /* Policy street */
-  .policy { background: var(--tint); padding-top: clamp(20px, 3vw, 40px); }
-  .policy .kicker { background: #fff; }
-  .switch { display: inline-flex; background: #fff; border-radius: 999px; padding: 5px; margin-top: 28px; box-shadow: 0 6px 20px -12px rgba(14,31,63,.5); }
-  .switch button { border: 0; background: none; cursor: pointer; font-weight: 700; padding: 11px 24px; border-radius: 999px; transition: background .2s, color .2s; }
-  .switch button[aria-pressed="true"] { background: var(--navy); color: #fff; }
-  .street { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 34px; }
-  @media (max-width: 900px) { .street { grid-template-columns: repeat(3, 1fr); } }
+  .policy { background: var(--mist); margin-top: -28px; padding-top: clamp(84px, 11vw, 140px); }
+  .switch { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; background: #fff; border-radius: 999px; padding: 6px; margin-top: 30px; box-shadow: 0 10px 30px -16px rgba(0,39,61,.6); }
+  .switch::before { content: ""; position: absolute; top: 6px; bottom: 6px; left: 6px; width: calc(50% - 6px); border-radius: 999px; background: var(--navy); transition: transform .4s cubic-bezier(.3,1.3,.5,1); }
+  .switch[data-mode="plan"]::before { transform: translateX(100%); }
+  .switch button { position: relative; border: 0; background: none; cursor: pointer; font-weight: 700; padding: 12px 30px; border-radius: 999px; transition: color .25s; }
+  .switch button[aria-pressed="true"] { color: #fff; }
+
+  .street { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-top: 40px; }
+  @media (max-width: 940px) { .street { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 460px) { .street { gap: 10px; } }
-
-  .shop { position: relative; border: 0; padding: 0; background: #fff; border-radius: 16px; overflow: hidden; cursor: pointer; text-align: center; box-shadow: 0 10px 26px -18px rgba(14,31,63,.6); transition: transform .18s; }
-  .shop:hover { transform: translateY(-4px); }
-  .street[data-mode="today"] .shop { cursor: default; }
-  .street[data-mode="today"] .shop:hover { transform: none; }
-  .awning { height: 26px; background: repeating-linear-gradient(90deg, var(--c) 0 16px, #fff 16px 32px); border-bottom: 3px solid var(--c); }
-  .shop-name { font-weight: 800; font-size: .86rem; letter-spacing: .08em; text-transform: uppercase; padding: 10px 4px 8px; }
-  .front { display: flex; justify-content: center; align-items: flex-end; gap: 8px; padding: 0 10px; height: 92px; }
-  .window { flex: 1; max-width: 54px; height: 54px; margin-bottom: 20px; border-radius: 8px; background: linear-gradient(135deg, #dcefff, #b9dcf5); border: 3px solid var(--navy); }
-  .doorway { position: relative; width: 44px; height: 84px; background: var(--sun); border: 3px solid var(--navy); border-bottom: 0; border-radius: 8px 8px 0 0; perspective: 300px; }
-  .door { position: absolute; inset: 0; background: var(--navy-2); transform-origin: left center; transition: transform .55s cubic-bezier(.3,1.2,.5,1); }
-  .door::after { content: ""; position: absolute; right: 5px; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: var(--sun); }
-  .shop.open .door { transform: rotateY(-72deg); }
-  .doorway svg { position: absolute; left: 50%; bottom: 10px; width: 20px; margin-left: -6px; fill: var(--navy); opacity: 0; transform: scale(.4); transition: opacity .3s .25s, transform .4s .25s cubic-bezier(.2,1.6,.4,1); }
-  .shop.open .doorway svg { opacity: 1; transform: scale(1); }
+  .shop { position: relative; border: 0; padding: 0; background: #fff; border-radius: 20px; overflow: hidden; cursor: pointer; text-align: center; box-shadow: 0 16px 30px -22px rgba(0,39,61,.7); transition: transform .25s cubic-bezier(.2,1.6,.4,1); }
+  .shop:hover { transform: translateY(-6px) rotate(-1deg); }
+  .shop:active { transform: scale(.96); }
+  .street[data-mode="today"] .shop { cursor: default; transform: none; }
+  .awning { height: 30px; background: repeating-linear-gradient(90deg, var(--c) 0 18px, #fff 18px 36px); border-bottom: 4px solid var(--c); border-radius: 0 0 10px 10px / 0 0 8px 8px; }
+  .shop-name { font-weight: 800; font-size: .86rem; letter-spacing: .1em; text-transform: uppercase; padding: 10px 4px 8px; }
+  .front { display: flex; justify-content: center; align-items: flex-end; gap: 8px; padding: 0 10px; height: 96px; }
+  .window { flex: 1; max-width: 56px; height: 56px; margin-bottom: 22px; border-radius: 10px; background: linear-gradient(135deg, #e9f7ff 0 45%, #c5e6f3 45% 55%, #e9f7ff 55%); border: 3px solid var(--navy); }
+  .doorway { position: relative; width: 46px; height: 88px; background: var(--sun); border: 3px solid var(--navy); border-bottom: 0; border-radius: 23px 23px 0 0; perspective: 300px; }
+  .door { position: absolute; inset: 0; background: var(--navy-2); border-radius: 20px 20px 0 0; transform-origin: left center; transition: transform .6s cubic-bezier(.3,1.3,.5,1); }
+  .door::after { content: ""; position: absolute; right: 6px; top: 55%; width: 6px; height: 6px; border-radius: 50%; background: var(--sun); }
+  .shop.open .door { transform: rotateY(-74deg); }
+  .doorway svg { position: absolute; left: 50%; bottom: 10px; width: 20px; margin-left: -6px; fill: var(--navy); opacity: 0; transform: scale(.3) rotate(-30deg); transition: opacity .3s .25s, transform .45s .25s cubic-bezier(.2,1.8,.4,1); }
+  .shop.open .doorway svg { opacity: 1; transform: none; }
   .ground { height: 8px; background: var(--navy); }
-  .badge { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 4px; font-weight: 700; font-size: .82rem; color: #fff; background: var(--stop); transition: background .3s; min-height: 44px; }
-  .shop.open .badge { background: var(--green); }
-  .street[data-mode="today"] .shop:not(.open) .badge { background: #8a93a6; }
+  .badge { display: flex; align-items: center; justify-content: center; padding: 10px 4px; font-weight: 700; font-size: .86rem; color: #fff; background: var(--stop); transition: background .3s; min-height: 46px; }
+  .shop.open .badge { background: var(--teal); }
+  .street[data-mode="today"] .shop:not(.open) .badge { background: #8b9aa5; }
+  .street[data-mode="today"] .shop:not(.open) { filter: saturate(.35); }
 
-  .tally { margin-top: 26px; font-weight: 800; font-style: italic; font-size: clamp(1.3rem, 3.4vw, 2rem); letter-spacing: -0.02em; }
-  .tally b { color: var(--green); font-size: 1.5em; }
-  .hint { margin-top: 6px; color: var(--ink-soft); font-weight: 500; min-height: 3.2em; }
-  .rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 26px; }
-  .rule { background: #fff; border-radius: 16px; padding: 20px; font-weight: 700; display: flex; align-items: center; gap: 14px; text-align: left; line-height: 1.3; }
-  .rule i { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--green); display: grid; place-items: center; font-style: normal; color: #fff; font-weight: 800; font-size: 1.2rem; }
-  .rule small { display: block; font-weight: 500; color: var(--ink-soft); font-size: .88rem; margin-top: 2px; }
-  @media (max-width: 800px) { .rules { grid-template-columns: 1fr; } }
-  .fine { margin-top: 18px; font-size: .8rem; color: var(--ink-soft); }
+  .tally { margin-top: 34px; font-weight: 800; font-size: clamp(1.500rem, 4vw, 2.400rem); letter-spacing: -0.03em; line-height: 1; }
+  .tally b { display: inline-block; color: var(--teal); font-size: 2.200em; vertical-align: -.12em; margin-right: .08em; }
+  .tally b.bump { animation: bump .45s cubic-bezier(.2,1.8,.4,1); }
+  @keyframes bump { 40% { transform: scale(1.35) rotate(-6deg); } }
+  .hint { margin-top: 10px; font-size: clamp(1.500rem, 3.400vw, 2rem); color: var(--teal); line-height: 1.1; min-height: 2.300em; }
+  .rules { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 18px; }
+  .rules span { background: #fff; border-radius: 999px; padding: 11px 20px; font-weight: 600; font-size: .98rem; display: inline-flex; align-items: center; gap: 9px; }
+  .rules svg { width: 18px; height: 18px; fill: var(--teal); flex: none; }
+  .fine { margin-top: 18px; font-size: .8rem; color: var(--soft); }
 
   /* Objectives */
-  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 36px; }
-  @media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
-  .tile { border-radius: 20px; background: var(--tint); transition: background .2s, color .2s, transform .18s; align-self: start; }
-  .tile:hover { transform: translateY(-3px); }
-  .tile summary { list-style: none; cursor: pointer; padding: 20px; min-height: 148px; display: flex; flex-direction: column; justify-content: space-between; border-radius: 20px; }
-  .tile summary::-webkit-details-marker { display: none; }
-  .num { font-weight: 800; font-style: italic; font-size: 2.4rem; line-height: 1; color: var(--green); display: flex; justify-content: space-between; align-items: center; }
-  .num::after { content: "+"; font-style: normal; font-size: 1.5rem; width: 34px; height: 34px; border-radius: 50%; background: #fff; color: var(--navy); display: grid; place-items: center; transition: transform .25s; }
-  .tile[open] .num::after { transform: rotate(45deg); }
-  .tile h3 { font-size: 1.12rem; font-weight: 700; line-height: 1.2; margin-top: 14px; }
-  .tile p { padding: 0 20px 20px; font-size: .95rem; font-weight: 500; }
-  .tile[open] { background: var(--navy); color: #fff; }
-  .tile[open] .num { color: var(--lime-bright); }
-  .tile.keep { background: #e9eef8; }
-  .tile.keep .num { color: var(--navy); }
-  .tile.keep[open] { background: var(--green); }
-  .tile.keep[open] .num { color: #fff; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 18px; font-weight: 600; font-size: .9rem; color: var(--ink-soft); }
-  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 8px; background: var(--lime); }
-  .legend span + span::before { background: #9db0d6; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 44px; }
+  @media (max-width: 940px) { .tiles { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+  .tile { perspective: 900px; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; aspect-ratio: 1 / 1.050; min-height: 190px; }
+  .tile-in { position: relative; display: block; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .7s cubic-bezier(.3,1.2,.4,1); }
+  .tile[aria-pressed="true"] .tile-in { transform: rotateY(180deg); }
+  @media (hover: hover) { .tile:hover .tile-in { transform: rotateY(180deg); } }
+  .face { position: absolute; inset: 0; border-radius: 24px; padding: clamp(16px, 2.200vw, 24px); backface-visibility: hidden; -webkit-backface-visibility: hidden; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+  .front-face { background: var(--mist); }
+  .tile.keep .front-face { background: var(--navy); color: #fff; }
+  .back-face { background: var(--teal); color: #fff; transform: rotateY(180deg); justify-content: center; font-weight: 600; font-size: clamp(.95rem, 1.500vw, 1.120rem); line-height: 1.35; }
+  .num { font-weight: 800; font-size: clamp(3.600rem, 8vw, 5.600rem); line-height: .8; letter-spacing: -0.05em; color: var(--teal); }
+  .tile.keep .num { color: var(--aqua); }
+  .face h3 { font-size: clamp(1.050rem, 1.800vw, 1.350rem); font-weight: 700; line-height: 1.12; letter-spacing: -0.015em; }
+  .face .paw-bg { position: absolute; right: -18px; top: -14px; width: 104px; height: 104px; fill: currentColor; opacity: .07; transform: rotate(18deg); }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 20px; font-weight: 600; font-size: .96rem; color: var(--soft); }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 14px; border-radius: 5px; margin-right: 8px; vertical-align: -1px; background: var(--aqua); }
+  .legend span + span::before { background: var(--navy); }
 
   /* Principles */
-  .principles { background: var(--navy); color: #fff; }
-  .principles .kicker { background: rgba(255,255,255,.1); color: var(--lime-bright); }
-  .words { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 36px; }
-  @media (max-width: 980px) { .words { grid-template-columns: repeat(2, 1fr); } .word:last-child { grid-column: 1 / -1; } }
-  .word { border: 2px solid rgba(255,255,255,.16); border-radius: 20px; padding: 22px 18px; transition: background .2s, border-color .2s, transform .2s; }
-  .word:hover { background: var(--green); border-color: var(--green); transform: translateY(-4px) rotate(-1.500deg); }
-  .word svg { width: 30px; height: 30px; fill: var(--lime-bright); margin-bottom: 14px; }
-  .word:hover svg { fill: #fff; }
-  .word h3 { font-weight: 800; font-style: italic; font-size: 1.3rem; line-height: 1.1; letter-spacing: -0.02em; }
-  .word p { margin-top: 8px; font-size: .88rem; color: #c3cde2; line-height: 1.45; }
-  .word:hover p { color: #fff; }
+  .principles { background: var(--navy); color: #fff; border-radius: clamp(28px, 5vw, 64px) clamp(28px, 5vw, 64px) 0 0; }
+  .principles .kicker { color: var(--aqua); }
+  .plist { list-style: none; margin: 40px 0 0; padding: 0; border-top: 1px solid rgba(255,255,255,.16); }
+  .plist li { position: relative; display: grid; grid-template-columns: 3.200rem 1fr minmax(0, 22rem); align-items: center; gap: 16px; padding: clamp(18px, 2.600vw, 30px) 12px; border-bottom: 1px solid rgba(255,255,255,.16); overflow: hidden; isolation: isolate; }
+  .plist li::before { content: ""; position: absolute; inset: 0; background: var(--teal); transform: scaleY(0); transform-origin: bottom; transition: transform .4s cubic-bezier(.3,1,.4,1); z-index: -1; }
+  .plist li:hover::before { transform: scaleY(1); }
+  .plist .idx { font-family: var(--hand); font-size: 1.700rem; color: var(--aqua); }
+  .plist h3 { font-size: clamp(1.900rem, 6vw, 4.400rem); font-weight: 800; line-height: 1; letter-spacing: -0.04em; transition: transform .4s cubic-bezier(.3,1,.4,1); }
+  .plist li:hover h3 { transform: translateX(14px); }
+  .plist p { color: #b9cfd8; font-size: 1.040rem; line-height: 1.4; transition: color .3s; }
+  .plist li:hover p, .plist li:hover .idx { color: #fff; }
+  @media (max-width: 800px) {
+    .plist li { grid-template-columns: 2.400rem 1fr; }
+    .plist p { grid-column: 2; margin-top: -8px; }
+  }
 
   /* Mission */
-  .mission { text-align: center; }
-  .mission blockquote { margin: 18px auto 0; max-width: 21em; font-weight: 700; font-size: clamp(1.4rem, 3.6vw, 2.4rem); line-height: 1.25; letter-spacing: -0.02em; text-wrap: balance; }
-  .who { margin: 34px auto 0; max-width: 40em; color: var(--ink-soft); font-weight: 500; }
+  .mission { padding-bottom: 0; text-align: center; overflow: hidden; }
+  .mission blockquote { margin: 16px auto 0; max-width: 17em; font-weight: 800; font-size: clamp(2rem, 6vw, 4.400rem); line-height: 1.06; letter-spacing: -0.035em; text-wrap: balance; }
+  .mission blockquote span { color: rgba(0,39,61,.14); transition: color .35s; }
+  .mission blockquote span.on { color: var(--navy); }
+  .mission blockquote span.t.on { color: var(--teal); }
+  .who { margin: 30px auto 0; max-width: 34em; color: var(--soft); font-size: 1.080rem; }
+  .peek { position: relative; margin-top: clamp(30px, 5vw, 60px); }
+  .peek::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3.400%; background: var(--navy); border-top: 3px solid var(--aqua); }
+  .peek img { position: relative; width: min(520px, 86vw); margin: 0 auto; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); transform: translateY(var(--peek, 22%)); transition: transform .25s ease-out; }
+  .peek-clip { overflow: hidden; }
 
   /* Footer */
-  footer { background: var(--tint); text-align: center; padding: 0 0 36px; }
-  footer .swoosh { margin: 0 0 10px; transform: scaleY(-1); }
-  footer img { width: min(300px, 70vw); margin: 0 auto; mix-blend-mode: multiply; }
-  .tag { font-weight: 800; font-style: italic; font-size: clamp(1.3rem, 3vw, 1.9rem); letter-spacing: -0.02em; margin-top: 8px; }
-  .note { margin-top: 18px; font-size: .84rem; color: var(--ink-soft); }
+  footer { background: var(--navy); color: #fff; text-align: center; padding: clamp(36px, 6vw, 64px) 0 40px; }
+  .foot-name { font-weight: 800; font-size: clamp(2.400rem, 8.500vw, 6.400rem); line-height: .95; letter-spacing: -0.04em; }
+  .foot-name span { color: var(--aqua); }
+  .foot-tag { font-size: clamp(2rem, 5.400vw, 3.400rem); line-height: 1.1; margin-top: 14px; transform: rotate(-2deg); }
+  .foot-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 8px; margin-top: 34px; }
+  .foot-nav a { text-decoration: none; font-weight: 600; padding: 9px 18px; border-radius: 999px; box-shadow: inset 0 0 0 1.500px rgba(255,255,255,.28); transition: background .2s, color .2s; }
+  .foot-nav a:hover { background: var(--aqua); color: var(--navy); box-shadow: none; }
+  .note { margin-top: 30px; font-size: .86rem; color: #9fb8c3; }
 
-  .js .reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s, transform .6s; }
+  .js .reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s, transform .7s cubic-bezier(.2,.9,.2,1); transition-delay: var(--d, 0s); }
   .js .reveal.in { opacity: 1; transform: none; }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation: none !important; transition: none !important; }
-    .trail svg { opacity: 1; }
+    .scribble path { stroke-dashoffset: 0; }
     .js .reveal { opacity: 1; transform: none; }
+    .mission blockquote span { color: var(--navy); }
+    .mission blockquote span.t { color: var(--teal); }
+    .peek img { transform: none; }
   }
 </style>
 </head>
@@ -201,10 +233,13 @@
   </symbol>
 </svg>
 
+<div class="progress" aria-hidden="true"><i></i><svg><use href="#paw" /></svg></div>
+<div class="prints" aria-hidden="true"></div>
+
 <header class="top">
   <div class="wrap">
     <a class="brand" href="#top" aria-label="Dog Friendly Victoria — home">
-      <img src="mark.png" alt="" width="42" height="42" />
+      <img src="mark.png" alt="" width="44" height="44" />
       <span>Dog Friendly Victoria</span>
     </a>
     <nav aria-label="Main">
@@ -218,42 +253,46 @@
 
 <main id="main">
   <div class="hero" id="top">
+    <svg class="float" style="width:70px;left:6%;top:16%;rotate:-20deg" aria-hidden="true"><use href="#paw" /></svg>
+    <svg class="float" style="width:44px;right:8%;top:10%;rotate:24deg;animation-delay:-2s" aria-hidden="true"><use href="#paw" /></svg>
+    <svg class="float" style="width:90px;right:5%;bottom:14%;rotate:14deg;animation-delay:-4s" aria-hidden="true"><use href="#paw" /></svg>
+    <svg class="float" style="width:52px;left:9%;bottom:8%;rotate:-34deg;animation-delay:-1s" aria-hidden="true"><use href="#paw" /></svg>
     <div class="wrap">
-      <img class="hero-logo" src="logo.webp" alt="Dog Friendly Victoria" width="1100" height="597" />
-      <h1><span>Open doors.</span><span class="green">Responsible paws.</span></h1>
-      <p class="hero-lede">A Victoria where well-behaved dogs are welcomed as part of everyday life.</p>
+      <img class="hero-logo" src="logo.webp" alt="Dog Friendly Victoria. Open doors. Responsible paws." width="1400" height="933" />
+      <h1>
+        <span class="line"><span>Dog-friendly</span></span>
+        <span class="line"><span>by <span class="scribble teal">default.<svg viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 12c50-9 96-9 146-3s96 7 146-3" /></svg></span></span></span>
+      </h1>
+      <p class="hero-sub hand">…not by exception.</p>
       <div class="actions">
         <a class="btn btn-go" href="#policy"><svg aria-hidden="true"><use href="#paw" /></svg>See how it works</a>
-        <a class="btn btn-line" href="#mission">Who we are</a>
+        <a class="btn btn-line" href="#mission">Our mission</a>
       </div>
-      <div class="trail" aria-hidden="true"></div>
     </div>
-    <svg class="swoosh" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 120V70c260 60 520 20 760-20S1240 0 1440 44v76z" fill="#eef6e8" />
-      <path d="M0 66c260 60 520 20 760-20S1240-4 1440 40" fill="none" stroke="#5c9f2b" stroke-width="10" stroke-linecap="round" />
-    </svg>
   </div>
+
+  <div class="ribbon" aria-hidden="true"><div id="ribbon"></div></div>
 
   <!-- Core policy -->
   <section class="policy center" id="policy">
     <div class="wrap">
       <p class="kicker">Our core policy</p>
-      <h2>Dog-friendly by <span class="green">default</span>.<br />Not by exception.</h2>
+      <h2>Flip the <span class="teal">default.</span></h2>
 
-      <div class="switch" role="group" aria-label="Compare today with our plan">
-        <button type="button" data-mode="today" aria-pressed="false">Today</button>
-        <button type="button" data-mode="plan" aria-pressed="true">Our plan</button>
+      <div class="switch" data-mode="today" role="group" aria-label="Compare today with our plan">
+        <button type="button" data-mode="today" aria-pressed="true">Today</button>
+        <button type="button" data-mode="plan" aria-pressed="false">Our plan</button>
       </div>
 
-      <div class="street" data-mode="plan" id="street"></div>
+      <div class="street" data-mode="today" id="street"></div>
 
-      <p class="tally" aria-live="polite"><b id="count">5</b> of 6 doors open to dogs</p>
-      <p class="hint" id="hint"></p>
+      <p class="tally" aria-live="polite"><b id="count">1</b>of 6 doors open to dogs</p>
+      <p class="hint hand" id="hint"></p>
 
       <div class="rules">
-        <div class="rule reveal"><i>1</i><span>Welcome by default<small>Shops, cafés, restaurants, pubs and more.</small></span></div>
-        <div class="rule reveal"><i>2</i><span>Businesses can say no<small>No justification needed.</small></span></div>
-        <div class="rule reveal"><i>3</i><span>Exemptions still apply<small>Where the law requires it.</small></span></div>
+        <span><svg aria-hidden="true"><use href="#paw" /></svg>Welcome by default</span>
+        <span><svg aria-hidden="true"><use href="#paw" /></svg>Businesses can say no — no reason needed</span>
+        <span><svg aria-hidden="true"><use href="#paw" /></svg>Statutory exemptions still apply</span>
       </div>
       <p class="fine">Illustration only.</p>
     </div>
@@ -263,18 +302,9 @@
   <section id="objectives">
     <div class="wrap">
       <p class="kicker">Our key objectives</p>
-      <h2>Eight goals. <span class="green">Tap one.</span></h2>
+      <h2>Eight goals. <span class="teal">Flip&nbsp;one.</span></h2>
       <div class="legend"><span>What we'd change</span><span>What we'd protect</span></div>
-      <div class="tiles">
-        <details class="tile reveal" name="obj"><summary><span class="num">1</span><h3>Statewide framework</h3></summary><p>Establish a statewide dog-friendly-by-default framework.</p></details>
-        <details class="tile reveal" name="obj"><summary><span class="num">2</span><h3>Dogs in indoor dining</h3></summary><p>Pursue changes to food safety regulations to permit dogs in indoor dining areas.</p></details>
-        <details class="tile reveal" name="obj"><summary><span class="num">3</span><h3>Clear opt-out signage</h3></summary><p>Introduce consistent, recognisable signage for businesses that choose to opt out.</p></details>
-        <details class="tile reveal" name="obj"><summary><span class="num">4</span><h3>Responsible ownership</h3></summary><p>Promote responsible dog ownership, training and appropriate behaviour in public spaces.</p></details>
-        <details class="tile keep reveal" name="obj"><summary><span class="num">5</span><h3>Business freedom of choice</h3></summary><p>Protect business owners' freedom of choice.</p></details>
-        <details class="tile keep reveal" name="obj"><summary><span class="num">6</span><h3>Health, hygiene &amp; safety</h3></summary><p>Maintain appropriate public health, hygiene and safety standards.</p></details>
-        <details class="tile keep reveal" name="obj"><summary><span class="num">7</span><h3>Assistance animal rights</h3></summary><p>Protect existing assistance animal access rights.</p></details>
-        <details class="tile keep reveal" name="obj"><summary><span class="num">8</span><h3>Respect for everyone</h3></summary><p>Respect the needs of people with allergies, fears or other concerns about dogs.</p></details>
-      </div>
+      <div class="tiles" id="tiles"></div>
     </div>
   </section>
 
@@ -283,115 +313,196 @@
     <div class="wrap">
       <p class="kicker">Our principles</p>
       <h2>What guides us.</h2>
-      <div class="words">
-        <div class="word reveal"><svg aria-hidden="true"><use href="#paw" /></svg><h3>Inclusion</h3><p>Dogs are an important part of many Victorians' lives.</p></div>
-        <div class="word reveal"><svg aria-hidden="true"><use href="#paw" /></svg><h3>Freedom of choice</h3><p>Respecting the decisions of businesses and individuals.</p></div>
-        <div class="word reveal"><svg aria-hidden="true"><use href="#paw" /></svg><h3>Responsibility</h3><p>Owners are accountable for their animals' behaviour.</p></div>
-        <div class="word reveal"><svg aria-hidden="true"><use href="#paw" /></svg><h3>Balance</h3><p>Dog owners, businesses and the wider community.</p></div>
-        <div class="word reveal"><svg aria-hidden="true"><use href="#paw" /></svg><h3>Evidence-based reform</h3><p>Practical changes informed by research and consultation.</p></div>
-      </div>
+      <ul class="plist">
+        <li class="reveal"><span class="idx">01</span><h3>Inclusion</h3><p>Dogs are an important part of many Victorians' lives.</p></li>
+        <li class="reveal"><span class="idx">02</span><h3>Freedom of choice</h3><p>Respecting the decisions of businesses and individuals.</p></li>
+        <li class="reveal"><span class="idx">03</span><h3>Responsibility</h3><p>Owners are accountable for their animals' behaviour.</p></li>
+        <li class="reveal"><span class="idx">04</span><h3>Balance</h3><p>Dog owners, businesses and the wider community.</p></li>
+        <li class="reveal"><span class="idx">05</span><h3>Evidence-based reform</h3><p>Practical changes informed by research and consultation.</p></li>
+      </ul>
     </div>
   </section>
 
   <!-- Mission -->
   <section class="mission" id="mission">
-    <div class="wrap reveal">
+    <div class="wrap">
       <p class="kicker">Our mission</p>
-      <blockquote>Make Victoria more welcoming to dogs and their owners — <span class="green">without compromising public safety or individual choice.</span></blockquote>
-      <p class="who">Dog Friendly Victoria is a proposed independent, single-issue political party pursuing legislative, regulatory and cultural change.</p>
+      <blockquote id="mission-text" data-text="Make Victoria more welcoming to dogs and their owners —|without compromising public safety or individual choice."></blockquote>
+      <p class="who reveal">Dog Friendly Victoria is a proposed independent, single-issue political party pursuing legislative, regulatory and cultural change.</p>
     </div>
+    <div class="peek-clip"><div class="peek" id="peek"><img src="peek.webp" alt="" width="805" height="798" loading="lazy" /></div></div>
   </section>
 </main>
 
 <footer>
-  <svg class="swoosh" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
-    <path d="M0 120V70c260 60 520 20 760-20S1240 0 1440 44v76z" fill="#ffffff" />
-    <path d="M0 66c260 60 520 20 760-20S1240-4 1440 40" fill="none" stroke="#5c9f2b" stroke-width="10" stroke-linecap="round" />
-  </svg>
   <div class="wrap">
-    <img src="logo.webp" alt="Dog Friendly Victoria" width="1100" height="597" loading="lazy" />
-    <p class="tag">Open doors. <span class="green">Responsible paws.</span></p>
+    <p class="foot-name">Dog Friendly <span>Victoria</span></p>
+    <p class="foot-tag hand">Open doors. Responsible paws.</p>
+    <nav class="foot-nav" aria-label="Footer">
+      <a href="#policy">Policy</a>
+      <a href="#objectives">Objectives</a>
+      <a href="#principles">Principles</a>
+      <a href="#mission">Mission</a>
+      <a href="#top">Back to top ↑</a>
+    </nav>
     <p class="note">Dog Friendly Victoria is a proposed political party.</p>
   </div>
 </footer>
 
 <script>
-  document.documentElement.classList.add('js');
+(function () {
+  var root = document.documentElement;
+  root.classList.add('js');
+  var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var PAW = '<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#paw" /></svg>';
 
-  // Paw trail
-  var trail = document.querySelector('.trail');
-  for (var i = 0; i < 8; i++) {
-    trail.insertAdjacentHTML('beforeend', PAW);
-    trail.lastChild.style.animationDelay = (i * 0.35) + 's';
-  }
+  // Ribbon
+  var unit = '';
+  for (var r = 0; r < 6; r++) unit += '<span>Open doors.' + PAW + 'Responsible paws.' + PAW + '</span>';
+  document.getElementById('ribbon').innerHTML = unit + unit;
 
   // Street demo
   var shops = [
-    { name: 'Café', c: '#177a2c' }, { name: 'Pub', c: '#0e1f3f' }, { name: 'Shop', c: '#5c9f2b' },
-    { name: 'Restaurant', c: '#177a2c' }, { name: 'Salon', c: '#0e1f3f' }, { name: 'Books', c: '#5c9f2b' }
+    { name: 'Café', c: '#00706b' }, { name: 'Pub', c: '#00273d' }, { name: 'Shop', c: '#4db7b1' },
+    { name: 'Restaurant', c: '#00706b' }, { name: 'Salon', c: '#00273d' }, { name: 'Books', c: '#4db7b1' }
   ];
-  var optedOut = { 4: true };      // one business has chosen to opt out
-  var todayOpen = { 2: true };     // today: the exception
-  var mode = 'plan';
-  var street = document.getElementById('street');
-  var count = document.getElementById('count');
-  var hint = document.getElementById('hint');
-
+  var optedOut = { 4: true }, todayOpen = { 2: true }, mode = 'today', auto = true;
+  var street = document.getElementById('street'), count = document.getElementById('count');
+  var hint = document.getElementById('hint'), sw = document.querySelector('.switch');
   shops.forEach(function (s, i) {
     street.insertAdjacentHTML('beforeend',
       '<button type="button" class="shop" data-i="' + i + '" style="--c:' + s.c + '">' +
-        '<div class="awning"></div><div class="shop-name">' + s.name + '</div>' +
-        '<div class="front"><div class="window"></div><div class="doorway">' + PAW + '<div class="door"></div></div></div>' +
-        '<div class="ground"></div><div class="badge"></div>' +
-      '</button>');
+      '<div class="awning"></div><div class="shop-name">' + s.name + '</div>' +
+      '<div class="front"><div class="window"></div><div class="doorway">' + PAW + '<div class="door"></div></div></div>' +
+      '<div class="ground"></div><div class="badge"></div></button>');
   });
-
   function render() {
     var open = 0;
-    street.dataset.mode = mode;
+    street.dataset.mode = sw.dataset.mode = mode;
     street.querySelectorAll('.shop').forEach(function (el, i) {
       var isOpen = mode === 'plan' ? !optedOut[i] : !!todayOpen[i];
       if (isOpen) open++;
+      el.style.transitionDelay = '';
+      el.querySelector('.door').style.transitionDelay = (i * 70) + 'ms';
       el.classList.toggle('open', isOpen);
       var label = isOpen ? 'Dogs welcome' : (mode === 'plan' ? 'Opted out' : 'No dogs');
       el.querySelector('.badge').textContent = label;
       el.setAttribute('aria-label', shops[i].name + ': ' + label);
       el.disabled = mode !== 'plan';
     });
-    count.textContent = open;
-    hint.innerHTML = mode === 'plan'
-      ? 'Tap any business to opt it in or out. <strong>Their door, their choice.</strong>'
-      : 'Dogs are the exception, not the rule.';
-    document.querySelectorAll('.switch button').forEach(function (b) {
-      b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
-    });
+    if (count.textContent !== String(open)) {
+      count.textContent = open;
+      count.classList.remove('bump'); void count.offsetWidth; count.classList.add('bump');
+    }
+    hint.textContent = mode === 'plan'
+      ? 'Tap a business to opt it out. Their door, their choice.'
+      : 'Today, dogs are the exception.';
+    sw.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === mode)); });
   }
   street.addEventListener('click', function (e) {
     var el = e.target.closest('.shop');
     if (!el || mode !== 'plan') return;
-    var i = +el.dataset.i;
-    optedOut[i] = !optedOut[i];
+    street.querySelectorAll('.door').forEach(function (d) { d.style.transitionDelay = '0ms'; });
+    var i = +el.dataset.i; optedOut[i] = !optedOut[i]; auto = false;
     render();
+    el.querySelector('.door').style.transitionDelay = '0ms';
   });
-  document.querySelector('.switch').addEventListener('click', function (e) {
+  sw.addEventListener('click', function (e) {
     var b = e.target.closest('button');
-    if (b) { mode = b.dataset.mode; render(); }
+    if (b) { mode = b.dataset.mode; auto = false; render(); }
   });
   render();
 
-  // Reveal on scroll
-  var items = document.querySelectorAll('.reveal');
+  // Objective flip tiles
+  var goals = [
+    ['Statewide framework', 'Establish a statewide dog-friendly-by-default framework.'],
+    ['Dogs in indoor dining', 'Pursue changes to food safety regulations to permit dogs in indoor dining areas.'],
+    ['Clear opt-out signage', 'Introduce consistent, recognisable signage for businesses that choose to opt out.'],
+    ['Responsible ownership', 'Promote responsible dog ownership, training and appropriate behaviour in public spaces.'],
+    ['Business freedom of choice', "Protect business owners' freedom of choice."],
+    ['Health, hygiene & safety', 'Maintain appropriate public health, hygiene and safety standards.'],
+    ['Assistance animal rights', 'Protect existing assistance animal access rights.'],
+    ['Respect for everyone', 'Respect the needs of people with allergies, fears or other concerns about dogs.']
+  ];
+  var tiles = document.getElementById('tiles');
+  goals.forEach(function (g, i) {
+    var t = g[0].replace('&', '&amp;');
+    tiles.insertAdjacentHTML('beforeend',
+      '<button type="button" class="tile reveal' + (i > 3 ? ' keep' : '') + '" aria-pressed="false" style="--d:' + (i % 4) * 0.07 + 's" aria-label="' + (i + 1) + '. ' + g[1].replace(/"/g, '&quot;') + '">' +
+      '<span class="tile-in"><span class="face front-face"><svg class="paw-bg" viewBox="0 0 64 64"><use href="#paw" /></svg><span class="num">' + (i + 1) + '</span><h3>' + t + '</h3></span>' +
+      '<span class="face back-face">' + g[1] + '</span></span></button>');
+  });
+  tiles.addEventListener('click', function (e) {
+    var t = e.target.closest('.tile'); if (!t) return;
+    var on = t.getAttribute('aria-pressed') === 'true';
+    tiles.querySelectorAll('.tile').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+    t.setAttribute('aria-pressed', String(!on));
+  });
+
+  // Mission: words light up as you scroll
+  var mt = document.getElementById('mission-text');
+  var parts = mt.dataset.text.split('|');
+  mt.innerHTML = parts.map(function (p, pi) {
+    return p.split(' ').map(function (w) { return '<span' + (pi ? ' class="t"' : '') + '>' + w + '</span>'; }).join(' ');
+  }).join(' ');
+  var words = mt.querySelectorAll('span');
+  var peek = document.getElementById('peek'), peekImg = peek.querySelector('img');
+
+  // Scroll-driven bits
+  var ticking = false;
+  function onScroll() {
+    ticking = false;
+    var vh = window.innerHeight, max = root.scrollHeight - vh;
+    root.style.setProperty('--p', max > 0 ? Math.min(1, window.scrollY / max) : 0);
+    if (!calm) {
+      var r = mt.getBoundingClientRect();
+      var prog = (vh * 0.88 - r.top) / (r.height + vh * 0.38);
+      var n = Math.round(Math.max(0, Math.min(1, prog)) * words.length);
+      words.forEach(function (w, i) { w.classList.toggle('on', i < n); });
+      var pr = peek.getBoundingClientRect();
+      var up = Math.max(0, Math.min(1, (vh - pr.top) / (pr.height * 0.9)));
+      peekImg.style.setProperty('--peek', (22 * (1 - up)) + '%');
+    }
+  }
+  window.addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  // Reveal on scroll; the street flips to "Our plan" by itself the first time it is seen
   if ('IntersectionObserver' in window) {
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (en) {
-        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        if (en.target === street) {
+          setTimeout(function () { if (auto) { mode = 'plan'; render(); } }, calm ? 0 : 1100);
+        } else en.target.classList.add('in');
       });
-    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.08 });
-    items.forEach(function (el) { io.observe(el); });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+    io.observe(street);
   } else {
-    items.forEach(function (el) { el.classList.add('in'); });
+    document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('in'); });
+    mode = 'plan'; render();
   }
+
+  // Paw prints follow the mouse
+  if (!calm && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    var layer = document.querySelector('.prints'), lx = null, ly = null, side = 1;
+    window.addEventListener('pointermove', function (e) {
+      if (lx === null) { lx = e.clientX; ly = e.clientY; return; }
+      var dx = e.clientX - lx, dy = e.clientY - ly, d = Math.sqrt(dx * dx + dy * dy);
+      if (d < 70) return;
+      var ang = Math.atan2(dy, dx), nx = -Math.sin(ang) * 10 * side, ny = Math.cos(ang) * 10 * side;
+      layer.insertAdjacentHTML('beforeend', PAW);
+      var s = layer.lastChild;
+      s.style.left = (e.clientX + nx) + 'px'; s.style.top = (e.clientY + ny) + 'px';
+      s.style.transform = 'rotate(' + (ang * 180 / Math.PI + 90) + 'deg)';
+      s.addEventListener('animationend', function () { s.remove(); });
+      lx = e.clientX; ly = e.clientY; side = -side;
+    }, { passive: true });
+  }
+})();
 </script>
 </body>
 </html>

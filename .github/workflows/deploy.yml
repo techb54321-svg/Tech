@@ -56,6 +56,8 @@ jobs:
           cp -r gym-accountability/landing/. site/ironclad/
           mkdir -p site/quiet-table
           cp -r quiet-table/. site/quiet-table/
+          mkdir -p site/dog-friendly-victoria
+          cp -r dog-friendly-victoria/. site/dog-friendly-victoria/
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

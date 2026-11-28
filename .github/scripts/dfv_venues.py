@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Turn an osmium GeoJSON-sequence export into the Paw Sign app's venues.json.
+"""Turn an osmium GeoJSON-sequence export into the Paw Sign app's venue lists.
 
-Usage: dfv_venues.py <export.geojsonseq> <venues.json>
+Usage: dfv_venues.py <export.geojsonseq> <venues.json> <venues-nosign.json>
 
-Keeps named food, drink and retail venues in Victoria that carry a `dog` tag,
-reduced to one point and the handful of tags the app reads.
+venues.json         places in Victoria with dog-access information: food, drink,
+                    retail and places to stay that carry a `dog` tag, parks and
+                    beaches that carry one, and every dog park.
+venues-nosign.json  named cafes, pubs, bars and restaurants with no `dog` tag,
+                    as compact rows [type, id, lat, lon, name, kind].
 """
 import json
 import re
@@ -12,11 +15,14 @@ import sys
 import time
 
 FOOD = {"cafe", "pub", "bar", "restaurant", "biergarten", "fast_food", "ice_cream"}
-KEEP = {"name", "dog", "amenity", "shop", "outdoor_seating", "website", "contact:website", "email",
-        "contact:email", "addr:housenumber", "addr:street", "addr:suburb", "addr:city"}
+ASK = {"cafe": "c", "pub": "p", "bar": "p", "restaurant": "r"}
+STAY = {"hotel", "motel", "guest_house", "hostel", "caravan_site", "camp_site", "apartment", "chalet"}
+GREEN = {"park", "nature_reserve", "garden"}
+KEEP = {"name", "dog", "amenity", "shop", "leisure", "tourism", "natural", "outdoor_seating", "website",
+        "contact:website", "email", "contact:email", "addr:housenumber", "addr:street", "addr:suburb", "addr:city"}
 
 # Rough outline of Victoria as (lon, lat). The northern edge follows the Murray,
-# so venues within a few kilometres of the border may land on the wrong side.
+# so places within a few kilometres of the border may land on the wrong side.
 VIC = [(140.96, -33.98), (142.2, -34.1), (142.8, -34.55), (143.35, -34.75), (143.6, -35.3), (144.3, -35.75),
        (144.75, -36.1), (145.3, -35.85), (146.0, -35.98), (146.9, -36.09), (147.5, -35.98), (148.05, -36.4),
        (148.2, -36.8), (149.98, -37.51), (149.98, -39.3), (140.96, -39.3)]
@@ -36,17 +42,20 @@ def in_vic(lon, lat):
 
 def point(geom):
     kind, c = geom.get("type"), geom.get("coordinates")
-    if kind == "Point":
-        return c
-    if kind == "LineString":
-        ring = c
-    elif kind == "Polygon":
-        ring = c[0]
-    elif kind == "MultiPolygon":
-        ring = c[0][0]
-    else:
+    try:
+        if kind == "Point":
+            return c
+        if kind == "LineString":
+            ring = c
+        elif kind == "Polygon":
+            ring = c[0]
+        elif kind == "MultiPolygon":
+            ring = c[0][0]
+        else:
+            return None
+        return [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
+    except (TypeError, IndexError, ZeroDivisionError):
         return None
-    return [sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)]
 
 
 def osm_ref(fid):
@@ -60,8 +69,23 @@ def osm_ref(fid):
     return ({"n": "node", "w": "way", "r": "relation"}[kind], num)
 
 
-def main(src, dst):
-    out = {}
+def classify(tags):
+    """'info' for a place with dog-access information, 'ask' for one worth asking, else None."""
+    if tags.get("leisure") == "dog_park":
+        return "info"
+    name, dog = tags.get("name"), tags.get("dog")
+    if not name:
+        return None
+    if dog:
+        if (tags.get("amenity") in FOOD or tags.get("shop") or tags.get("tourism") in STAY
+                or tags.get("leisure") in GREEN or tags.get("natural") == "beach"):
+            return "info"
+        return None
+    return "ask" if tags.get("amenity") in ASK else None
+
+
+def main(src, dst, dst_ask):
+    info, ask = {}, {}
     with open(src, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip().lstrip("\x1e")
@@ -69,26 +93,36 @@ def main(src, dst):
                 continue
             feat = json.loads(line)
             tags = feat.get("properties") or {}
-            if not tags.get("name") or not tags.get("dog"):
-                continue
-            if tags.get("amenity") not in FOOD and not tags.get("shop"):
+            kind = classify(tags)
+            if not kind:
                 continue
             ref = osm_ref(feat.get("id"))
             pt = point(feat.get("geometry") or {})
             if not ref or not pt or not in_vic(pt[0], pt[1]):
                 continue
-            out[ref] = {"type": ref[0], "id": ref[1], "lat": round(pt[1], 6), "lon": round(pt[0], 6),
-                        "tags": {k: v for k, v in tags.items() if k in KEEP}}
-    elements = [out[k] for k in sorted(out)]
+            lat, lon = round(pt[1], 5), round(pt[0], 5)
+            if kind == "info":
+                info[ref] = {"type": ref[0], "id": ref[1], "lat": lat, "lon": lon,
+                             "tags": {k: v for k, v in tags.items() if k in KEEP}}
+            else:
+                ask[ref] = [ref[0][0], ref[1], lat, lon, tags["name"][:60], ASK[tags["amenity"]]]
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    elements = [info[k] for k in sorted(info)]
     with open(dst, "w", encoding="utf-8") as fh:
-        json.dump({"generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "elements": elements}, fh,
+        json.dump({"generated": stamp, "elements": elements}, fh, ensure_ascii=False, separators=(",", ":"))
+    with open(dst_ask, "w", encoding="utf-8") as fh:
+        json.dump({"generated": stamp, "rows": [ask[k] for k in sorted(ask) if k not in info]}, fh,
                   ensure_ascii=False, separators=(",", ":"))
-    counts = {}
+    groups = {}
     for e in elements:
-        counts[e["tags"]["dog"]] = counts.get(e["tags"]["dog"], 0) + 1
-    print("Saved %d venues: %s" % (len(elements), ", ".join("%s %d" % kv for kv in sorted(counts.items()))))
+        t = e["tags"]
+        g = ("dog park" if t.get("leisure") == "dog_park" else "park or beach" if t.get("leisure") or t.get("natural")
+             else "stay" if t.get("tourism") else "food, drink or shop")
+        groups[g] = groups.get(g, 0) + 1
+    print("Saved %d places with dog info: %s" % (len(elements), ", ".join("%s %d" % kv for kv in sorted(groups.items()))))
+    print("Saved %d venues with no dog info yet" % len(ask))
     return 0 if elements else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1], sys.argv[2]))
+    sys.exit(main(sys.argv[1], sys.argv[2], sys.argv[3]))

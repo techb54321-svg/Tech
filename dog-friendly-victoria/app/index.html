@@ -912,6 +912,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <button class="chip" data-f="all" aria-pressed="true">All</button>
           <button class="chip" data-f="welcome" aria-pressed="false">Dogs welcome</button>
           <button class="chip" data-f="inside" aria-pressed="false">Inside too</button>
+          <button class="chip" data-f="park" aria-pressed="false">Parks</button>
           <button class="chip" data-f="free" aria-pressed="false">Dog-free</button>
           <button class="chip" data-f="unlisted" aria-pressed="false">No sign yet</button>
           <button class="chip" data-f="mine" aria-pressed="false">My signs</button>
@@ -974,12 +975,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
           <h2>What the <span>map shows.</span></h2>
           <p class="lead" id="imp-lead">Counts for the part of the map you're looking at.</p>
           <div class="stats">
-            <div class="stat"><b id="s-welcome">0</b><span>venues recorded as welcoming dogs</span></div>
-            <div class="stat"><b id="s-free">0</b><span>venues recorded as dog-free</span></div>
+            <div class="stat"><b id="s-welcome">0</b><span>places recorded as welcoming dogs</span></div>
+            <div class="stat"><b id="s-free">0</b><span>places recorded as dog-free</span></div>
             <div class="stat dark"><b id="s-visits">0</b><span>your check-ins</span></div>
             <div class="stat dark"><b id="s-asks">0</b><span>requests you've sent to venues</span></div>
           </div>
-          <div class="bars"><h3>Dog-welcoming venues by type, in this area</h3><div id="bars"></div></div>
+          <div class="bars"><h3>Dog-welcoming places by type, in this area</h3><div id="bars"></div></div>
           <p class="pitch hand">“Here's what happens when businesses are simply given the choice.”</p>
           <p class="small">Area counts come from OpenStreetMap plus any Paw Signs on this device. Check-ins and requests are yours alone until a shared database is connected.</p>
         </div>
@@ -3308,7 +3309,10 @@ var qrcode = function() {
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   var PAW = '<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#paw" /></svg>';
-  var TYPE = { cafe: 'Café', pub: 'Pub', shop: 'Shop', restaurant: 'Restaurant', salon: 'Salon', books: 'Bookshop' };
+  var TYPE = { cafe: 'Café', pub: 'Pub', shop: 'Shop', restaurant: 'Restaurant', salon: 'Salon', books: 'Bookshop', park: 'Park', stay: 'Place to stay' };
+  function tile(inner) { var u = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 107"><rect x="4" y="14" width="76" height="80" rx="20" fill="#e4f3f1"/>' + inner + '</svg>'); return [u, u]; }
+  THUMB.park = tile('<rect x="39" y="58" width="6" height="22" rx="2" fill="#8a5a3c"/><circle cx="42" cy="46" r="19" fill="#2f9d7f"/><circle cx="30" cy="54" r="11" fill="#3fb08f"/><circle cx="54" cy="54" r="11" fill="#3fb08f"/><rect x="16" y="80" width="52" height="4" rx="2" fill="#00706b"/>');
+  THUMB.stay = tile('<path d="M18 78V40M18 66h48v12M66 66v-8a8 8 0 0 0-8-8H34v16" fill="none" stroke="#00273d" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="26" cy="56" r="5" fill="#00706b"/>');
   var CANON = 'https://techb54321-svg.github.io/Tech/dog-friendly-victoria/app/';
   var BASE = /^https?:$/.test(location.protocol) ? location.origin + location.pathname : CANON;
   var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
@@ -3348,6 +3352,8 @@ var qrcode = function() {
   var filter = 'all', selected = null, newKey = null;
   function typeOf(t) {
     var a = t.amenity, s = t.shop;
+    if (t.leisure || t.natural === 'beach') return 'park';
+    if (t.tourism) return 'stay';
     if (a === 'cafe' || a === 'ice_cream') return 'cafe';
     if (a === 'pub' || a === 'bar' || a === 'biergarten') return 'pub';
     if (a === 'restaurant' || a === 'fast_food' || a === 'food_court') return 'restaurant';
@@ -3357,8 +3363,9 @@ var qrcode = function() {
   }
   function fromOsm(el) {
     var t = el.tags || {}, lat = el.lat != null ? el.lat : el.center && el.center.lat, lon = el.lon != null ? el.lon : el.center && el.center.lon;
-    if (lat == null || !t.name) return null;
-    var d = String(t.dog || '').toLowerCase(), status = 'unlisted', outdoor = false, leash = false;
+    var dogPark = t.leisure === 'dog_park';
+    if (lat == null || (!t.name && !dogPark)) return null;
+    var d = String(t.dog || (dogPark ? 'yes' : '')).toLowerCase(), status = 'unlisted', outdoor = false, leash = false;
     if (d === 'yes' || d === 'designated' || d === 'permissive') status = 'welcome';
     else if (d === 'leashed') { status = 'welcome'; leash = true; }
     else if (d === 'outside' || d === 'outdoor' || d === 'outdoors') { status = 'welcome'; outdoor = true; }
@@ -3369,7 +3376,7 @@ var qrcode = function() {
     if (!/^https?:\/\/[^\s"'<>]+$/i.test(web)) web = '';
     var email = t.email || t['contact:email'] || '';
     if (!/^[^\s@"'<>]+@[^\s@"'<>]+\.[^\s@"'<>]+$/.test(email)) email = '';
-    return { key: 'osm/' + el.type + '/' + el.id, src: 'osm', osm: el.type + '/' + el.id, name: t.name, type: typeOf(t), lat: lat, lon: lon, status: status,
+    return { key: 'osm/' + el.type + '/' + el.id, src: 'osm', osm: el.type + '/' + el.id, name: t.name || 'Dog park', type: typeOf(t), offlead: dogPark, lat: lat, lon: lon, status: status,
       outdoor: outdoor, leash: leash, seating: t.outdoor_seating === 'yes', addr: addr, web: web, email: email };
   }
   function addSigns() {
@@ -3380,6 +3387,7 @@ var qrcode = function() {
   function matches(v) {
     if (filter === 'all') return v.status !== 'unlisted' || v.src !== 'osm' || !!store.asked[v.key];
     if (filter === 'welcome') return v.status === 'welcome';
+    if (filter === 'park') return v.type === 'park';
     if (filter === 'inside') return v.status === 'welcome' && (v.src === 'osm' ? !v.outdoor : v.indoors);
     if (filter === 'free') return v.status === 'free';
     if (filter === 'mine') return v.src !== 'osm';
@@ -3407,6 +3415,7 @@ var qrcode = function() {
     Object.keys(venues).forEach(function (k) {
       var v = venues[k]; if (!matches(v)) return;
       if (k !== selected && (far || !vb.contains([v.lat, v.lon]))) return;
+      if (k !== selected && closeOnly(v) && map.getZoom() < 16) return;
       var cls = 'pin ' + st(v) + (v.src !== 'osm' ? ' mine' : '') + (selected === k ? ' sel' : '') + (newKey === k ? ' new' : '');
       L.marker([v.lat, v.lon], { icon: L.divIcon({ className: cls, html: pinHtml(v), iconSize: [40, 48], iconAnchor: [20, 46] }), title: v.name + ': ' + label(v), alt: v.name + ': ' + label(v), keyboard: true, zIndexOffset: selected === k ? 1000 : (v.src !== 'osm' ? 500 : 0) })
         .on('click', function () { select(k); }).addTo(layer);
@@ -3414,15 +3423,16 @@ var qrcode = function() {
     newKey = null;
   }
   function minZoom() { return haveList ? 11 : 13; }
+  function closeOnly(v) { return v.status === 'unlisted' && v.src === 'osm' && !store.asked[v.key]; }
   function inView() { var b = map.getBounds(); return Object.keys(venues).map(function (k) { return venues[k]; }).filter(function (v) { return b.contains([v.lat, v.lon]); }); }
 
   var tip = $('tip');
   function setTip(html) { tip.innerHTML = html; }
   function summary() {
     if (map.getZoom() < minZoom()) return setTip('Zoom in to see venues');
-    var vs = inView().filter(matches), n = vs.length;
     if (filter === 'unlisted' && map.getZoom() < 16) return setTip('Zoom in closer to see venues without a sign');
-    if (n) setTip(n + (n === 1 ? ' venue' : ' venues') + ' here · tap a pin');
+    var vs = inView().filter(matches), n = vs.length;
+    if (n) setTip(n + (n === 1 ? ' place' : ' places') + ' here · tap a pin');
     else setTip(filter === 'all' ? 'No dog info recorded here yet. <button data-go="sign">Add a Paw Sign</button>' : 'Nothing matches that filter here');
   }
 
@@ -3452,7 +3462,21 @@ var qrcode = function() {
       loading--; draw(); summary(); stats();
     }).catch(function () { loading--; setTip(tilesOk ? (kind === 'any' ? 'Couldn\'t load venues without a sign right now' : 'Couldn\'t reach the venue data') + ' (' + lastErr + '). <button data-go="retry">Try again</button>' : 'This preview can\'t reach the internet, so the map can\'t load here. It works at the app\'s web address. <button data-go="retry">Try again</button>'); });
   }
-  function refresh() { load('dog'); if (filter === 'unlisted') load('any'); if (!loading) summary(); }
+  var noSign = 0; // 0 not tried, 1 loading, 2 loaded, 3 unavailable
+  function loadNoSign() {
+    if (noSign === 3) return load('any');
+    if (noSign) return;
+    noSign = 1; loading++; setTip('Finding venues…');
+    fetch('venues-nosign.json').then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (data) {
+      var T = { n: 'node', w: 'way', r: 'relation' }, K = { c: 'cafe', p: 'pub', r: 'restaurant' };
+      (data.rows || []).forEach(function (r) {
+        var osm = T[r[0]] + '/' + r[1], key = 'osm/' + osm;
+        if (!venues[key] && T[r[0]] && typeof r[4] === 'string') venues[key] = { key: key, src: 'osm', osm: osm, name: r[4], type: K[r[5]] || 'cafe', lat: r[2], lon: r[3], status: 'unlisted', addr: '', web: '', email: '' };
+      });
+      noSign = 2; loading--; draw(); summary();
+    }).catch(function () { noSign = 3; loading--; load('any'); });
+  }
+  function refresh() { load('dog'); if (filter === 'unlisted') loadNoSign(); if (!loading) summary(); }
   map.on('moveend', function () { draw(); stats(); clearTimeout(moveT); moveT = setTimeout(refresh, 500); });
   map.on('click', function () { if (selected) select(null); });
   tip.addEventListener('click', function (e) { var b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'sign') show('sign'); else refresh(); });
@@ -3471,14 +3495,14 @@ var qrcode = function() {
       '<span class="status ' + s + '">' + (open ? PAW : '') + label(v) + '</span></div></div>';
     if (open) {
       var facts = [];
-      if (v.src === 'osm') { facts.push(v.outdoor ? 'Outdoor area only' : 'Dogs allowed'); if (v.leash) facts.push('On a lead'); if (v.seating) facts.push('Outdoor seating'); }
+      if (v.src === 'osm') { facts.push(v.offlead ? 'Dog park' : (v.outdoor ? 'Outdoor area only' : 'Dogs allowed')); if (v.leash) facts.push('On a lead'); if (v.seating) facts.push('Outdoor seating'); }
       else { facts.push(v.indoors ? 'Indoors & outdoors' : 'Outdoor area only'); if (v.bowl) facts.push('Water bowl'); facts.push(v.small ? 'Small dogs only' : 'All sizes'); }
       h += '<div class="facts">' + facts.map(function (f) { return '<span>' + f + '</span>'; }).join('') + '</div>' +
         '<p class="note"><b>Good manners:</b> on a lead, off the furniture, clean up promptly.</p>' +
         '<button class="cta" data-act="checkin">' + PAW + 'Check in with my dog</button>' +
         '<p class="visits">' + (n ? 'You\'ve checked in here <b>' + n + '</b> time' + (n === 1 ? '' : 's') : 'No check-ins from you yet') + '</p>';
     } else if (s === 'free') {
-      h += '<p class="note">This business is recorded as dog-free. <b>Thanks for respecting their choice.</b> Assistance animals keep their existing access rights.</p>' +
+      h += '<p class="note">' + (v.type === 'park' ? 'Dogs are recorded as not allowed here.' : 'This business is recorded as dog-free. <b>Thanks for respecting their choice.</b>') + ' Assistance animals keep their existing access rights.</p>' +
         '<button class="cta navy" data-act="nearby">' + PAW + 'Show dog-friendly places nearby</button>';
     } else {
       h += '<p class="note">' + (s === 'asked' ? 'You\'ve asked this venue. Its sign will show here once it has one.' : 'No one has recorded whether dogs are welcome here. A friendly question from a local can help.') + '</p>' +

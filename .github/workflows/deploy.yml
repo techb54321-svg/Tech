@@ -55,8 +55,10 @@ jobs:
         id: venues-cache
         uses: actions/cache@v4
         with:
-          path: venues.json
-          key: dfv-venues-v1-${{ steps.week.outputs.w }}
+          path: |
+            venues.json
+            venues-nosign.json
+          key: dfv-venues-v2-${{ hashFiles('.github/scripts/dfv_venues.py') }}-${{ steps.week.outputs.w }}
 
       - name: Build the venue list from the weekly OpenStreetMap download
         if: steps.venues-cache.outputs.cache-hit != 'true'
@@ -66,9 +68,10 @@ jobs:
           sudo apt-get install -y -qq osmium-tool
           curl -fL --retry 3 -m 900 -sS -o au.osm.pbf https://download.geofabrik.de/australia-oceania/australia-latest.osm.pbf
           ls -la au.osm.pbf
-          osmium tags-filter au.osm.pbf nwr/dog -o dog.osm.pbf
+          osmium tags-filter au.osm.pbf nwr/dog nwr/leisure=dog_park nwr/amenity=cafe,pub,bar,restaurant -o dog.osm.pbf
           osmium export dog.osm.pbf -u type_id -f geojsonseq -x print_record_separator=false -o dog.geojsonseq
-          python3 .github/scripts/dfv_venues.py dog.geojsonseq venues.json || rm -f venues.json
+          python3 .github/scripts/dfv_venues.py dog.geojsonseq venues.json venues-nosign.json || rm -f venues.json venues-nosign.json
+          ls -la venues.json venues-nosign.json
           rm -f au.osm.pbf dog.osm.pbf dog.geojsonseq
 
       # Last resort only: the public query servers are often at capacity. If
@@ -108,6 +111,7 @@ jobs:
           mkdir -p site/dog-friendly-victoria
           cp -r dog-friendly-victoria/. site/dog-friendly-victoria/
           if [ -s venues.json ]; then cp venues.json site/dog-friendly-victoria/app/venues.json; fi
+          if [ -s venues-nosign.json ]; then cp venues-nosign.json site/dog-friendly-victoria/app/venues-nosign.json; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

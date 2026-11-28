@@ -734,6 +734,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   #lmap { position: absolute; inset: 0; z-index: 0; font-family: var(--font); }
   .leaflet-container { background: #dfe9e6; }
   .leaflet-control-attribution { font-size: 10px; }
+  @media (pointer: coarse) { .leaflet-control-zoom { display: none; } }
+  .legend { max-width: calc(100% - 20px); overflow: hidden; }
   .pin { background: none; border: 0; }
   .pin .p { width: 40px; height: 48px; transform-origin: 50% 100%; transition: transform .25s cubic-bezier(.2,1.7,.4,1); filter: drop-shadow(0 4px 4px rgba(0,39,61,.3)); }
   .pin .p svg { width: 100%; height: 100%; }
@@ -3444,7 +3446,7 @@ var qrcode = function() {
       fetched[kind] = area;
       (data.elements || []).forEach(function (el) { var v = fromOsm(el); if (v) venues[v.key] = v; });
       loading--; draw(); summary(); stats();
-    }).catch(function () { loading--; setTip('Couldn\'t reach the venue data. <button data-go="retry">Try again</button>'); });
+    }).catch(function () { loading--; setTip(tilesOk ? 'Couldn\'t reach the venue data. <button data-go="retry">Try again</button>' : 'This preview can\'t reach the internet, so the map can\'t load here. It works at the app\'s web address. <button data-go="retry">Try again</button>'); });
   }
   function refresh() { load('dog'); if (filter === 'unlisted') load('any'); if (!loading) summary(); }
   map.on('moveend', function () { clearTimeout(moveT); moveT = setTimeout(refresh, 500); });

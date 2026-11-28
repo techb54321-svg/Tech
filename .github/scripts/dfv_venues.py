@@ -18,7 +18,7 @@ FOOD = {"cafe", "pub", "bar", "restaurant", "biergarten", "fast_food", "ice_crea
 ASK = {"cafe": "c", "pub": "p", "bar": "p", "restaurant": "r"}
 STAY = {"hotel", "motel", "guest_house", "hostel", "caravan_site", "camp_site", "apartment", "chalet"}
 GREEN = {"park", "nature_reserve", "garden"}
-KEEP = {"name", "dog", "amenity", "shop", "leisure", "tourism", "natural", "outdoor_seating", "website",
+KEEP = {"name", "dog", "amenity", "shop", "leisure", "tourism", "natural", "fenced", "barrier", "outdoor_seating", "website",
         "contact:website", "email", "contact:email", "addr:housenumber", "addr:street", "addr:suburb", "addr:city"}
 
 # Rough outline of Victoria as (lon, lat). The northern edge follows the Murray,
@@ -120,6 +120,12 @@ def main(src, dst, dst_ask):
              else "stay" if t.get("tourism") else "food, drink or shop")
         groups[g] = groups.get(g, 0) + 1
     print("Saved %d places with dog info: %s" % (len(elements), ", ".join("%s %d" % kv for kv in sorted(groups.items()))))
+    parks = [e["tags"] for e in elements if e["tags"].get("leisure") == "dog_park" or e["tags"].get("dog") == "unleashed"]
+    fence = {}
+    for t in parks:
+        f = t.get("fenced") or ("yes" if t.get("barrier") in ("fence", "wall") else "not recorded")
+        fence[f] = fence.get(f, 0) + 1
+    print("Off-lead areas: %d; fencing: %s" % (len(parks), ", ".join("%s %d" % kv for kv in sorted(fence.items()))))
     print("Saved %d venues with no dog info yet" % len(ask))
     return 0 if elements else 1
 

@@ -1,0 +1,15 @@
+name = "dfv-wishes"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Web pages allowed to use this server (comma-separated). localhost is always allowed for testing.
+ALLOWED_ORIGINS = "https://techb54321-svg.github.io"
+
+[[durable_objects.bindings]]
+name = "BOOK"
+class_name = "WishBook"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["WishBook"]

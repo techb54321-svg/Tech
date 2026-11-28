@@ -96,6 +96,37 @@ jobs:
           done
           [ -s venues.json ] || echo "::warning::No venue list fetched; the app will use live lookups."
 
+      # Shared wish totals for the Wish Map. Needs two repository secrets,
+      # CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID; without them the app
+      # simply keeps wishes on each device.
+      - name: Check for Cloudflare details
+        id: cf
+        env:
+          CF: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACC: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF" ] && [ -n "$ACC" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else
+            echo "::notice::Wish Map server not deployed: add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repository secrets."
+            echo "ready=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Deploy the Wish Map server
+        if: steps.cf.outputs.ready == 'true'
+        continue-on-error: true
+        working-directory: dfv-wishes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm ci --no-audit --no-fund
+          npx wrangler deploy | tee deploy.log
+          url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          if [ -n "$url" ] && curl -fsS -m 30 "$url/counts" > /dev/null; then
+            printf '{"api":"%s"}\n' "$url" > ../wish-config.json
+            echo "Wish Map server is answering at $url"
+          else
+            echo "::warning::Wish Map server deployed but did not answer at '$url'; the app will keep wishes on each device."
+          fi
+
       - name: Assemble site
         run: |
           mkdir -p site
@@ -112,6 +143,7 @@ jobs:
           cp -r dog-friendly-victoria/. site/dog-friendly-victoria/
           if [ -s venues.json ]; then cp venues.json site/dog-friendly-victoria/app/venues.json; fi
           if [ -s venues-nosign.json ]; then cp venues-nosign.json site/dog-friendly-victoria/app/venues-nosign.json; fi
+          if [ -s wish-config.json ]; then cp wish-config.json site/dog-friendly-victoria/app/config.json; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

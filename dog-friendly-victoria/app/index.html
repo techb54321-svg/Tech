@@ -872,6 +872,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 <style>
+  [hidden] { display: none !important; }
   .pin.park .body { fill: #2f9d7f; }
   .pin.unlisted .body { fill: #fff; stroke: #9fb3bd; stroke-width: 2.500; }
   .pin.unlisted .ico { fill: #9fb3bd; }
@@ -990,11 +991,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
             <div class="stat"><b id="w-fenced">0</b><span>of those recorded as fenced</span></div>
             <div class="stat"><b id="w-welcome">0</b><span>venues here that record dogs as welcome</span></div>
           </div>
-          <p class="h3" id="list-title">Your wishes</p>
+          <p class="small" id="w-state" hidden></p>
+          <p class="h3" id="list-title">Most wished-for in this map area</p>
           <div id="list"></div>
+          <p class="h3">Your wishes</p>
+          <div id="mine"></div>
           <button class="cta ghost" id="share-list">Share my wish list</button>
           <button class="toggle" id="sample-toggle" aria-pressed="false"><span>Preview with sample numbers<small>Shows made-up totals so you can see how shared wishes would look.</small></span><i></i></button>
-          <p class="small">Real shared totals need a database, which isn't connected yet. Until then only your own wishes are counted, on this device.</p>
+          <p class="small" id="w-note">Shared totals aren't connected here, so only your own wishes are counted, on this device.</p>
         </div>
       </section>
 
@@ -1072,6 +1076,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
 
   // ---------- places ----------
   var venues = {}, filter = 'all', selected = null, haveList = false, listFailed = false, sampleOn = false;
+  var api = '', shared = false, remote = {}, state = { wishes: 0, venues: 0 }, device = '';
+  try { device = localStorage.getItem('dfv.device') || ''; } catch (e) {}
+  if (!/^[a-z0-9-]{16,40}$/.test(device)) {
+    device = (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12)).toLowerCase();
+    try { localStorage.setItem('dfv.device', device); } catch (e) {}
+  }
   function typeOf(t) {
     var a = t.amenity, s = t.shop;
     if (t.leisure || t.natural === 'beach') return 'park';
@@ -1102,7 +1112,9 @@ svg.leaflet-image-layer.leaflet-interactive path {
   }
   function wished(v) { return !!store.wishes[v.key]; }
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
-  function total(v) { var r = hash(v.key); return (sampleOn && r > 0.22 ? 2 + Math.floor(Math.pow(r, 3) * 330) : 0) + (wished(v) ? 1 : 0); }
+  function total(v) {
+    if (shared) return (remote[v.key] || 0) + (wished(v) && !store.wishes[v.key].s ? 1 : 0);
+    var r = hash(v.key); return (sampleOn && r > 0.22 ? 2 + Math.floor(Math.pow(r, 3) * 330) : 0) + (wished(v) ? 1 : 0); }
   function matches(v) {
     if (filter === 'offlead') return v.offlead;
     if (filter === 'fenced') return v.offlead && v.fenced === 'yes';
@@ -1188,7 +1200,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
       '<div class="v-head"><img src="' + THUMB[v.type][open ? 1 : 0] + '" alt="" /><div><h2>' + esc(v.name) + '</h2><p>' + TYPE[v.type] + (v.addr ? ' · ' + esc(v.addr) : '') + '</p>' +
       '<span class="status ' + cls + '">' + (open ? PAW : '') + label(v) + '</span></div></div>';
     if (v.status === 'unlisted') {
-      h += '<div class="count"><b>' + n + '</b><span>' + (sampleOn ? '<small>Sample number</small>' : '') + (n === 1 ? 'person would' : 'people would') + ' bring a dog here' + (n === 0 ? ' — be the first' : (w && n === 1 ? ' — that\'s you' : '')) + '</span></div>' +
+      h += '<div class="count"><b>' + n + '</b><span>' + (sampleOn && !shared ? '<small>Sample number</small>' : '') + (n === 1 ? 'person would' : 'people would') + ' bring a dog here' + (n === 0 ? ' — be the first' : (w && n === 1 ? ' — that\'s you' : '')) + '</span></div>' +
         '<button class="cta heart' + (w ? ' on' : '') + '" data-act="wish" aria-pressed="' + w + '">' + HEART + (w ? 'Wished — tap to undo' : 'I\'d bring my dog here') + '</button>' +
         '<div class="row2"><button class="cta ghost" data-act="worth">What\'s it worth?</button><button class="cta ghost" data-act="tell">Tell the venue</button></div>' +
         '<p class="note">Nobody has recorded whether dogs are welcome here. A wish isn\'t a claim about the venue; it just says you\'d come.</p>';
@@ -1208,16 +1220,17 @@ svg.leaflet-image-layer.leaflet-interactive path {
     sheet.innerHTML = h; sheet.classList.add('up'); sheet.scrollTop = 0;
   }
   function select(k) { selected = k; draw(); drawSheet(); }
-  function tellText(v) { var n = wished(v) ? 1 : 0; /* never quote sample numbers to a real venue */ return 'Hi ' + v.name + '! ' + (n > 1 ? n + ' locals have' : 'I\'ve') + ' said on the Dog Friendly Victoria Wish Map that we\'d visit with our dogs if we could. Would you consider welcoming well-behaved dogs? It\'s completely your choice. ' + BASE; }
+  function tellText(v) { var n = shared ? total(v) : (wished(v) ? 1 : 0); /* never quote sample numbers to a real venue */ return 'Hi ' + v.name + '! ' + (n > 1 ? n + ' locals have' : 'I\'ve') + ' said on the Dog Friendly Victoria Wish Map that we\'d visit with our dogs if we could. Would you consider welcoming well-behaved dogs? It\'s completely your choice. ' + BASE; }
   sheet.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b) return;
     var v = venues[selected], act = b.dataset.act;
     if (act === 'close') return select(null);
     if (!v) return;
     if (act === 'wish') {
-      if (wished(v)) { delete store.wishes[v.key]; toast('Wish removed'); }
+      var was = wished(v);
+      if (was) { delete store.wishes[v.key]; toast('Wish removed'); }
       else { store.wishes[v.key] = { name: v.name, type: v.type, lat: v.lat, lon: v.lon, t: Date.now() }; toast('Wish added for ' + v.name); }
-      save(); draw(); drawSheet(); renderWishes();
+      save(); send(v.key, !was); draw(); drawSheet(); renderWishes();
     }
     if (act === 'worth') { openWorth(v); }
     if (act === 'tell') share(tellText(v), 'Message copied — paste it to the venue');
@@ -1229,6 +1242,32 @@ svg.leaflet-image-layer.leaflet-interactive path {
     draw(); drawSheet(); refresh();
   }
   $('chips').addEventListener('click', function (e) { var c = e.target.closest('.chip'); if (c) setFilter(c.dataset.f); });
+
+  // ---------- shared wish totals ----------
+  function send(key, on) {
+    if (!api) return;
+    fetch(api + '/wish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ venue: key, device: device, on: on }) })
+      .then(function (r) { if (!r.ok) throw r.status; return r.json(); })
+      .then(function (d) {
+        if (d.count > 0) remote[key] = d.count; else delete remote[key];
+        if (on && store.wishes[key]) { store.wishes[key].s = 1; save(); }
+        draw(); if (selected === key) drawSheet(); renderWishes();
+      }).catch(function (code) { if (code === 429) toast('Too many wishes from this connection today. Yours is saved here and will be sent later.'); });
+  }
+  var countsAt = 0;
+  function loadCounts() {
+    if (!api || Date.now() - countsAt < 15000) return;
+    countsAt = Date.now();
+    fetch(api + '/counts').then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (d) {
+      var first = !shared;
+      remote = d.counts && typeof d.counts === 'object' ? d.counts : {}; state = { wishes: +d.wishes || 0, venues: +d.venues || 0 };
+      shared = true; sampleOn = false; mapEl.classList.remove('sampling');
+      if (first) Object.keys(store.wishes).forEach(function (k) { if (!store.wishes[k].s) send(k, true); });
+      draw(); drawSheet(); renderWishes();
+    }).catch(function () {});
+  }
+  setInterval(function () { if (!document.hidden) loadCounts(); }, 60000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) loadCounts(); });
 
   // ---------- search and location ----------
   $('search').addEventListener('submit', function (e) {
@@ -1255,7 +1294,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   function show(v) {
     document.querySelectorAll('.view').forEach(function (s) { s.classList.toggle('on', s.id === 'v-' + v); });
     document.querySelectorAll('.tabs button').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.v === v)); });
-    if (v === 'wishes') renderWishes();
+    if (v === 'wishes') { loadNoSign(); loadCounts(); renderWishes(); }
     if (v === 'map') setTimeout(function () { map.invalidateSize(); }, 30);
   }
   document.querySelector('.tabs').addEventListener('click', function (e) { var t = e.target.closest('button'); if (t) show(t.dataset.v); });
@@ -1267,20 +1306,23 @@ svg.leaflet-image-layer.leaflet-interactive path {
     $('w-off').textContent = off.length;
     $('w-fenced').textContent = off.filter(function (v) { return v.fenced === 'yes'; }).length;
     $('w-welcome').textContent = vs.filter(function (v) { return v.status === 'welcome' && v.type !== 'park'; }).length;
-    var rows;
-    if (sampleOn) {
-      $('list-title').textContent = 'Most wished-for in this map area (sample numbers)';
-      rows = vs.filter(function (v) { return v.status === 'unlisted'; }).map(function (v) { return [v, total(v)]; }).filter(function (r) { return r[1] > 0; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
-    } else {
-      $('list-title').textContent = 'Your wishes';
-      rows = Object.keys(store.wishes).map(function (k) { return [venues[k], 1, store.wishes[k].t]; }).filter(function (r) { return r[0]; }).sort(function (a, b) { return b[2] - a[2]; });
+    function rowsHtml(rows) { return '<div class="rows">' + rows.map(function (r) { return '<button class="rowi" data-k="' + esc(r[0].key) + '"><span><b>' + esc(r[0].name) + '</b><small>' + TYPE[r[0].type] + '</small></span><em>' + r[1] + '</em></button>'; }).join('') + '</div>'; }
+    var live = shared || sampleOn;
+    $('list-title').hidden = $('list').hidden = !live;
+    $('list-title').textContent = 'Most wished-for in this map area' + (shared ? '' : ' (sample numbers)');
+    if (live) {
+      var top = vs.filter(function (v) { return v.status === 'unlisted'; }).map(function (v) { return [v, total(v)]; }).filter(function (r) { return r[1] > 0; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
+      $('list').innerHTML = top.length ? rowsHtml(top) : '<p class="empty">' + (shared ? 'No wishes in this part of the map yet. Be the first.' : 'Zoom the map in to a shopping strip to see sample totals here.') + '</p>';
     }
-    $('list').innerHTML = rows.length
-      ? '<div class="rows">' + rows.map(function (r) { return '<button class="rowi" data-k="' + esc(r[0].key) + '"><span><b>' + esc(r[0].name) + '</b><small>' + TYPE[r[0].type] + '</small></span><em>' + r[1] + '</em></button>'; }).join('') + '</div>'
-      : '<p class="empty">' + (sampleOn ? 'Zoom the map in to a shopping strip to see sample totals here.' : 'No wishes yet. On the map, zoom in to your local shops, tap a venue with a heart pin and say you\'d bring your dog.') + '</p>';
+    var mine = Object.keys(store.wishes).map(function (k) { return [venues[k], venues[k] ? total(venues[k]) : 0, store.wishes[k].t]; }).filter(function (r) { return r[0]; }).sort(function (a, b) { return b[2] - a[2]; });
+    $('mine').innerHTML = mine.length ? rowsHtml(mine) : '<p class="empty">No wishes yet. On the map, zoom in to your local shops, tap a venue with a heart pin and say you\'d bring your dog.</p>';
+    $('w-state').hidden = !shared;
+    if (shared) $('w-state').textContent = state.wishes.toLocaleString('en-AU') + (state.wishes === 1 ? ' wish' : ' wishes') + ' for ' + state.venues.toLocaleString('en-AU') + (state.venues === 1 ? ' venue' : ' venues') + ' across Victoria so far.';
+    $('sample-toggle').hidden = shared;
+    $('w-note').textContent = shared ? 'Wishes are shared: totals count everyone using the app. Each wish is stored with an anonymous code for the device, not a name or email.' : 'Shared totals aren\'t connected here, so only your own wishes are counted, on this device.';
     $('share-list').style.display = Object.keys(store.wishes).length ? '' : 'none';
   }
-  $('list').addEventListener('click', function (e) {
+  document.querySelector('#v-wishes .scroll').addEventListener('click', function (e) {
     var b = e.target.closest('.rowi'); if (!b) return; var v = venues[b.dataset.k]; if (!v) return;
     show('map'); filter = 'all'; document.querySelectorAll('#chips .chip').forEach(function (c) { c.setAttribute('aria-pressed', String(c.dataset.f === 'all')); });
     map.setView([v.lat, v.lon], 17); select(v.key);
@@ -1311,7 +1353,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   function openWorth(v) {
     var n = total(v);
     $('c-people').value = Math.max(n, 1);
-    $('c-people-note').textContent = (sampleOn ? 'Sample number of wishes' : 'Wishes') + ' for ' + v.name + (n < 2 && !sampleOn ? '. Only yours so far; change the number to explore.' : '.');
+    $('c-people-note').textContent = (sampleOn && !shared ? 'Sample number of wishes' : 'Wishes') + ' for ' + v.name + (n < 2 && (shared || !sampleOn) ? '. Change the number to explore.' : '.');
     $('worth-lead').textContent = 'A rough estimate of what welcoming dogs could bring ' + v.name + '. Every number is yours to change.';
     calc(); show('worth');
   }
@@ -1322,12 +1364,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
     if (w && typeof w.lat === 'number' && TYPE[w.type]) venues[k] = { key: k, osm: k.replace(/^osm\//, ''), name: String(w.name).slice(0, 60), type: w.type, lat: w.lat, lon: w.lon, status: 'unlisted', addr: '', web: '', stub: true };
   });
   draw(); calc(); renderWishes();
+  fetch('config.json').then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (c) {
+    if (c && typeof c.api === 'string' && /^https?:\/\/[a-z0-9.:-]+$/i.test(c.api)) { api = c.api; loadCounts(); }
+  }).catch(function () {});
   fetch('venues.json').then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (data) {
     var n = 0; (data.elements || []).forEach(function (el) { var v = fromOsm(el); if (v && VIC.contains([v.lat, v.lon])) { venues[v.key] = v; n++; } });
     if (!n) throw 0;
     haveList = true; window.__paw.listed = n; draw(); refresh(); renderWishes();
   }).catch(function () { listFailed = true; setTimeout(summary, 2500); summary(); });
-  window.__paw = { map: map, venues: venues };
+  window.__paw = { map: map, venues: venues, isShared: function () { return shared; } };
 })();
 </script>
 </body>

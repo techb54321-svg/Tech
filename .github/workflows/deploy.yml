@@ -44,6 +44,28 @@ jobs:
         env:
           VITE_BASE: /Tech/clip-forge/
 
+      # The Paw Sign app reads this list instead of querying OpenStreetMap from
+      # each visitor's phone. If every server refuses, the site still deploys
+      # and the app falls back to live lookups.
+      - name: Fetch Victorian venues with dog-access info from OpenStreetMap
+        continue-on-error: true
+        run: |
+          q='[out:json][timeout:150];area["ISO3166-2"="AU-VIC"]->.v;(nwr["dog"]["name"]["amenity"~"^(cafe|pub|bar|restaurant|biergarten|fast_food|ice_cream)$"](area.v);nwr["dog"]["name"]["shop"](area.v););out center tags;'
+          keep='^(name|dog|amenity|shop|outdoor_seating|website|contact:website|email|contact:email|addr:housenumber|addr:street|addr:suburb|addr:city)$'
+          for u in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://overpass.private.coffee/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
+            echo "Trying $u"
+            code=$(curl -sS -m 200 -A "DogFriendlyVictoria-site-build (github.com/techb54321-svg/Tech)" -o raw.json -w '%{http_code}' --data-urlencode "data=$q" "$u" || true)
+            echo "HTTP $code, $(wc -c < raw.json 2>/dev/null || echo 0) bytes"
+            if [ "$code" = "200" ] && jq -e '.elements | length > 0' raw.json > /dev/null 2>&1; then
+              jq -c --arg keep "$keep" '{generated: (now | todate), elements: [.elements[] | {type, id, lat: (.lat // .center.lat), lon: (.lon // .center.lon), tags: (.tags | with_entries(select(.key | test($keep))))}]}' raw.json > venues.json
+              echo "Saved $(jq '.elements | length' venues.json) venues from $u"
+              jq -r '[.elements[].tags.dog] | group_by(.) | map("\(.[0]): \(length)") | join(", ")' venues.json
+              break
+            fi
+            head -c 300 raw.json 2>/dev/null || true; echo
+          done
+          [ -s venues.json ] || echo "::warning::No venue list fetched; the app will use live lookups."
+
       - name: Assemble site
         run: |
           mkdir -p site
@@ -58,6 +80,7 @@ jobs:
           cp -r quiet-table/. site/quiet-table/
           mkdir -p site/dog-friendly-victoria
           cp -r dog-friendly-victoria/. site/dog-friendly-victoria/
+          if [ -s venues.json ]; then cp venues.json site/dog-friendly-victoria/app/venues.json; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

@@ -3403,20 +3403,23 @@ var qrcode = function() {
   }
   function draw() {
     layer.clearLayers();
+    var vb = map.getBounds().pad(0.25), far = map.getZoom() < minZoom();
     Object.keys(venues).forEach(function (k) {
       var v = venues[k]; if (!matches(v)) return;
+      if (k !== selected && (far || !vb.contains([v.lat, v.lon]))) return;
       var cls = 'pin ' + st(v) + (v.src !== 'osm' ? ' mine' : '') + (selected === k ? ' sel' : '') + (newKey === k ? ' new' : '');
       L.marker([v.lat, v.lon], { icon: L.divIcon({ className: cls, html: pinHtml(v), iconSize: [40, 48], iconAnchor: [20, 46] }), title: v.name + ': ' + label(v), alt: v.name + ': ' + label(v), keyboard: true, zIndexOffset: selected === k ? 1000 : (v.src !== 'osm' ? 500 : 0) })
         .on('click', function () { select(k); }).addTo(layer);
     });
     newKey = null;
   }
+  function minZoom() { return haveList ? 11 : 13; }
   function inView() { var b = map.getBounds(); return Object.keys(venues).map(function (k) { return venues[k]; }).filter(function (v) { return b.contains([v.lat, v.lon]); }); }
 
   var tip = $('tip');
   function setTip(html) { tip.innerHTML = html; }
   function summary() {
-    if (map.getZoom() < 13) return setTip('Zoom in to see venues');
+    if (map.getZoom() < minZoom()) return setTip('Zoom in to see venues');
     var vs = inView().filter(matches), n = vs.length;
     if (filter === 'unlisted' && map.getZoom() < 16) return setTip('Zoom in closer to see venues without a sign');
     if (n) setTip(n + (n === 1 ? ' venue' : ' venues') + ' here · tap a pin');
@@ -3424,17 +3427,18 @@ var qrcode = function() {
   }
 
   // ---------- live venue data from OpenStreetMap ----------
-  var fetched = { dog: null, any: null }, loading = 0, moveT;
+  var fetched = { dog: null, any: null }, loading = 0, moveT, haveList = false, lastErr = '';
   function bboxStr(b) { return [b.getSouth().toFixed(5), b.getWest().toFixed(5), b.getNorth().toFixed(5), b.getEast().toFixed(5)].join(','); }
   function overpass(query, i) {
     i = i || 0;
     var ctl = typeof AbortController === 'function' ? new AbortController() : null, timer = ctl && setTimeout(function () { ctl.abort(); }, 22000);
     return fetch(OVERPASS[i], { method: 'POST', body: 'data=' + encodeURIComponent(query), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl ? ctl.signal : undefined })
-      .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-      .catch(function (e) { clearTimeout(timer); if (i + 1 < OVERPASS.length) return overpass(query, i + 1); throw e; });
+      .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('error ' + r.status); return r.json(); })
+      .catch(function (e) { clearTimeout(timer); lastErr = e && e.name === 'AbortError' ? 'timed out' : (e && /^error \d+$/.test(e.message) ? e.message : 'no connection'); if (i + 1 < OVERPASS.length) return overpass(query, i + 1); throw e; });
   }
   function load(kind) {
     var z = map.getZoom(), b = map.getBounds();
+    if (kind === 'dog' && haveList) return;
     if (kind === 'dog' ? z < 13 : z < 16) return;
     if (fetched[kind] && fetched[kind].contains(b)) return;
     var area = b.pad(kind === 'dog' ? 0.35 : 0.1), bb = bboxStr(area), q;
@@ -3446,10 +3450,10 @@ var qrcode = function() {
       fetched[kind] = area;
       (data.elements || []).forEach(function (el) { var v = fromOsm(el); if (v) venues[v.key] = v; });
       loading--; draw(); summary(); stats();
-    }).catch(function () { loading--; setTip(tilesOk ? 'Couldn\'t reach the venue data. <button data-go="retry">Try again</button>' : 'This preview can\'t reach the internet, so the map can\'t load here. It works at the app\'s web address. <button data-go="retry">Try again</button>'); });
+    }).catch(function () { loading--; setTip(tilesOk ? (kind === 'any' ? 'Couldn\'t load venues without a sign right now' : 'Couldn\'t reach the venue data') + ' (' + lastErr + '). <button data-go="retry">Try again</button>' : 'This preview can\'t reach the internet, so the map can\'t load here. It works at the app\'s web address. <button data-go="retry">Try again</button>'); });
   }
   function refresh() { load('dog'); if (filter === 'unlisted') load('any'); if (!loading) summary(); }
-  map.on('moveend', function () { clearTimeout(moveT); moveT = setTimeout(refresh, 500); });
+  map.on('moveend', function () { draw(); stats(); clearTimeout(moveT); moveT = setTimeout(refresh, 500); });
   map.on('click', function () { if (selected) select(null); });
   tip.addEventListener('click', function (e) { var b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'sign') show('sign'); else refresh(); });
 
@@ -3611,7 +3615,7 @@ var qrcode = function() {
     $('s-welcome').textContent = w; $('s-free').textContent = f; $('s-visits').textContent = visits; $('s-asks').textContent = Object.keys(store.asked).length;
     var max = Math.max.apply(null, Object.keys(TYPE).map(function (k) { return by[k] || 0; })) || 1;
     $('bars').innerHTML = Object.keys(TYPE).map(function (k) { var n = by[k] || 0; return '<div class="bar-row"><span>' + TYPE[k] + '</span><i><u style="width:' + Math.round(n / max * 100) + '%"></u></i><em>' + n + '</em></div>'; }).join('');
-    $('imp-lead').textContent = map.getZoom() < 13 ? 'Zoom the map in to an area to see its counts.' : 'Counts for the part of the map you\'re looking at.';
+    $('imp-lead').textContent = map.getZoom() < minZoom() ? 'Zoom the map in to an area to see its counts.' : 'Counts for the part of the map you\'re looking at.';
   }
 
   // ---------- start ----------
@@ -3630,7 +3634,13 @@ var qrcode = function() {
       setTimeout(function () { show('sign'); }, 0);
     }
   }
-  draw(); drawSheet(); drawSticker(); stats(); refresh();
+  draw(); drawSheet(); drawSticker(); stats();
+  // The site build bundles a statewide list of venues with dog info; fall back to live lookups without it
+  fetch('venues.json').then(function (r) { if (!r.ok) throw 0; return r.json(); }).then(function (data) {
+    var n = 0; (data.elements || []).forEach(function (el) { var v = fromOsm(el); if (v && VIC.contains([v.lat, v.lon])) { venues[v.key] = v; n++; } });
+    if (!n) throw 0;
+    haveList = true; window.__paw.listed = n; draw(); stats(); refresh();
+  }).catch(function () { refresh(); });
   window.__paw = { map: map, venues: venues };
 })();
 </script>

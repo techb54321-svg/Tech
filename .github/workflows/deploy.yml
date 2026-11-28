@@ -44,10 +44,37 @@ jobs:
         env:
           VITE_BASE: /Tech/clip-forge/
 
-      # The Paw Sign app reads this list instead of querying OpenStreetMap from
-      # each visitor's phone. If every server refuses, the site still deploys
-      # and the app falls back to live lookups.
+      # The Paw Sign app reads venues.json instead of querying OpenStreetMap from
+      # each visitor's phone. The list is built once a week from the Geofabrik
+      # download of Australia and reused from the cache in between.
+      - name: Work out this week's venue list key
+        id: week
+        run: echo "w=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      - name: Reuse this week's venue list if it was already built
+        id: venues-cache
+        uses: actions/cache@v4
+        with:
+          path: venues.json
+          key: dfv-venues-v1-${{ steps.week.outputs.w }}
+
+      - name: Build the venue list from the weekly OpenStreetMap download
+        if: steps.venues-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq osmium-tool
+          curl -fL --retry 3 -m 900 -sS -o au.osm.pbf https://download.geofabrik.de/australia-oceania/australia-latest.osm.pbf
+          ls -la au.osm.pbf
+          osmium tags-filter au.osm.pbf nwr/dog -o dog.osm.pbf
+          osmium export dog.osm.pbf -u type_id -f geojsonseq -x print_record_separator=false -o dog.geojsonseq
+          python3 .github/scripts/dfv_venues.py dog.geojsonseq venues.json || rm -f venues.json
+          rm -f au.osm.pbf dog.osm.pbf dog.geojsonseq
+
+      # Last resort only: the public query servers are often at capacity. If
+      # this fails too, the site still deploys and the app tries live lookups.
       - name: Fetch Victorian venues with dog-access info from OpenStreetMap
+        if: hashFiles('venues.json') == ''
         continue-on-error: true
         run: |
           q='[out:json][timeout:150];area["ISO3166-2"="AU-VIC"]->.v;(nwr["dog"]["name"]["amenity"~"^(cafe|pub|bar|restaurant|biergarten|fast_food|ice_cream)$"](area.v);nwr["dog"]["name"]["shop"](area.v););out center tags;'
